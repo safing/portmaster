@@ -1,9 +1,13 @@
 #![cfg_attr(not(test), no_std)]
 #![allow(clippy::needless_return)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate alloc;
 
+mod abi;
+
 pub mod allocator;
+pub mod callback_barrier;
 pub mod consts;
 pub mod debug;
 pub mod driver;
@@ -12,6 +16,7 @@ pub mod filter_engine;
 pub mod interface;
 pub mod ioqueue;
 pub mod irp_helpers;
+pub mod passive_mutex;
 pub mod rw_spin_lock;
 pub mod utils;
 

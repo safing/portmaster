@@ -36,6 +36,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="helper.c" />
+    <ClInclude Include="abi_layout.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{39A5E911-A716-4708-8B88-3895183C6372}</ProjectGuid>

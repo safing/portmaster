@@ -19,11 +19,12 @@ Portmaster communication:
 The communication happens concurrently with the File read/write API.
 That means when Pormtaster sends a command the kernel extension will start to process it and queue the result in the `IOQueue`.
 
-`fn read()` -> called on read request from Portmaster  
-- `IOQueue` holds all the events queued for Portmaster.
+`fn read()` -> read requests from Portmaster are parked in a KMDF manual cancel-safe queue.
+- `IOQueue` holds all events queued for Portmaster.
+- A PASSIVE_LEVEL work item completes queued reads when an event becomes available.
 
-Blocks until there is a element that can be poped or shutdown request is sent from Portmaster.
-If there is more then one event in the queue it will write as much as it can in the supplied buffer.
+An idle read remains pending without blocking the preprocess callback. `CancelIoEx` completes it with `STATUS_CANCELLED`; cleanup, shutdown, and DriverUnload synchronously purge the read queue before reclaiming device state.
+If there is more than one event in the queue, the worker writes as much as fits in the supplied buffer.
 
 `fn write()` -> called on write request from Portmaster.  
 Used when Portmaster wants to send a command to kernel extension.
@@ -49,7 +50,7 @@ Connection level filtering. It will make a decision based on the first packet of
 ### ALE endpoint / resource assignment and release
 
 Used to listen for event when connection has ended. Does no filtering.
-- **AleEndpointClosureV4, AleEndpointClosureV6** - Triggered when connection to an endpoint has ended. Usually only TCP is triggered.  The triggered connection will be marked for deletion.
+- **AleEndpointClosureV4, AleEndpointClosureV6** - Triggered when a TCP flow or a UDP socket endpoint is closed. UDP closure is socket-level (one indication can cover multiple remote peers); the driver correlates UDP tuples using WFP's transport endpoint handle. The triggered connection(s) will be marked for deletion.
 
 - **AleResourceAssignmentV4, AleResourceAssignmentV6** -> only for logging (not used)
 - AleResourceReleaseV4, AleResourceReleaseV6 -> Triggered when port is release from an application. The triggered connection/s will be marked for deletion.

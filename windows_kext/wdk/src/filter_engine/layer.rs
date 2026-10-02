@@ -60,34 +60,60 @@ pub(crate) union ValueData {
     // TODO: add the rest of possible values.
 }
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug)]
-pub enum ValueType {
-    FwpEmpty = 0,
-    FwpUint8 = 1,
-    FwpUint16 = 2,
-    FwpUint32 = 3,
-    FwpUint64 = 4,
-    FwpInt8 = 5,
-    FwpInt16 = 6,
-    FwpInt32 = 7,
-    FwpInt64 = 8,
-    FwpFloat = 9,
-    FwpDouble = 10,
-    FwpByteArray16Type = 11,
-    FwpByteBlobType = 12,
-    FwpSid = 13,
-    FwpSecurityDescriptorType = 14,
-    FwpTokenInformationType = 15,
-    FwpTokenAccessInformationType = 16,
-    FwpUnicodeStringType = 17,
-    FwpByteArray6Type = 18,
-    FwpSingleDataTypeMax = 0xff,
-    FwpV4AddrMask = 0xff + 1,
-    FwpV6AddrMask = 0xff + 2,
-    FwpRangeType = 0xff + 3,
-    FwpDataTypeMax = 0xff + 4,
+/// Integer-backed representation of `FWP_DATA_TYPE` supplied by WFP.
+///
+/// This must not be a closed Rust enum: native memory can contain a value added
+/// by a newer WDK, and every `i32` bit pattern must remain valid to read.
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct ValueType(i32);
+
+#[allow(non_upper_case_globals)]
+impl ValueType {
+    pub const FwpEmpty: Self = Self(0);
+    pub const FwpUint8: Self = Self(1);
+    pub const FwpUint16: Self = Self(2);
+    pub const FwpUint32: Self = Self(3);
+    pub const FwpUint64: Self = Self(4);
+    pub const FwpInt8: Self = Self(5);
+    pub const FwpInt16: Self = Self(6);
+    pub const FwpInt32: Self = Self(7);
+    pub const FwpInt64: Self = Self(8);
+    pub const FwpFloat: Self = Self(9);
+    pub const FwpDouble: Self = Self(10);
+    pub const FwpByteArray16Type: Self = Self(11);
+    pub const FwpByteBlobType: Self = Self(12);
+    pub const FwpSid: Self = Self(13);
+    pub const FwpSecurityDescriptorType: Self = Self(14);
+    pub const FwpTokenInformationType: Self = Self(15);
+    pub const FwpTokenAccessInformationType: Self = Self(16);
+    pub const FwpUnicodeStringType: Self = Self(17);
+    pub const FwpByteArray6Type: Self = Self(18);
+    pub const FwpSingleDataTypeMax: Self = Self(0xff);
+    pub const FwpV4AddrMask: Self = Self(0x100);
+    pub const FwpV6AddrMask: Self = Self(0x101);
+    pub const FwpRangeType: Self = Self(0x102);
+    pub const FwpDataTypeMax: Self = Self(0x103);
 }
+
+#[cfg(target_pointer_width = "64")]
+const _: () = {
+    use core::mem::{align_of, offset_of, size_of};
+
+    assert!(size_of::<ValueType>() == 4);
+    assert!(align_of::<ValueType>() == 4);
+    assert!(size_of::<ValueData>() == 8);
+    assert!(align_of::<ValueData>() == 8);
+    assert!(size_of::<Value>() == 16);
+    assert!(align_of::<Value>() == 8);
+    assert!(offset_of!(Value, value_type) == 0);
+    assert!(offset_of!(Value, value) == 8);
+    assert!(size_of::<IncomingValues>() == 16);
+    assert!(align_of::<IncomingValues>() == 8);
+    assert!(offset_of!(IncomingValues, layer_id) == 0);
+    assert!(offset_of!(IncomingValues, value_count) == 4);
+    assert!(offset_of!(IncomingValues, incoming_value_array) == 8);
+};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Layer {
@@ -228,7 +254,7 @@ impl Layer {
     }
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsInboundIppacketV4 {
     IpLocalAddress,
     IpRemoteAddress,
@@ -243,7 +269,7 @@ pub enum FieldsInboundIppacketV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsInboundIppacketV6 {
     IpLocalAddress,
     IpRemoteAddress,
@@ -258,7 +284,7 @@ pub enum FieldsInboundIppacketV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsOutboundIppacketV4 {
     IpLocalAddress,
     IpLocalAddressType,
@@ -273,7 +299,7 @@ pub enum FieldsOutboundIppacketV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsOutboundIppacketV6 {
     IpLocalAddress,
     IpLocalAddressType,
@@ -288,7 +314,7 @@ pub enum FieldsOutboundIppacketV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsIpforwardV4 {
     IpSourceAddress,
     IpDestinationAddress,
@@ -308,7 +334,7 @@ pub enum FieldsIpforwardV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsIpforwardV6 {
     IpSourceAddress,
     IpDestinationAddress,
@@ -328,7 +354,7 @@ pub enum FieldsIpforwardV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsInboundTransportV4 {
     IpProtocol,
     IpLocalAddress,
@@ -348,17 +374,17 @@ pub enum FieldsInboundTransportV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsInboundTransportFas {
     FieldInboundTransportFastMax,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsOutboundTransportFas {
     FieldOutboundTransportFastMax,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsInboundTransportV6 {
     IpProtocol,
     IpLocalAddress,
@@ -378,7 +404,7 @@ pub enum FieldsInboundTransportV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsOutboundTransportV4 {
     IpProtocol,
     IpLocalAddress,
@@ -399,7 +425,7 @@ pub enum FieldsOutboundTransportV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsOutboundTransportV6 {
     IpProtocol,
     IpLocalAddress,
@@ -420,7 +446,7 @@ pub enum FieldsOutboundTransportV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsStreamV4 {
     IpLocalAddress,
     IpLocalAddressType,
@@ -433,7 +459,7 @@ pub enum FieldsStreamV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsStreamV6 {
     IpLocalAddress,
     IpLocalAddressType,
@@ -446,7 +472,7 @@ pub enum FieldsStreamV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsDatagramDataV4 {
     IpProtocol,
     IpLocalAddress,
@@ -465,7 +491,7 @@ pub enum FieldsDatagramDataV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsDatagramDataV6 {
     IpProtocol,
     IpLocalAddress,
@@ -484,7 +510,7 @@ pub enum FieldsDatagramDataV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsStreamPacketV4 {
     IpLocalAddress,
     IpRemoteAddress,
@@ -501,7 +527,7 @@ pub enum FieldsStreamPacketV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsStreamPacketV6 {
     IpLocalAddress,
     IpRemoteAddress,
@@ -518,7 +544,7 @@ pub enum FieldsStreamPacketV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsInboundIcmpErrorV4 {
     EmbeddedProtocol,
     IpLocalAddress,
@@ -545,7 +571,7 @@ pub enum FieldsInboundIcmpErrorV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsInboundIcmpErrorV6 {
     EmbeddedProtocol,
     IpLocalAddress,
@@ -572,7 +598,7 @@ pub enum FieldsInboundIcmpErrorV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsOutboundIcmpErrorV4 {
     IpLocalAddress,
     IpRemoteAddress,
@@ -591,7 +617,7 @@ pub enum FieldsOutboundIcmpErrorV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsOutboundIcmpErrorV6 {
     IpLocalAddress,
     IpRemoteAddress,
@@ -610,7 +636,7 @@ pub enum FieldsOutboundIcmpErrorV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleResourceAssignmentV4 {
     AleAppId,
     AleUserId,
@@ -633,10 +659,11 @@ pub enum FieldsAleResourceAssignmentV4 {
     //
     Reserved0,
     Reserved1,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleResourceAssignmentV6 {
     AleAppId,
     AleUserId,
@@ -659,10 +686,11 @@ pub enum FieldsAleResourceAssignmentV6 {
     //
     Reserved0,
     Reserved1,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleResourceReleaseV4 {
     AleAppId,
     AleUserId,
@@ -675,10 +703,11 @@ pub enum FieldsAleResourceReleaseV4 {
     AlePackageId,
     AleSecurityAttributeFqbnValue,
     CompartmentId,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleResourceReleaseV6 {
     AleAppId,
     AleUserId,
@@ -691,10 +720,11 @@ pub enum FieldsAleResourceReleaseV6 {
     AlePackageId,
     AleSecurityAttributeFqbnValue,
     CompartmentId,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleEndpointClosureV4 {
     AleAppId,
     AleUserId,
@@ -709,10 +739,11 @@ pub enum FieldsAleEndpointClosureV4 {
     AlePackageId,
     AleSecurityAttributeFqbnValue,
     CompartmentId,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleEndpointClosureV6 {
     AleAppId,
     AleUserId,
@@ -727,10 +758,11 @@ pub enum FieldsAleEndpointClosureV6 {
     AlePackageId,
     AleSecurityAttributeFqbnValue,
     CompartmentId,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleAuthListenV4 {
     AleAppId,
     AleUserId,
@@ -746,10 +778,11 @@ pub enum FieldsAleAuthListenV4 {
     AlePackageId,
     AleSecurityAttributeFqbnValue,
     CompartmentId,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleAuthListenV6 {
     AleAppId,
     AleUserId,
@@ -765,10 +798,11 @@ pub enum FieldsAleAuthListenV6 {
     AlePackageId,
     AleSecurityAttributeFqbnValue,
     CompartmentId,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleAuthRecvAcceptV4 {
     AleAppId,
     AleUserId,
@@ -812,10 +846,11 @@ pub enum FieldsAleAuthRecvAcceptV4 {
     Reserved1,
     Reserved2,
     Reserved3,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleAuthRecvAcceptV6 {
     AleAppId,
     AleUserId,
@@ -859,10 +894,11 @@ pub enum FieldsAleAuthRecvAcceptV6 {
     Reserved1,
     Reserved2,
     Reserved3,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleBindRedirectV4 {
     AleAppId,
     AleUserId,
@@ -874,10 +910,11 @@ pub enum FieldsAleBindRedirectV4 {
     AlePackageId,
     AleSecurityAttributeFqbnValue,
     CompartmentId,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleBindRedirectV6 {
     AleAppId,
     AleUserId,
@@ -889,10 +926,11 @@ pub enum FieldsAleBindRedirectV6 {
     AlePackageId,
     AleSecurityAttributeFqbnValue,
     CompartmentId,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleConnectRedirectV4 {
     AleAppId,
     AleUserId,
@@ -908,10 +946,11 @@ pub enum FieldsAleConnectRedirectV4 {
     AlePackageId,
     AleSecurityAttributeFqbnValue,
     CompartmentId,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleConnectRedirectV6 {
     AleAppId,
     AleUserId,
@@ -927,10 +966,11 @@ pub enum FieldsAleConnectRedirectV6 {
     AlePackageId,
     AleSecurityAttributeFqbnValue,
     CompartmentId,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleAuthConnectV4 {
     AleAppId,
     AleUserId,
@@ -976,10 +1016,11 @@ pub enum FieldsAleAuthConnectV4 {
     Reserved1,
     Reserved2,
     Reserved3,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleAuthConnectV6 {
     AleAppId,
     AleUserId,
@@ -1025,10 +1066,11 @@ pub enum FieldsAleAuthConnectV6 {
     Reserved1,
     Reserved2,
     Reserved3,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleFlowEstablishedV4 {
     AleAppId,
     AleUserId,
@@ -1057,10 +1099,11 @@ pub enum FieldsAleFlowEstablishedV4 {
     Reserved1,
     Reserved2,
     Reserved3,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsAleFlowEstablishedV6 {
     AleAppId,
     AleUserId,
@@ -1089,10 +1132,11 @@ pub enum FieldsAleFlowEstablishedV6 {
     Reserved1,
     Reserved2,
     Reserved3,
+    PackageFamilyName,
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsNameResolutionCacheV4 {
     AleUserId,
     AleAppId,
@@ -1102,7 +1146,7 @@ pub enum FieldsNameResolutionCacheV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsNameResolutionCacheV6 {
     AleUserId,
     AleAppId,
@@ -1112,7 +1156,7 @@ pub enum FieldsNameResolutionCacheV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsInboundMacFrameEthernet {
     InterfaceMacAddress,
     MacLocalAddress,
@@ -1129,7 +1173,7 @@ pub enum FieldsInboundMacFrameEthernet {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsOutboundMacFrameEthernet {
     InterfaceMacAddress,
     MacLocalAddress,
@@ -1146,7 +1190,7 @@ pub enum FieldsOutboundMacFrameEthernet {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsInboundMacFrameNative {
     NdisMediaType,
     NdisPhysicalMediaType,
@@ -1159,12 +1203,12 @@ pub enum FieldsInboundMacFrameNative {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsInboundMacFrameNativeFast {
-    FastMax,
+    Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsOutboundMacFrameNative {
     NdisMediaType,
     NdisPhysicalMediaType,
@@ -1177,12 +1221,12 @@ pub enum FieldsOutboundMacFrameNative {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsOutboundMacFrameNativeFast {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsIngressVswitchEthernet {
     MacSourceAddress,
     MacSourceAddressType,
@@ -1201,7 +1245,7 @@ pub enum FieldsIngressVswitchEthernet {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsEgressVswitchEthernet {
     MacSourceAddress,
     MacSourceAddressType,
@@ -1223,7 +1267,7 @@ pub enum FieldsEgressVswitchEthernet {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsIngressVswitchTransportV4 {
     IpSourceAddress,
     IpDestinationAddress,
@@ -1242,7 +1286,7 @@ pub enum FieldsIngressVswitchTransportV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsIngressVswitchTransportV6 {
     IpSourceAddress,
     IpDestinationAddress,
@@ -1261,7 +1305,7 @@ pub enum FieldsIngressVswitchTransportV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsEgressVswitchTransportV4 {
     IpSourceAddress,
     IpDestinationAddress,
@@ -1283,7 +1327,7 @@ pub enum FieldsEgressVswitchTransportV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsEgressVswitchTransportV6 {
     IpSourceAddress,
     IpDestinationAddress,
@@ -1305,7 +1349,7 @@ pub enum FieldsEgressVswitchTransportV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsIpsecKmDemuxV4 {
     IpLocalAddress,
     IpRemoteAddress,
@@ -1316,7 +1360,7 @@ pub enum FieldsIpsecKmDemuxV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsIpsecKmDemuxV6 {
     IpLocalAddress,
     IpRemoteAddress,
@@ -1327,7 +1371,7 @@ pub enum FieldsIpsecKmDemuxV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsIpsecV4 {
     IpProtocol,
     IpLocalAddress,
@@ -1340,7 +1384,7 @@ pub enum FieldsIpsecV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsIpsecV6 {
     IpProtocol,
     IpLocalAddress,
@@ -1353,7 +1397,7 @@ pub enum FieldsIpsecV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsIkeextV4 {
     IpLocalAddress,
     IpRemoteAddress,
@@ -1363,7 +1407,7 @@ pub enum FieldsIkeextV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsIkeextV6 {
     IpLocalAddress,
     IpRemoteAddress,
@@ -1373,29 +1417,30 @@ pub enum FieldsIkeextV6 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsRpcUm {
     RemoteUserToken,
-    AuthLevel,
-    AuthType,
-    DcomAppId,
-    IfFlag,
     IfUuid,
     IfVersion,
+    IfFlag,
+    DcomAppId,
     ImageName,
+    Protocol,
+    AuthType,
+    AuthLevel,
+    SecEncryptAlgorithm,
+    SecKeySize,
     LocalAddrV4,
     LocalAddrV6,
     LocalPort,
-    Max,
     Pipe,
-    Protocol,
     RemoteAddrV4,
     RemoteAddrV6,
-    SecEncryptAlgorithm,
-    SecKeySize,
+    RpcOpnum,
+    Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsRpcEpmap {
     RemoteUserToken,
     IfUuid,
@@ -1414,7 +1459,7 @@ pub enum FieldsRpcEpmap {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsRpcEpAdd {
     ProcessWithRpcIfUuid,
     Protocol,
@@ -1423,7 +1468,7 @@ pub enum FieldsRpcEpAdd {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsRpcProxyConn {
     ClientToken,
     ServerName,
@@ -1434,7 +1479,7 @@ pub enum FieldsRpcProxyConn {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsRpcProxyIf {
     ClientToken,
     IfUuid,
@@ -1447,7 +1492,7 @@ pub enum FieldsRpcProxyIf {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsKmAuthorization {
     RemoteId,
     AuthenticationType,
@@ -1459,7 +1504,7 @@ pub enum FieldsKmAuthorization {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsInboundReserved2 {
     Reserved0,
     Reserved1,
@@ -1480,7 +1525,7 @@ pub enum FieldsInboundReserved2 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsOutboundNetworkConnectionPolicyV4 {
     AleAppId,
     AleUserId,
@@ -1499,7 +1544,7 @@ pub enum FieldsOutboundNetworkConnectionPolicyV4 {
     Max,
 }
 
-#[repr(usize)]
+#[repr(i32)]
 pub enum FieldsOutboundNetworkConnectionPolicyV6 {
     AleAppId,
     AleUserId,

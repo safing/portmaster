@@ -3,6 +3,8 @@ use protocol::info::{BandwidthValueV4, BandwidthValueV6, Info};
 use smoltcp::wire::{IpProtocol, Ipv4Address, Ipv6Address};
 use wdk::rw_spin_lock::RwSpinLock;
 
+use crate::connection::Direction;
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
 pub struct Key<Address: Ord> {
     pub local_ip: Address,
@@ -11,58 +13,40 @@ pub struct Key<Address: Ord> {
     pub remote_port: u16,
 }
 
+#[derive(Default)]
 struct Value {
     received_bytes: usize,
     transmitted_bytes: usize,
 }
 
-enum Direction {
-    Tx(usize),
-    Rx(usize),
-}
 pub struct Bandwidth {
-    stats_tcp_v4: BTreeMap<Key<Ipv4Address>, Value>,
-    stats_tcp_v4_lock: RwSpinLock,
-
-    stats_tcp_v6: BTreeMap<Key<Ipv6Address>, Value>,
-    stats_tcp_v6_lock: RwSpinLock,
-
-    stats_udp_v4: BTreeMap<Key<Ipv4Address>, Value>,
-    stats_udp_v4_lock: RwSpinLock,
-
-    stats_udp_v6: BTreeMap<Key<Ipv6Address>, Value>,
-    stats_udp_v6_lock: RwSpinLock,
+    stats_tcp_v4: RwSpinLock<BTreeMap<Key<Ipv4Address>, Value>>,
+    stats_tcp_v6: RwSpinLock<BTreeMap<Key<Ipv6Address>, Value>>,
+    stats_udp_v4: RwSpinLock<BTreeMap<Key<Ipv4Address>, Value>>,
+    stats_udp_v6: RwSpinLock<BTreeMap<Key<Ipv6Address>, Value>>,
 }
 
 impl Bandwidth {
     pub fn new() -> Self {
         Self {
-            stats_tcp_v4: BTreeMap::new(),
-            stats_tcp_v4_lock: RwSpinLock::default(),
-
-            stats_tcp_v6: BTreeMap::new(),
-            stats_tcp_v6_lock: RwSpinLock::default(),
-
-            stats_udp_v4: BTreeMap::new(),
-            stats_udp_v4_lock: RwSpinLock::default(),
-
-            stats_udp_v6: BTreeMap::new(),
-            stats_udp_v6_lock: RwSpinLock::default(),
+            stats_tcp_v4: RwSpinLock::new(BTreeMap::new()),
+            stats_tcp_v6: RwSpinLock::new(BTreeMap::new()),
+            stats_udp_v4: RwSpinLock::new(BTreeMap::new()),
+            stats_udp_v6: RwSpinLock::new(BTreeMap::new()),
         }
     }
 
-    pub fn get_all_updates_tcp_v4(&mut self) -> Option<Info> {
-        let stats_map;
-        {
-            let _guard = self.stats_tcp_v4_lock.write_lock();
-            if self.stats_tcp_v4.is_empty() {
+    pub fn get_all_updates_tcp_v4(&self) -> Option<Info> {
+        let stats_map = {
+            let mut stats_map = self.stats_tcp_v4.write_lock();
+            if stats_map.is_empty() {
                 return None;
             }
-            stats_map = core::mem::replace(&mut self.stats_tcp_v4, BTreeMap::new());
-        }
+            core::mem::take(&mut *stats_map)
+        };
 
         let mut values = alloc::vec::Vec::with_capacity(stats_map.len());
-        for (key, value) in stats_map.iter() {
+        for (key, value) in stats_map {
             values.push(BandwidthValueV4 {
                 local_ip: key.local_ip.0,
                 local_port: key.local_port,
@@ -78,18 +62,17 @@ impl Bandwidth {
         ))
     }
 
-    pub fn get_all_updates_tcp_v6(&mut self) -> Option<Info> {
-        let stats_map;
-        {
-            let _guard = self.stats_tcp_v6_lock.write_lock();
-            if self.stats_tcp_v6.is_empty() {
+    pub fn get_all_updates_tcp_v6(&self) -> Option<Info> {
+        let stats_map = {
+            let mut stats_map = self.stats_tcp_v6.write_lock();
+            if stats_map.is_empty() {
                 return None;
             }
-            stats_map = core::mem::replace(&mut self.stats_tcp_v6, BTreeMap::new());
-        }
+            core::mem::take(&mut *stats_map)
+        };
 
         let mut values = alloc::vec::Vec::with_capacity(stats_map.len());
-        for (key, value) in stats_map.iter() {
+        for (key, value) in stats_map {
             values.push(BandwidthValueV6 {
                 local_ip: key.local_ip.0,
                 local_port: key.local_port,
@@ -105,18 +88,17 @@ impl Bandwidth {
         ))
     }
 
-    pub fn get_all_updates_udp_v4(&mut self) -> Option<Info> {
-        let stats_map;
-        {
-            let _guard = self.stats_udp_v4_lock.write_lock();
-            if self.stats_udp_v4.is_empty() {
+    pub fn get_all_updates_udp_v4(&self) -> Option<Info> {
+        let stats_map = {
+            let mut stats_map = self.stats_udp_v4.write_lock();
+            if stats_map.is_empty() {
                 return None;
             }
-            stats_map = core::mem::replace(&mut self.stats_udp_v4, BTreeMap::new());
-        }
+            core::mem::take(&mut *stats_map)
+        };
 
         let mut values = alloc::vec::Vec::with_capacity(stats_map.len());
-        for (key, value) in stats_map.iter() {
+        for (key, value) in stats_map {
             values.push(BandwidthValueV4 {
                 local_ip: key.local_ip.0,
                 local_port: key.local_port,
@@ -132,18 +114,17 @@ impl Bandwidth {
         ))
     }
 
-    pub fn get_all_updates_udp_v6(&mut self) -> Option<Info> {
-        let stats_map;
-        {
-            let _guard = self.stats_udp_v6_lock.write_lock();
-            if self.stats_udp_v6.is_empty() {
+    pub fn get_all_updates_udp_v6(&self) -> Option<Info> {
+        let stats_map = {
+            let mut stats_map = self.stats_udp_v6.write_lock();
+            if stats_map.is_empty() {
                 return None;
             }
-            stats_map = core::mem::replace(&mut self.stats_udp_v6, BTreeMap::new());
-        }
+            core::mem::take(&mut *stats_map)
+        };
 
         let mut values = alloc::vec::Vec::with_capacity(stats_map.len());
-        for (key, value) in stats_map.iter() {
+        for (key, value) in stats_map {
             values.push(BandwidthValueV6 {
                 local_ip: key.local_ip.0,
                 local_port: key.local_port,
@@ -159,131 +140,50 @@ impl Bandwidth {
         ))
     }
 
-    pub fn update_tcp_v4_tx(&mut self, key: Key<Ipv4Address>, tx_bytes: usize) {
-        Self::update(
-            &mut self.stats_tcp_v4,
-            &mut self.stats_tcp_v4_lock,
-            key,
-            Direction::Tx(tx_bytes),
-        );
+    #[inline]
+    pub fn update_tcp_v4(&self, key: Key<Ipv4Address>, direction: Direction, bytes: usize) {
+        Self::update(&self.stats_tcp_v4, key, direction, bytes);
     }
 
-    pub fn update_tcp_v4_rx(&mut self, key: Key<Ipv4Address>, rx_bytes: usize) {
-        Self::update(
-            &mut self.stats_tcp_v4,
-            &mut self.stats_tcp_v4_lock,
-            key,
-            Direction::Rx(rx_bytes),
-        );
+    #[inline]
+    pub fn update_tcp_v6(&self, key: Key<Ipv6Address>, direction: Direction, bytes: usize) {
+        Self::update(&self.stats_tcp_v6, key, direction, bytes);
     }
 
-    pub fn update_tcp_v6_tx(&mut self, key: Key<Ipv6Address>, tx_bytes: usize) {
-        Self::update(
-            &mut self.stats_tcp_v6,
-            &mut self.stats_tcp_v6_lock,
-            key,
-            Direction::Tx(tx_bytes),
-        );
+    #[inline]
+    pub fn update_udp_v4(&self, key: Key<Ipv4Address>, direction: Direction, bytes: usize) {
+        Self::update(&self.stats_udp_v4, key, direction, bytes);
     }
 
-    pub fn update_tcp_v6_rx(&mut self, key: Key<Ipv6Address>, rx_bytes: usize) {
-        Self::update(
-            &mut self.stats_tcp_v6,
-            &mut self.stats_tcp_v6_lock,
-            key,
-            Direction::Rx(rx_bytes),
-        );
+    #[inline]
+    pub fn update_udp_v6(&self, key: Key<Ipv6Address>, direction: Direction, bytes: usize) {
+        Self::update(&self.stats_udp_v6, key, direction, bytes);
     }
 
-    pub fn update_udp_v4_tx(&mut self, key: Key<Ipv4Address>, tx_bytes: usize) {
-        Self::update(
-            &mut self.stats_udp_v4,
-            &mut self.stats_udp_v4_lock,
-            key,
-            Direction::Tx(tx_bytes),
-        );
-    }
-
-    pub fn update_udp_v4_rx(&mut self, key: Key<Ipv4Address>, rx_bytes: usize) {
-        Self::update(
-            &mut self.stats_udp_v4,
-            &mut self.stats_udp_v4_lock,
-            key,
-            Direction::Rx(rx_bytes),
-        );
-    }
-
-    pub fn update_udp_v6_tx(&mut self, key: Key<Ipv6Address>, tx_bytes: usize) {
-        Self::update(
-            &mut self.stats_udp_v6,
-            &mut self.stats_udp_v6_lock,
-            key,
-            Direction::Tx(tx_bytes),
-        );
-    }
-
-    pub fn update_udp_v6_rx(&mut self, key: Key<Ipv6Address>, rx_bytes: usize) {
-        Self::update(
-            &mut self.stats_udp_v6,
-            &mut self.stats_udp_v6_lock,
-            key,
-            Direction::Rx(rx_bytes),
-        );
-    }
-
+    #[inline]
     fn update<Address: Ord>(
-        map: &mut BTreeMap<Key<Address>, Value>,
-        lock: &mut RwSpinLock,
+        stats: &RwSpinLock<BTreeMap<Key<Address>, Value>>,
         key: Key<Address>,
-        bytes: Direction,
+        direction: Direction,
+        bytes: usize,
     ) {
-        let _guard = lock.write_lock();
-        if let Some(value) = map.get_mut(&key) {
-            match bytes {
-                Direction::Tx(bytes_count) => value.transmitted_bytes += bytes_count,
-                Direction::Rx(bytes_count) => value.received_bytes += bytes_count,
-            }
-        } else {
-            let mut received_bytes = 0;
-            let mut transmitted_bytes = 0;
-            match bytes {
-                Direction::Tx(bytes_count) => transmitted_bytes += bytes_count,
-                Direction::Rx(bytes_count) => received_bytes += bytes_count,
-            }
-            map.insert(
-                key,
-                Value {
-                    received_bytes,
-                    transmitted_bytes,
-                },
-            );
+        let mut stats = stats.write_lock();
+        let value = stats.entry(key).or_default();
+        match direction {
+            Direction::Outbound => value.transmitted_bytes += bytes,
+            Direction::Inbound => value.received_bytes += bytes,
         }
     }
 
     #[allow(dead_code)]
-    pub fn get_entries_count(&self) -> usize {
-        let mut size = 0;
-        {
-            let values = &self.stats_tcp_v4.values();
-            let _guard = self.stats_tcp_v4_lock.read_lock();
-            size += values.len();
-        }
-        {
-            let values = &self.stats_tcp_v6.values();
-            let _guard = self.stats_tcp_v6_lock.read_lock();
-            size += values.len();
-        }
-        {
-            let values = &self.stats_udp_v4.values();
-            let _guard = self.stats_udp_v4_lock.read_lock();
-            size += values.len();
-        }
-        {
-            let values = &self.stats_udp_v6.values();
-            let _guard = self.stats_udp_v6_lock.read_lock();
-            size += values.len();
-        }
+    pub fn get_entries_counts(&self) -> (usize, usize, usize, usize) {
+        // Keep all four guards until the lengths have been read so this diagnostic
+        // remains one coherent snapshot while packet callbacks update the maps.
+        let tcp_v4 = self.stats_tcp_v4.read_lock();
+        let tcp_v6 = self.stats_tcp_v6.read_lock();
+        let udp_v4 = self.stats_udp_v4.read_lock();
+        let udp_v6 = self.stats_udp_v6.read_lock();
 
-        return size;
+        (tcp_v4.len(), tcp_v6.len(), udp_v4.len(), udp_v6.len())
     }
 }

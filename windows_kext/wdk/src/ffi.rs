@@ -4,11 +4,11 @@ use core::ffi::c_void;
 
 use windows_sys::{
     core::{GUID, PCWSTR},
-    Wdk::Foundation::{DEVICE_OBJECT, DRIVER_OBJECT, MDL},
+    Wdk::Foundation::{DRIVER_OBJECT, IRP, MDL},
     Win32::{
-        Foundation::{HANDLE, NTSTATUS, UNICODE_STRING},
+        Foundation::{BOOLEAN, HANDLE, NTSTATUS, UNICODE_STRING},
         NetworkManagement::WindowsFilteringPlatform::{
-            FWPM_PROVIDER_CONTEXT2, FWP_CONDITION_VALUE0, FWP_MATCH_TYPE, FWP_VALUE0,
+            FWPM_PROVIDER_CONTEXT3, FWP_CONDITION_VALUE0, FWP_MATCH_TYPE, FWP_VALUE0,
         },
         Networking::WinSock::{ADDRESS_FAMILY, SCOPE_ID},
         System::Kernel::COMPARTMENT_ID,
@@ -19,24 +19,29 @@ use crate::filter_engine::{
     classify::ClassifyOut, layer::IncomingValues, metadata::FwpsIncomingMetadataValues,
 };
 
-pub(crate) type FwpsCalloutClassifyFn = unsafe extern "C" fn(
+pub(crate) type FwpsCalloutClassifyFn = unsafe extern "system" fn(
     inFixedValues: *const IncomingValues,
     inMetaValues: *const FwpsIncomingMetadataValues,
     layerData: *mut c_void,
-    classifyContext: *mut c_void,
-    filter: *const FWPS_FILTER2,
+    classifyContext: *const c_void,
+    filter: *const FWPS_FILTER3,
     flowContext: u64,
     classifyOut: *mut ClassifyOut,
 );
 
-pub(crate) type FwpsCalloutNotifyFn = unsafe extern "C" fn(
+pub(crate) type FwpsCalloutNotifyFn = unsafe extern "system" fn(
     notifyType: u32,
     filterKey: *const GUID,
-    filter: *mut FWPS_FILTER2,
+    filter: *mut FWPS_FILTER3,
 ) -> NTSTATUS;
 
-pub(crate) type FwpsCalloutFlowDeleteNotifyFn =
-    unsafe extern "C" fn(layerId: u16, calloutId: u32, flowContext: u64);
+pub type FwpsCalloutFlowDeleteNotifyFn =
+    unsafe extern "system" fn(layerId: u16, calloutId: u32, flowContext: u64);
+
+pub type WdfIrpPreprocessCallback = unsafe extern "system" fn(
+    wdf_device: HANDLE,
+    irp: *mut IRP,
+) -> NTSTATUS;
 
 /// The FWPS_ACTION0 structure specifies the run-time action that the filter engine takes if all of the filter's filtering conditions are true.
 #[allow(non_camel_case_types, non_snake_case)]
@@ -56,31 +61,10 @@ pub(crate) struct FWPS_FILTER_CONDITION0 {
     conditionValue: FWP_CONDITION_VALUE0,
 }
 
-/// The WdfExecutionLevel enumeration type specifies the maximum IRQL at which the framework will call the event callback functions that a driver has supplied for a framework object.
-#[repr(C)]
-enum WdfExecutionLevel {
-    Invalid = 0,
-    InheritFromParent,
-    Passive,
-    Dispatch,
-}
-
-/// The WDF_SYNCHRONIZATION_SCOPE enumeration type specifies how the framework will synchronize execution of an object's event callback functions.
-#[repr(C)]
-enum WdfSynchronizationScope {
-    Invalid = 0x00,
-    InheritFromParent,
-    Device,
-    Queue,
-    None,
-}
-
-unsafe impl Sync for WdfObjectContextTypeInfo {}
-
-/// The FWPS_FILTER2 structure defines a run-time filter in the filter engine.
+/// The FWPS_FILTER3 structure defines a run-time filter in the filter engine.
 #[allow(non_camel_case_types, non_snake_case)]
 #[repr(C)]
-pub(crate) struct FWPS_FILTER2 {
+pub(crate) struct FWPS_FILTER3 {
     pub(crate) filterId: u64,
     pub(crate) weight: FWP_VALUE0,
     pub(crate) subLayerWeight: u16,
@@ -89,7 +73,7 @@ pub(crate) struct FWPS_FILTER2 {
     pub(crate) filterCondition: *mut FWPS_FILTER_CONDITION0,
     pub(crate) action: FWPS_ACTION0,
     pub(crate) context: u64,
-    pub(crate) providerContext: *mut FWPM_PROVIDER_CONTEXT2,
+    pub(crate) providerContext: *mut FWPM_PROVIDER_CONTEXT3,
 }
 
 /// The FWPS_CALLOUT3 structure defines the data that is required for a callout driver to register a callout with the filter engine.
@@ -105,10 +89,10 @@ pub(crate) struct FWPS_CALLOUT3 {
 
 /// The filter engine calls a callout's completionFn callout function whenever packet data, described by the netBufferList parameter in one of the packet injection functions, has been injected into the network stack.
 #[allow(non_camel_case_types)]
-type FWPS_INJECT_COMPLETE0 = unsafe extern "C" fn(
+type FWPS_INJECT_COMPLETE0 = unsafe extern "system" fn(
     context: *mut c_void,
     net_buffer_list: *mut NET_BUFFER_LIST,
-    dispatch_level: bool,
+    dispatch_level: BOOLEAN,
 );
 
 /// The FWPS_TRANSPORT_SEND_PARAMS1 structure defines properties of an outbound transport layer packet.
@@ -123,15 +107,23 @@ pub(crate) struct FWPS_TRANSPORT_SEND_PARAMS1 {
     pub(crate) header_include_header_length: u32,
 }
 
-/// The FWPS_PACKET_INJECTION_STATE enumeration type specifies the injection state of a network buffer list.
+/// Integer-backed representation of the native C enum returned by WFP.
+///
+/// A transparent newtype accepts every 32-bit value. Using a closed Rust enum
+/// here would make a future or otherwise unknown native value an invalid Rust
+/// discriminant before the caller could handle it.
 #[allow(non_camel_case_types)]
-#[repr(C)]
-pub(crate) enum FWPS_PACKET_INJECTION_STATE {
-    FWPS_PACKET_NOT_INJECTED,
-    FWPS_PACKET_INJECTED_BY_SELF,
-    FWPS_PACKET_INJECTED_BY_OTHER,
-    FWPS_PACKET_PREVIOUSLY_INJECTED_BY_SELF,
-    FWPS_PACKET_INJECTION_STATE_MAX,
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct FWPS_PACKET_INJECTION_STATE(i32);
+
+#[allow(non_upper_case_globals)]
+impl FWPS_PACKET_INJECTION_STATE {
+    pub(crate) const FWPS_PACKET_NOT_INJECTED: Self = Self(0);
+    pub(crate) const FWPS_PACKET_INJECTED_BY_SELF: Self = Self(1);
+    pub(crate) const FWPS_PACKET_INJECTED_BY_OTHER: Self = Self(2);
+    pub(crate) const FWPS_PACKET_PREVIOUSLY_INJECTED_BY_SELF: Self = Self(3);
+    pub(crate) const FWPS_PACKET_INJECTION_STATE_MAX: Self = Self(4);
 }
 
 pub(crate) const FWPS_INJECTION_TYPE_STREAM: u32 = 0x00000001;
@@ -144,8 +136,11 @@ pub(crate) const FWPS_INJECTION_TYPE_VSWITCH_TRANSPORT: u32 = 0x00000020;
 pub(crate) const NDIS_OBJECT_TYPE_DEFAULT: u8 = 0x80; // used when object type is implicit in the API call
 pub(crate) const NET_BUFFER_LIST_POOL_PARAMETERS_REVISION_1: u8 = 1;
 
-/// The NBListHeader is the header of NET_BUFFER_LIST struct.
-#[repr(C)]
+/// The ABI header of `NET_BUFFER_LIST`.
+///
+/// The anonymous C union also contains `SLIST_HEADER`, which gives the header
+/// 16-byte alignment on 64-bit Windows even though both pointers need only 8.
+#[repr(C, align(16))]
 pub(crate) struct NBListHeader {
     pub(crate) next: *mut NET_BUFFER_LIST,
     pub(crate) first_net_buffer: *mut NET_BUFFER,
@@ -160,6 +155,8 @@ pub struct NET_BUFFER_LIST {
     pub(crate) Context: *mut c_void,
     pub(crate) ParentNetBufferList: *mut NET_BUFFER_LIST,
     pub(crate) NdisPoolHandle: NDIS_HANDLE,
+    // NdisReserved has MEMORY_ALLOCATION_ALIGNMENT in the WDK declaration.
+    pub(crate) _NdisReservedAlignment: [u8; 8],
     pub(crate) NdisReserved: [*mut c_void; 2],
     pub(crate) ProtocolReserved: [*mut c_void; 4],
     pub(crate) MiniportReserved: [*mut c_void; 2],
@@ -169,7 +166,8 @@ pub struct NET_BUFFER_LIST {
     pub(crate) ChildRefCount: i32,
     pub(crate) Flags: u32,
     pub(crate) Status: NDIS_STATUS,
-    pub(crate) NetBufferListInfo: [*mut c_void; 20], // Extra data at the end of the struct. The size of the array is not fixed.
+    // NDIS 6.40 on 64-bit Windows defines MaxNetBufferListInfo as 24.
+    pub(crate) NetBufferListInfo: [*mut c_void; 24],
 }
 
 #[allow(non_camel_case_types, non_snake_case)]
@@ -182,7 +180,7 @@ pub union NBSize {
 /// This is internal struct should never be allocated from the driver. Use provided functions by microsoft.
 /// The NET_BUFFER structure specifies data that is transmitted or received over the network.
 #[allow(non_camel_case_types, non_snake_case)]
-#[repr(C)]
+#[repr(C, align(16))]
 pub struct NET_BUFFER {
     pub(crate) Next: *mut NET_BUFFER,
     pub(crate) CurrentMdl: *mut MDL,
@@ -190,6 +188,9 @@ pub struct NET_BUFFER {
     pub(crate) nbSize: NBSize,
     pub(crate) MdlChain: *mut MDL,
     pub(crate) DataOffset: u32,
+    // The anonymous C header union also contains a 16-byte-aligned SLIST_HEADER,
+    // so its tail is padded through offset 0x30 before these public fields.
+    pub(crate) _HeaderPadding: u32,
     pub(crate) ChecksumBias: u16,
     pub(crate) Reserved: u16,
     pub(crate) NdisPoolHandle: NDIS_HANDLE,
@@ -223,76 +224,122 @@ pub(crate) struct NDIS_OBJECT_HEADER {
 pub(crate) struct NET_BUFFER_LIST_POOL_PARAMETERS {
     pub(crate) Header: NDIS_OBJECT_HEADER,
     pub(crate) ProtocolId: u8,
-    pub(crate) fAllocateNetBuffer: bool,
+    pub(crate) fAllocateNetBuffer: BOOLEAN,
     pub(crate) ContextSize: u16,
     pub(crate) PoolTag: u32,
     pub(crate) DataSize: u32,
-    pub(crate) Flags: u32,
 }
-/// WdfObjectContextTypeInfo is a description of the device context.
-#[repr(C)]
-pub struct WdfObjectContextTypeInfo {
-    size: u32,
-    context_name: *const u8,
-    context_size: usize,
-    unique_type: *const WdfObjectContextTypeInfo,
-    _evt_driver_get_unique_context_type: *const c_void, // Internal use
-}
+// Verified against the x64 layouts emitted by the 10.0.28000.0 WDK with
+// NDIS 6.40 and KMDF 1.15. These checks cover every hand-written structure in
+// this module that is allocated, dereferenced, or passed by value across the
+// kernel ABI. Field offsets are checked as well as total size: equal sizes alone
+// would not catch padding inside a structure.
+#[cfg(target_pointer_width = "64")]
+const _: () = {
+    use core::mem::{align_of, offset_of, size_of};
 
-impl WdfObjectContextTypeInfo {
-    pub const fn default(null_terminated_name: &'static str) -> Self {
-        Self {
-            size: core::mem::size_of::<WdfObjectContextTypeInfo>() as u32,
-            context_name: null_terminated_name.as_ptr(),
-            context_size: 0,
-            unique_type: core::ptr::null(),
-            _evt_driver_get_unique_context_type: core::ptr::null(),
-        }
-    }
-}
+    assert!(size_of::<FWPS_ACTION0>() == 8);
+    assert!(align_of::<FWPS_ACTION0>() == 4);
+    assert!(offset_of!(FWPS_ACTION0, r#type) == 0);
+    assert!(offset_of!(FWPS_ACTION0, calloutId) == 4);
 
-/// WdfObjectAttributes contains attributes for the device context.
-#[repr(C)]
-pub struct WdfObjectAttributes {
-    size: u32,
-    evt_cleanup_callback: Option<extern "system" fn(wdf_object: HANDLE)>,
-    evt_destroy_callback: Option<extern "system" fn(wdf_object: HANDLE)>,
-    execution_level: WdfExecutionLevel,
-    synchronization_scope: WdfSynchronizationScope,
-    parent_object: HANDLE,
-    context_size_override: usize,
-    context_type_info: *const WdfObjectContextTypeInfo,
-}
+    assert!(size_of::<FWPS_FILTER_CONDITION0>() == 24);
+    assert!(align_of::<FWPS_FILTER_CONDITION0>() == 8);
+    assert!(offset_of!(FWPS_FILTER_CONDITION0, fieldId) == 0);
+    assert!(offset_of!(FWPS_FILTER_CONDITION0, reserved) == 2);
+    assert!(offset_of!(FWPS_FILTER_CONDITION0, matchType) == 4);
+    assert!(offset_of!(FWPS_FILTER_CONDITION0, conditionValue) == 8);
 
-impl WdfObjectAttributes {
-    pub fn new() -> Self {
-        Self {
-            size: core::mem::size_of::<WdfObjectAttributes>() as u32,
-            evt_cleanup_callback: None,
-            evt_destroy_callback: None,
-            execution_level: WdfExecutionLevel::InheritFromParent,
-            synchronization_scope: WdfSynchronizationScope::InheritFromParent,
-            parent_object: core::ptr::null_mut(),
-            context_size_override: 0,
-            context_type_info: core::ptr::null(),
-        }
-    }
+    assert!(size_of::<FWPS_FILTER3>() == 64);
+    assert!(align_of::<FWPS_FILTER3>() == 8);
+    assert!(offset_of!(FWPS_FILTER3, filterId) == 0);
+    assert!(offset_of!(FWPS_FILTER3, weight) == 8);
+    assert!(offset_of!(FWPS_FILTER3, subLayerWeight) == 24);
+    assert!(offset_of!(FWPS_FILTER3, flags) == 26);
+    assert!(offset_of!(FWPS_FILTER3, numFilterConditions) == 28);
+    assert!(offset_of!(FWPS_FILTER3, filterCondition) == 32);
+    assert!(offset_of!(FWPS_FILTER3, action) == 40);
+    assert!(offset_of!(FWPS_FILTER3, context) == 48);
+    assert!(offset_of!(FWPS_FILTER3, providerContext) == 56);
 
-    pub fn add_context<T>(&mut self, context_info: &'static mut WdfObjectContextTypeInfo) {
-        context_info.context_size = core::mem::size_of::<T>();
-        context_info.unique_type = context_info;
-        self.context_size_override = 0;
-        self.context_type_info = context_info.unique_type;
-    }
+    assert!(size_of::<FWPS_CALLOUT3>() == 48);
+    assert!(align_of::<FWPS_CALLOUT3>() == 8);
+    assert!(offset_of!(FWPS_CALLOUT3, calloutKey) == 0);
+    assert!(offset_of!(FWPS_CALLOUT3, flags) == 16);
+    assert!(offset_of!(FWPS_CALLOUT3, classifyFn) == 24);
+    assert!(offset_of!(FWPS_CALLOUT3, notifyFn) == 32);
+    assert!(offset_of!(FWPS_CALLOUT3, flowDeleteFn) == 40);
 
-    pub fn set_cleanup_fn(&mut self, callback: extern "system" fn(wdf_object: HANDLE)) {
-        self.evt_cleanup_callback = Some(callback);
-    }
+    assert!(size_of::<FWPS_TRANSPORT_SEND_PARAMS1>() == 48);
+    assert!(align_of::<FWPS_TRANSPORT_SEND_PARAMS1>() == 8);
+    assert!(offset_of!(FWPS_TRANSPORT_SEND_PARAMS1, remote_address) == 0);
+    assert!(offset_of!(FWPS_TRANSPORT_SEND_PARAMS1, remote_scope_id) == 8);
+    assert!(offset_of!(FWPS_TRANSPORT_SEND_PARAMS1, control_data) == 16);
+    assert!(offset_of!(FWPS_TRANSPORT_SEND_PARAMS1, control_data_length) == 24);
+    assert!(offset_of!(FWPS_TRANSPORT_SEND_PARAMS1, header_include_header) == 32);
+    assert!(offset_of!(FWPS_TRANSPORT_SEND_PARAMS1, header_include_header_length) == 40);
 
-    pub fn set_destroy_fn(&mut self, callback: extern "system" fn(wdf_object: HANDLE)) {
-        self.evt_destroy_callback = Some(callback);
-    }
-}
+    assert!(size_of::<FWPS_PACKET_INJECTION_STATE>() == 4);
+    assert!(align_of::<FWPS_PACKET_INJECTION_STATE>() == 4);
+
+    assert!(size_of::<NBListHeader>() == 16);
+    assert!(align_of::<NBListHeader>() == 16);
+    assert!(offset_of!(NBListHeader, next) == 0);
+    assert!(offset_of!(NBListHeader, first_net_buffer) == 8);
+
+    assert!(size_of::<NET_BUFFER_LIST>() == 336);
+    assert!(align_of::<NET_BUFFER_LIST>() == 16);
+    assert!(offset_of!(NET_BUFFER_LIST, Header) == 0);
+    assert!(offset_of!(NET_BUFFER_LIST, Context) == 16);
+    assert!(offset_of!(NET_BUFFER_LIST, ParentNetBufferList) == 24);
+    assert!(offset_of!(NET_BUFFER_LIST, NdisPoolHandle) == 32);
+    assert!(offset_of!(NET_BUFFER_LIST, NdisReserved) == 48);
+    assert!(offset_of!(NET_BUFFER_LIST, ProtocolReserved) == 64);
+    assert!(offset_of!(NET_BUFFER_LIST, MiniportReserved) == 96);
+    assert!(offset_of!(NET_BUFFER_LIST, Scratch) == 112);
+    assert!(offset_of!(NET_BUFFER_LIST, SourceHandle) == 120);
+    assert!(offset_of!(NET_BUFFER_LIST, NblFlags) == 128);
+    assert!(offset_of!(NET_BUFFER_LIST, ChildRefCount) == 132);
+    assert!(offset_of!(NET_BUFFER_LIST, Flags) == 136);
+    assert!(offset_of!(NET_BUFFER_LIST, Status) == 140);
+    assert!(offset_of!(NET_BUFFER_LIST, NetBufferListInfo) == 144);
+
+    assert!(size_of::<NBSize>() == 8);
+    assert!(align_of::<NBSize>() == 8);
+
+    assert!(size_of::<NET_BUFFER>() == 176);
+    assert!(align_of::<NET_BUFFER>() == 16);
+    assert!(offset_of!(NET_BUFFER, Next) == 0);
+    assert!(offset_of!(NET_BUFFER, CurrentMdl) == 8);
+    assert!(offset_of!(NET_BUFFER, CurrentMdlOffset) == 16);
+    assert!(offset_of!(NET_BUFFER, nbSize) == 24);
+    assert!(offset_of!(NET_BUFFER, MdlChain) == 32);
+    assert!(offset_of!(NET_BUFFER, DataOffset) == 40);
+    assert!(offset_of!(NET_BUFFER, ChecksumBias) == 48);
+    assert!(offset_of!(NET_BUFFER, Reserved) == 50);
+    assert!(offset_of!(NET_BUFFER, NdisPoolHandle) == 56);
+    assert!(offset_of!(NET_BUFFER, NdisReserved) == 64);
+    assert!(offset_of!(NET_BUFFER, ProtocolReserved) == 80);
+    assert!(offset_of!(NET_BUFFER, MiniportReserved) == 128);
+    assert!(offset_of!(NET_BUFFER, DataPhysicalAddress) == 160);
+    assert!(offset_of!(NET_BUFFER, SharedMemoryInfo) == 168);
+
+    assert!(size_of::<NDIS_OBJECT_HEADER>() == 4);
+    assert!(align_of::<NDIS_OBJECT_HEADER>() == 2);
+    assert!(offset_of!(NDIS_OBJECT_HEADER, Type) == 0);
+    assert!(offset_of!(NDIS_OBJECT_HEADER, Revision) == 1);
+    assert!(offset_of!(NDIS_OBJECT_HEADER, Size) == 2);
+
+    assert!(size_of::<NET_BUFFER_LIST_POOL_PARAMETERS>() == 16);
+    assert!(align_of::<NET_BUFFER_LIST_POOL_PARAMETERS>() == 4);
+    assert!(offset_of!(NET_BUFFER_LIST_POOL_PARAMETERS, Header) == 0);
+    assert!(offset_of!(NET_BUFFER_LIST_POOL_PARAMETERS, ProtocolId) == 4);
+    assert!(offset_of!(NET_BUFFER_LIST_POOL_PARAMETERS, fAllocateNetBuffer) == 5);
+    assert!(offset_of!(NET_BUFFER_LIST_POOL_PARAMETERS, ContextSize) == 6);
+    assert!(offset_of!(NET_BUFFER_LIST_POOL_PARAMETERS, PoolTag) == 8);
+    assert!(offset_of!(NET_BUFFER_LIST_POOL_PARAMETERS, DataSize) == 12);
+
+};
 
 // #[link(name = "Fwpkclnt", kind = "static")]
 // #[link(name = "Fwpuclnt", kind = "static")]
@@ -305,9 +352,13 @@ impl WdfObjectAttributes {
 // #[link(name = "NtosKrnl", kind = "static")]
 // #[link(name = "ndis", kind = "static")]
 #[link(name = "c_helper", kind = "static")]
-extern "C" {
+extern "system" {
     /// The FwpsCalloutUnregisterById0 function unregisters a callout from the filter engine.
     pub(crate) fn FwpsCalloutUnregisterById0(id: u32) -> NTSTATUS;
+
+    /// The FwpsCalloutUnregisterByKey0 function unregisters a callout when its
+    /// runtime identifier is unavailable.
+    pub(crate) fn FwpsCalloutUnregisterByKey0(callout_key: *const GUID) -> NTSTATUS;
 
     /// The FwpsCalloutRegister3 function registers a callout with the filter engine.
     pub(crate) fn FwpsCalloutRegister3(
@@ -316,6 +367,19 @@ extern "C" {
         calloutId: *mut u32,
     ) -> NTSTATUS;
 
+    /// The FwpsFlowAssociateContext0 function associates a callout-owned context
+    /// with a WFP data flow.
+    pub(crate) fn FwpsFlowAssociateContext0(
+        flowId: u64,
+        layerId: u16,
+        calloutId: u32,
+        flowContext: u64,
+    ) -> NTSTATUS;
+
+    /// The FwpsFlowRemoveContext0 function removes a previously associated flow
+    /// context. A successful or pending removal invokes the callout's flowDeleteFn.
+    pub(crate) fn FwpsFlowRemoveContext0(flowId: u64, layerId: u16, calloutId: u32) -> NTSTATUS;
+
     /// The FwpsPendOperation0 function is called by a callout to suspend packet processing pending completion of another operation.
     pub(crate) fn FwpsPendOperation0(
         completionHandle: HANDLE,
@@ -323,7 +387,10 @@ extern "C" {
     ) -> NTSTATUS;
 
     /// The FwpsCompleteOperation0 function is called by a callout to resume packet processing that was suspended pending completion of another operation.
-    pub(crate) fn FwpsCompleteOperation0(completionContext: HANDLE, netBufferList: *mut c_void);
+    pub(crate) fn FwpsCompleteOperation0(
+        completionContext: HANDLE,
+        netBufferList: *mut NET_BUFFER_LIST,
+    );
 
     /// The FwpsAcquireClassifyHandle0 function generates a classification handle that is used to identify asynchronous classification operations and requests for writable layer data.
     pub(crate) fn FwpsAcquireClassifyHandle0(
@@ -340,7 +407,7 @@ extern "C" {
         classify_handle: u64,
         filterId: u64,
         flags: u32, // Must be zero.
-        classifyOut: *const ClassifyOut,
+        classifyOut: *mut ClassifyOut,
     ) -> NTSTATUS;
 
     /// A callout driver calls FwpsCompleteClassify0 to asynchronously complete a pended classify request. The callout driver's classifyFn function must have previously called FwpsPendClassify0 to pend the classify request.
@@ -355,14 +422,14 @@ extern "C" {
         classify_handle: u64,
         filter_id: u64,
         flags: u32,
-        writable_layer_data: *mut c_void,
+        writable_layer_data: *mut *mut c_void,
         classify_out: *mut ClassifyOut,
     ) -> NTSTATUS;
 
     /// The FwpsApplyModifiedLayerData0 function applies changes to layer-specific data made after a call to FwpsAcquireWritableLayerDataPointer0.
     pub(crate) fn FwpsApplyModifiedLayerData0(
         classifyHandle: u64,
-        modifiedLayerData: *mut *mut c_void,
+        modifiedLayerData: *mut c_void,
         flags: u32,
     );
 
@@ -374,18 +441,20 @@ extern "C" {
         wdf_device: *mut HANDLE,
         win_driver_path: PCWSTR,
         dos_driver_path: PCWSTR,
-        object_attributes: *mut WdfObjectAttributes,
-        wdf_driver_unload: extern "C" fn(HANDLE),
+        wdf_driver_unload: unsafe extern "system" fn(HANDLE),
+        create_callback: WdfIrpPreprocessCallback,
+        cleanup_callback: WdfIrpPreprocessCallback,
+        close_callback: WdfIrpPreprocessCallback,
+        read_callback: WdfIrpPreprocessCallback,
+        write_callback: WdfIrpPreprocessCallback,
+        device_control_callback: WdfIrpPreprocessCallback,
     ) -> NTSTATUS;
 
-    /// pm_WdfObjectGetTypedContextWerker 1to1 reference to the WdfObjectGetTypedContextWorker macro. The WdfObjectGetTypedContext macro returns a pointer to an object's context space.
-    pub(crate) fn pm_WdfObjectGetTypedContextWorker(
-        wdf_object: HANDLE,
-        type_info: *const WdfObjectContextTypeInfo,
-    ) -> *mut c_void;
+    /// Enables I/O delivery only after Rust has published the fully initialized Device.
+    pub(crate) fn pm_FinishControlDeviceInitialization(wdf_device: HANDLE);
 
     /// WdfObjectGetTypedContext 1to1 reference to WdfDeviceWdmGetDeviceObject. The WdfDeviceWdmGetDeviceObject method returns the Windows Driver Model (WDM) device object that is associated with a specified framework device object.
-    pub(crate) fn pm_GetDeviceObject(wdf_device: HANDLE) -> *mut DEVICE_OBJECT;
+    pub(crate) fn pm_GetDeviceObject(wdf_device: HANDLE) -> *mut c_void;
 
     /// The FwpsInjectNetworkSendAsync0 function injects packet data into the send data path.
     pub(crate) fn FwpsInjectNetworkSendAsync0(
@@ -460,13 +529,13 @@ extern "C" {
     /// The FwpsReferenceNetBufferList0 function increments the reference count for a NET_BUFFER_LIST structure.
     pub(crate) fn FwpsReferenceNetBufferList0(
         netBufferList: *mut NET_BUFFER_LIST,
-        intendToModify: bool,
+        intendToModify: BOOLEAN,
     );
 
     /// The FwpsDereferenceNetBufferList0 function decrements the reference count for a NET_BUFFER_LIST structure that a callout driver had acquired earlier using the FwpsReferenceNetBufferList0 function.
     pub(crate) fn FwpsDereferenceNetBufferList0(
         netBufferList: *mut NET_BUFFER_LIST,
-        dispatchLevel: bool,
+        dispatchLevel: BOOLEAN,
     );
 
     /// Call the NdisGetDataBuffer function to gain access to a contiguous block of data from a NET_BUFFER structure.
@@ -499,7 +568,7 @@ extern "C" {
         contextBackFill: u16,
         mdlChain: *mut MDL,
         dataOffset: u32,
-        dataLength: u64,
+        dataLength: usize,
         netBufferList: *mut *mut NET_BUFFER_LIST,
     ) -> NTSTATUS;
 
@@ -527,13 +596,9 @@ extern "C" {
     pub(crate) fn NdisAdvanceNetBufferDataStart(
         NetBuffer: *mut NET_BUFFER,
         DataOffsetDelta: u32,
-        FreeMdl: bool,
+        FreeMdl: BOOLEAN,
         FreeMdlHandler: *mut c_void,
     );
-
-    /// The KeQuerySystemTime routine obtains the current system time.
-    /// System time is a count of 100-nanosecond intervals since January 1, 1601. System time is typically updated approximately every ten milliseconds. This value is computed for the GMT time zone.
-    pub(crate) fn pm_QuerySystemTime() -> u64;
 
     /// Returns the process identifier of the current process.
     /// This is safe to call from IRP_MJ_CREATE handlers, which always execute in the context of the initiating user-space process.

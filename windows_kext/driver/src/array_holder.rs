@@ -1,25 +1,36 @@
-use core::cell::RefCell;
-
 use alloc::vec::Vec;
 
-pub struct ArrayHolder(RefCell<Option<Vec<u8>>>);
-unsafe impl Sync for ArrayHolder {}
+pub struct ArrayHolder(Option<Vec<u8>>);
 
 impl ArrayHolder {
     pub const fn default() -> Self {
-        Self(RefCell::new(None))
+        Self(None)
     }
 
-    pub fn save(&self, data: &[u8]) {
-        if let Ok(mut opt) = self.0.try_borrow_mut() {
-            opt.replace(data.to_vec());
-        }
+    pub fn save(&mut self, data: &[u8]) {
+        self.0 = Some(data.to_vec());
     }
 
-    pub fn load(&self) -> Option<Vec<u8>> {
-        if let Ok(mut opt) = self.0.try_borrow_mut() {
-            return opt.take();
-        }
-        None
+    pub fn load(&mut self) -> Option<Vec<u8>> {
+        self.0.take()
+    }
+
+    pub fn clear(&mut self) {
+        self.0 = None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ArrayHolder;
+
+    #[test]
+    fn clear_discards_saved_fragment() {
+        let mut holder = ArrayHolder::default();
+        holder.save(&[1, 2, 3]);
+
+        holder.clear();
+
+        assert!(holder.load().is_none());
     }
 }

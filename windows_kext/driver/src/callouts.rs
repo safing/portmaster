@@ -29,6 +29,24 @@ pub fn get_callout_vec() -> Vec<Callout> {
             FilterType::Resettable,
             ale_callouts::ale_layer_connect_v6,
         ),
+        Callout::new(
+            "Portmaster ALE Inbound IPv4",
+            "Portmaster uses this layer to block/permit incoming ipv4 connections",
+            0x17d4a8f2_6c31_4b95_ae07_53f9c2d8614e,
+            Layer::AleAuthRecvAcceptV4,
+            consts::FWP_ACTION_CALLOUT_TERMINATING,
+            FilterType::Resettable,
+            ale_callouts::ale_layer_recv_accept_v4,
+        ),
+        Callout::new(
+            "Portmaster ALE Inbound IPv6",
+            "Portmaster uses this layer to block/permit incoming ipv6 connections",
+            0x9b62e1f4_38ad_47c0_8e15_d7a4935fb206,
+            Layer::AleAuthRecvAcceptV6,
+            consts::FWP_ACTION_CALLOUT_TERMINATING,
+            FilterType::Resettable,
+            ale_callouts::ale_layer_recv_accept_v6,
+        ),
         // -----------------------------------------
         // ALE connection end layers
         Callout::new(
@@ -50,43 +68,29 @@ pub fn get_callout_vec() -> Vec<Callout> {
             ale_callouts::endpoint_closure_v6,
         ),
         // -----------------------------------------
-        // ALE resource assignment and release.
-        // Callout::new(
-        //     "AleResourceAssignmentV4",
-        //     "Ipv4 Port assignment monitoring",
-        //     0x6b9d1985_6f75_4d05_b9b5_1607e187906f,
-        //     Layer::AleResourceAssignmentV4Discard,
-        //     consts::FWP_ACTION_CALLOUT_INSPECTION,
-        //     FilterType::NonResettable,
-        //     ale_callouts::ale_resource_monitor,
-        // ),
+        // Flow-established layers. TCP is indicated after its three-way handshake;
+        // UDP is indicated immediately after the first packet for a remote tuple is
+        // authorized. Both provide a second chance to refresh cached PID attribution.
         Callout::new(
-            "Portmaster resource release IPv4",
-            "Portmaster uses this layer to detect when a IPv4 port has been released",
-            0x7b513bb3_a0be_4f77_a4bc_03c052abe8d7,
-            Layer::AleResourceReleaseV4,
+            "Portmaster flow established IPv4",
+            "Portmaster uses this layer to attribute IPv4 TCP and UDP flows",
+            0x5a1f8d3e_9c42_4b87_a6d1_2e7f4c9b3a58,
+            Layer::AleFlowEstablishedV4,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
             FilterType::NonResettable,
-            ale_callouts::ale_resource_monitor,
-        ),
-        // Callout::new(
-        //     "AleResourceAssignmentV6",
-        //     "Ipv4 Port assignment monitor",
-        //     0xb0d02299_3d3e_437d_916a_f0e96a60cc18,
-        //     Layer::AleResourceAssignmentV6Discard,
-        //     consts::FWP_ACTION_CALLOUT_INSPECTION,
-        //     FilterType::NonResettable,
-        //     ale_callouts::ale_resource_monitor,
-        // ),
+            ale_callouts::ale_flow_established_monitor,
+        )
+        .with_flow_delete_fn(ale_callouts::udp_flow_delete),
         Callout::new(
-            "Portmaster resource release IPv6",
-            "Portmaster uses this layer to detect when a IPv6 port has been released",
-            0x6cf36e04_e656_42c3_8cac_a1ce05328bd1,
-            Layer::AleResourceReleaseV6,
+            "Portmaster flow established IPv6",
+            "Portmaster uses this layer to attribute IPv6 TCP and UDP flows",
+            0x7b2e9f4a_1d53_4c98_b8e2_3f8a5d6c4b79,
+            Layer::AleFlowEstablishedV6,
             consts::FWP_ACTION_CALLOUT_INSPECTION,
             FilterType::NonResettable,
-            ale_callouts::ale_resource_monitor,
-        ),
+            ale_callouts::ale_flow_established_monitor,
+        )
+        .with_flow_delete_fn(ale_callouts::udp_flow_delete),
         // -----------------------------------------
         // Stream layer
         Callout::new(

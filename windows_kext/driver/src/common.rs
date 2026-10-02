@@ -4,12 +4,12 @@ use core::fmt::Display;
 
 use num_derive::{FromPrimitive, ToPrimitive};
 
-pub const ICMPV4_CODE_DESTINATION_UNREACHABLE: u32 = 3;
-pub const ICMPV4_CODE_DU_PORT_UNREACHABLE: u32 = 3; // Destination Unreachable (Port unreachable) ;
-pub const ICMPV4_CODE_DU_ADMINISTRATIVELY_PROHIBITED: u32 = 13; // Destination Unreachable (Communication Administratively Prohibited) ;
+pub const ICMPV4_TYPE_DESTINATION_UNREACHABLE: u8 = 3;
+pub const ICMPV4_CODE_DU_PORT_UNREACHABLE: u8 = 3; // Destination Unreachable (Port unreachable) ;
+pub const ICMPV4_CODE_DU_ADMINISTRATIVELY_PROHIBITED: u8 = 13; // Destination Unreachable (Communication Administratively Prohibited) ;
 
-pub const ICMPV6_CODE_DESTINATION_UNREACHABLE: u32 = 1;
-pub const ICMPV6_CODE_DU_PORT_UNREACHABLE: u32 = 4; // Destination Unreachable (Port unreachable) ;
+pub const ICMPV6_TYPE_DESTINATION_UNREACHABLE: u8 = 1;
+pub const ICMPV6_CODE_DU_PORT_UNREACHABLE: u8 = 4; // Destination Unreachable (Port unreachable) ;
 
 enum Direction {
     Outbound = 0,

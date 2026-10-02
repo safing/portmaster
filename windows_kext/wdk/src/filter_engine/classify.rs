@@ -49,13 +49,55 @@ pub struct ClassifyOut {
     reserved: u32,
 }
 
+#[cfg(target_pointer_width = "64")]
+const _: () = {
+    use core::mem::{align_of, offset_of, size_of};
+
+    assert!(size_of::<ClassifyOut>() == 40);
+    assert!(align_of::<ClassifyOut>() == 8);
+    assert!(offset_of!(ClassifyOut, action_type) == 0);
+    assert!(offset_of!(ClassifyOut, _out_context) == 8);
+    assert!(offset_of!(ClassifyOut, _filter_id) == 16);
+    assert!(offset_of!(ClassifyOut, rights) == 24);
+    assert!(offset_of!(ClassifyOut, flags) == 28);
+    assert!(offset_of!(ClassifyOut, reserved) == 32);
+};
+
 impl ClassifyOut {
+    #[cfg(test)]
+    pub(crate) fn test_writable() -> Self {
+        Self {
+            action_type: FWP_ACTION_CONTINUE,
+            _out_context: 0,
+            _filter_id: 0,
+            rights: FWPS_RIGHT_ACTION_WRITE,
+            flags: 0,
+            reserved: 0,
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_is_block(&self) -> bool {
+        self.action_type == FWP_ACTION_BLOCK
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_is_permit(&self) -> bool {
+        self.action_type == FWP_ACTION_PERMIT
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_absorbs(&self) -> bool {
+        self.flags & FWPS_CLASSIFY_OUT_FLAG_ABSORB != 0
+    }
+
     // Checks if write action flag is set. Indicates if the callout can change the action.
     pub fn can_set_action(&self) -> bool {
         self.rights & FWPS_RIGHT_ACTION_WRITE > 0
     }
 
-    /// Set block action. Write flag should be cleared, after this.
+    /// Set block action. The caller must clear the write right before returning
+    /// this as its final decision.
     pub fn action_block(&mut self) {
         self.action_type = FWP_ACTION_BLOCK;
     }

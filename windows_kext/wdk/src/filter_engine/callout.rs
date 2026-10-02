@@ -1,7 +1,9 @@
+use core::ffi::c_void;
+
 use super::{callout_data::CalloutData, ffi, layer::Layer};
-use crate::ffi::FwpsCalloutClassifyFn;
+use crate::ffi::{FwpsCalloutClassifyFn, FwpsCalloutFlowDeleteNotifyFn};
 use alloc::{borrow::ToOwned, format, string::String};
-use windows_sys::{Wdk::Foundation::DEVICE_OBJECT, Win32::Foundation::HANDLE};
+use windows_sys::Win32::Foundation::HANDLE;
 
 pub enum FilterType {
     Resettable,
@@ -20,6 +22,7 @@ pub struct Callout {
     pub(crate) filter_type: FilterType,
     pub(crate) filter_id: u64,
     pub(crate) callout_fn: fn(CalloutData),
+    pub(crate) flow_delete_fn: Option<FwpsCalloutFlowDeleteNotifyFn>,
 }
 
 impl Callout {
@@ -44,7 +47,15 @@ impl Callout {
             filter_type,
             filter_id: 0,
             callout_fn,
+            flow_delete_fn: None,
         }
+    }
+
+    /// Registers a flow-deletion callback for callouts that associate contexts
+    /// with WFP data flows.
+    pub fn with_flow_delete_fn(mut self, flow_delete_fn: FwpsCalloutFlowDeleteNotifyFn) -> Self {
+        self.flow_delete_fn = Some(flow_delete_fn);
+        self
     }
 
     pub fn register_filter(
@@ -73,29 +84,46 @@ impl Callout {
         return Ok(());
     }
 
-    pub(crate) fn register_callout(
+    /// Registers the runtime FWPS callout and records its ID immediately.
+    /// Runtime registration is not covered by the FWPM transaction.
+    ///
+    /// # Safety
+    ///
+    /// `device_object` must be the live WDM device object owned by this driver and
+    /// must remain valid until the runtime callout is unregistered. The callback
+    /// functions and their backing driver image must remain live over the same
+    /// interval.
+    pub(crate) unsafe fn register_runtime_callout(
         &mut self,
-        filter_engine_handle: HANDLE,
-        device_object: *mut DEVICE_OBJECT,
+        device_object: *mut c_void,
         callout_fn: FwpsCalloutClassifyFn,
     ) -> Result<(), String> {
-        match ffi::register_callout(
-            device_object,
-            filter_engine_handle,
-            &self.name,
-            &self.description,
-            self.guid,
-            self.layer,
-            callout_fn,
-        ) {
+        // SAFETY: The caller supplies the device-object and callback lifetime
+        // guarantees required by the lower-level registration wrapper.
+        match unsafe {
+            ffi::register_runtime_callout(device_object, self.guid, callout_fn, self.flow_delete_fn)
+        } {
             Ok(id) => {
                 self.registered = true;
                 self.id = id;
+                Ok(())
             }
-            Err(code) => {
-                return Err(format!("failed to register callout: {}", code));
-            }
-        };
-        return Ok(());
+            Err(code) => Err(format!("failed to register callout: {}", code)),
+        }
+    }
+
+    /// Adds the FWPM callout object to the current management transaction.
+    pub(crate) fn register_management_callout(
+        &self,
+        filter_engine_handle: HANDLE,
+    ) -> Result<(), String> {
+        ffi::register_management_callout(
+            filter_engine_handle,
+            self.guid,
+            self.layer,
+            &self.name,
+            &self.description,
+        )
+        .map_err(|error| format!("failed to register management callout: {}", error))
     }
 }

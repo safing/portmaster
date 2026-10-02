@@ -12,3 +12,6 @@ num-traits = { version = "0.2", default-features = false }
 
 [dev-dependencies]
 rand = "0.8.5"
+
+[profile.release]
+debug = 2

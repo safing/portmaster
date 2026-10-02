@@ -1,10 +1,8 @@
+use core::ffi::c_void;
 use crate::{
     alloc::borrow::ToOwned,
     driver::Driver,
-    ffi::{
-        pm_GetDeviceObject, pm_InitDriverObject, pm_WdfObjectGetTypedContextWorker,
-        WdfObjectAttributes, WdfObjectContextTypeInfo,
-    },
+    ffi::{pm_GetDeviceObject, pm_InitDriverObject, WdfIrpPreprocessCallback},
     utils::check_ntstatus,
 };
 use alloc::ffi::CString;
@@ -13,7 +11,7 @@ use alloc::string::String;
 use widestring::U16CString;
 use windows_sys::{
     Wdk::{
-        Foundation::{DEVICE_OBJECT, DRIVER_OBJECT},
+        Foundation::DRIVER_OBJECT,
         System::SystemServices::DbgPrint,
     },
     Win32::Foundation::{HANDLE, INVALID_HANDLE_VALUE, UNICODE_STRING},
@@ -28,11 +26,27 @@ pub fn dbg_print(str: String) {
     }
 }
 
-pub fn init_driver_object(
+/// Creates the KMDF driver and control-device objects for a WDM `DriverEntry`.
+///
+/// # Safety
+///
+/// This must be called only from the driver's `DriverEntry`, at PASSIVE_LEVEL.
+/// `driver_object` must be the live I/O-manager-owned driver object supplied to
+/// that invocation. `registry_path` must point to the valid `UNICODE_STRING`
+/// supplied with it, including a readable backing buffer, for the duration of
+/// this call. Every callback must have the declared WDF ABI and remain executable
+/// until KMDF has completed driver teardown.
+pub unsafe fn init_driver_object(
     driver_object: *mut DRIVER_OBJECT,
     registry_path: *mut UNICODE_STRING,
     driver_name: &str,
-    object_attributes: *mut WdfObjectAttributes,
+    wdf_driver_unload: unsafe extern "system" fn(HANDLE),
+    create_callback: WdfIrpPreprocessCallback,
+    cleanup_callback: WdfIrpPreprocessCallback,
+    close_callback: WdfIrpPreprocessCallback,
+    read_callback: WdfIrpPreprocessCallback,
+    write_callback: WdfIrpPreprocessCallback,
+    device_control_callback: WdfIrpPreprocessCallback,
 ) -> Result<Driver, String> {
     let win_driver_path = format!("\\Device\\{}", driver_name);
     let dos_driver_path = format!("\\??\\{}", driver_name);
@@ -55,46 +69,36 @@ pub fn init_driver_object(
             &mut wdf_device_handle,
             win_driver.as_ptr(),
             dos_driver.as_ptr(),
-            object_attributes,
-            empty_wdf_driver_unload,
+            wdf_driver_unload,
+            create_callback,
+            cleanup_callback,
+            close_callback,
+            read_callback,
+            write_callback,
+            device_control_callback,
         );
 
         check_ntstatus(status)?;
-
-        return Ok(Driver::new(
-            driver_object,
-            wdf_driver_handle,
-            wdf_device_handle,
-        ));
-    }
-}
-
-pub fn get_device_context_from_wdf_device<T>(
-    wdf_device: HANDLE,
-    type_info: &'static WdfObjectContextTypeInfo,
-) -> *mut T {
-    unsafe {
-        return core::mem::transmute(pm_WdfObjectGetTypedContextWorker(wdf_device, type_info));
-    }
-}
-
-pub(crate) fn wdf_device_wdm_get_device_object(wdf_device: HANDLE) -> *mut DEVICE_OBJECT {
-    unsafe {
-        return pm_GetDeviceObject(wdf_device);
-    }
-}
-
-pub fn get_device_context_from_device_object<'a, T>(
-    device_object: &mut DEVICE_OBJECT,
-) -> Result<&'a mut T, ()> {
-    unsafe {
-        if let Some(context) = device_object.DeviceExtension.as_mut() {
-            return Ok(core::mem::transmute(context));
+        if wdf_driver_handle.is_null()
+            || wdf_driver_handle == INVALID_HANDLE_VALUE
+            || wdf_device_handle.is_null()
+            || wdf_device_handle == INVALID_HANDLE_VALUE
+        {
+            return Err("KMDF returned an invalid driver or device handle".to_owned());
         }
-    }
 
-    return Err(());
+        // SAFETY: `pm_InitDriverObject` succeeded and both output handles were
+        // checked above. KMDF owns them until driver teardown.
+        return Ok(Driver::new(wdf_driver_handle, wdf_device_handle));
+    }
 }
 
-/// Empty unload event
-extern "C" fn empty_wdf_driver_unload(_driver: HANDLE) {}
+/// Returns the WDM device object backing a KMDF device.
+///
+/// # Safety
+///
+/// `wdf_device` must be a live WDFDEVICE handle. Its backing device object must
+/// remain valid for every use of the returned pointer.
+pub(crate) unsafe fn wdf_device_wdm_get_device_object(wdf_device: HANDLE) -> *mut c_void {
+    unsafe { pm_GetDeviceObject(wdf_device) }
+}
