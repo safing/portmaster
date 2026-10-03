@@ -236,6 +236,10 @@ func (p *UDPProxy) handlePacket(clientAddr *net.UDPAddr, data []byte) {
 		p.log.Warn(p.logPrefix+"decider rejected connection", "client", key, "err", err)
 		return
 	}
+	if binding != nil && binding.Upstream != nil {
+		p.log.Warn(p.logPrefix+"UDP is not supported through an upstream proxy, dropping packet", "client", key, "proxy", binding.Upstream.Redacted())
+		return
+	}
 
 	// Register the session immediately so FindProxiedEgressConnection can
 	// locate it before the upstream dial completes.

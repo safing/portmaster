@@ -6,6 +6,7 @@ import (
 
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/service/profile/endpoints"
+	"github.com/safing/portmaster/service/splittun/proxy"
 	"github.com/safing/portmaster/service/status"
 	"github.com/safing/portmaster/spn/access/account"
 )
@@ -151,6 +152,10 @@ var (
 	CfgOptionSplitTunInterfaceKey   = "splittun/networkInterface"
 	cfgOptionSplitTunInterface      config.StringOption
 	cfgOptionSplitTunInterfaceOrder = 214
+
+	CfgOptionSplitTunProxyKey   = "splittun/proxy"
+	cfgOptionSplitTunProxy      config.StringOption
+	cfgOptionSplitTunProxyOrder = 215
 
 	CfgOptionSplitTunUsagePolicyKey   = "splittun/usagePolicy"
 	cfgOptionSplitTunUsagePolicy      config.StringArrayOption
@@ -894,6 +899,49 @@ Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN,
 	}
 	cfgOptionSplitTunInterface = config.Concurrent.GetAsString(CfgOptionSplitTunInterfaceKey, "")
 	cfgStringOptions[CfgOptionSplitTunInterfaceKey] = cfgOptionSplitTunInterface
+
+	// Split Tunnel: Upstream Proxy
+	err = config.Register(&config.Option{
+		Name: "Upstream Proxy",
+		Key:  CfgOptionSplitTunProxyKey,
+		Description: `Relay Split Tunnel traffic through a proxy server instead of connecting to the destination directly. Leave empty to not use a proxy.
+
+Supported formats:
+- "socks5://127.0.0.1:1080" - SOCKS5, the destination is sent to the proxy as an IP address.
+- "socks5h://127.0.0.1:1080" - SOCKS5, the destination domain is sent to the proxy when known, so the proxy resolves it.
+- "socks4://127.0.0.1:1080" - SOCKS4, IPv4 destinations only.
+- "socks4a://127.0.0.1:1080" - SOCKS4a, the destination domain is sent to the proxy when known.
+- "http://127.0.0.1:3128" - HTTP proxy (CONNECT method), the destination domain is sent to the proxy when known.
+
+Credentials can be added as "socks5://user:password@host:port" or "http://user:password@host:port". SOCKS4 only supports a user ID: "socks4://userid@host:port".
+
+If the Network Interface option is empty, the proxy server is reached via the default routing. If it is set, the connection to the proxy server is bound to that interface, except for proxy servers on this device.
+
+Important: Only TCP connections can be relayed. UDP connections that would be routed through the Split Tunnel are blocked while a proxy is set.
+
+Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN, configure SPN on a per-app basis or define exceptions that allow Split Tunnel to take effect.`,
+		Sensitive:    true,
+		OptType:      config.OptTypeString,
+		DefaultValue: "",
+		Annotations: config.Annotations{
+			config.SettablePerAppAnnotation: true,
+			config.DisplayOrderAnnotation:   cfgOptionSplitTunProxyOrder,
+			config.CategoryAnnotation:       "General",
+		},
+		ValidationFunc: func(value interface{}) error {
+			if s, ok := value.(string); ok && s != "" {
+				if _, err := proxy.ParseUpstreamProxyURL(s); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	})
+	if err != nil {
+		return err
+	}
+	cfgOptionSplitTunProxy = config.Concurrent.GetAsString(CfgOptionSplitTunProxyKey, "")
+	cfgStringOptions[CfgOptionSplitTunProxyKey] = cfgOptionSplitTunProxy
 
 	// Split Tunnel: Rules
 	splitTunRulesVerdictNames := map[string]string{

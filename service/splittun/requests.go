@@ -38,10 +38,42 @@ var (
 // - interface name (e.g. "eth0")
 // - MAC address (e.g. "00:1A:2B:3C:4D:5E")
 // - empty - to try detecting "default" (non-VPN) interface automatically (not reliable)
-func AwaitRequest(connInfo *network.Connection, bindInterface string) (*network.SplitTunContext, error) {
+//
+// If upstreamProxy is set, the connection is relayed through that proxy server
+// (see proxy.ParseUpstreamProxyURL). An empty bindInterface then means that the
+// proxy server is reached via the system's default routing.
+func AwaitRequest(connInfo *network.Connection, bindInterface string, upstreamProxy string) (*network.SplitTunContext, error) {
 
 	var binding proxy.LocalBinding
-	if bindInterface == "" {
+
+	// The IP version of the outgoing socket, used to select the interface address.
+	ipVersion := connInfo.IPVersion
+
+	if upstreamProxy != "" {
+		proxyURL, err := proxy.ParseUpstreamProxyURL(upstreamProxy)
+		if err != nil {
+			return nil, err
+		}
+		binding.Upstream = &proxy.UpstreamProxy{URL: proxyURL}
+		if connInfo.Entity != nil {
+			binding.Upstream.Host = connInfo.Entity.Domain
+		}
+
+		// The outgoing socket connects to the proxy server, so its address
+		// family decides which interface address to bind to.
+		if ip := net.ParseIP(proxyURL.Hostname()); ip != nil {
+			if ip.To4() != nil {
+				ipVersion = packet.IPv4
+			} else {
+				ipVersion = packet.IPv6
+			}
+		}
+	}
+
+	switch {
+	case bindInterface == "" && binding.Upstream != nil:
+		// Reach the proxy server via the default routing.
+	case bindInterface == "":
 		// empty - is the default and means to try detecting the "default" (non-VPN) interface automatically.
 		// This is not reliable, but can be convenient for users who don't want to configure an interface.
 		ifaces, err := netenv.GetBestPhysicalDefaultInterfaces()
@@ -50,30 +82,39 @@ func AwaitRequest(connInfo *network.Connection, bindInterface string) (*network.
 		}
 
 		var selectedIface *netenv.InterfaceInfo
-		if connInfo.IPVersion == packet.IPv6 && ifaces.ForIPv6 != nil {
+		if ipVersion == packet.IPv6 && ifaces.ForIPv6 != nil {
 			selectedIface = ifaces.ForIPv6
 			binding.IP = selectedIface.IPv6
-		} else if connInfo.IPVersion == packet.IPv4 && ifaces.ForIPv4 != nil {
+		} else if ipVersion == packet.IPv4 && ifaces.ForIPv4 != nil {
 			selectedIface = ifaces.ForIPv4
 			binding.IP = selectedIface.IPv4
 		} else {
-			return nil, fmt.Errorf("no suitable default physical interface found for %s", connInfo.IPVersion)
+			return nil, fmt.Errorf("no suitable default physical interface found for %s", ipVersion)
 		}
 		binding.Interface = selectedIface.Interface.Name
-	} else {
+	default:
 		// Getting the interface IP address to bind the proxy connection to.
 		iface, err := netenv.GetInterface(bindInterface)
 		if err != nil {
 			return nil, err
 		}
 
-		if connInfo.IPVersion == packet.IPv6 {
-			binding.IP = iface.IPv6
+		var altIP net.IP
+		if ipVersion == packet.IPv6 {
+			binding.IP, altIP = iface.IPv6, iface.IPv4
 		} else {
-			binding.IP = iface.IPv4
+			binding.IP, altIP = iface.IPv4, iface.IPv6
+		}
+		if binding.Upstream != nil {
+			// A proxy hostname may resolve to addresses of either IP version,
+			// so provide the interface address of the other version too.
+			binding.AltIP = altIP
+			if binding.IP == nil {
+				binding.IP, binding.AltIP = altIP, nil
+			}
 		}
 		if binding.IP == nil {
-			return nil, fmt.Errorf("interface %q has no usable address for %s", bindInterface, connInfo.IPVersion)
+			return nil, fmt.Errorf("interface %q has no usable address for %s", bindInterface, ipVersion)
 		}
 		binding.Interface = iface.Interface.Name
 	}
@@ -102,10 +143,14 @@ func AwaitRequest(connInfo *network.Connection, bindInterface string) (*network.
 	// The goroutine only starts if none is already running.
 	scheduleCleanup()
 
-	return &network.SplitTunContext{
+	splitTunCtx := &network.SplitTunContext{
 		Interface: binding.Interface,
 		IP:        binding.IP,
-	}, nil
+	}
+	if binding.Upstream != nil {
+		splitTunCtx.Proxy = binding.Upstream.Redacted()
+	}
+	return splitTunCtx, nil
 }
 
 // scheduleCleanup starts a deferred cleanup goroutine if one is not already
