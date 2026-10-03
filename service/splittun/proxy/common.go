@@ -11,7 +11,7 @@ import (
 // ─── Public API types ────────────────────────────────────────────────────────
 
 // LocalBinding carries the local-side binding parameters for an outbound proxy
-// connection.  Both fields are optional and may be set independently.
+// connection.  All fields are optional and may be set independently.
 type LocalBinding struct {
 	// IP is the local source address to bind the outgoing socket to.
 	// If nil, the OS selects an appropriate source address.
@@ -21,6 +21,13 @@ type LocalBinding struct {
 	// the outgoing socket to via SO_BINDTODEVICE (Linux only).
 	// An empty string disables interface-level binding.
 	Interface string
+
+	// Upstream, if set, relays the outbound TCP connection through a proxy
+	// server instead of connecting to the destination directly.  IP and
+	// Interface then apply to the connection to the proxy server, except
+	// when the proxy server is reached via loopback.
+	// UDP sessions with an upstream proxy are rejected.
+	Upstream *UpstreamProxy
 }
 
 // DeciderFunc is called once per new session to determine the upstream

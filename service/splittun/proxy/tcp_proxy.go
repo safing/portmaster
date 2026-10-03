@@ -200,6 +200,25 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 	}
 	destAddr := (&net.TCPAddr{IP: destIP, Port: int(destPort)}).String()
 
+	var upstream *UpstreamProxy
+	if binding != nil {
+		upstream = binding.Upstream
+	}
+
+	// With an upstream proxy, the outgoing socket connects to the proxy
+	// server instead of the destination.
+	egressIP, egressPort := destIP, destPort
+	if upstream != nil {
+		resolveCtx, cancelResolve := context.WithTimeout(p.shutdownCtx, p.cfg.DialTimeout)
+		egressIP, egressPort, err = upstream.resolve(resolveCtx, binding.IP)
+		cancelResolve()
+		if err != nil {
+			p.log.Error(p.logPrefix+"upstream proxy unavailable", "proxy", upstream.Redacted(), "err", err)
+			return
+		}
+	}
+	egressAddr := (&net.TCPAddr{IP: egressIP, Port: int(egressPort)}).String()
+
 	// Register the session immediately so FindProxiedEgressConnection can
 	// locate it before the upstream dial completes.
 	sessCtx, cancel := context.WithCancel(p.shutdownCtx)
@@ -211,6 +230,7 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 		cancel,
 		extraInfo,
 	)
+	connCtx.egressIP, connCtx.egressPort = egressIP.To16(), egressPort
 	p.cache.add(connCtx)
 
 	defer func() {
@@ -221,19 +241,33 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 
 	// DialContext is cancelled immediately if the proxy is shut down.
 	dialer := net.Dialer{Timeout: p.cfg.DialTimeout}
-	if binding != nil && binding.IP != nil {
-		dialer.LocalAddr = &net.TCPAddr{IP: binding.IP}
-	}
-	if binding != nil {
+	// A local proxy server is reached via loopback, which an interface binding would break.
+	if binding != nil && !(upstream != nil && egressIP.IsLoopback()) {
+		if binding.IP != nil {
+			dialer.LocalAddr = &net.TCPAddr{IP: binding.IP}
+		}
 		applyBindToDevice(&dialer, binding.Interface)
 	}
-	upstreamConn, err := dialer.DialContext(p.shutdownCtx, p.network, destAddr)
+
+	var upstreamConn net.Conn
+	if upstream != nil {
+		// The timeout also covers the proxy handshake.
+		dialCtx, cancelDial := context.WithTimeout(p.shutdownCtx, p.cfg.DialTimeout)
+		upstreamConn, err = upstream.dial(dialCtx, &dialer, egressAddr, destIP, destPort)
+		cancelDial()
+	} else {
+		upstreamConn, err = dialer.DialContext(p.shutdownCtx, p.network, destAddr)
+	}
 	if err != nil {
 		if p.shutdownCtx.Err() != nil {
 			// Proxy is shutting down; this is expected, not an error.
 			return
 		}
-		p.log.Error(p.logPrefix+"dial failed", "addr", destAddr, "err", err)
+		if upstream != nil {
+			p.log.Error(p.logPrefix+"dial via upstream proxy failed", "addr", destAddr, "proxy", upstream.Redacted(), "err", err)
+		} else {
+			p.log.Error(p.logPrefix+"dial failed", "addr", destAddr, "err", err)
+		}
 		return
 	}
 	defer upstreamConn.Close()

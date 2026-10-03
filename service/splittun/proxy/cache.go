@@ -22,6 +22,10 @@ type ConnContext struct {
 	destIP net.IP
 	// destPort is the upstream port chosen by DeciderFunc.
 	destPort uint16
+	// egressIP and egressPort are the address the outgoing socket connects
+	// to: the destination itself, or the upstream proxy server.
+	egressIP   net.IP
+	egressPort uint16
 	// createdAt is the wall-clock time the session was established.
 	createdAt time.Time
 
@@ -50,13 +54,15 @@ type ConnContext struct {
 func newConnContext(id uint64, peer net.Addr, destIP net.IP, destPort uint16, cancel func(), extraInfo any) *ConnContext {
 	now := time.Now()
 	c := &ConnContext{
-		id:        id,
-		peerAddr:  peer,
-		destIP:    destIP.To16(),
-		destPort:  destPort,
-		createdAt: now,
-		cancel:    cancel,
-		extraInfo: extraInfo,
+		id:         id,
+		peerAddr:   peer,
+		destIP:     destIP.To16(),
+		destPort:   destPort,
+		egressIP:   destIP.To16(),
+		egressPort: destPort,
+		createdAt:  now,
+		cancel:     cancel,
+		extraInfo:  extraInfo,
 	}
 	c.lastSeen.Store(now.UnixNano())
 	return c
@@ -114,7 +120,7 @@ func (m Metrics) String() string {
 
 // ─── Session cache ────────────────────────────────────────────────────────────
 
-// destKey is the secondary-index key used to look up sessions by upstream
+// destKey is the secondary-index key used to look up sessions by egress
 // destination.  Using a fixed-size struct as a map key avoids string allocation
 // and gives O(1) hashing.
 type destKey struct {
@@ -140,7 +146,7 @@ func makeDestKey(ip net.IP, port uint16) (destKey, bool) {
 type sessionCache struct {
 	mu      sync.RWMutex
 	entries map[uint64]*ConnContext
-	// byDest is a secondary index: destKey → set of ConnContexts.
+	// byDest is a secondary index: egress destKey → set of ConnContexts.
 	// It allows FindProxiedEgressConnection to skip iterating all entries.
 	byDest map[destKey]map[uint64]*ConnContext
 
@@ -157,7 +163,7 @@ func newSessionCache() *sessionCache {
 
 // add registers a new session.
 func (c *sessionCache) add(ctx *ConnContext) {
-	k, hasKey := makeDestKey(ctx.destIP, ctx.destPort)
+	k, hasKey := makeDestKey(ctx.egressIP, ctx.egressPort)
 	c.mu.Lock()
 	c.entries[ctx.id] = ctx
 	if hasKey {
@@ -177,7 +183,7 @@ func (c *sessionCache) remove(ctx *ConnContext) {
 	c.mu.Lock()
 	if _, ok := c.entries[ctx.id]; ok {
 		delete(c.entries, ctx.id)
-		if k, hasKey := makeDestKey(ctx.destIP, ctx.destPort); hasKey {
+		if k, hasKey := makeDestKey(ctx.egressIP, ctx.egressPort); hasKey {
 			inner := c.byDest[k]
 			delete(inner, ctx.id)
 			if len(inner) == 0 {
@@ -189,7 +195,7 @@ func (c *sessionCache) remove(ctx *ConnContext) {
 	c.mu.Unlock()
 }
 
-// findByDest returns all active sessions whose upstream destination matches
+// findByDest returns all active sessions whose egress destination matches
 // destIP and destPort.  Returns nil if no matching session exists.
 func (c *sessionCache) findByDest(destIP net.IP, destPort uint16) []*ConnContext {
 	ip16 := destIP.To16()
@@ -214,7 +220,7 @@ func (c *sessionCache) findByDest(destIP net.IP, destPort uint16) []*ConnContext
 	return result
 }
 
-// hasByDest checks if there is an active session whose upstream destination
+// hasByDest checks if there is an active session whose egress destination
 // matches destIP and destPort.  Returns false if no matching session exists.
 func (c *sessionCache) hasByDest(destIP net.IP, destPort uint16) bool {
 	ip16 := destIP.To16()
