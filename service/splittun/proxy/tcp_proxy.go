@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -207,17 +208,16 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 
 	// With an upstream proxy, the outgoing socket connects to the proxy
 	// server instead of the destination.
-	egressIP, egressPort := destIP, destPort
+	egressIPs, egressPort := []net.IP{destIP}, destPort
 	if upstream != nil {
 		resolveCtx, cancelResolve := context.WithTimeout(p.shutdownCtx, p.cfg.DialTimeout)
-		egressIP, egressPort, err = upstream.resolve(resolveCtx, binding.IP)
+		egressIPs, egressPort, err = upstream.resolve(resolveCtx, binding.IP)
 		cancelResolve()
 		if err != nil {
 			p.log.Error(p.logPrefix+"upstream proxy unavailable", "proxy", upstream.Redacted(), "err", err)
 			return
 		}
 	}
-	egressAddr := (&net.TCPAddr{IP: egressIP, Port: int(egressPort)}).String()
 
 	// Register the session immediately so FindProxiedEgressConnection can
 	// locate it before the upstream dial completes.
@@ -230,7 +230,7 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 		cancel,
 		extraInfo,
 	)
-	connCtx.egressIP, connCtx.egressPort = egressIP.To16(), egressPort
+	connCtx.egressIP, connCtx.egressPort = egressIPs[0].To16(), egressPort
 	p.cache.add(connCtx)
 
 	defer func() {
@@ -239,24 +239,12 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 		p.log.Debug(p.logPrefix+"session closed", "session", connCtx.id, "dest_ip", connCtx.destIP, "dest_port", connCtx.destPort, "bytes_in", connCtx.BytesIn.Load(), "bytes_out", connCtx.BytesOut.Load())
 	}()
 
-	// DialContext is cancelled immediately if the proxy is shut down.
-	dialer := net.Dialer{Timeout: p.cfg.DialTimeout}
-	// A local proxy server is reached via loopback, which an interface binding would break.
-	if binding != nil && !(upstream != nil && egressIP.IsLoopback()) {
-		if binding.IP != nil {
-			dialer.LocalAddr = &net.TCPAddr{IP: binding.IP}
-		}
-		applyBindToDevice(&dialer, binding.Interface)
-	}
-
 	var upstreamConn net.Conn
 	if upstream != nil {
-		// The timeout also covers the proxy handshake.
-		dialCtx, cancelDial := context.WithTimeout(p.shutdownCtx, p.cfg.DialTimeout)
-		upstreamConn, err = upstream.dial(dialCtx, &dialer, egressAddr, destIP, destPort)
-		cancelDial()
+		upstreamConn, err = p.dialUpstream(connCtx, upstream, binding, egressIPs, egressPort, destIP, destPort)
 	} else {
-		upstreamConn, err = dialer.DialContext(p.shutdownCtx, p.network, destAddr)
+		// DialContext is cancelled immediately if the proxy is shut down.
+		upstreamConn, err = p.newDialer(binding).DialContext(p.shutdownCtx, p.network, destAddr)
 	}
 	if err != nil {
 		if p.shutdownCtx.Err() != nil {
@@ -303,6 +291,55 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 	}()
 
 	wg.Wait()
+}
+
+// newDialer returns a dialer for an outgoing connection, bound according to
+// binding, if set.
+func (p *TCPProxy) newDialer(binding *LocalBinding) *net.Dialer {
+	dialer := &net.Dialer{Timeout: p.cfg.DialTimeout}
+	if binding != nil {
+		if binding.IP != nil {
+			dialer.LocalAddr = &net.TCPAddr{IP: binding.IP}
+		}
+		applyBindToDevice(dialer, binding.Interface)
+	}
+	return dialer
+}
+
+// dialUpstream connects to destIP:destPort through the upstream proxy. The
+// addresses of the proxy server are tried in order until one succeeds, e.g.
+// when "localhost" resolves to "::1" first, but the proxy only listens on
+// "127.0.0.1". The session's egress address is updated before each attempt,
+// so the outgoing connection can always be identified.
+func (p *TCPProxy) dialUpstream(connCtx *ConnContext, upstream *UpstreamProxy, binding *LocalBinding, proxyIPs []net.IP, proxyPort uint16, destIP net.IP, destPort uint16) (net.Conn, error) {
+	// The timeout covers all attempts, including the proxy handshakes.
+	ctx, cancel := context.WithTimeout(p.shutdownCtx, p.cfg.DialTimeout)
+	defer cancel()
+
+	var errs []error
+	for i, proxyIP := range proxyIPs {
+		if i > 0 {
+			p.cache.setEgress(connCtx, proxyIP, proxyPort)
+		}
+
+		// A local proxy server is reached via loopback, which an interface
+		// binding would break.
+		dialBinding := binding
+		if proxyIP.IsLoopback() {
+			dialBinding = nil
+		}
+
+		proxyAddr := net.JoinHostPort(proxyIP.String(), strconv.Itoa(int(proxyPort)))
+		conn, err := upstream.dial(ctx, p.newDialer(dialBinding), proxyAddr, destIP, destPort)
+		if err == nil {
+			return conn, nil
+		}
+		errs = append(errs, err)
+		if ctx.Err() != nil {
+			break
+		}
+	}
+	return nil, errors.Join(errs...)
 }
 
 // pipe copies from src to dst using a manual read/write loop with a pooled

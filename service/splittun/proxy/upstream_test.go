@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -415,6 +416,69 @@ func TestUpstreamEgressTracking(t *testing.T) {
 	}
 	if p.HasProxiedEgressConnection(destAddr.IP, uint16(destAddr.Port)) {
 		t.Error("destination is tracked as egress although the proxy is used")
+	}
+}
+
+// TestUpstreamAddressFallback checks that all addresses of the proxy server
+// are tried, e.g. when "localhost" resolves to "::1" first, but the proxy
+// only listens on "127.0.0.1".
+func TestUpstreamAddressFallback(t *testing.T) {
+	echoAddr, stopEcho := startTCPEchoServer(t)
+	defer stopEcho()
+
+	srv := &testProxyServer{scheme: "socks5", target: echoAddr}
+	startTestProxyServer(t, srv)
+	proxyAddr, _ := net.ResolveTCPAddr("tcp", srv.addr)
+	destAddr, _ := net.ResolveTCPAddr("tcp", echoAddr)
+
+	p, err := NewTCPProxy("127.0.0.1:0", "tcp4", refuseDecider, nil, "test")
+	if err != nil {
+		t.Fatalf("NewTCPProxy: %v", err)
+	}
+	defer p.Shutdown(t.Context())
+
+	u, _ := ParseUpstreamProxyURL("socks5://localhost:" + strconv.Itoa(proxyAddr.Port))
+	upstream := &UpstreamProxy{URL: u}
+	connCtx := newConnContext(nextID(), nil, destAddr.IP, uint16(destAddr.Port), func() {}, nil)
+	connCtx.egressIP, connCtx.egressPort = net.IPv6loopback, uint16(proxyAddr.Port)
+	p.cache.add(connCtx)
+	defer p.cache.remove(connCtx)
+
+	conn, err := p.dialUpstream(connCtx, upstream, nil, []net.IP{net.IPv6loopback, proxyAddr.IP}, uint16(proxyAddr.Port), destAddr.IP, uint16(destAddr.Port))
+	if err != nil {
+		t.Fatalf("dialUpstream: %v", err)
+	}
+	defer conn.Close()
+
+	if !p.HasProxiedEgressConnection(proxyAddr.IP, uint16(proxyAddr.Port)) {
+		t.Error("egress is not tracked for the address that was used")
+	}
+	if p.HasProxiedEgressConnection(net.IPv6loopback, uint16(proxyAddr.Port)) {
+		t.Error("egress is still tracked for the failed address")
+	}
+}
+
+func TestUpstreamResolveOrder(t *testing.T) {
+	u, _ := ParseUpstreamProxyURL("socks5://localhost:1080")
+	upstream := &UpstreamProxy{URL: u}
+
+	ips, port, err := upstream.resolve(t.Context(), nil)
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	if port != 1080 || len(ips) == 0 {
+		t.Fatalf("unexpected result %v %d", ips, port)
+	}
+	if ips[0].To4() == nil {
+		t.Errorf("IPv4 should come first without a preference, got %v", ips)
+	}
+
+	ips, _, err = upstream.resolve(t.Context(), net.IPv6loopback)
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	if hasIPv6 := slices.ContainsFunc(ips, func(ip net.IP) bool { return ip.To4() == nil }); hasIPv6 && ips[0].To4() != nil {
+		t.Errorf("IPv6 should come first with an IPv6 preference, got %v", ips)
 	}
 }
 

@@ -195,6 +195,34 @@ func (c *sessionCache) remove(ctx *ConnContext) {
 	c.mu.Unlock()
 }
 
+// setEgress changes the egress destination of a registered session.
+func (c *sessionCache) setEgress(ctx *ConnContext, ip net.IP, port uint16) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if _, ok := c.entries[ctx.id]; !ok {
+		ctx.egressIP, ctx.egressPort = ip.To16(), port
+		return
+	}
+
+	if k, hasKey := makeDestKey(ctx.egressIP, ctx.egressPort); hasKey {
+		inner := c.byDest[k]
+		delete(inner, ctx.id)
+		if len(inner) == 0 {
+			delete(c.byDest, k)
+		}
+	}
+	ctx.egressIP, ctx.egressPort = ip.To16(), port
+	if k, hasKey := makeDestKey(ctx.egressIP, ctx.egressPort); hasKey {
+		inner := c.byDest[k]
+		if inner == nil {
+			inner = make(map[uint64]*ConnContext, 1)
+			c.byDest[k] = inner
+		}
+		inner[ctx.id] = ctx
+	}
+}
+
 // findByDest returns all active sessions whose egress destination matches
 // destIP and destPort.  Returns nil if no matching session exists.
 func (c *sessionCache) findByDest(destIP net.IP, destPort uint16) []*ConnContext {

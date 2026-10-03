@@ -144,10 +144,12 @@ func (u *UpstreamProxy) Redacted() string {
 	return u.URL.Scheme + "://" + u.URL.Host
 }
 
-// resolve returns the address of the proxy server. A hostname is resolved
-// with the system resolver, preferring an address of the same IP family as
-// preferIP, if given.
-func (u *UpstreamProxy) resolve(ctx context.Context, preferIP net.IP) (net.IP, uint16, error) {
+// resolve returns the addresses of the proxy server, in the order they
+// should be tried. A hostname is resolved with the system resolver.
+// Addresses of the same IP family as preferIP come first. Without preferIP,
+// IPv4 addresses come first, as local proxy servers often only listen on
+// IPv4, while "localhost" may resolve to "::1" first.
+func (u *UpstreamProxy) resolve(ctx context.Context, preferIP net.IP) ([]net.IP, uint16, error) {
 	port, err := strconv.ParseUint(u.URL.Port(), 10, 16)
 	if err != nil {
 		return nil, 0, fmt.Errorf("invalid proxy port: %w", err)
@@ -155,7 +157,7 @@ func (u *UpstreamProxy) resolve(ctx context.Context, preferIP net.IP) (net.IP, u
 
 	host := u.URL.Hostname()
 	if ip := net.ParseIP(host); ip != nil {
-		return ip, uint16(port), nil
+		return []net.IP{ip}, uint16(port), nil
 	}
 
 	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
@@ -165,15 +167,16 @@ func (u *UpstreamProxy) resolve(ctx context.Context, preferIP net.IP) (net.IP, u
 	if len(addrs) == 0 {
 		return nil, 0, errors.New("proxy host has no addresses")
 	}
-	if preferIP != nil {
-		wantIPv4 := preferIP.To4() != nil
-		for _, addr := range addrs {
-			if (addr.IP.To4() != nil) == wantIPv4 {
-				return addr.IP, uint16(port), nil
-			}
-		}
+
+	preferIPv4 := preferIP == nil || preferIP.To4() != nil
+	ips := make([]net.IP, 0, len(addrs))
+	for _, addr := range addrs {
+		ips = append(ips, addr.IP)
 	}
-	return addrs[0].IP, uint16(port), nil
+	sort.SliceStable(ips, func(i, j int) bool {
+		return (ips[i].To4() != nil) == preferIPv4 && (ips[j].To4() != nil) != preferIPv4
+	})
+	return ips, uint16(port), nil
 }
 
 // dial connects to the proxy server at proxyAddr using d and asks it to relay

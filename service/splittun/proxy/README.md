@@ -347,5 +347,8 @@ go test -run='^$' -bench=BenchmarkUDP -benchmem # UDP only
   byte to never consume tunnelled data that follows the response header.  The
   proxy server's address is registered as the session's egress destination
   before dialling, so the firewall can recognise the outgoing connection.
-  The dial timeout covers both the TCP connect and the handshake.
+  The dial timeout covers both the TCP connect and the handshake.  If the
+  proxy hostname resolves to multiple addresses, they are tried in order
+  (IPv4 first, unless the binding prefers IPv6), so e.g. "localhost" works
+  with proxies that only listen on 127.0.0.1.
 
