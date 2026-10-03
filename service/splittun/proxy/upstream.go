@@ -168,15 +168,22 @@ func (u *UpstreamProxy) resolve(ctx context.Context, preferIP net.IP) ([]net.IP,
 		return nil, 0, errors.New("proxy host has no addresses")
 	}
 
-	preferIPv4 := preferIP == nil || preferIP.To4() != nil
 	ips := make([]net.IP, 0, len(addrs))
 	for _, addr := range addrs {
 		ips = append(ips, addr.IP)
 	}
+	sortByIPVersion(ips, preferIP)
+	return ips, uint16(port), nil
+}
+
+// sortByIPVersion sorts ips so that addresses of the same IP version as
+// preferIP come first, keeping the order within each IP version.
+// Without preferIP, IPv4 addresses come first.
+func sortByIPVersion(ips []net.IP, preferIP net.IP) {
+	preferIPv4 := preferIP == nil || preferIP.To4() != nil
 	sort.SliceStable(ips, func(i, j int) bool {
 		return (ips[i].To4() != nil) == preferIPv4 && (ips[j].To4() != nil) != preferIPv4
 	})
-	return ips, uint16(port), nil
 }
 
 // dial connects to the proxy server at proxyAddr using d and asks it to relay

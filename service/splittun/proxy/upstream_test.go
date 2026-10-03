@@ -458,27 +458,77 @@ func TestUpstreamAddressFallback(t *testing.T) {
 	}
 }
 
-func TestUpstreamResolveOrder(t *testing.T) {
-	u, _ := ParseUpstreamProxyURL("socks5://localhost:1080")
-	upstream := &UpstreamProxy{URL: u}
+func TestSortByIPVersion(t *testing.T) {
+	v4a, v4b := net.ParseIP("192.0.2.1"), net.ParseIP("192.0.2.2")
+	v6a, v6b := net.ParseIP("2001:db8::1"), net.ParseIP("2001:db8::2")
 
-	ips, port, err := upstream.resolve(t.Context(), nil)
+	tests := []struct {
+		name     string
+		preferIP net.IP
+		want     []net.IP
+	}{
+		{name: "no preference", preferIP: nil, want: []net.IP{v4a, v4b, v6a, v6b}},
+		{name: "prefer IPv4", preferIP: net.ParseIP("10.0.0.1"), want: []net.IP{v4a, v4b, v6a, v6b}},
+		{name: "prefer IPv6", preferIP: net.ParseIP("fd00::1"), want: []net.IP{v6a, v6b, v4a, v4b}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ips := []net.IP{v6a, v4a, v6b, v4b}
+			sortByIPVersion(ips, tc.preferIP)
+			if !slices.EqualFunc(ips, tc.want, net.IP.Equal) {
+				t.Errorf("got %v, want %v", ips, tc.want)
+			}
+		})
+	}
+}
+
+func TestUpstreamResolveIPLiteral(t *testing.T) {
+	u, _ := ParseUpstreamProxyURL("socks5://[::1]:1080")
+	ips, port, err := (&UpstreamProxy{URL: u}).resolve(t.Context(), net.ParseIP("192.0.2.1"))
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
-	if port != 1080 || len(ips) == 0 {
-		t.Fatalf("unexpected result %v %d", ips, port)
+	if port != 1080 || len(ips) != 1 || !ips[0].Equal(net.IPv6loopback) {
+		t.Errorf("got %v %d, want [::1] 1080", ips, port)
 	}
-	if ips[0].To4() == nil {
-		t.Errorf("IPv4 should come first without a preference, got %v", ips)
+}
+
+func TestNewDialerLocalAddress(t *testing.T) {
+	p, err := NewTCPProxy("127.0.0.1:0", "tcp4", refuseDecider, nil, "test")
+	if err != nil {
+		t.Fatalf("NewTCPProxy: %v", err)
+	}
+	defer p.Shutdown(t.Context())
+
+	localV4, localV6 := net.ParseIP("192.0.2.1"), net.ParseIP("2001:db8::1")
+	remoteV4, remoteV6 := net.ParseIP("198.51.100.1"), net.ParseIP("2001:db8::99")
+	localAddr := func(d *net.Dialer) net.IP {
+		if d.LocalAddr == nil {
+			return nil
+		}
+		return d.LocalAddr.(*net.TCPAddr).IP
 	}
 
-	ips, _, err = upstream.resolve(t.Context(), net.IPv6loopback)
-	if err != nil {
-		t.Fatalf("resolve: %v", err)
+	// The local address matches the IP version of the remote address.
+	binding := &LocalBinding{IP: localV6, AltIP: localV4}
+	for remote, want := range map[*net.IP]net.IP{&remoteV4: localV4, &remoteV6: localV6} {
+		d, err := p.newDialer(binding, *remote)
+		if err != nil {
+			t.Fatalf("newDialer(%v): %v", *remote, err)
+		}
+		if got := localAddr(d); !got.Equal(want) {
+			t.Errorf("newDialer(%v) binds to %v, want %v", *remote, got, want)
+		}
 	}
-	if hasIPv6 := slices.ContainsFunc(ips, func(ip net.IP) bool { return ip.To4() == nil }); hasIPv6 && ips[0].To4() != nil {
-		t.Errorf("IPv6 should come first with an IPv6 preference, got %v", ips)
+
+	// Without a local address of the remote's IP version, dialing must fail.
+	if _, err := p.newDialer(&LocalBinding{IP: localV6}, remoteV4); err == nil {
+		t.Error("expected error without a local IPv4 address")
+	}
+
+	// Without a binding, the OS chooses.
+	if d, err := p.newDialer(nil, remoteV4); err != nil || d.LocalAddr != nil {
+		t.Errorf("unexpected binding without LocalBinding: %v, %v", d, err)
 	}
 }
 

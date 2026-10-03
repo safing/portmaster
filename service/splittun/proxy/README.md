@@ -41,6 +41,12 @@ type LocalBinding struct {
     // An empty string disables interface-level binding.
     Interface string
 
+    // AltIP is an optional local source address of the other IP version
+    // than IP.  It is used instead of IP when the remote address is of that
+    // IP version, e.g. when the upstream proxy server is reached via another
+    // IP version than the destination.
+    AltIP net.IP
+
     // Upstream, if set, relays the outbound TCP connection through a proxy
     // server instead of connecting to the destination directly.  IP and
     // Interface then apply to the connection to the proxy server, except

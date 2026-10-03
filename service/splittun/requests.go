@@ -99,10 +99,19 @@ func AwaitRequest(connInfo *network.Connection, bindInterface string, upstreamPr
 			return nil, err
 		}
 
+		var altIP net.IP
 		if ipVersion == packet.IPv6 {
-			binding.IP = iface.IPv6
+			binding.IP, altIP = iface.IPv6, iface.IPv4
 		} else {
-			binding.IP = iface.IPv4
+			binding.IP, altIP = iface.IPv4, iface.IPv6
+		}
+		if binding.Upstream != nil {
+			// A proxy hostname may resolve to addresses of either IP version,
+			// so provide the interface address of the other version too.
+			binding.AltIP = altIP
+			if binding.IP == nil {
+				binding.IP, binding.AltIP = altIP, nil
+			}
 		}
 		if binding.IP == nil {
 			return nil, fmt.Errorf("interface %q has no usable address for %s", bindInterface, ipVersion)

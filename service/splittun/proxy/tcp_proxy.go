@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -243,8 +244,12 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 	if upstream != nil {
 		upstreamConn, err = p.dialUpstream(connCtx, upstream, binding, egressIPs, egressPort, destIP, destPort)
 	} else {
-		// DialContext is cancelled immediately if the proxy is shut down.
-		upstreamConn, err = p.newDialer(binding).DialContext(p.shutdownCtx, p.network, destAddr)
+		var dialer *net.Dialer
+		dialer, err = p.newDialer(binding, destIP)
+		if err == nil {
+			// DialContext is cancelled immediately if the proxy is shut down.
+			upstreamConn, err = dialer.DialContext(p.shutdownCtx, p.network, destAddr)
+		}
 	}
 	if err != nil {
 		if p.shutdownCtx.Err() != nil {
@@ -293,17 +298,32 @@ func (p *TCPProxy) handleConn(clientConn net.Conn) {
 	wg.Wait()
 }
 
-// newDialer returns a dialer for an outgoing connection, bound according to
-// binding, if set.
-func (p *TCPProxy) newDialer(binding *LocalBinding) *net.Dialer {
+// newDialer returns a dialer for an outgoing connection to remoteIP, bound
+// according to binding, if set.  The local address is chosen to match the
+// IP version of remoteIP.
+func (p *TCPProxy) newDialer(binding *LocalBinding, remoteIP net.IP) (*net.Dialer, error) {
 	dialer := &net.Dialer{Timeout: p.cfg.DialTimeout}
-	if binding != nil {
-		if binding.IP != nil {
-			dialer.LocalAddr = &net.TCPAddr{IP: binding.IP}
-		}
-		applyBindToDevice(dialer, binding.Interface)
+	if binding == nil {
+		return dialer, nil
 	}
-	return dialer
+
+	localIP := binding.IP
+	if localIP != nil && !sameIPVersion(localIP, remoteIP) {
+		localIP = binding.AltIP
+		if localIP == nil || !sameIPVersion(localIP, remoteIP) {
+			return nil, fmt.Errorf("no local address of the same IP version as %s to bind to", remoteIP)
+		}
+	}
+	if localIP != nil {
+		dialer.LocalAddr = &net.TCPAddr{IP: localIP}
+	}
+	applyBindToDevice(dialer, binding.Interface)
+	return dialer, nil
+}
+
+// sameIPVersion reports whether a and b are of the same IP version.
+func sameIPVersion(a, b net.IP) bool {
+	return (a.To4() != nil) == (b.To4() != nil)
 }
 
 // dialUpstream connects to destIP:destPort through the upstream proxy. The
@@ -329,8 +349,14 @@ func (p *TCPProxy) dialUpstream(connCtx *ConnContext, upstream *UpstreamProxy, b
 			dialBinding = nil
 		}
 
+		dialer, err := p.newDialer(dialBinding, proxyIP)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+
 		proxyAddr := net.JoinHostPort(proxyIP.String(), strconv.Itoa(int(proxyPort)))
-		conn, err := upstream.dial(ctx, p.newDialer(dialBinding), proxyAddr, destIP, destPort)
+		conn, err := upstream.dial(ctx, dialer, proxyAddr, destIP, destPort)
 		if err == nil {
 			return conn, nil
 		}
