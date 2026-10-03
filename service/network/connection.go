@@ -63,6 +63,9 @@ type SplitTunContext struct {
 	Interface string
 	// IP is the IP address used to bind the connection to the interface.
 	IP net.IP
+	// Proxy is the upstream proxy server the connection is relayed through,
+	// without credentials. Empty if no proxy is used.
+	Proxy string `json:",omitempty"`
 }
 
 // ConnectionType is a type of connection.

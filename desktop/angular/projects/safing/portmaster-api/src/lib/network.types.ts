@@ -215,6 +215,9 @@ export interface SplitTunContext {
   Interface: string;
   // IP is the IP address used to bind the connection to the interface.
   IP: string;
+  // Proxy is the upstream proxy server the connection is relayed through,
+  // without credentials. Not set if no proxy is used.
+  Proxy?: string;
 }
 
 export interface GeoIPInfo {

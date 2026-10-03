@@ -33,33 +33,36 @@ func IsProxiedConnectionInfo(connInfo *network.Connection) bool {
 	}
 
 	proxiesLocker.RLock()
-	var finder proxiedEgressFinder
+	defer proxiesLocker.RUnlock()
+
+	var finders []proxiedEgressFinder
 
 	switch connInfo.IPProtocol {
 	case packet.TCP:
-		switch connInfo.IPVersion {
-		case packet.IPv4:
-			finder = tcp4Proxy
-		case packet.IPv6:
-			finder = tcp6Proxy
+		// With an upstream proxy, the IP version of the connection to the
+		// proxy server may differ from the one of the proxied connection,
+		// so check both TCP proxies.
+		if tcp4Proxy != nil {
+			finders = append(finders, tcp4Proxy)
+		}
+		if tcp6Proxy != nil {
+			finders = append(finders, tcp6Proxy)
 		}
 	case packet.UDP:
-		switch connInfo.IPVersion {
-		case packet.IPv4:
-			finder = udp4Proxy
-		case packet.IPv6:
-			finder = udp6Proxy
+		switch {
+		case connInfo.IPVersion == packet.IPv4 && udp4Proxy != nil:
+			finders = append(finders, udp4Proxy)
+		case connInfo.IPVersion == packet.IPv6 && udp6Proxy != nil:
+			finders = append(finders, udp6Proxy)
 		}
 	}
 
-	if finder == nil {
-		proxiesLocker.RUnlock()
-		return false
+	for _, finder := range finders {
+		if finder.HasProxiedEgressConnection(connInfo.Entity.IP, connInfo.Entity.Port) {
+			return true
+		}
 	}
-
-	isProxied := finder.HasProxiedEgressConnection(connInfo.Entity.IP, connInfo.Entity.Port)
-	proxiesLocker.RUnlock()
-	return isProxied
+	return false
 }
 
 func startProxies(mgr *mgr.Manager) error {
