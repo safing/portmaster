@@ -108,6 +108,60 @@ impl<T: Connection + Clone> ConnectionMap<T> {
         None
     }
 
+    /// Like `read()`, but for ALE authorization requests, which know which
+    /// process is asking (`process_id`).
+    ///
+    /// An authorization request always comes from a live socket, so a cached
+    /// entry may only answer it if the entry can still describe that socket.
+    /// Two kinds of entries cannot; they are removed and the lookup reports a
+    /// miss, which makes the caller request a fresh verdict from Portmaster:
+    ///
+    /// * An ended entry: its socket is already closed, so the request comes
+    ///   from a new socket reusing the same local port and remote endpoint.
+    ///   It must not inherit the old verdict or the old owner's process id.
+    /// * An entry without a process id: it was created by the packet layer,
+    ///   which cannot know the owner. Once a request with a known process id
+    ///   arrives, the entry is replaced so the flow gets a verdict tied to
+    ///   the real owner.
+    ///
+    /// Every other matching entry is returned, even one owned by a different
+    /// process: live processes can share a 5-tuple (multicast senders on a
+    /// port opened with SO_REUSEADDR). If such entries evicted each other,
+    /// every completed verdict would re-authorize the flow, evict the other
+    /// owner's entry and request yet another verdict - an endless loop.
+    pub fn read_for_process<C>(
+        &mut self,
+        key: &Key,
+        process_id: u64,
+        read_connection: fn(&T) -> Option<C>,
+    ) -> Option<C> {
+        let connections = self.0.get_mut(&key.small())?;
+        let mut index = 0;
+        while index < connections.len() {
+            let conn = &connections[index];
+            if conn.remote_equals(key) {
+                // Stale entry: the socket it describes is closed (ended), or
+                // its owner is unknown while the requester's is known. Drop
+                // it and report a miss so the flow gets a fresh verdict. A
+                // live entry of another process is NOT stale, see above.
+                if conn.has_ended() || (conn.get_process_id() == 0 && process_id != 0) {
+                    connections.remove(index);
+                    // Re-check the entry that shifted into this slot.
+                    continue;
+                }
+                conn.set_last_accessed_time(wdk::utils::get_system_timestamp_ms());
+                return read_connection(conn);
+            }
+            if conn.redirect_equals(key) {
+                conn.set_last_accessed_time(wdk::utils::get_system_timestamp_ms());
+                return read_connection(conn);
+            }
+            index += 1;
+        }
+
+        None
+    }
+
     pub fn end(&mut self, key: Key) -> Option<T> {
         if let Some(connections) = self.0.get_mut(&key.small()) {
             for conn in connections.iter_mut() {
