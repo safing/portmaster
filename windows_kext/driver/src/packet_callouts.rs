@@ -220,6 +220,13 @@ fn ip_packet_layer(
 
         // Clone packet and send to Portmaster.
         if send_request_to_portmaster {
+            if device.is_shutting_down() {
+                // Portmaster no longer reads events (see ale_layer_auth). Do
+                // not absorb packets waiting for a verdict that never comes.
+                data.action_permit();
+                return;
+            }
+
             let packet = match clone_packet(
                 device,
                 nbl,

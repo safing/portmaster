@@ -159,6 +159,11 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
         match verdict {
             // No verdict yet
             Verdict::Undecided => {
+                if device.is_shutting_down() {
+                    // No verdict will arrive anymore, see the new-connection path below.
+                    data.action_permit();
+                    return;
+                }
                 crate::dbg!("saving packet: {}", key);
                 // Connection is already pended. Save packet and wait for verdict.
                 match save_packet(device, &mut data, &ale_data, false) {
@@ -225,6 +230,16 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
             }
         }
     } else {
+        if device.is_shutting_down() {
+            // Portmaster has sent the shutdown command and no longer reads
+            // events, so a pended connection would never get a verdict. A
+            // pended operation cannot be cancelled by the owning process, which
+            // then cannot exit. Permit instead: that is the state after the
+            // unload that follows.
+            data.action_permit();
+            return;
+        }
+
         crate::dbg!("pending connection: {} {}", key, ale_data.direction);
         // Only first packet of a connection can be pended: reauthorize == false
         let can_pend_connection = !ale_data.reauthorize;
