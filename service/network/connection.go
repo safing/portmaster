@@ -866,6 +866,9 @@ func (conn *Connection) delete() {
 
 	conn.Meta().Delete()
 
+	// Stream connection telemetry to HIDS sidecar before finalization
+	sendTelemetry(conn)
+
 	// Notify database controller if data is complete and thus connection was previously exposed.
 	if conn.DataIsComplete() {
 		dbController.PushUpdate(conn)
