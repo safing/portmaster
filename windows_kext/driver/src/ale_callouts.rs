@@ -136,18 +136,20 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
 
     let key = ale_data.as_key();
 
-    // Check if connection is already in cache.
+    // Check if connection is already in cache. Ended entries and entries
+    // without a process id do not decide a new flow: a reused local endpoint
+    // must get a fresh verdict instead of inheriting the previous owner's.
     let verdict = if ale_data.is_ipv6 {
         device
             .connection_cache
-            .read_connection_v6(&key, |conn| -> Option<Verdict> {
+            .read_connection_for_process_v6(&key, ale_data.process_id, |conn| -> Option<Verdict> {
                 // Function is behind spin lock, just copy and return.
                 Some(conn.verdict)
             })
     } else {
         device
             .connection_cache
-            .read_connection_v4(&ale_data.as_key(), |conn| -> Option<Verdict> {
+            .read_connection_for_process_v4(&key, ale_data.process_id, |conn| -> Option<Verdict> {
                 // Function is behind spin lock, just copy and return.
                 Some(conn.verdict)
             })
@@ -159,6 +161,11 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
         match verdict {
             // No verdict yet
             Verdict::Undecided => {
+                if device.is_shutting_down() {
+                    // No verdict will arrive anymore, see the new-connection path below.
+                    data.action_permit();
+                    return;
+                }
                 crate::dbg!("saving packet: {}", key);
                 // Connection is already pended. Save packet and wait for verdict.
                 match save_packet(device, &mut data, &ale_data, false) {
@@ -225,6 +232,16 @@ fn ale_layer_auth(mut data: CalloutData, ale_data: AleLayerData) {
             }
         }
     } else {
+        if device.is_shutting_down() {
+            // Portmaster has sent the shutdown command and no longer reads
+            // events, so a pended connection would never get a verdict. A
+            // pended operation cannot be cancelled by the owning process, which
+            // then cannot exit. Permit instead: that is the state after the
+            // unload that follows.
+            data.action_permit();
+            return;
+        }
+
         crate::dbg!("pending connection: {} {}", key, ale_data.direction);
         // Only first packet of a connection can be pended: reauthorize == false
         let can_pend_connection = !ale_data.reauthorize;
