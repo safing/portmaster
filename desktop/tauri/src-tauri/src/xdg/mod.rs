@@ -70,11 +70,27 @@ impl std::fmt::Display for ProcessInfo {
     }
 }
 
+/// Key of the APP_INFO_CACHE entry for a lookup. It covers every input the
+/// lookup uses (exec_path, cmdline, matching_path), so that two processes
+/// sharing an executable but differing in command line or matching path (an
+/// interpreter running different scripts, an AppImage and its mounted
+/// binary) do not share a cached result. The pid is not part of a lookup.
+fn cache_key(process_info: &ProcessInfo) -> String {
+    format!(
+        "{}\0{}\0{}",
+        process_info.exec_path, process_info.cmdline, process_info.matching_path
+    )
+}
+
+/// Finds the desktop entry and icon of a process by matching its paths and name against the
+/// installed desktop entries. Successful results and conclusive misses are cached by all lookup
+/// inputs; failures are not.
 pub fn get_app_info(process_info: ProcessInfo) -> Result<AppInfo> {
+    let key = cache_key(&process_info);
     {
         let cache = APP_INFO_CACHE.read().unwrap();
 
-        if let Some(value) = cache.get(process_info.exec_path.as_str()) {
+        if let Some(value) = cache.get(key.as_str()) {
             match value {
                 Some(app_info) => return Ok(app_info.clone()),
                 None => {
@@ -138,10 +154,7 @@ pub fn get_app_info(process_info: ProcessInfo) -> Result<AppInfo> {
     }
 
     if matches.is_empty() {
-        APP_INFO_CACHE
-            .write()
-            .unwrap()
-            .insert(process_info.exec_path, None);
+        APP_INFO_CACHE.write().unwrap().insert(key, None);
 
         Err(Error::new(ErrorKind::NotFound, "failed to find app info".to_string()).into())
     } else {
@@ -161,7 +174,7 @@ pub fn get_app_info(process_info: ProcessInfo) -> Result<AppInfo> {
                     APP_INFO_CACHE
                         .write()
                         .unwrap()
-                        .insert(process_info.exec_path, Some(info.0.clone()));
+                        .insert(key, Some(info.0.clone()));
 
                     return Ok(info.0);
                 }
@@ -515,6 +528,98 @@ mod tests {
         gtk::init().expect("failed to initialize GTK for tests")
     }
 
+    /// The cache key separates lookups that differ in any input and ignores the pid.
+    #[test]
+    fn test_cache_key_covers_all_lookup_inputs() {
+        let base = ProcessInfo {
+            exec_path: "/usr/bin/python3".to_string(),
+            cmdline: "python3 /opt/a/a.py".to_string(),
+            matching_path: "/usr/bin/python3".to_string(),
+            pid: 1,
+        };
+        let same_lookup = ProcessInfo {
+            pid: 2,
+            ..base.clone()
+        };
+        let other_exec = ProcessInfo {
+            exec_path: "/usr/bin/python3.12".to_string(),
+            ..base.clone()
+        };
+        let other_cmdline = ProcessInfo {
+            cmdline: "python3 /opt/b/b.py".to_string(),
+            ..base.clone()
+        };
+        let other_matching = ProcessInfo {
+            matching_path: "/opt/a/a.AppImage".to_string(),
+            ..base.clone()
+        };
+
+        assert_eq!(cache_key(&base), cache_key(&same_lookup));
+        assert_ne!(cache_key(&base), cache_key(&other_cmdline));
+        assert_ne!(cache_key(&base), cache_key(&other_matching));
+        assert_ne!(cache_key(&base), cache_key(&other_exec));
+    }
+
+    /// A cached result, positive or negative, is served only for the same lookup inputs.
+    #[test]
+    fn test_cache_entries_do_not_leak_across_lookup_inputs() {
+        // A cached result for one lookup must not be served for another
+        // lookup that only shares the executable path: that was the v2.2.3
+        // behaviour (cache keyed by exec_path alone).
+        let exec_path = "/nonexistent/test-binary-for-cache-test".to_string();
+        let cached_lookup = ProcessInfo {
+            exec_path: exec_path.clone(),
+            cmdline: "test-binary --cached".to_string(),
+            matching_path: exec_path.clone(),
+            pid: 1,
+        };
+        let other_lookup = ProcessInfo {
+            exec_path: exec_path.clone(),
+            cmdline: "test-binary --other".to_string(),
+            matching_path: "/nonexistent/other.AppImage".to_string(),
+            pid: 1,
+        };
+        let fake = AppInfo {
+            app_name: "cache-test-fake".to_string(),
+            ..AppInfo::default()
+        };
+        APP_INFO_CACHE
+            .write()
+            .unwrap()
+            .insert(cache_key(&cached_lookup), Some(fake.clone()));
+
+        // Same inputs, other pid: served from the cache.
+        let hit = get_app_info(ProcessInfo {
+            pid: 2,
+            ..cached_lookup.clone()
+        })
+        .expect("cached entry must be served");
+        assert_eq!(hit.app_name, fake.app_name);
+
+        // Same executable, other command line and matching path: not the
+        // cached entry. The real lookup for a nonexistent binary fails.
+        if let Ok(info) = get_app_info(other_lookup) {
+            assert_ne!(info.app_name, fake.app_name);
+        }
+
+        // A negative entry for one lookup does not block another either.
+        APP_INFO_CACHE
+            .write()
+            .unwrap()
+            .insert(cache_key(&cached_lookup), None);
+        assert!(get_app_info(cached_lookup.clone()).is_err());
+        let richer = ProcessInfo {
+            matching_path: "/nonexistent/richer.AppImage".to_string(),
+            ..cached_lookup.clone()
+        };
+        // Not served from the negative entry: the key differs, so a real
+        // lookup runs (and fails for a nonexistent binary, as a fresh one).
+        assert_ne!(cache_key(&richer), cache_key(&cached_lookup));
+        let _ = get_app_info(richer);
+    }
+
+    /// Smoke test against the host's real desktop entries; performs no lookup assertions when none
+    /// of the candidate binaries exist.
     #[test]
     fn test_find_info_success() {
         // we expect at least one of the following binaries to be installed
