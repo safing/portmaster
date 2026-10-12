@@ -63,7 +63,13 @@ const profilesToIgnore = ['local/_unidentified', 'local/_unsolicited'];
 // set on them. Their processes are Portmaster itself, so no lookup is needed
 // (the resolver skips them anyway).
 const portmasterProfiles = ['local/_portmaster', 'local/_portmaster-app', 'local/_portmaster-notifier'];
-const portmasterLogo = 'assets/icons/pm_dark_blue_128.png';
+// The plain logo without a status colour (the tray icons carry one).
+const portmasterLogo = 'assets/icons/pm_light_contrast.svg';
+
+// Special profiles that stand for background services without an icon of
+// their own (the system DNS resolver: systemd-resolved, dnsmasq, nscd, ...).
+// They are never resolved; they show the terminal glyph unless an icon is set.
+const terminalProfiles = ['local/_system-resolver'];
 
 @Component({
   selector: 'app-icon',
@@ -308,8 +314,9 @@ export class AppIconComponent implements OnInit, OnDestroy {
             this.src = '';
             this.color =
               this.color === 'unset' ? 'var(--text-tertiary)' : this.color;
-            this.showTerminal = sourceAndId !== null
-              && this.resovler.hasNoIcon(`${sourceAndId[0]}/${sourceAndId[1]}`);
+            const key = sourceAndId !== null ? `${sourceAndId[0]}/${sourceAndId[1]}` : '';
+            this.showTerminal = key !== ''
+              && (terminalProfiles.includes(key) || this.resovler.hasNoIcon(key));
           }
           this.changeDetectorRef.detectChanges();
           this.parentCdr.markForCheck();
@@ -321,6 +328,9 @@ export class AppIconComponent implements OnInit, OnDestroy {
   /** The displayable source of a stored icon reference ('' when it cannot be shown). */
   private iconSource(icon: { Type: string; Value: string }): Observable<string> {
     switch (icon.Type) {
+      case 'data':
+        // A display-only icon the resolver holds as a data URL.
+        return of(icon.Value);
       case 'database':
         return this.portapi
           .get<Record & { iconData: string }>(icon.Value)
@@ -337,6 +347,9 @@ export class AppIconComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Cancels a queued view update and releases the profile subscription.
+   */
   ngOnDestroy(): void {
     if (this.requestedAnimationFrame !== null) {
       cancelAnimationFrame(this.requestedAnimationFrame);

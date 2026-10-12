@@ -4,6 +4,12 @@ import { Observable, Subject, firstValueFrom } from "rxjs";
 import { INTEGRATION_SERVICE, ProcessInfo } from "src/app/integration";
 import * as parseDataURL from 'data-urls';
 
+/**
+ * An icon to display without storing it: a reference to a stored icon of
+ * another profile, or the data URL of an icon the integration found.
+ */
+export type DisplayIcon = Icon | { Type: 'data'; Value: string; Source: 'ui' };
+
 export abstract class AppIconResolver {
   abstract resolveIcon(profile: AppProfile): void;
 
@@ -21,7 +27,7 @@ export abstract class AppIconResolver {
    * last resolution identified one. This is a display suggestion for the
    * current UI session only; it is never stored on the profile.
    */
-  abstract inheritedIcon(key: string): Icon | null;
+  abstract inheritedIcon(key: string): DisplayIcon | null;
 
   /** Emits the profile key whenever a resolution ends, found or not. */
   abstract readonly outcome$: Observable<string>;
@@ -49,12 +55,20 @@ const launcherPaths = [
   '/usr/bin/wine', '/usr/bin/wine64', '/usr/bin/wine-preloader', '/usr/bin/wine64-preloader',
 ];
 
+/**
+ * True when the path is one of the known shared launchers.
+ */
 function isLauncher(path: string | undefined): boolean {
   return !!path && launcherPaths.includes(path);
 }
 
+/**
+ * True when two candidates would be the same integration lookup (same executable,
+ * command line, matching path, desktop ID and directory hint).
+ */
 function sameLookup(a: ProcessInfo, b: ProcessInfo): boolean {
-  return a.execPath === b.execPath && a.cmdline === b.cmdline && a.matchingPath === b.matchingPath;
+  return a.execPath === b.execPath && a.cmdline === b.cmdline && a.matchingPath === b.matchingPath
+    && (a.desktopId || '') === (b.desktopId || '') && (a.appDir || '') === (b.appDir || '');
 }
 
 /**
@@ -66,7 +80,7 @@ const genericDirectories: RegExp[] = [
   /^\/$/,
   /^\/(bin|sbin|lib|lib64|libexec|opt|app|tmp|var|snap|etc|run|home|usr|srv|mnt|media)$/,
   /^\/usr(\/local)?\/(bin|sbin|lib|lib64|libexec|share|games)$/,
-  /^\/usr(\/local)?\/lib\/x86_64-linux-gnu$/,
+  /^\/usr(\/local)?\/lib\/[a-z0-9_]+-linux-gnu[a-z0-9_]*$/,
   /^\/usr\/lib\/(systemd|git-core|apt|apt\/methods)$/,
   /^\/app\/(bin|lib|libexec|extra|share|opt)$/,
   /^\/home\/[^/]+$/,
@@ -74,10 +88,16 @@ const genericDirectories: RegExp[] = [
   /^\/home\/[^/]+\/\.local\/share\/(flatpak|applications)$/,
 ];
 
+/**
+ * Matches the configured generic-directory patterns (a heuristic, not a determination of contents).
+ */
 function isGenericDirectory(dir: string): boolean {
   return genericDirectories.some(re => re.test(dir));
 }
 
+/**
+ * The directory part of an absolute path ('/' for a top-level entry).
+ */
 function dirname(path: string): string {
   const i = path.lastIndexOf('/');
   return i <= 0 ? '/' : path.slice(0, i);
@@ -114,18 +134,25 @@ function isApplicationAbove(donor: string, helper: string): boolean {
     && !isGenericDirectory(donorDir);
 }
 
+/**
+ * The binary path a profile stands for: its presentation path, or the deprecated linked path.
+ */
 function profilePath(p: AppProfile): string {
   return p.PresentationPath || p.LinkedPath || '';
 }
 
 /**
- * How a profile is identified for inheritance: not a flatpak at all, exactly
- * one flatpak (a single `tag/flatpak-id/equals` fingerprint), or ambiguous
- * (several flatpak fingerprints, or a broader operation such as prefix or
- * regex). Ambiguous profiles neither give nor take icons.
+ * How a profile is identified: not a flatpak at all, exactly one flatpak
+ * (a single `tag/flatpak-id/equals` fingerprint, which core sets for
+ * binaries inside the sandbox), or ambiguous (several flatpak fingerprints,
+ * or a broader operation such as prefix or regex). Ambiguous profiles
+ * neither give nor take icons.
  */
 type Identity = { kind: 'native' } | { kind: 'flatpak', id: string } | { kind: 'ambiguous' };
 
+/**
+ * Classifies a profile as native, exactly one flatpak, or ambiguous (see Identity).
+ */
 function identityOf(p: AppProfile): Identity {
   const fps = (p.Fingerprints || []).filter(f => f.Type === 'tag' && f.Key === 'flatpak-id');
   if (fps.length === 0) {
@@ -137,11 +164,40 @@ function identityOf(p: AppProfile): Identity {
   return { kind: 'ambiguous' };
 }
 
+/**
+ * The application ID of the flatpak whose per-user data directory
+ * (~/.var/app/<id>/, the sandbox's XDG data home) contains the binary, or
+ * '' when the path is not canonical or not under such a directory. This is
+ * a hint, not an identity: that directory holds the flatpak's own binaries
+ * (Steam's client and helpers, which core gives a path fingerprint rather
+ * than the flatpak-id tag) but also whatever the application stores there,
+ * such as games Steam installs. It is therefore only used for display,
+ * after the binary's own lookups found nothing. Homes outside /home/<user>
+ * are not recognised.
+ */
+const flatpakDataDir = /^\/home\/[^/]+\/\.var\/app\/([A-Za-z0-9_][A-Za-z0-9_-]*(\.[A-Za-z0-9_][A-Za-z0-9_-]*)+)\//;
+
+/**
+ * The flatpak application ID named by the per-user data directory the binary lives under,
+ * or '' when there is none (see the note on flatpakDataDir).
+ */
+function containerHintOf(p: AppProfile): string {
+  const path = profilePath(p);
+  if (!isCanonicalPath(path)) {
+    return '';
+  }
+  const m = flatpakDataDir.exec(path);
+  return m ? m[1] : '';
+}
+
 /** The fields an icon is chosen for, in a comparable form. */
 function attributionInputs(p: AppProfile): string {
   return JSON.stringify([p.PresentationPath || '', p.LinkedPath || '', p.Fingerprints || []]);
 }
 
+/**
+ * True when two icon references point at the same stored icon.
+ */
 function sameIconRef(a: Icon, b: Icon): boolean {
   return a.Type === b.Type && a.Value === b.Value;
 }
@@ -165,7 +221,10 @@ function classifyLookupError(err: unknown): LookupOutcome {
     return 'unsupported';
   }
   if (msg.includes('failed to find app info') || msg.trim() === 'not found') {
-    // A fresh miss, or the cached negative entry of the same lookup.
+    // A fresh miss, or the cached negative entry of the same lookup. An
+    // entry whose icon could not be loaded is reported differently
+    // ("desktop entry found but its icon could not be loaded") and stays a
+    // failure: the application is known, so no glyph.
     return 'not-found';
   }
   return 'failed';
@@ -182,7 +241,7 @@ export class DefaultIconResolver extends AppIconResolver {
   private noIcon = new Set<string>();
 
   /** Display-only icons of the application a helper ships inside of. */
-  private inherited = new Map<string, Icon>();
+  private inherited = new Map<string, DisplayIcon>();
 
   /** One profile snapshot shared by concurrent inheritance lookups. */
   private profilesSnapshot: { at: number, promise: Promise<AppProfile[]> } | null = null;
@@ -190,19 +249,30 @@ export class DefaultIconResolver extends AppIconResolver {
   private outcomeSubject = new Subject<string>();
   readonly outcome$ = this.outcomeSubject.asObservable();
 
+  /**
+   * Whether the last resolution for this profile key was conclusive and found nothing.
+   */
   hasNoIcon(key: string): boolean {
     return this.noIcon.has(key);
   }
 
-  inheritedIcon(key: string): Icon | null {
+  /**
+   * The display-only icon the last resolution found for a helper profile, or null.
+   */
+  inheritedIcon(key: string): DisplayIcon | null {
     return this.inherited.get(key) ?? null;
   }
 
+  /**
+   * Starts a resolution for a non-special profile unless one is already in flight; the outcome is
+   * published on outcome$ and reflected by hasNoIcon() and inheritedIcon().
+   */
   resolveIcon(profile: AppProfile): void {
     // Special profiles (IDs starting with "_": unidentified, unsolicited,
     // system, system resolver, Portmaster's own processes) are deliberately
-    // excluded: an icon found via one of their processes would describe that
-    // process, not the group of connections the profile stands for.
+    // excluded: they stand for groups of processes (the system resolver
+    // profile collects systemd-resolved, dnsmasq and nscd alike), so an icon
+    // found via one of them would describe that process, not the group.
     if (profile.ID?.startsWith('_')) {
       return;
     }
@@ -319,10 +389,17 @@ export class DefaultIconResolver extends AppIconResolver {
       return false;
     };
 
-    // Stage 1: the profile's own paths.
+    // Stage 1: the profile's own paths; for a flatpak, first its application
+    // ID, which names its desktop entry exactly (<id>.desktop) and so covers
+    // every binary inside the flatpak, helpers included, without guessing.
     const own: ProcessInfo[] = [];
+    const me = identityOf(profile);
+    const path = profilePath(profile);
+    if (me.kind === 'flatpak' && !!path) {
+      own.push({ execPath: path, cmdline: path, pid: -1, matchingPath: path, desktopId: me.id });
+    }
     for (const path of [profile.PresentationPath, profile.LinkedPath]) {
-      if (!!path && !own.some(o => o.execPath === path)) {
+      if (!!path && !own.some(o => o.execPath === path && !o.desktopId)) {
         own.push({ execPath: path, cmdline: path, pid: -1, matchingPath: path });
       }
     }
@@ -383,6 +460,9 @@ export class DefaultIconResolver extends AppIconResolver {
     }
   }
 
+  /**
+   * All profiles, from one snapshot shared by resolutions that run within two seconds of each other.
+   */
   private profiles(): Promise<AppProfile[]> {
     const now = Date.now();
     if (this.profilesSnapshot === null || now - this.profilesSnapshot.at > 2000) {
@@ -443,7 +523,8 @@ export class DefaultIconResolver extends AppIconResolver {
       p.Source === 'local' && p.ID !== profile.ID && !p.ID.startsWith('_') && !!profilePath(p) && trusted(p) && related(p)
     );
     if (candidates.length === 0) {
-      return 'not-found';
+      const container = await this.showContainerApplication(profile);
+      return container === 'not-found' ? this.showApplicationTree(profile) : container;
     }
 
     const rank = (p: AppProfile): number => p.Icons[0].Source === 'user' ? 0 : 1;
@@ -462,6 +543,78 @@ export class DefaultIconResolver extends AppIconResolver {
     }
     this.inherited.set(key, { Type: icon.Type, Value: icon.Value, Source: 'ui' });
     return 'found';
+  }
+
+  /**
+   * Last resort, display only: a native binary inside a flatpak's per-user
+   * data directory is shown with that flatpak's icon, looked up through its
+   * exact desktop entry. Nothing is stored, because the directory also holds
+   * what the application installs there (see containerHintOf).
+   */
+  private async showContainerApplication(profile: AppProfile): Promise<LookupOutcome> {
+    const id = identityOf(profile).kind === 'native' ? containerHintOf(profile) : '';
+    if (!id) {
+      return 'not-found';
+    }
+    const path = profilePath(profile);
+    try {
+      const icon = await this.integration.getAppIcon({ execPath: path, cmdline: path, pid: -1, matchingPath: path, desktopId: id });
+      if (!parseDataURL(icon)) {
+        return 'failed';
+      }
+      if (isDevMode()) {
+        console.log(`[icon:${profile.Name}] showing the icon of flatpak ${id} (data directory)`)
+      }
+      this.inherited.set(`${profile.Source}/${profile.ID}`, { Type: 'data', Value: icon, Source: 'ui' });
+      return 'found';
+    } catch (err) {
+      const o = classifyLookupError(err);
+      if (isDevMode()) {
+        console.log(`[icon:${profile.Name}] ${o} for flatpak ${id} (data directory): ${JSON.stringify(err)}`)
+      }
+      return o === 'unsupported' ? 'unsupported' : o;
+    }
+  }
+
+  /**
+   * Last resort, display only, for native binaries: a desktop entry whose
+   * program is installed in a directory above the binary's directory, such
+   * as <tree>/bin/Ladybird for <tree>/libexec/RequestServer. The walk goes
+   * upward and stops at the first directory that has any qualifying entry:
+   * if all entries under it name the same icon that icon is shown, if they
+   * disagree nothing is. Generic directories end the walk. Nothing is
+   * stored: a directory is evidence of layout, not proof of identity, and
+   * an unrelated iconless project under the same build directory as one
+   * registered application would be shown with that application's icon.
+   */
+  private async showApplicationTree(profile: AppProfile): Promise<LookupOutcome> {
+    const path = profilePath(profile);
+    if (identityOf(profile).kind !== 'native' || !isCanonicalPath(path)) {
+      return 'not-found';
+    }
+    let dir = dirname(path);
+    for (let depth = 0; depth < 6 && dir !== '/' && !isGenericDirectory(dir); depth++) {
+      try {
+        const icon = await this.integration.getAppIcon({ execPath: path, cmdline: path, pid: -1, matchingPath: path, appDir: dir });
+        if (!parseDataURL(icon)) {
+          return 'failed';
+        }
+        if (isDevMode()) {
+          console.log(`[icon:${profile.Name}] showing the icon of the application installed under ${dir}`)
+        }
+        this.inherited.set(`${profile.Source}/${profile.ID}`, { Type: 'data', Value: icon, Source: 'ui' });
+        return 'found';
+      } catch (err) {
+        const o = classifyLookupError(err);
+        if (o !== 'not-found') {
+          // Disagreeing entries, a lookup error or an unloadable icon: a
+          // broader directory cannot resolve that, so stop here.
+          return o;
+        }
+      }
+      dir = dirname(dir);
+    }
+    return 'not-found';
   }
 
   /**
@@ -500,6 +653,9 @@ export class DefaultIconResolver extends AppIconResolver {
   }
 }
 
+/**
+ * The integration lookup inputs of a process: executable, command line, pid and matching path.
+ */
 function toProcessInfo(process: Process): ProcessInfo {
   return {
     execPath: process.Path,
