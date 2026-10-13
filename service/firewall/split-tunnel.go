@@ -75,6 +75,13 @@ func checkSplitTunneling(ctx context.Context, conn *network.Connection) {
 	case endpoints.Permitted, endpoints.NoMatch:
 	}
 
+	// UDP cannot be relayed through the upstream proxy. Block it instead of
+	// letting it bypass the proxy.
+	if conn.IPProtocol == packet.UDP && layeredProfile.SplitTunProxy() != "" {
+		conn.Block("UDP cannot be relayed through the Split Tunnel proxy", profile.CfgOptionSplitTunProxyKey)
+		return
+	}
+
 	conn.SaveWhenFinished()
 
 	conn.SetVerdictDirectly(network.VerdictRerouteToSplitTun)
@@ -88,9 +95,10 @@ func requestSplitTunneling(ctx context.Context, conn *network.Connection) error 
 	}
 
 	interfaceToBind := layeredProfile.SplitTunInterface()
+	upstreamProxy := layeredProfile.SplitTunProxy()
 
 	// Queue request in splittun module.
-	splitTunCtx, err := splittun.AwaitRequest(conn, interfaceToBind)
+	splitTunCtx, err := splittun.AwaitRequest(conn, interfaceToBind, upstreamProxy)
 	if err != nil {
 		return err
 	}
