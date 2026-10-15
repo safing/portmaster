@@ -245,12 +245,22 @@ export class AppProfileService {
     return this.portapi.delete(`core:profiles/${profile.Source}/${profile.ID}`);
   }
 
-  getProcessesByProfile(profileOrId: AppProfile | string): Observable<Process[]> {
+  /**
+   * Get the recently active processes of a profile.
+   *
+   * @param profileOrId The profile or its scoped ID.
+   * @param leaders When true (the default), each process is replaced by its
+   *                process group leader when one is available. When false,
+   *                the processes that match the profile themselves are
+   *                returned.
+   */
+  getProcessesByProfile(profileOrId: AppProfile | string, leaders: boolean = true): Observable<Process[]> {
     if (typeof profileOrId === 'object') {
       profileOrId = profileOrId.Source + "/" + profileOrId.ID
     }
 
-    return this.http.get<Process[]>(`${this.httpAPI}/v1/process/list/by-profile/${profileOrId}`)
+    const query = leaders ? '' : '?leaders=false';
+    return this.http.get<Process[]>(`${this.httpAPI}/v1/process/list/by-profile/${profileOrId}${query}`)
   }
 
   getProcessByPid(pid: number): Observable<Process> {
