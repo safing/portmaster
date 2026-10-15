@@ -20,7 +20,6 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 PIDFile=/var/lib/portmaster/core-lock.pid
 Environment=LOGLEVEL=info
-Environment=PORTMASTER_ARGS=
 EnvironmentFile=-/etc/default/portmaster
 ProtectSystem=true
 ReadWritePaths=/usr/lib/portmaster
@@ -36,7 +35,7 @@ CapabilityBoundingSet=cap_chown cap_kill cap_net_admin cap_net_bind_service cap_
 StateDirectory=portmaster
 # TODO(ppacher): add --disable-software-updates once it's merged and the release process changed.
 WorkingDirectory=/var/lib/portmaster
-ExecStart=/usr/lib/portmaster/portmaster-core --log-dir=/var/lib/portmaster/log -- $PORTMASTER_ARGS
+ExecStart=/usr/lib/portmaster/portmaster-core --log=${LOGLEVEL} --log-dir=/var/lib/portmaster/log
 ExecStopPost=-/usr/lib/portmaster/portmaster-core --recover-iptables
 
 [Install]
