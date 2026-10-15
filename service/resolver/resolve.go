@@ -415,14 +415,19 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 		}
 	}()
 
+	// A failing resolver is skipped only if another one could still answer.
+	// Asking a failing resolver is better than answering nothing, and a
+	// successful answer clears its failing state.
+	skipFailing := hasHealthyResolver(resolvers)
+
 	// start resolving
 	for _, resolver := range resolvers {
 		if module.mgr.IsDone() {
 			return nil, ErrShuttingDown
 		}
 
-		// Skip failing resolvers.
-		if resolver.Conn.IsFailing() {
+		// Skip failing resolvers while a healthy one can still be asked.
+		if skipFailing && resolver.Conn.IsFailing() {
 			log.Tracer(ctx).Tracef("resolver: skipping resolver %s, because it is failing", resolver)
 			continue
 		}
