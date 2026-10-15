@@ -50,7 +50,7 @@ func TestHasHealthyResolver(t *testing.T) {
 // once.
 func TestResolveAndCacheAsksFailingResolvers(t *testing.T) { //nolint:paralleltest // Replaces the global resolvers.
 	t.Run("only resolver is failing and answers", func(t *testing.T) {
-		addr, queries := startTestDNSServer(t, true)
+		addr, queries := startTestDNSServer(t, dns.RcodeSuccess)
 		failing := newTestResolver(addr)
 		markFailing(t, failing)
 		useGlobalResolvers(t, failing)
@@ -71,22 +71,53 @@ func TestResolveAndCacheAsksFailingResolvers(t *testing.T) { //nolint:parallelte
 	})
 
 	t.Run("only resolver is failing and does not answer", func(t *testing.T) {
-		addr, queries := startTestDNSServer(t, false)
+		addr, _ := startTestDNSServer(t, noReply)
 		failing := newTestResolver(addr)
 		markFailing(t, failing)
 		useGlobalResolvers(t, failing)
 
-		_, err := resolveTestQuery(t, 200*time.Millisecond)
+		// Without the failing resolver being asked, the result would be
+		// ErrNotFound instead of the error of the query.
+		_, err := resolveTestQuery(t, 5*time.Second)
 		if err == nil {
 			t.Fatal("expected an error, got an answer")
 		}
 		if errors.Is(err, ErrNotFound) {
 			t.Errorf("expected a failure, got %q, which is answered as NXDOMAIN", err)
 		}
-		if queries.Load() == 0 {
-			t.Error("failing resolver was not asked")
-		}
 	})
+}
+
+// TestCheckFailingResolvers checks that the recovery check clears a failing
+// resolver as soon as it answers, whatever the answer is, and keeps it failing
+// while it does not answer.
+func TestCheckFailingResolvers(t *testing.T) { //nolint:paralleltest // Replaces the global resolvers.
+	tests := []struct {
+		name        string
+		rcode       int
+		wantFailing bool
+	}{
+		{"answers with another IP", dns.RcodeSuccess, false},
+		{"answers with NXDOMAIN", dns.RcodeNameError, false},
+		{"answers with REFUSED", dns.RcodeRefused, false},
+		{"answers with SERVFAIL", dns.RcodeServerFailure, false},
+		{"does not answer", noReply, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			addr, _ := startTestDNSServer(t, tt.rcode)
+			resolver := newTestResolver(addr)
+			markFailing(t, resolver)
+			useGlobalResolvers(t, resolver)
+
+			if err := module.mgr.Do("check failing resolvers", checkFailingResolvers); err != nil {
+				t.Fatalf("check failed: %s", err)
+			}
+			if got := resolver.Conn.IsFailing(); got != tt.wantFailing {
+				t.Errorf("resolver failing = %v, want %v", got, tt.wantFailing)
+			}
+		})
+	}
 }
 
 // resolveTestQuery resolves the online check domain through the global
@@ -140,26 +171,37 @@ func markFailing(t *testing.T, resolver *Resolver) {
 
 // useGlobalResolvers replaces the global resolvers for the duration of the
 // test.
+//
+// It also clears the resolver config, so that the test resolvers never count
+// as "all configured resolvers failing". Otherwise resolving would send a
+// notification, and the notifications module is not running in these tests.
 func useGlobalResolvers(t *testing.T, resolvers ...*Resolver) {
 	t.Helper()
 
 	resolversLock.Lock()
-	previous := globalResolvers
-	globalResolvers = resolvers
+	previous, previousConfig := globalResolvers, currentResolverConfig
+	globalResolvers, currentResolverConfig = resolvers, nil
 	resolversLock.Unlock()
 
 	t.Cleanup(func() {
 		resolversLock.Lock()
 		defer resolversLock.Unlock()
-		globalResolvers = previous
+		globalResolvers, currentResolverConfig = previous, previousConfig
 	})
 }
 
+// noReply makes startTestDNSServer return an address nobody listens on.
+const noReply = -1
+
 // startTestDNSServer starts a local DNS server for the duration of the test.
-// If answer is true, it answers every query with the expected IP of the online
-// check domain, otherwise it never answers. It returns the server address and
-// the number of queries received.
-func startTestDNSServer(t *testing.T, answer bool) (*net.UDPAddr, *atomic.Int32) {
+// It answers every query with the given RCode, adding 127.0.0.1 to successful
+// answers. That is not the expected IP of the online check domain. It returns
+// the server address and the number of queries received.
+//
+// With noReply, no server is started: queries to the address fail at once
+// instead of waiting for a timeout. A waiting query, for example of the online
+// status check of the running module, could still be running after the test.
+func startTestDNSServer(t *testing.T, rcode int) (*net.UDPAddr, *atomic.Int32) {
 	t.Helper()
 
 	pc, err := net.ListenPacket("udp4", "127.0.0.1:0")
@@ -172,26 +214,35 @@ func startTestDNSServer(t *testing.T, answer bool) (*net.UDPAddr, *atomic.Int32)
 	}
 
 	queries := new(atomic.Int32)
+	if rcode == noReply {
+		if err := pc.Close(); err != nil {
+			t.Fatalf("failed to close listener: %s", err)
+		}
+		return addr, queries
+	}
+
 	started := make(chan struct{})
 	server := &dns.Server{
 		PacketConn:        pc,
 		NotifyStartedFunc: func() { close(started) },
 		Handler: dns.HandlerFunc(func(w dns.ResponseWriter, query *dns.Msg) {
 			queries.Add(1)
-			if !answer || len(query.Question) == 0 {
+			if len(query.Question) == 0 {
 				return
 			}
 
-			reply := new(dns.Msg).SetReply(query)
-			reply.Answer = append(reply.Answer, &dns.A{
-				Hdr: dns.RR_Header{
-					Name:   query.Question[0].Name,
-					Rrtype: dns.TypeA,
-					Class:  dns.ClassINET,
-					Ttl:    60,
-				},
-				A: netenv.DNSTestExpectedIP,
-			})
+			reply := new(dns.Msg).SetRcode(query, rcode)
+			if rcode == dns.RcodeSuccess {
+				reply.Answer = append(reply.Answer, &dns.A{
+					Hdr: dns.RR_Header{
+						Name:   query.Question[0].Name,
+						Rrtype: dns.TypeA,
+						Class:  dns.ClassINET,
+						Ttl:    60,
+					},
+					A: net.IPv4(127, 0, 0, 1),
+				})
+			}
 			if err := w.WriteMsg(reply); err != nil {
 				t.Errorf("failed to send reply: %s", err)
 			}

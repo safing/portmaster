@@ -110,17 +110,14 @@ func checkFailingResolvers(wc *mgr.WorkerCtx) error {
 
 		tracer.Tracef("resolver: testing failed resolver [%d/%d] %s", i+1, len(resolvers), resolver)
 
-		// Test if we can resolve via this resolver.
-		ips, _, err := testConnectivity(ctx, netenv.DNSTestDomain, resolver)
-		switch {
-		case err != nil:
-			tracer.Debugf("resolver: failed resolver %s is still failing: %s", resolver, err)
-		case len(ips) == 0 || !ips[0].Equal(netenv.DNSTestExpectedIP):
-			tracer.Debugf("resolver: failed resolver %s received unexpected A records: %s", resolver, ips)
-		default:
-			// Resolver test successful.
-			tracer.Infof("resolver: check successful, resolver %s is available again", resolver)
+		// Test if the resolver answers. It is failing because it did not answer,
+		// so any answer clears it, whatever the answer is.
+		ips, answered, err := testConnectivity(ctx, netenv.DNSTestDomain, resolver)
+		if answered {
+			tracer.Infof("resolver: check successful, resolver %s is available again (answer: %v, %v)", resolver, ips, err)
 			resolver.Conn.ResetFailure()
+		} else {
+			tracer.Debugf("resolver: failed resolver %s is still failing: %s", resolver, err)
 		}
 
 		// Check if context was canceled.
