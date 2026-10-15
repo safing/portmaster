@@ -202,6 +202,12 @@ func (conn *Connection) packetHandlerWorker(ctx *mgr.WorkerCtx) error {
 }
 
 func packetHandlerHandleConn(ctx context.Context, conn *Connection, pkt packet.Packet) {
+	// Skip packets that already received a verdict while waiting in the queue.
+	// Handling them cannot change anything and would only delay fresh packets.
+	if pkt.VerdictSet() {
+		return
+	}
+
 	conn.Lock()
 	defer conn.Unlock()
 

@@ -201,6 +201,14 @@ func SetExternalVerdictHandler(fn ExtVerdictHandlerFunc) error {
 }
 
 func handlePacket(pkt packet.Packet) {
+	// A packet that already received a verdict - e.g. the default-drop after
+	// the verdict timeout while it waited in the queue - cannot be influenced
+	// anymore. Do not allocate a connection and a handler worker for it, so
+	// that a backlog drains instead of growing.
+	if pkt.VerdictSet() {
+		return
+	}
+
 	// First, check for an existing connection.
 	conn, ok := network.GetConnection(pkt.GetConnectionID())
 	if ok {
