@@ -70,6 +70,17 @@ func (brc *BasicResolverConn) ResetFailure() {
 	}
 }
 
+// hasHealthyResolver reports whether at least one of the resolvers can be
+// queried: it is not failing and not an unavailable link-local resolver.
+func hasHealthyResolver(resolvers []*Resolver) bool {
+	for _, resolver := range resolvers {
+		if !resolver.Conn.IsFailing() && !resolver.LinkLocalUnavailable {
+			return true
+		}
+	}
+	return false
+}
+
 func checkFailingResolvers(wc *mgr.WorkerCtx) error {
 	var resolvers []*Resolver
 
