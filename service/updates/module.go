@@ -497,16 +497,6 @@ func (u *Updater) ForceUpdate() error {
 	})
 }
 
-// UpdateFromURL installs an update from the provided url.
-func (u *Updater) UpdateFromURL(url string) error {
-	u.m.Go("custom update from url", func(w *mgr.WorkerCtx) error {
-		_ = u.updateAndUpgrade(w, []string{url}, true, true)
-		return nil
-	})
-
-	return nil
-}
-
 // Configure makes slight configuration changes to the updater.
 // It locks the index, which can take a while an update is running.
 func (u *Updater) Configure(autoCheck bool, indexURLs []string) {
