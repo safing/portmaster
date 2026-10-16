@@ -20,6 +20,12 @@ import (
 
 var updateInProgress = abool.New()
 
+// obsoleteEntriesCutoffMargin is subtracted from the update start time when
+// purging obsolete entries after a base update. It tolerates small backward
+// clock corrections during the update, which would otherwise make entries
+// written by the update itself look obsolete.
+const obsoleteEntriesCutoffMargin = time.Minute
+
 // tryListUpdate wraps performUpdate but ensures the module's
 // error state is correctly set or resolved.
 func tryListUpdate(ctx context.Context) error {
@@ -83,6 +89,11 @@ func performUpdate(ctx context.Context) error {
 	cleanupRequired := false
 	filterToUpdate := defaultFilter
 
+	// Every entry written by this update has a newer timestamp than this.
+	// The cleanup uses it to tell obsolete entries from current ones,
+	// regardless of how long processing takes (slow disk, system sleep).
+	updateStartedAt := time.Now()
+
 	// perform the actual upgrade by processing each file
 	// in the returned order.
 	for idx, file := range upgradables {
@@ -132,7 +143,11 @@ func performUpdate(ctx context.Context) error {
 	// been updated now. Once we are done, start a worker
 	// for that purpose.
 	if cleanupRequired {
-		if err := module.mgr.Do("filterlists:cleanup", removeAllObsoleteFilterEntries); err != nil {
+		purgeBefore := updateStartedAt.Add(-obsoleteEntriesCutoffMargin)
+		err = module.mgr.Do("filterlists:cleanup", func(wc *mgr.WorkerCtx) error {
+			return removeAllObsoleteFilterEntries(wc, purgeBefore)
+		})
+		if err != nil {
 			// if we failed to remove all stale cache entries
 			// we abort now WITHOUT updating the database version. This means
 			// we'll try again during the next update.
@@ -159,13 +174,13 @@ func performUpdate(ctx context.Context) error {
 	return nil
 }
 
-func removeAllObsoleteFilterEntries(wc *mgr.WorkerCtx) error {
-	log.Debugf("intel/filterlists: cleanup task started, removing obsolete filter list entries ...")
-
-	// TODO: Remember the timestamp we started the last update and use that rather than "one hour ago".
+// removeAllObsoleteFilterEntries deletes all filter list entries that were
+// last written before purgeBefore.
+func removeAllObsoleteFilterEntries(wc *mgr.WorkerCtx, purgeBefore time.Time) error {
+	log.Debugf("intel/filterlists: cleanup task started, removing obsolete filter list entries written before %s ...", purgeBefore)
 
 	// First try to purge with PurgeOlderThan.
-	n, err := cache.PurgeOlderThan(wc.Ctx(), filterListKeyPrefix, time.Now().Add(-time.Hour))
+	n, err := cache.PurgeOlderThan(wc.Ctx(), filterListKeyPrefix, purgeBefore)
 	switch {
 	case err == nil:
 		// Success!
@@ -180,7 +195,7 @@ func removeAllObsoleteFilterEntries(wc *mgr.WorkerCtx) error {
 
 	// Try with regular purge.
 	n, err = cache.Purge(wc.Ctx(), query.New(filterListKeyPrefix).Where(
-		query.Where("UpdatedAt", query.LessThan, time.Now().Add(-time.Hour).Unix()),
+		query.Where("UpdatedAt", query.LessThan, purgeBefore.Unix()),
 	))
 	if err != nil {
 		return err
