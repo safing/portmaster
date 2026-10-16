@@ -88,7 +88,7 @@ func performUpdate(ctx context.Context) error {
 	for idx, file := range upgradables {
 		log.Debugf("intel/filterlists: applying update (%d) %s version %s", idx, file.Filename, file.Version)
 
-		if file == baseFile {
+		if isBaseFile(file) {
 			if idx != 0 {
 				log.Warningf("intel/filterlists: upgrade order is wrong, base file needs to be updated first not at idx %d", idx)
 				// we still continue because after processing the base
@@ -190,48 +190,33 @@ func removeAllObsoleteFilterEntries(wc *mgr.WorkerCtx) error {
 	return nil
 }
 
+// isBaseFile reports whether file is the base filter list file.
+// Artifacts are compared by filename, as the updater returns a
+// new Artifact instance on every GetFile call.
+func isBaseFile(file *updates.Artifact) bool {
+	return file.Filename == baseListFilePath
+}
+
 // getUpgradableFiles returns a slice of filterlists files
 // that should be updated. The files MUST be updated and
 // processed in the returned order!
 func getUpgradableFiles() ([]*updates.Artifact, error) {
 	var updateOrder []*updates.Artifact
 
-	cacheDBInUse := isLoaded()
-
-	newBaseFile, err := module.instance.IntelUpdates().GetFile(baseListFilePath)
-	if err != nil {
-		log.Warningf("intel/filterlists: failed to get base update: %s", err)
-	} else if newer, _ := newBaseFile.IsNewerThan(baseFile); newer || !cacheDBInUse {
-		log.Tracef("intel/filterlists: base file needs update to version %s", newBaseFile.Version)
-		if newBaseFile.SemVer() == nil {
-			log.Warningf("intel/filterlists: base file needs update to version %s, but semver is invalid", newBaseFile.Version)
-		} else {
-			updateOrder = append(updateOrder, newBaseFile)
+	// All available files are candidates. Which of them actually need to be
+	// processed is decided by resolveUpdateOrder based on the cache database
+	// version.
+	for _, filename := range []string{baseListFilePath, intermediateListFilePath, urgentListFilePath} {
+		file, err := module.instance.IntelUpdates().GetFile(filename)
+		if err != nil {
+			log.Warningf("intel/filterlists: failed to get %s update: %s", filename, err)
+			continue
 		}
-	}
-
-	newIntermediateFile, err := module.instance.IntelUpdates().GetFile(intermediateListFilePath)
-	if err != nil {
-		log.Warningf("intel/filterlists: failed to get intermediate update: %s", err)
-	} else if newer, _ := newIntermediateFile.IsNewerThan(intermediateFile); newer || !cacheDBInUse {
-		log.Tracef("intel/filterlists: intermediate file needs update to version %s", newIntermediateFile.Version)
-		if newIntermediateFile.SemVer() == nil {
-			log.Warningf("intel/filterlists: intermediate file needs update to version %s, but semver is invalid", newIntermediateFile.Version)
-		} else {
-			updateOrder = append(updateOrder, newIntermediateFile)
+		if file.SemVer() == nil {
+			log.Warningf("intel/filterlists: %s has version %s, but semver is invalid", filename, file.Version)
+			continue
 		}
-	}
-
-	newUrgentFile, err := module.instance.IntelUpdates().GetFile(urgentListFilePath)
-	if err != nil {
-		log.Warningf("intel/filterlists: failed to get urgent update: %s", err)
-	} else if newer, _ := newUrgentFile.IsNewerThan(urgentFile); newer || !cacheDBInUse {
-		log.Tracef("intel/filterlists: urgent file needs update to version %s", newUrgentFile.Version)
-		if newUrgentFile.SemVer() == nil {
-			log.Warningf("intel/filterlists: urgent file needs update to version %s, but semver is invalid", newUrgentFile.Version)
-		} else {
-			updateOrder = append(updateOrder, newUrgentFile)
-		}
+		updateOrder = append(updateOrder, file)
 	}
 
 	return resolveUpdateOrder(updateOrder)
@@ -259,7 +244,7 @@ func resolveUpdateOrder(updateOrder []*updates.Artifact) ([]*updates.Artifact, e
 	startAtIdx := -1
 	for idx, file := range updateOrder {
 		log.Tracef("intel/filterlists: checking file with version %s against %s", file.SemVer(), cacheDBVersion)
-		if file.SemVer().GreaterThan(cacheDBVersion) && (startAtIdx == -1 || file == baseFile) {
+		if file.SemVer().GreaterThan(cacheDBVersion) && (startAtIdx == -1 || isBaseFile(file)) {
 			startAtIdx = idx
 		}
 	}
