@@ -234,27 +234,39 @@ func getUpgradableFiles() ([]*updates.Artifact, error) {
 		updateOrder = append(updateOrder, file)
 	}
 
-	return resolveUpdateOrder(updateOrder)
+	return resolveUpdateOrder(updateOrder, getCacheDatabaseVersionOrZero())
 }
 
-func resolveUpdateOrder(updateOrder []*updates.Artifact) ([]*updates.Artifact, error) {
+// getCacheDatabaseVersionOrZero returns the version the cache database was
+// last updated to, or v0.0.0 if the filter lists are not loaded or the
+// version is unknown.
+func getCacheDatabaseVersionOrZero() *version.Version {
+	zeroVersion, _ := version.NewSemver("v0.0.0")
+
+	if !isLoaded() {
+		return zeroVersion
+	}
+
+	cacheDBVersion, err := getCacheDatabaseVersion()
+	if err != nil {
+		if !errors.Is(err, database.ErrNotFound) {
+			log.Errorf("intel/filterlists: failed to get cache database version: %s", err)
+		}
+		return zeroVersion
+	}
+
+	return cacheDBVersion
+}
+
+// resolveUpdateOrder sorts updateOrder by ascending version and returns the
+// files that need to be applied on top of a cache database at cacheDBVersion,
+// in the order they must be processed. If a base file newer than
+// cacheDBVersion is available, processing starts with it and older files are
+// skipped, as the base file already contains their changes.
+func resolveUpdateOrder(updateOrder []*updates.Artifact, cacheDBVersion *version.Version) ([]*updates.Artifact, error) {
 	// sort the update order by ascending version
 	sort.Sort(byAscVersion(updateOrder))
 	log.Tracef("intel/filterlists: order of potential updates: %v", updateOrder)
-
-	var cacheDBVersion *version.Version
-	if !isLoaded() {
-		cacheDBVersion, _ = version.NewSemver("v0.0.0")
-	} else {
-		var err error
-		cacheDBVersion, err = getCacheDatabaseVersion()
-		if err != nil {
-			if !errors.Is(err, database.ErrNotFound) {
-				log.Errorf("intel/filterlists: failed to get cache database version: %s", err)
-			}
-			cacheDBVersion, _ = version.NewSemver("v0.0.0")
-		}
-	}
 
 	startAtIdx := -1
 	for idx, file := range updateOrder {
