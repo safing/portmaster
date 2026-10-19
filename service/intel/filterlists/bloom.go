@@ -23,6 +23,9 @@ type scopedBloom struct {
 	country *ring.Ring
 	ipv4    *ring.Ring
 	ipv6    *ring.Ring
+
+	// number of add() calls per entity type, duplicates included; used for logging only.
+	added map[string]int
 }
 
 func newScopedBloom() *scopedBloom {
@@ -42,6 +45,7 @@ func newScopedBloom() *scopedBloom {
 		country: mustInit(countryBfSize),
 		ipv4:    mustInit(ipv4BfSize),
 		ipv6:    mustInit(ipv6BfSize),
+		added:   make(map[string]int),
 	}
 }
 
@@ -82,6 +86,23 @@ func (bf *scopedBloom) add(scope, value string) {
 	}
 
 	r.Add([]byte(value))
+	bf.added[strings.ToLower(scope)]++
+}
+
+// capacityReport returns the values added per filter next to its capacity.
+// Counts of filters loaded from the cache start at zero.
+func (bf *scopedBloom) capacityReport() string {
+	bf.rw.RLock()
+	defer bf.rw.RUnlock()
+
+	return fmt.Sprintf(
+		"domain=%d/%d asn=%d/%d country=%d/%d ipv4=%d/%d ipv6=%d/%d",
+		bf.added["domain"], domainBfSize,
+		bf.added["asn"], asnBfSize,
+		bf.added["country"], countryBfSize,
+		bf.added["ipv4"], ipv4BfSize,
+		bf.added["ipv6"], ipv6BfSize,
+	)
 }
 
 func (bf *scopedBloom) test(scope, value string) bool {
@@ -155,6 +176,7 @@ func (bf *scopedBloom) replaceWith(other *scopedBloom) {
 	bf.country = other.country
 	bf.ipv4 = other.ipv4
 	bf.ipv6 = other.ipv6
+	bf.added = other.added
 }
 
 type bloomFilterRecord struct {

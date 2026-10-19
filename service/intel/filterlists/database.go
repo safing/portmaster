@@ -24,13 +24,16 @@ const (
 	listIndexFilePath        = "index.dsd"
 )
 
-// default bloomfilter element sizes (estimated).
+// Bloom filter capacities per entity type.
+//
+// TODO: Review the capacities when intel sources are added, or derive them
+// from the entry counts of the base file instead of using fixed values.
 const (
-	domainBfSize  = 1000000
-	asnBfSize     = 1000
-	countryBfSize = 100
-	ipv4BfSize    = 100
-	ipv6BfSize    = 100
+	domainBfSize  = 2000000
+	asnBfSize     = 10000
+	countryBfSize = 300
+	ipv4BfSize    = 200000
+	ipv6BfSize    = 20000
 )
 
 const bfFalsePositiveRate = 0.001

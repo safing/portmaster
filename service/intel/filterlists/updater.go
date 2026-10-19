@@ -120,6 +120,8 @@ func performUpdate(ctx context.Context) error {
 	}
 
 	if filterToUpdate != defaultFilter {
+		log.Infof("intel/filterlists: rebuilt bloom filters (added/capacity): %s", filterToUpdate.capacityReport())
+
 		// replace the bloom filters in our default
 		// filter.
 		defaultFilter.replaceWith(filterToUpdate)
