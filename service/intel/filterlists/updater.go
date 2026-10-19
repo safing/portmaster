@@ -20,6 +20,12 @@ import (
 
 var updateInProgress = abool.New()
 
+// obsoleteEntriesCutoffMargin is subtracted from the update start time when
+// purging obsolete entries after a base update. It tolerates small backward
+// clock corrections during the update, which would otherwise make entries
+// written by the update itself look obsolete.
+const obsoleteEntriesCutoffMargin = time.Minute
+
 // tryListUpdate wraps performUpdate but ensures the module's
 // error state is correctly set or resolved.
 func tryListUpdate(ctx context.Context) error {
@@ -83,12 +89,17 @@ func performUpdate(ctx context.Context) error {
 	cleanupRequired := false
 	filterToUpdate := defaultFilter
 
+	// Every entry written by this update has a newer timestamp than this.
+	// The cleanup uses it to tell obsolete entries from current ones,
+	// regardless of how long processing takes (slow disk, system sleep).
+	updateStartedAt := time.Now()
+
 	// perform the actual upgrade by processing each file
 	// in the returned order.
 	for idx, file := range upgradables {
 		log.Debugf("intel/filterlists: applying update (%d) %s version %s", idx, file.Filename, file.Version)
 
-		if file == baseFile {
+		if isBaseFile(file) {
 			if idx != 0 {
 				log.Warningf("intel/filterlists: upgrade order is wrong, base file needs to be updated first not at idx %d", idx)
 				// we still continue because after processing the base
@@ -132,7 +143,11 @@ func performUpdate(ctx context.Context) error {
 	// been updated now. Once we are done, start a worker
 	// for that purpose.
 	if cleanupRequired {
-		if err := module.mgr.Do("filterlists:cleanup", removeAllObsoleteFilterEntries); err != nil {
+		purgeBefore := updateStartedAt.Add(-obsoleteEntriesCutoffMargin)
+		err = module.mgr.Do("filterlists:cleanup", func(wc *mgr.WorkerCtx) error {
+			return removeAllObsoleteFilterEntries(wc, purgeBefore)
+		})
+		if err != nil {
 			// if we failed to remove all stale cache entries
 			// we abort now WITHOUT updating the database version. This means
 			// we'll try again during the next update.
@@ -159,13 +174,13 @@ func performUpdate(ctx context.Context) error {
 	return nil
 }
 
-func removeAllObsoleteFilterEntries(wc *mgr.WorkerCtx) error {
-	log.Debugf("intel/filterlists: cleanup task started, removing obsolete filter list entries ...")
-
-	// TODO: Remember the timestamp we started the last update and use that rather than "one hour ago".
+// removeAllObsoleteFilterEntries deletes all filter list entries that were
+// last written before purgeBefore.
+func removeAllObsoleteFilterEntries(wc *mgr.WorkerCtx, purgeBefore time.Time) error {
+	log.Debugf("intel/filterlists: cleanup task started, removing obsolete filter list entries written before %s ...", purgeBefore)
 
 	// First try to purge with PurgeOlderThan.
-	n, err := cache.PurgeOlderThan(wc.Ctx(), filterListKeyPrefix, time.Now().Add(-time.Hour))
+	n, err := cache.PurgeOlderThan(wc.Ctx(), filterListKeyPrefix, purgeBefore)
 	switch {
 	case err == nil:
 		// Success!
@@ -180,7 +195,7 @@ func removeAllObsoleteFilterEntries(wc *mgr.WorkerCtx) error {
 
 	// Try with regular purge.
 	n, err = cache.Purge(wc.Ctx(), query.New(filterListKeyPrefix).Where(
-		query.Where("UpdatedAt", query.LessThan, time.Now().Add(-time.Hour).Unix()),
+		query.Where("UpdatedAt", query.LessThan, purgeBefore.Unix()),
 	))
 	if err != nil {
 		return err
@@ -190,76 +205,73 @@ func removeAllObsoleteFilterEntries(wc *mgr.WorkerCtx) error {
 	return nil
 }
 
+// isBaseFile reports whether file is the base filter list file.
+// Artifacts are compared by filename, as the updater returns a
+// new Artifact instance on every GetFile call.
+func isBaseFile(file *updates.Artifact) bool {
+	return file.Filename == baseListFilePath
+}
+
 // getUpgradableFiles returns a slice of filterlists files
 // that should be updated. The files MUST be updated and
 // processed in the returned order!
 func getUpgradableFiles() ([]*updates.Artifact, error) {
 	var updateOrder []*updates.Artifact
 
-	cacheDBInUse := isLoaded()
-
-	newBaseFile, err := module.instance.IntelUpdates().GetFile(baseListFilePath)
-	if err != nil {
-		log.Warningf("intel/filterlists: failed to get base update: %s", err)
-	} else if newer, _ := newBaseFile.IsNewerThan(baseFile); newer || !cacheDBInUse {
-		log.Tracef("intel/filterlists: base file needs update to version %s", newBaseFile.Version)
-		if newBaseFile.SemVer() == nil {
-			log.Warningf("intel/filterlists: base file needs update to version %s, but semver is invalid", newBaseFile.Version)
-		} else {
-			updateOrder = append(updateOrder, newBaseFile)
+	// All available files are candidates. Which of them actually need to be
+	// processed is decided by resolveUpdateOrder based on the cache database
+	// version.
+	for _, filename := range []string{baseListFilePath, intermediateListFilePath, urgentListFilePath} {
+		file, err := module.instance.IntelUpdates().GetFile(filename)
+		if err != nil {
+			log.Warningf("intel/filterlists: failed to get %s update: %s", filename, err)
+			continue
 		}
+		if file.SemVer() == nil {
+			log.Warningf("intel/filterlists: %s has version %s, but semver is invalid", filename, file.Version)
+			continue
+		}
+		updateOrder = append(updateOrder, file)
 	}
 
-	newIntermediateFile, err := module.instance.IntelUpdates().GetFile(intermediateListFilePath)
-	if err != nil {
-		log.Warningf("intel/filterlists: failed to get intermediate update: %s", err)
-	} else if newer, _ := newIntermediateFile.IsNewerThan(intermediateFile); newer || !cacheDBInUse {
-		log.Tracef("intel/filterlists: intermediate file needs update to version %s", newIntermediateFile.Version)
-		if newIntermediateFile.SemVer() == nil {
-			log.Warningf("intel/filterlists: intermediate file needs update to version %s, but semver is invalid", newIntermediateFile.Version)
-		} else {
-			updateOrder = append(updateOrder, newIntermediateFile)
-		}
-	}
-
-	newUrgentFile, err := module.instance.IntelUpdates().GetFile(urgentListFilePath)
-	if err != nil {
-		log.Warningf("intel/filterlists: failed to get urgent update: %s", err)
-	} else if newer, _ := newUrgentFile.IsNewerThan(urgentFile); newer || !cacheDBInUse {
-		log.Tracef("intel/filterlists: urgent file needs update to version %s", newUrgentFile.Version)
-		if newUrgentFile.SemVer() == nil {
-			log.Warningf("intel/filterlists: urgent file needs update to version %s, but semver is invalid", newUrgentFile.Version)
-		} else {
-			updateOrder = append(updateOrder, newUrgentFile)
-		}
-	}
-
-	return resolveUpdateOrder(updateOrder)
+	return resolveUpdateOrder(updateOrder, getCacheDatabaseVersionOrZero())
 }
 
-func resolveUpdateOrder(updateOrder []*updates.Artifact) ([]*updates.Artifact, error) {
+// getCacheDatabaseVersionOrZero returns the version the cache database was
+// last updated to, or v0.0.0 if the filter lists are not loaded or the
+// version is unknown.
+func getCacheDatabaseVersionOrZero() *version.Version {
+	zeroVersion, _ := version.NewSemver("v0.0.0")
+
+	if !isLoaded() {
+		return zeroVersion
+	}
+
+	cacheDBVersion, err := getCacheDatabaseVersion()
+	if err != nil {
+		if !errors.Is(err, database.ErrNotFound) {
+			log.Errorf("intel/filterlists: failed to get cache database version: %s", err)
+		}
+		return zeroVersion
+	}
+
+	return cacheDBVersion
+}
+
+// resolveUpdateOrder sorts updateOrder by ascending version and returns the
+// files that need to be applied on top of a cache database at cacheDBVersion,
+// in the order they must be processed. If a base file newer than
+// cacheDBVersion is available, processing starts with it and older files are
+// skipped, as the base file already contains their changes.
+func resolveUpdateOrder(updateOrder []*updates.Artifact, cacheDBVersion *version.Version) ([]*updates.Artifact, error) {
 	// sort the update order by ascending version
 	sort.Sort(byAscVersion(updateOrder))
 	log.Tracef("intel/filterlists: order of potential updates: %v", updateOrder)
 
-	var cacheDBVersion *version.Version
-	if !isLoaded() {
-		cacheDBVersion, _ = version.NewSemver("v0.0.0")
-	} else {
-		var err error
-		cacheDBVersion, err = getCacheDatabaseVersion()
-		if err != nil {
-			if !errors.Is(err, database.ErrNotFound) {
-				log.Errorf("intel/filterlists: failed to get cache database version: %s", err)
-			}
-			cacheDBVersion, _ = version.NewSemver("v0.0.0")
-		}
-	}
-
 	startAtIdx := -1
 	for idx, file := range updateOrder {
 		log.Tracef("intel/filterlists: checking file with version %s against %s", file.SemVer(), cacheDBVersion)
-		if file.SemVer().GreaterThan(cacheDBVersion) && (startAtIdx == -1 || file == baseFile) {
+		if file.SemVer().GreaterThan(cacheDBVersion) && (startAtIdx == -1 || isBaseFile(file)) {
 			startAtIdx = idx
 		}
 	}

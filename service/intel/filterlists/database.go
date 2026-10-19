@@ -38,11 +38,6 @@ const bfFalsePositiveRate = 0.001
 var (
 	filterListLock sync.RWMutex
 
-	// Updater files for tracking upgrades.
-	baseFile         *updates.Artifact
-	intermediateFile *updates.Artifact
-	urgentFile       *updates.Artifact
-
 	filterListsLoaded chan struct{}
 )
 
