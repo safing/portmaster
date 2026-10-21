@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"slices"
 	"time"
 
 	"github.com/safing/portmaster/base/log"
@@ -70,15 +71,26 @@ func (brc *BasicResolverConn) ResetFailure() {
 	}
 }
 
-// hasHealthyResolver reports whether at least one of the resolvers can be
-// queried: it is not failing and not an unavailable link-local resolver.
-func hasHealthyResolver(resolvers []*Resolver) bool {
+// orderResolvers returns the resolvers with the failing ones moved to the end,
+// so that they are asked only when no other resolver answers. This way, a
+// wrongly marked resolver is used again, and its failing state cleared, by
+// normal queries and not only by the periodic recovery check.
+// The given slice is not modified, as it may be shared.
+func orderResolvers(resolvers []*Resolver) []*Resolver {
+	if !slices.ContainsFunc(resolvers, func(r *Resolver) bool { return r.Conn.IsFailing() }) {
+		return resolvers
+	}
+
+	ordered := make([]*Resolver, 0, len(resolvers))
+	var failing []*Resolver
 	for _, resolver := range resolvers {
-		if !resolver.Conn.IsFailing() && !resolver.LinkLocalUnavailable {
-			return true
+		if resolver.Conn.IsFailing() {
+			failing = append(failing, resolver)
+		} else {
+			ordered = append(ordered, resolver)
 		}
 	}
-	return false
+	return append(ordered, failing...)
 }
 
 func checkFailingResolvers(wc *mgr.WorkerCtx) error {

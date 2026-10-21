@@ -415,10 +415,13 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 		}
 	}()
 
-	// A failing resolver is skipped only if another one could still answer.
-	// Asking a failing resolver is better than answering nothing, and a
-	// successful answer clears its failing state.
-	skipFailing := hasHealthyResolver(resolvers)
+	// Ask failing resolvers last, but still ask them: asking a failing resolver
+	// is better than answering nothing, and an answer clears its failing state.
+	resolvers = orderResolvers(resolvers)
+	// answered is set once a resolver answered, even with "not found". Some
+	// scopes continue to the next resolver after "not found". A failing resolver
+	// is skipped then: its timeout would replace "not found" with a failure.
+	var answered bool
 
 	// start resolving
 	for _, resolver := range resolvers {
@@ -426,16 +429,18 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 			return nil, ErrShuttingDown
 		}
 
-		// Skip failing resolvers while a healthy one can still be asked.
-		if skipFailing && resolver.Conn.IsFailing() {
-			log.Tracer(ctx).Tracef("resolver: skipping resolver %s, because it is failing", resolver)
-			continue
-		}
-
 		// Skip unreachable link-local resolvers.
 		if resolver.LinkLocalUnavailable {
 			log.Tracer(ctx).Tracef("resolver: skipping resolver %s, because it is link-local and not available", resolver)
 			continue
+		}
+
+		if resolver.Conn.IsFailing() {
+			if answered {
+				log.Tracer(ctx).Tracef("resolver: skipping failing resolver %s, because another resolver answered", resolver)
+				continue
+			}
+			log.Tracer(ctx).Tracef("resolver: asking failing resolver %s, because no resolver answered so far", resolver)
 		}
 
 		// resolve
@@ -446,6 +451,7 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 			case errors.Is(err, ErrNotFound):
 				// NXDomain, or similar
 				if tryAll {
+					answered = true
 					continue
 				}
 				return nil, err
@@ -483,6 +489,7 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 		}
 		// Check if request succeeded and whether we should try another resolver.
 		if rrCache.RCode != dns.RcodeSuccess && tryAll {
+			answered = true
 			continue
 		}
 

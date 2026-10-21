@@ -13,35 +13,51 @@ import (
 	"github.com/safing/portmaster/service/netenv"
 )
 
-func TestHasHealthyResolver(t *testing.T) {
+func TestOrderResolvers(t *testing.T) {
 	t.Parallel()
 
-	healthy := newTestResolver(&net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 53})
-	failing := newTestResolver(&net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 53})
-	markFailing(t, failing)
-	linkLocalUnavailable := newTestResolver(&net.UDPAddr{IP: net.IPv4(169, 254, 0, 1), Port: 53})
-	linkLocalUnavailable.LinkLocalUnavailable = true
+	healthy1 := newTestResolver(&net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 53})
+	healthy2 := newTestResolver(&net.UDPAddr{IP: net.IPv4(127, 0, 0, 2), Port: 53})
+	failing1 := newTestResolver(&net.UDPAddr{IP: net.IPv4(127, 0, 0, 3), Port: 53})
+	markFailing(t, failing1)
+	failing2 := newTestResolver(&net.UDPAddr{IP: net.IPv4(127, 0, 0, 4), Port: 53})
+	markFailing(t, failing2)
 
 	tests := []struct {
 		name      string
 		resolvers []*Resolver
-		want      bool
+		want      []*Resolver
 	}{
-		{"no resolvers", nil, false},
-		{"healthy resolver", []*Resolver{failing, healthy}, true},
-		{"only failing resolvers", []*Resolver{failing, failing}, false},
-		{"failing and unavailable link-local resolver", []*Resolver{failing, linkLocalUnavailable}, false},
+		{"no resolvers", nil, nil},
+		{"only healthy resolvers", []*Resolver{healthy1, healthy2}, []*Resolver{healthy1, healthy2}},
+		{"only failing resolvers", []*Resolver{failing1, failing2}, []*Resolver{failing1, failing2}},
+		{"failing resolver already last", []*Resolver{healthy1, healthy2, failing1}, []*Resolver{healthy1, healthy2, failing1}},
+		{"failing resolvers are moved last", []*Resolver{failing1, healthy1, failing2, healthy2}, []*Resolver{healthy1, healthy2, failing1, failing2}},
 	}
 	for _, tt := range tests {
-		if got := hasHealthyResolver(tt.resolvers); got != tt.want {
-			t.Errorf("%s: hasHealthyResolver() = %v, want %v", tt.name, got, tt.want)
+		input := append([]*Resolver(nil), tt.resolvers...)
+		got := orderResolvers(tt.resolvers)
+		for i := range input {
+			if tt.resolvers[i] != input[i] {
+				t.Errorf("%s: orderResolvers() modified the given slice at index %d", tt.name, i)
+				break
+			}
+		}
+		if len(got) != len(tt.want) {
+			t.Errorf("%s: orderResolvers() returned %d resolvers, want %d", tt.name, len(got), len(tt.want))
+			continue
+		}
+		for i := range got {
+			if got[i] != tt.want[i] {
+				t.Errorf("%s: orderResolvers()[%d] = %s, want %s", tt.name, i, got[i].ServerAddress, tt.want[i].ServerAddress)
+			}
 		}
 	}
 }
 
 // TestResolveAndCacheAsksFailingResolvers checks that a failing resolver is
-// asked when no other resolver can be asked, instead of answering nothing.
-// Which resolvers are skipped is covered by TestHasHealthyResolver.
+// asked after the other resolvers did not answer, instead of never, and that
+// it is not asked while another resolver answers.
 //
 // The test queries the online check domain, which is resolved even while the
 // device is offline, so the result does not depend on the network of the test
@@ -49,13 +65,94 @@ func TestHasHealthyResolver(t *testing.T) {
 // domain at the same time, so the resolver is checked to be asked at least
 // once.
 func TestResolveAndCacheAsksFailingResolvers(t *testing.T) { //nolint:paralleltest // Replaces the global resolvers.
+	// Runs first: it needs the online status, and the resolvers of the other
+	// subtests do not answer the online check of the running module.
+	t.Run("failing resolver is not asked after a not found answer", func(t *testing.T) {
+		// Special-use domains are tried on all local resolvers, and a "not
+		// found" answer continues with the next one.
+		healthyAddr, healthyQueries := startTestDNSServer(t, dns.RcodeNameError)
+		healthy := newTestResolver(healthyAddr)
+		failingAddr, failingQueries := startTestDNSServer(t, dns.RcodeSuccess)
+		failing := newTestResolver(failingAddr)
+		markFailing(t, failing)
+		useTestResolvers(t, healthy, failing)
+		requireOnline(t)
+
+		rrCache, err := resolveTestQuery(t, "host.lan.")
+		if err != nil {
+			t.Fatalf("query failed: %s", err)
+		}
+		if rrCache.RCode != dns.RcodeNameError {
+			t.Errorf("expected NXDOMAIN, got RCode %s", dns.RcodeToString[rrCache.RCode])
+		}
+		if healthyQueries.Load() == 0 {
+			t.Error("healthy resolver was not asked")
+		}
+		if failingQueries.Load() != 0 {
+			t.Errorf("failing resolver was asked %d times", failingQueries.Load())
+		}
+		if !failing.Conn.IsFailing() {
+			t.Error("failing state was cleared without the resolver being asked")
+		}
+	})
+
+	t.Run("failing resolver is not asked while a healthy one answers", func(t *testing.T) {
+		healthyAddr, healthyQueries := startTestDNSServer(t, dns.RcodeSuccess)
+		healthy := newTestResolver(healthyAddr)
+		failingAddr, failingQueries := startTestDNSServer(t, dns.RcodeSuccess)
+		failing := newTestResolver(failingAddr)
+		markFailing(t, failing)
+		// The failing resolver is configured first.
+		useTestResolvers(t, failing, healthy)
+
+		rrCache, err := resolveTestQuery(t, netenv.DNSTestDomain)
+		if err != nil {
+			t.Fatalf("query failed: %s", err)
+		}
+		if rrCache.RCode != dns.RcodeSuccess || len(rrCache.Answer) == 0 {
+			t.Errorf("expected an answer, got RCode %s with %d records", dns.RcodeToString[rrCache.RCode], len(rrCache.Answer))
+		}
+		if healthyQueries.Load() == 0 {
+			t.Error("healthy resolver was not asked")
+		}
+		if failingQueries.Load() != 0 {
+			t.Errorf("failing resolver was asked %d times", failingQueries.Load())
+		}
+		if !failing.Conn.IsFailing() {
+			t.Error("failing state was cleared without the resolver being asked")
+		}
+	})
+
+	t.Run("failing resolver is asked after the healthy one does not answer", func(t *testing.T) {
+		healthyAddr, _ := startTestDNSServer(t, noReply)
+		healthy := newTestResolver(healthyAddr)
+		failingAddr, failingQueries := startTestDNSServer(t, dns.RcodeSuccess)
+		failing := newTestResolver(failingAddr)
+		markFailing(t, failing)
+		useTestResolvers(t, healthy, failing)
+
+		rrCache, err := resolveTestQuery(t, netenv.DNSTestDomain)
+		if err != nil {
+			t.Fatalf("query failed: %s", err)
+		}
+		if rrCache.RCode != dns.RcodeSuccess || len(rrCache.Answer) == 0 {
+			t.Errorf("expected an answer, got RCode %s with %d records", dns.RcodeToString[rrCache.RCode], len(rrCache.Answer))
+		}
+		if failingQueries.Load() == 0 {
+			t.Error("failing resolver was not asked")
+		}
+		if failing.Conn.IsFailing() {
+			t.Error("failing state was not cleared by the answer")
+		}
+	})
+
 	t.Run("only resolver is failing and answers", func(t *testing.T) {
 		addr, queries := startTestDNSServer(t, dns.RcodeSuccess)
 		failing := newTestResolver(addr)
 		markFailing(t, failing)
-		useGlobalResolvers(t, failing)
+		useTestResolvers(t, failing)
 
-		rrCache, err := resolveTestQuery(t, 5*time.Second)
+		rrCache, err := resolveTestQuery(t, netenv.DNSTestDomain)
 		if err != nil {
 			t.Fatalf("query failed: %s", err)
 		}
@@ -74,11 +171,11 @@ func TestResolveAndCacheAsksFailingResolvers(t *testing.T) { //nolint:parallelte
 		addr, _ := startTestDNSServer(t, noReply)
 		failing := newTestResolver(addr)
 		markFailing(t, failing)
-		useGlobalResolvers(t, failing)
+		useTestResolvers(t, failing)
 
 		// Without the failing resolver being asked, the result would be
 		// ErrNotFound instead of the error of the query.
-		_, err := resolveTestQuery(t, 5*time.Second)
+		_, err := resolveTestQuery(t, netenv.DNSTestDomain)
 		if err == nil {
 			t.Fatal("expected an error, got an answer")
 		}
@@ -108,7 +205,7 @@ func TestCheckFailingResolvers(t *testing.T) { //nolint:paralleltest // Replaces
 			addr, _ := startTestDNSServer(t, tt.rcode)
 			resolver := newTestResolver(addr)
 			markFailing(t, resolver)
-			useGlobalResolvers(t, resolver)
+			useTestResolvers(t, resolver)
 
 			if err := module.mgr.Do("check failing resolvers", checkFailingResolvers); err != nil {
 				t.Fatalf("check failed: %s", err)
@@ -120,16 +217,16 @@ func TestCheckFailingResolvers(t *testing.T) { //nolint:paralleltest // Replaces
 	}
 }
 
-// resolveTestQuery resolves the online check domain through the global
-// resolvers, without caching.
-func resolveTestQuery(t *testing.T, timeout time.Duration) (*RRCache, error) {
+// resolveTestQuery resolves the given domain through the test resolvers,
+// without caching.
+func resolveTestQuery(t *testing.T, fqdn string) (*RRCache, error) {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	q := &Query{
-		FQDN:      netenv.DNSTestDomain,
+		FQDN:      fqdn,
 		QType:     dns.Type(dns.TypeA),
 		NoCaching: true,
 	}
@@ -169,25 +266,50 @@ func markFailing(t *testing.T, resolver *Resolver) {
 	conn.failing.Set()
 }
 
-// useGlobalResolvers replaces the global resolvers for the duration of the
-// test.
+// useTestResolvers replaces the global and local resolvers for the duration
+// of the test.
 //
 // It also clears the resolver config, so that the test resolvers never count
 // as "all configured resolvers failing". Otherwise resolving would send a
 // notification, and the notifications module is not running in these tests.
-func useGlobalResolvers(t *testing.T, resolvers ...*Resolver) {
+func useTestResolvers(t *testing.T, resolvers ...*Resolver) {
 	t.Helper()
 
 	resolversLock.Lock()
-	previous, previousConfig := globalResolvers, currentResolverConfig
-	globalResolvers, currentResolverConfig = resolvers, nil
+	previousGlobal, previousLocal, previousConfig := globalResolvers, localResolvers, currentResolverConfig
+	globalResolvers, localResolvers, currentResolverConfig = resolvers, resolvers, nil
 	resolversLock.Unlock()
 
 	t.Cleanup(func() {
 		resolversLock.Lock()
 		defer resolversLock.Unlock()
-		globalResolvers, currentResolverConfig = previous, previousConfig
+		globalResolvers, localResolvers, currentResolverConfig = previousGlobal, previousLocal, previousConfig
 	})
+}
+
+// requireOnline makes sure the device counts as online for the duration of
+// the test. Queries other than the online check query are not resolved while
+// offline, and the test resolvers of other tests do not answer the online
+// check of the running module.
+func requireOnline(t *testing.T) {
+	t.Helper()
+
+	wasConnected := netenv.ConnectedToDNS.IsSet()
+	netenv.ConnectedToDNS.Set()
+	t.Cleanup(func() { netenv.ConnectedToDNS.SetTo(wasConnected) })
+
+	// A check that is already running returns its own, older result first.
+	// Check again until the result reflects the connected DNS.
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		status := netenv.CheckAndGetOnlineStatus()
+		if status == netenv.StatusOnline {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("expected online status %s, got %s", netenv.StatusOnline, status)
+		}
+	}
 }
 
 // noReply makes startTestDNSServer return an address nobody listens on.
