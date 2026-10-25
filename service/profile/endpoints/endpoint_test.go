@@ -62,6 +62,19 @@ func TestEndpointParsing(t *testing.T) {
 
 	// TODO: Test fails:
 	// testParsing(t, "+ 1234")
+
+	// invalid protocol and ports
+	testParsingFails(t, "+ * TCP/443-80")
+	testParsingFails(t, "- * UDP/HTTPS-HTTP")
+}
+
+func testParsingFails(t *testing.T, value string) {
+	t.Helper()
+
+	ep, err := parseEndpoint(value)
+	if err == nil {
+		t.Errorf(`parsing "%s" should fail, but returned "%s"`, value, ep.String())
+	}
 }
 
 func testParsing(t *testing.T, value string) {
