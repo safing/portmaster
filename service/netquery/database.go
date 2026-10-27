@@ -153,6 +153,15 @@ func New(dbPath string) (*Database, error) {
 			return nil, fmt.Errorf("failed to attach history database: %w", err)
 		}
 
+		// All connections share the pager of the history database (shared
+		// cache). Attaching applies the default synchronous=FULL to that shared
+		// pager again, which silently undoes the setting of the write connection
+		// and makes every history write wait for an fsync.
+		if err := sqlitex.ExecuteTransient(c, "PRAGMA history.synchronous=NORMAL;", nil); err != nil {
+			_ = c.Close()
+			return nil, fmt.Errorf("failed to configure history database: %w", err)
+		}
+
 		return c, nil
 	}
 
@@ -268,6 +277,21 @@ func (db *Database) ApplyMigrations() error {
 
 	if err := sqlitex.ExecuteTransient(db.writeConn, "ATTACH DATABASE '"+db.historyPath+"?mode=rwc' AS 'history';", nil); err != nil {
 		return fmt.Errorf("failed to attach history database: %w", err)
+	}
+
+	// The OpenWAL flag of the write connection only applies to the main
+	// database. Configure the attached history database explicitly: the
+	// write-ahead log with synchronous=NORMAL commits without an fsync, which
+	// is what the bandwidth updates (once per second per connection) need.
+	// NORMAL can lose the last transactions on power loss, but keeps the
+	// database consistent, which is fine for connection history.
+	for _, pragma := range []string{
+		"PRAGMA history.journal_mode=WAL;",
+		"PRAGMA history.synchronous=NORMAL;",
+	} {
+		if err := sqlitex.ExecuteTransient(db.writeConn, pragma, nil); err != nil {
+			return fmt.Errorf("failed to configure history database (%s): %w", pragma, err)
+		}
 	}
 
 	dbNames := []string{"main", "history"}
