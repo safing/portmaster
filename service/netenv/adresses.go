@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/network/netutils"
@@ -52,16 +55,52 @@ func GetAssignedGlobalAddresses() (ipv4 []net.IP, ipv6 []net.IP, err error) {
 }
 
 var (
-	myNetworks                   []*net.IPNet
-	myNetworksLock               sync.Mutex
+	// myNetworksAtomic holds the host's networks. A refresh replaces the slice
+	// and never modifies it, so readers need no lock.
+	myNetworksAtomic atomic.Pointer[[]*net.IPNet]
+
+	// myNetworksRefresh runs one refresh at a time; concurrent callers share it.
+	myNetworksRefresh singleflight.Group
+
+	// myNetworksRefreshError and myNetworksDontRefreshUntil are only accessed by
+	// doRefreshMyNetworks.
+	myNetworksRefreshError     error //nolint:errname // Not what the linter thinks this is for.
+	myNetworksDontRefreshUntil time.Time
+
+	// myNetworksRefreshFailed is set while the last refresh failed, so that
+	// the next call tries again.
+	myNetworksRefreshFailed atomic.Bool
+
+	// myNetworksUpdating is set while a refresh after a network change runs, so
+	// that callers wait for the new networks.
+	myNetworksUpdating atomic.Bool
+
+	// myNetworksNetworkChangedFlag is not concurrency safe and is guarded by
+	// myNetworksChangedFlagLock.
 	myNetworksNetworkChangedFlag = GetNetworkChangedFlag()
-	myNetworksRefreshError       error //nolint:errname // Not what the linter thinks this is for.
-	myNetworksDontRefreshUntil   time.Time
+	myNetworksChangedFlagLock    sync.Mutex
+
+	// getInterfaceAddrs reads the interface addresses. Replaced in tests.
+	getInterfaceAddrs = osGetInterfaceAddrs
 )
 
-// refreshMyNetworks refreshes the networks held in refreshMyNetworks.
-// The caller must hold myNetworksLock.
+func init() {
+	myNetworksAtomic.Store(&[]*net.IPNet{})
+}
+
+// refreshMyNetworks refreshes myNetworksAtomic. Callers that arrive during a
+// refresh wait for it and share its result instead of each making the OS
+// call, which can take seconds, e.g. after a resume from sleep.
 func refreshMyNetworks() error {
+	_, err, _ := myNetworksRefresh.Do("refresh", func() (any, error) {
+		return nil, doRefreshMyNetworks()
+	})
+	return err
+}
+
+// doRefreshMyNetworks does the refresh. Only refreshMyNetworks calls it, one
+// call at a time.
+func doRefreshMyNetworks() error {
 	// Check if we already refreshed recently.
 	if time.Now().Before(myNetworksDontRefreshUntil) {
 		// Return previous error, if available.
@@ -70,18 +109,33 @@ func refreshMyNetworks() error {
 		}
 		return nil
 	}
-	myNetworksRefreshError = nil
-	myNetworksDontRefreshUntil = time.Now().Add(1 * time.Second)
+
+	// Reset the changed flag before the OS call, so that a change during the
+	// call triggers another refresh. Set myNetworksUpdating in the same locked
+	// section, so that callers always see one of the two.
+	myNetworksChangedFlagLock.Lock()
+	changed := myNetworksNetworkChangedFlag.IsSet()
+	if changed {
+		myNetworksUpdating.Store(true)
+	}
+	myNetworksNetworkChangedFlag.Refresh()
+	myNetworksChangedFlagLock.Unlock()
+	if changed {
+		defer myNetworksUpdating.Store(false)
+	}
 
 	// Refresh assigned networks.
-	interfaceNetworks, err := osGetInterfaceAddrs()
+	interfaceNetworks, err := getInterfaceAddrs()
+
+	// Throttle from the end of the call, so that slow calls do not run back to back.
+	myNetworksDontRefreshUntil = time.Now().Add(1 * time.Second)
+	myNetworksRefreshError = err
+	myNetworksRefreshFailed.Store(err != nil)
 	if err != nil {
-		// In some cases the system blocks on this call, which piles up to
-		// literally over thousand goroutines wanting to try this again.
-		myNetworksRefreshError = err
 		return fmt.Errorf("failed to refresh interface addresses: %w", err)
 	}
-	myNetworks = make([]*net.IPNet, 0, len(interfaceNetworks))
+
+	myNetworks := make([]*net.IPNet, 0, len(interfaceNetworks))
 	for _, ifNet := range interfaceNetworks {
 		ipNet, ok := ifNet.(*net.IPNet)
 		if !ok {
@@ -91,11 +145,23 @@ func refreshMyNetworks() error {
 
 		myNetworks = append(myNetworks, ipNet)
 	}
-
-	// Reset changed flag.
-	myNetworksNetworkChangedFlag.Refresh()
+	myNetworksAtomic.Store(&myNetworks)
 
 	return nil
+}
+
+// myNetworksChanged returns whether the networks must be refreshed: the
+// network changed since the last refresh, the refresh after a change is still
+// running, or the last refresh failed.
+func myNetworksChanged() bool {
+	if myNetworksRefreshFailed.Load() {
+		return true
+	}
+
+	myNetworksChangedFlagLock.Lock()
+	defer myNetworksChangedFlagLock.Unlock()
+
+	return myNetworksNetworkChangedFlag.IsSet() || myNetworksUpdating.Load()
 }
 
 // IsMyIP returns whether the given unicast IP is currently configured on the local host.
@@ -110,16 +176,14 @@ func IsMyIP(ip net.IP) (yes bool, err error) {
 		return false, nil
 	}
 
-	myNetworksLock.Lock()
-	defer myNetworksLock.Unlock()
-
 	// Check if the network changed.
-	if myNetworksNetworkChangedFlag.IsSet() {
+	if myNetworksChanged() {
 		err := refreshMyNetworks()
 		if err != nil {
 			return false, err
 		}
 	}
+	myNetworks := *myNetworksAtomic.Load()
 
 	// Check against assigned IPs.
 	for _, myNet := range myNetworks {
@@ -142,6 +206,7 @@ func IsMyIP(ip net.IP) (yes bool, err error) {
 	if err != nil {
 		return false, err
 	}
+	myNetworks = *myNetworksAtomic.Load()
 
 	// Check against assigned IPs again.
 	for _, myNet := range myNetworks {
@@ -155,16 +220,14 @@ func IsMyIP(ip net.IP) (yes bool, err error) {
 // GetLocalNetwork uses the given IP to search for a network configured on the
 // device and returns it.
 func GetLocalNetwork(ip net.IP) (myNet *net.IPNet, err error) {
-	myNetworksLock.Lock()
-	defer myNetworksLock.Unlock()
-
 	// Check if the network changed.
-	if myNetworksNetworkChangedFlag.IsSet() {
+	if myNetworksChanged() {
 		err := refreshMyNetworks()
 		if err != nil {
 			return nil, err
 		}
 	}
+	myNetworks := *myNetworksAtomic.Load()
 
 	// Check if the IP address is in my networks.
 	for _, myNet := range myNetworks {
