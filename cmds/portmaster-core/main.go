@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/safing/portmaster/cmds/cmdbase"
 	"github.com/safing/portmaster/service"
 	"github.com/safing/portmaster/service/configure"
+	"github.com/safing/portmaster/service/firewall/interception"
 	"github.com/safing/portmaster/service/updates"
 	"github.com/safing/portmaster/spn/conf"
 )
@@ -49,6 +51,13 @@ func init() {
 	// Add other commands.
 	rootCmd.AddCommand(cmdbase.VersionCmd)
 	rootCmd.AddCommand(cmdbase.UpdateCmd)
+
+	// If the shutdown hangs, the process exits without stopping the
+	// interception. The OS integration would then keep holding new
+	// connections for a verdict that never comes.
+	cmdbase.OnShutdownTimeout = func() {
+		interception.EmergencyStop(10 * time.Second)
+	}
 }
 
 func main() {
