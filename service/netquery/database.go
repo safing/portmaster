@@ -338,6 +338,12 @@ func (db *Database) ApplyMigrations() error {
 		return fmt.Errorf("failed to create main.bandwidth database: %w", err)
 	}
 
+	// The bandwidth chart joins on conn_id, and Cleanup deletes through it.
+	bwIndex := `CREATE INDEX IF NOT EXISTS main.bandwidth_conn_id_index ON bandwidth (conn_id)`
+	if err := sqlitex.ExecuteTransient(db.writeConn, bwIndex, nil); err != nil {
+		return fmt.Errorf("failed to create index on main.bandwidth: %w", err)
+	}
+
 	return nil
 }
 
@@ -433,6 +439,14 @@ func (db *Database) Cleanup(ctx context.Context, threshold time.Time) (int, erro
 	}
 	if len(result) != 1 {
 		return 0, fmt.Errorf("unexpected number of rows, expected 1 got %d", len(result))
+	}
+
+	// Foreign keys are not enabled on the connection, so the ON DELETE CASCADE
+	// of main.bandwidth never runs. Remove the bandwidth data of the connections
+	// about to be deleted, otherwise the in-memory table grows without bound.
+	// This must run before the connections are deleted, as it selects by them.
+	if err := db.ExecuteWrite(ctx, "DELETE FROM main.bandwidth WHERE conn_id IN (SELECT id FROM main.connections "+where+");", args); err != nil {
+		return 0, fmt.Errorf("failed to remove bandwidth data of deleted connections: %w", err)
 	}
 
 	err := db.ExecuteWrite(ctx, sql, args)

@@ -13,6 +13,7 @@ import (
 	"zombiezen.com/go/sqlite/sqlitex"
 
 	"github.com/safing/portmaster/base/utils"
+	"github.com/safing/portmaster/service/netquery/orm"
 	"github.com/safing/portmaster/service/profile"
 )
 
@@ -82,6 +83,56 @@ func TestHistoryDatabaseJournalSettings(t *testing.T) { //nolint:paralleltest //
 	for _, conn := range acquirePoolConnections(t, db, 3) {
 		assert.Equal(t, "1", pragma(t, conn, "PRAGMA history.synchronous"), "history synchronous on a pooled read connection (1 = NORMAL)")
 	}
+}
+
+func TestCleanupRemovesBandwidthOfDeletedConnections(t *testing.T) { //nolint:paralleltest // uses the package-level module.
+	db := newTestDatabase(t)
+	ctx := context.Background()
+
+	// The index the bandwidth chart and the cleanup rely on must exist.
+	assert.Equal(t, 1, countRows(t, db, "SELECT COUNT(*) AS count FROM main.sqlite_master WHERE type = 'index' AND name = 'bandwidth_conn_id_index'"), "bandwidth index")
+
+	const processKey = "test-process"
+	now := time.Now()
+	endedLongAgo := now.Add(-time.Hour)
+
+	// One connection that ended long ago, one that is still active.
+	ended := Conn{ID: makeNqIDFromParts(processKey, "ended"), ProfileID: "local/test", Started: now.Add(-2 * time.Hour), Ended: &endedLongAgo}
+	active := Conn{ID: makeNqIDFromParts(processKey, "active"), ProfileID: "local/test", Started: now, Active: true}
+	require.NoError(t, db.Save(ctx, ended, false))
+	require.NoError(t, db.Save(ctx, active, false))
+
+	// Two bandwidth rows each, plus one row of a connection that the feed has
+	// not saved yet, which happens when a bandwidth update overtakes the save.
+	for range 2 {
+		require.NoError(t, db.UpdateBandwidth(ctx, false, ended.ProfileID, processKey, "ended", 10, 20))
+		require.NoError(t, db.UpdateBandwidth(ctx, false, active.ProfileID, processKey, "active", 10, 20))
+	}
+	require.NoError(t, db.UpdateBandwidth(ctx, false, "local/test", processKey, "unsaved", 10, 20))
+	unsavedID := makeNqIDFromParts(processKey, "unsaved")
+	require.Equal(t, 5, countRows(t, db, "SELECT COUNT(*) AS count FROM main.bandwidth"), "bandwidth rows before cleanup")
+
+	// Cleanup removes the ended connection and must remove its bandwidth rows,
+	// and only those.
+	removed, err := db.Cleanup(ctx, now)
+	require.NoError(t, err)
+	assert.Equal(t, 1, removed, "removed connections")
+	assert.Equal(t, 0, countRows(t, db, "SELECT COUNT(*) AS count FROM main.bandwidth WHERE conn_id = '"+ended.ID+"'"), "bandwidth rows of the deleted connection")
+	assert.Equal(t, 2, countRows(t, db, "SELECT COUNT(*) AS count FROM main.bandwidth WHERE conn_id = '"+active.ID+"'"), "bandwidth rows of the active connection")
+	assert.Equal(t, 1, countRows(t, db, "SELECT COUNT(*) AS count FROM main.bandwidth WHERE conn_id = '"+unsavedID+"'"), "bandwidth rows of a connection that is not saved yet")
+}
+
+// countRows runs a query that returns a single "count" column and returns its value.
+func countRows(tb testing.TB, db *Database, query string) int {
+	tb.Helper()
+
+	var result []struct {
+		Count int `sqlite:"count"`
+	}
+	require.NoError(tb, db.Execute(context.Background(), query, orm.WithResult(&result)), query)
+	require.Len(tb, result, 1, query)
+
+	return result[0].Count
 }
 
 // BenchmarkHistoryWrite measures one write to the history database after the
