@@ -52,6 +52,7 @@ type LayeredProfile struct {
 	KeepHistory         config.IntOption    `json:"-"`
 	UseSplitTun         config.BoolOption   `json:"-"`
 	SplitTunInterface   config.StringOption `json:"-"`
+	SplitTunProxy       config.StringOption `json:"-"`
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -122,6 +123,10 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	lp.SplitTunInterface = lp.wrapStringOption(
 		CfgOptionSplitTunInterfaceKey,
 		cfgOptionSplitTunInterface,
+	)
+	lp.SplitTunProxy = lp.wrapStringOption(
+		CfgOptionSplitTunProxyKey,
+		cfgOptionSplitTunProxy,
 	)
 	lp.UseSPN = lp.wrapBoolOption(
 		CfgOptionUseSPNKey,
