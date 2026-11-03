@@ -135,7 +135,7 @@ func ping(ar *Request) (msg string, err error) {
 
 // ready checks if Portmaster has completed starting.
 func ready(ar *Request) (msg string, err error) {
-	if module.instance.Ready() {
+	if !module.instance.Ready() {
 		return "", ErrorWithStatus(errors.New("portmaster is not ready, reload (F5) to try again"), http.StatusTooEarly)
 	}
 	return "Portmaster is ready.", nil
