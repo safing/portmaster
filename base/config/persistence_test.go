@@ -95,3 +95,20 @@ func TestConfigCleaning(t *testing.T) {
 		t.Errorf("should be empty: %+v", configHier)
 	}
 }
+
+// TestFlattenDuplicateKeys checks that an option defined both nested and
+// flattened always resolves to the same value, independent of the random map
+// iteration order.
+func TestFlattenDuplicateKeys(t *testing.T) {
+	t.Parallel()
+
+	for range 100 {
+		configFlat, err := JSONToMap([]byte(`{"core": {"devMode": false}, "core/devMode": true}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if value := configFlat["core/devMode"]; value != true {
+			t.Fatalf("flattened key should take precedence over nested key, got %v", value)
+		}
+	}
+}
