@@ -106,6 +106,7 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 		BinariesIndexURLs:   configure.DefaultStableBinaryIndexURLs,
 		IntelIndexURLs:      configure.DefaultIntelIndexURLs,
 		VerifyBinaryUpdates: configure.BinarySigningTrustStore,
+		VerifyIntelUpdates:  configure.IntelSigningTrustStore,
 	}
 }
 
