@@ -31,9 +31,17 @@ func NewFileWriter(dir string) (*LogWriter, error) {
 	_ = os.MkdirAll(dir, 0o700)
 
 	// Open new log file.
+	// Restrict its permissions too, as the log dir may already exist with
+	// more permissive permissions.
 	logFile := time.Now().UTC().Format("2006-01-02_15-04-05") + ".log"
-	file, err := os.Create(filepath.Join(dir, logFile))
+	file, err := os.OpenFile(filepath.Join(dir, logFile), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
+		return nil, err
+	}
+	// OpenFile only applies the permissions when it creates the file, so also
+	// restrict a log file that already exists.
+	if err := file.Chmod(0o600); err != nil {
+		_ = file.Close()
 		return nil, err
 	}
 
