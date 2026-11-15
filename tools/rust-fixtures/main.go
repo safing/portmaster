@@ -87,6 +87,7 @@ func main() {
 	genIntel()
 	genGeoIP()
 	genUpdates()
+	genEndpoints()
 	genSQLite()
 }
 

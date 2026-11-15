@@ -1005,6 +1005,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pm-endpoints"
+version = "0.1.0"
+dependencies = [
+ "pm-database",
+ "pm-dsd",
+ "pm-geoip",
+ "pm-intel",
+ "pm-netstate",
+ "pm-netutils",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "pm-geoip"
 version = "0.1.0"
 dependencies = [
@@ -1065,6 +1081,13 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tracing",
+]
+
+[[package]]
+name = "pm-netutils"
+version = "0.1.0"
+dependencies = [
+ "regex",
 ]
 
 [[package]]

@@ -20,6 +20,8 @@ members = [
     "crates/pm-intel",
     "crates/pm-geoip",
     "crates/pm-updates",
+    "crates/pm-netutils",
+    "crates/pm-endpoints",
 ]
 
 [workspace.package]

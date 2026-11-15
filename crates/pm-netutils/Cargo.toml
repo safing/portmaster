@@ -1,0 +1,12 @@
+[package]
+name = "pm-netutils"
+version = "0.1.0"
+edition.workspace = true
+description = "Network helpers for the Portmaster core (protocol and port names, domain validation)"
+license.workspace = true
+
+[dependencies]
+regex.workspace = true
+
+[lints]
+workspace = true

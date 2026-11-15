@@ -1,0 +1,6332 @@
+{
+  "cases": [
+    {
+      "results": {
+        "bad_contains": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "cname_blocked": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "cname_unchecked": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "deep_sub": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "domain_only": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "global_icmp": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "global_v4": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "global_v4_udp": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "global_v6": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "lan": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "lan_range": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "link_local": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "localhost_v4": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "localhost_v6": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "multicast": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "no_ip_no_domain": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "other_domain": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "port_1024": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "port_1025": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "prefix_domain": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        }
+      },
+      "rule": "- *",
+      "string": "- *"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "cname_blocked": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "cname_unchecked": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "deep_sub": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "domain_only": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "global_icmp": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "global_v4": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "global_v4_udp": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "global_v6": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "lan": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "lan_range": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "link_local": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "localhost_v4": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "localhost_v6": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "multicast": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "no_ip_no_domain": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "other_domain": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "port_1024": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "port_1025": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "prefix_domain": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        }
+      },
+      "rule": "+ *",
+      "string": "+ *"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "cname_blocked": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "cname_unchecked": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "deep_sub": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "domain_only": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "global_icmp": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "global_v4": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "global_v4_udp": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "global_v6": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "lan": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "lan_range": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "link_local": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "localhost_v4": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "localhost_v6": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "multicast": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "no_ip_no_domain": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "other_domain": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "port_1024": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "port_1025": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "prefix_domain": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        }
+      },
+      "rule": "+ * # comment",
+      "string": "+ *"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "context": "{\"Filter\":\"+ * TCP/HTTPS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTPS",
+          "result": 3
+        },
+        "cname_unchecked": {
+          "context": "{\"Filter\":\"+ * TCP/HTTPS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTPS",
+          "result": 3
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ * TCP/HTTPS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTPS",
+          "result": 3
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "context": "{\"Filter\":\"+ * TCP/HTTPS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTPS",
+          "result": 3
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ * TCP/HTTPS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTPS",
+          "result": 3
+        }
+      },
+      "rule": "+ *    TCP/443",
+      "string": "+ * TCP/HTTPS"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "context": "{\"Filter\":\"- *bad*\",\"Value\":\"*bad*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: domain matches *bad*",
+          "result": 2
+        },
+        "cname_blocked": {
+          "context": "{\"Filter\":\"- *bad*\",\"Value\":\"*bad*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: domain matches *bad*",
+          "result": 2
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "context": "{\"Filter\":\"- *bad*\",\"Value\":\"*bad*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: domain matches *bad*",
+          "result": 2
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- *bad*",
+      "string": "- *bad*"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "context": "{\"Filter\":\"- bad*\",\"Value\":\"bad*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: domain matches bad*",
+          "result": 2
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- bad*",
+      "string": "- bad*"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "context": "{\"Filter\":\"- *bad.com\",\"Value\":\"*bad.com\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: domain matches *bad.com",
+          "result": 2
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- *bad.com",
+      "string": "- *bad.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "context": "{\"Filter\":\"- .bad.com\",\"Value\":\".bad.com\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: domain matches .bad.com",
+          "result": 2
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- .bad.com",
+      "string": "- .bad.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- bad.com",
+      "string": "- bad.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- www.bad.com.",
+      "string": "- www.bad.com."
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- www.bad.com",
+      "string": "- www.bad.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "context": "{\"Filter\":\"+ *example.com\",\"Value\":\"*example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches *example.com",
+          "result": 3
+        },
+        "domain_only": {
+          "context": "{\"Filter\":\"+ *example.com\",\"Value\":\"*example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches *example.com",
+          "result": 3
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ *example.com\",\"Value\":\"*example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches *example.com",
+          "result": 3
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "context": "{\"Filter\":\"+ *example.com\",\"Value\":\"*example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches *example.com",
+          "result": 3
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ *example.com\",\"Value\":\"*example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches *example.com",
+          "result": 3
+        }
+      },
+      "rule": "+ *example.com",
+      "string": "+ *example.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "context": "{\"Filter\":\"+ example.com\",\"Value\":\"example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches example.com",
+          "result": 3
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ example.com\",\"Value\":\"example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches example.com",
+          "result": 3
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ example.com",
+      "string": "+ example.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "context": "{\"Filter\":\"+ .example.com\",\"Value\":\".example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches .example.com",
+          "result": 3
+        },
+        "domain_only": {
+          "context": "{\"Filter\":\"+ .example.com\",\"Value\":\".example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches .example.com",
+          "result": 3
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ .example.com\",\"Value\":\".example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches .example.com",
+          "result": 3
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ .example.com\",\"Value\":\".example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches .example.com",
+          "result": 3
+        }
+      },
+      "rule": "+ .example.com",
+      "string": "+ .example.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "context": "{\"Filter\":\"+ example.*\",\"Value\":\"example.*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches example.*",
+          "result": 3
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ example.*\",\"Value\":\"example.*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches example.*",
+          "result": 3
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ example.*",
+      "string": "+ example.*"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "context": "{\"Filter\":\"+ *.example.com\",\"Value\":\"*.example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches *.example.com",
+          "result": 3
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ *.example.com\",\"Value\":\"*.example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches *.example.com",
+          "result": 3
+        }
+      },
+      "rule": "+ *.example.com",
+      "string": "+ *.example.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ www.example.com\",\"Value\":\"www.example.com\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: domain matches www.example.com",
+          "result": 3
+        }
+      },
+      "rule": "+ www.example.com",
+      "string": "+ www.example.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "context": "{\"Filter\":\"- EXAMPLE.COM\",\"Value\":\"EXAMPLE.COM\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: domain matches EXAMPLE.COM",
+          "result": 2
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"- EXAMPLE.COM\",\"Value\":\"EXAMPLE.COM\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: domain matches EXAMPLE.COM",
+          "result": 2
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- EXAMPLE.COM",
+      "string": "- EXAMPLE.COM"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "context": "{\"Filter\":\"- *bad.com TCP/HTTPS\",\"Value\":\"*bad.com\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: domain matches *bad.com TCP/HTTPS",
+          "result": 2
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- *bad.com TCP/443",
+      "string": "- *bad.com TCP/HTTPS"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- *bad.com UDP",
+      "string": "- *bad.com UDP"
+    },
+    {
+      "error": "encountered 1 errors, first was: unknown endpoint definition: \"+ .\"",
+      "rule": "+ ."
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ .at",
+      "string": "+ .at"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ .at.",
+      "string": "+ .at."
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ 1.at",
+      "string": "+ 1.at"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ 1.at.",
+      "string": "+ 1.at."
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ 1.f.ix.de.",
+      "string": "+ 1.f.ix.de."
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ *contains*",
+      "string": "+ *contains*"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ *has.suffix",
+      "string": "+ *has.suffix"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ *.has.suffix",
+      "string": "+ *.has.suffix"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ *has.prefix*",
+      "string": "+ *has.prefix*"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ *has.prefix.*",
+      "string": "+ *has.prefix.*"
+    },
+    {
+      "error": "encountered 1 errors, first was: unknown endpoint definition: \"+ .sub.and.prefix.*\"",
+      "rule": "+ .sub.and.prefix.*"
+    },
+    {
+      "error": "encountered 1 errors, first was: unknown endpoint definition: \"+ *.sub..and.prefix.*\"",
+      "rule": "+ *.sub..and.prefix.*"
+    },
+    {
+      "error": "encountered 1 errors, first was: use CIDR notation (eg. 10.0.0.0/24) for matching ip address ranges",
+      "rule": "+ 10.0.*"
+    },
+    {
+      "error": "encountered 1 errors, first was: unknown endpoint definition: \"+ a..b.com\"",
+      "rule": "+ a..b.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ -a.com",
+      "string": "+ -a.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ _a.com",
+      "string": "+ _a.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ xn--a.com",
+      "string": "+ xn--a.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ local.",
+      "string": "+ local."
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ my_printer.local.",
+      "string": "+ my_printer.local."
+    },
+    {
+      "error": "encountered 1 errors, first was: unknown endpoint definition: \"+ ünï.com\"",
+      "rule": "+ ünï.com"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ exa mple.com\" - protocol number parsing error",
+      "rule": "+ exa mple.com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "context": "{\"Filter\":\"+ 127.0.0.1\",\"Value\":\"127.0.0.1\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP matches 127.0.0.1",
+          "result": 3
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ 127.0.0.1",
+      "string": "+ 127.0.0.1"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "context": "{\"Filter\":\"+ 192.168.0.1\",\"Value\":\"192.168.0.1\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP matches 192.168.0.1",
+          "result": 3
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ 192.168.0.1",
+      "string": "+ 192.168.0.1"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "context": "{\"Filter\":\"+ ::1\",\"Value\":\"::1\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP matches ::1",
+          "result": 3
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ ::1",
+      "string": "+ ::1"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "context": "{\"Filter\":\"+ 2606:4700:4700::1111\",\"Value\":\"2606:4700:4700::1111\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP matches 2606:4700:4700::1111",
+          "result": 3
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ 2606:4700:4700::1111",
+      "string": "+ 2606:4700:4700::1111"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "context": "{\"Filter\":\"- 10.0.0.1 TCP/1-1024\",\"Value\":\"10.0.0.1\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: IP matches 10.0.0.1 TCP/1-1024",
+          "result": 2
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- 10.0.0.1 TCP/1-1024",
+      "string": "- 10.0.0.1 TCP/1-1024"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "context": "{\"Filter\":\"+ 127.0.0.0/8\",\"Value\":\"127.0.0.0/8\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 127.0.0.0/8",
+          "result": 3
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ 127.0.0.0/8",
+      "string": "+ 127.0.0.0/8"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "context": "{\"Filter\":\"+ 192.168.0.0/24\",\"Value\":\"192.168.0.0/24\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 192.168.0.0/24",
+          "result": 3
+        },
+        "lan_range": {
+          "context": "{\"Filter\":\"+ 192.168.0.0/24\",\"Value\":\"192.168.0.0/24\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 192.168.0.0/24",
+          "result": 3
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ 192.168.0.0/24",
+      "string": "+ 192.168.0.0/24"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "context": "{\"Filter\":\"+ 2606:4700:4700::/48\",\"Value\":\"2606:4700:4700::/48\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 2606:4700:4700::/48",
+          "result": 3
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ 2606:4700:4700::/48",
+      "string": "+ 2606:4700:4700::/48"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "context": "{\"Filter\":\"- 192.168.0.0/16 TCP/SMB\",\"Value\":\"192.168.0.0/16\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: IP is in 192.168.0.0/16 TCP/SMB",
+          "result": 2
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- 192.168.0.0/16 TCP/SMB",
+      "string": "- 192.168.0.0/16 TCP/SMB"
+    },
+    {
+      "error": "encountered 1 errors, first was: unknown endpoint definition: \"+ 10.0.0.0/33\"",
+      "rule": "+ 10.0.0.0/33"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ DE",
+      "string": "+ DE"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ AT",
+      "string": "+ AT"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ CH",
+      "string": "+ CH"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ AS",
+      "string": "+ AS"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- DE",
+      "string": "- DE"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ C:EU",
+      "string": "+ C:EU"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- C:EU",
+      "string": "- C:EU"
+    },
+    {
+      "error": "encountered 1 errors, first was: unknown endpoint definition: \"+ C:eu\"",
+      "rule": "+ C:eu"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ de",
+      "string": "+ de"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ AS1",
+      "string": "+ AS1"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ AS12",
+      "string": "+ AS12"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ AS123",
+      "string": "+ AS123"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ AS1234",
+      "string": "+ AS1234"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ AS12345",
+      "string": "+ AS12345"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ AS32590",
+      "string": "+ AS32590"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- AS32590",
+      "string": "- AS32590"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ AS32590 UDP/27015-27250",
+      "string": "+ AS32590 UDP/27015-27250"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- AS32590 UDP/27015-27250",
+      "string": "- AS32590 UDP/27015-27250"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- DE TCP/80",
+      "string": "- DE TCP/HTTP"
+    },
+    {
+      "error": "encountered 1 errors, first was: failed to parse AS number 99999999999999999999",
+      "rule": "+ AS99999999999999999999"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "context": "{\"Filter\":\"+ Localhost\",\"Value\":\"Localhost\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost",
+          "result": 3
+        },
+        "localhost_v6": {
+          "context": "{\"Filter\":\"+ Localhost\",\"Value\":\"Localhost\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost",
+          "result": 3
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ Localhost",
+      "string": "+ Localhost"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ LAN\",\"Value\":\"LAN\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches LAN",
+          "result": 3
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "context": "{\"Filter\":\"+ LAN\",\"Value\":\"LAN\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches LAN",
+          "result": 3
+        },
+        "lan_range": {
+          "context": "{\"Filter\":\"+ LAN\",\"Value\":\"LAN\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches LAN",
+          "result": 3
+        },
+        "link_local": {
+          "context": "{\"Filter\":\"+ LAN\",\"Value\":\"LAN\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches LAN",
+          "result": 3
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "context": "{\"Filter\":\"+ LAN\",\"Value\":\"LAN\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches LAN",
+          "result": 3
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "context": "{\"Filter\":\"+ LAN\",\"Value\":\"LAN\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches LAN",
+          "result": 3
+        },
+        "port_1025": {
+          "context": "{\"Filter\":\"+ LAN\",\"Value\":\"LAN\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches LAN",
+          "result": 3
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ LAN\",\"Value\":\"LAN\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches LAN",
+          "result": 3
+        }
+      },
+      "rule": "+ LAN",
+      "string": "+ LAN"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "context": "{\"Filter\":\"+ Internet\",\"Value\":\"Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Internet",
+          "result": 3
+        },
+        "global_v4": {
+          "context": "{\"Filter\":\"+ Internet\",\"Value\":\"Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Internet",
+          "result": 3
+        },
+        "global_v4_udp": {
+          "context": "{\"Filter\":\"+ Internet\",\"Value\":\"Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Internet",
+          "result": 3
+        },
+        "global_v6": {
+          "context": "{\"Filter\":\"+ Internet\",\"Value\":\"Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Internet",
+          "result": 3
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ Internet",
+      "string": "+ Internet"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "global_icmp": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "global_v4": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "global_v4_udp": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "global_v6": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "lan": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "lan_range": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "link_local": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "localhost_v4": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "localhost_v6": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "multicast": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "port_1025": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        }
+      },
+      "rule": "+ Localhost,LAN,Internet",
+      "string": "+ Localhost,LAN,Internet"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"- LAN,Internet\",\"Value\":\"LAN,Internet\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: scope matches LAN,Internet",
+          "result": 2
+        },
+        "global_icmp": {
+          "context": "{\"Filter\":\"- LAN,Internet\",\"Value\":\"LAN,Internet\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: scope matches LAN,Internet",
+          "result": 2
+        },
+        "global_v4": {
+          "context": "{\"Filter\":\"- LAN,Internet\",\"Value\":\"LAN,Internet\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: scope matches LAN,Internet",
+          "result": 2
+        },
+        "global_v4_udp": {
+          "context": "{\"Filter\":\"- LAN,Internet\",\"Value\":\"LAN,Internet\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: scope matches LAN,Internet",
+          "result": 2
+        },
+        "global_v6": {
+          "context": "{\"Filter\":\"- LAN,Internet\",\"Value\":\"LAN,Internet\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: scope matches LAN,Internet",
+          "result": 2
+        },
+        "lan": {
+          "context": "{\"Filter\":\"- LAN,Internet\",\"Value\":\"LAN,Internet\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: scope matches LAN,Internet",
+          "result": 2
+        },
+        "lan_range": {
+          "context": "{\"Filter\":\"- LAN,Internet\",\"Value\":\"LAN,Internet\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: scope matches LAN,Internet",
+          "result": 2
+        },
+        "link_local": {
+          "context": "{\"Filter\":\"- LAN,Internet\",\"Value\":\"LAN,Internet\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: scope matches LAN,Internet",
+          "result": 2
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "context": "{\"Filter\":\"- LAN,Internet\",\"Value\":\"LAN,Internet\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: scope matches LAN,Internet",
+          "result": 2
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "context": "{\"Filter\":\"- LAN,Internet\",\"Value\":\"LAN,Internet\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: scope matches LAN,Internet",
+          "result": 2
+        },
+        "port_1025": {
+          "context": "{\"Filter\":\"- LAN,Internet\",\"Value\":\"LAN,Internet\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: scope matches LAN,Internet",
+          "result": 2
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"- LAN,Internet\",\"Value\":\"LAN,Internet\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: scope matches LAN,Internet",
+          "result": 2
+        }
+      },
+      "rule": "- lan,internet",
+      "string": "- LAN,Internet"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ LAN,LAN",
+      "string": "+ "
+    },
+    {
+      "error": "encountered 1 errors, first was: unknown endpoint definition: \"+ LAN,foo\"",
+      "rule": "+ LAN,foo"
+    },
+    {
+      "results": {},
+      "rule": "- L:TRAC,MAL",
+      "string": "- L:TRAC,MAL"
+    },
+    {
+      "results": {},
+      "rule": "+ L:",
+      "string": "+ L:"
+    },
+    {
+      "results": {},
+      "rule": "- L:TRAC TCP/443",
+      "string": "- L:TRAC TCP/HTTPS"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/1-1024",
+          "result": 3
+        },
+        "cname_unchecked": {
+          "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/1-1024",
+          "result": 3
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/1-1024",
+          "result": 3
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/1-1024",
+          "result": 3
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/1-1024",
+          "result": 3
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/1-1024",
+          "result": 3
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/1-1024",
+          "result": 3
+        },
+        "other_domain": {
+          "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/1-1024",
+          "result": 3
+        },
+        "port_1024": {
+          "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/1-1024",
+          "result": 3
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/1-1024",
+          "result": 3
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/1-1024",
+          "result": 3
+        }
+      },
+      "rule": "+ * TCP/1-1024",
+      "string": "+ * TCP/1-1024"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "context": "{\"Filter\":\"+ * */DNS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * */DNS",
+          "result": 3
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "context": "{\"Filter\":\"+ * */DNS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * */DNS",
+          "result": 3
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "context": "{\"Filter\":\"+ * */DNS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * */DNS",
+          "result": 3
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ * */DNS",
+      "string": "+ * */DNS"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "context": "{\"Filter\":\"+ * ICMP\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * ICMP",
+          "result": 3
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ * ICMP",
+      "string": "+ * ICMP"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ * 127",
+      "string": "+ * 127"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "context": "{\"Filter\":\"+ * UDP/1234\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * UDP/1234",
+          "result": 3
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ * UDP/1234",
+      "string": "+ * UDP/1234"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "context": "{\"Filter\":\"+ * TCP/HTTP\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTP",
+          "result": 3
+        },
+        "other_domain": {
+          "context": "{\"Filter\":\"+ * TCP/HTTP\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTP",
+          "result": 3
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ * TCP/HTTP",
+      "string": "+ * TCP/HTTP"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "context": "{\"Filter\":\"+ * TCP/80-443\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/80-443",
+          "result": 3
+        },
+        "cname_unchecked": {
+          "context": "{\"Filter\":\"+ * TCP/80-443\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/80-443",
+          "result": 3
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ * TCP/80-443\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/80-443",
+          "result": 3
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "context": "{\"Filter\":\"+ * TCP/80-443\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/80-443",
+          "result": 3
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "context": "{\"Filter\":\"+ * TCP/80-443\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/80-443",
+          "result": 3
+        },
+        "other_domain": {
+          "context": "{\"Filter\":\"+ * TCP/80-443\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/80-443",
+          "result": 3
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ * TCP/80-443\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/80-443",
+          "result": 3
+        }
+      },
+      "rule": "+ * TCP/80-443",
+      "string": "+ * TCP/80-443"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "context": "{\"Filter\":\"+ * UDP/DNS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * UDP/DNS",
+          "result": 3
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "context": "{\"Filter\":\"+ * UDP/DNS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * UDP/DNS",
+          "result": 3
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "context": "{\"Filter\":\"+ * UDP/DNS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * UDP/DNS",
+          "result": 3
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ * udp/dns",
+      "string": "+ * UDP/DNS"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * TCP/dhcp-server\" - port number parsing error",
+      "rule": "+ * TCP/dhcp-server"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ * TCP/443-80",
+      "string": "+ * TCP/443-80"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "context": "{\"Filter\":\"+ * TCP/HTTPS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTPS",
+          "result": 3
+        },
+        "cname_unchecked": {
+          "context": "{\"Filter\":\"+ * TCP/HTTPS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTPS",
+          "result": 3
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ * TCP/HTTPS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTPS",
+          "result": 3
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "context": "{\"Filter\":\"+ * TCP/HTTPS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTPS",
+          "result": 3
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ * TCP/HTTPS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTPS",
+          "result": 3
+        }
+      },
+      "rule": "+ * 6/443",
+      "string": "+ * TCP/HTTPS"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "context": "{\"Filter\":\"+ * ICMP6\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * ICMP6",
+          "result": 3
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ * ICMP6",
+      "string": "+ * ICMP6"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ * UDP-LITE",
+      "string": "+ * UDP-LITE"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"\"",
+      "rule": ""
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+\"",
+      "rule": "+"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"*\"",
+      "rule": "*"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"x *\" - invalid permission prefix",
+      "rule": "x *"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * TCP/\" - omit port if should match any",
+      "rule": "+ * TCP/"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * TCP/*\" - omit port if should match any",
+      "rule": "+ * TCP/*"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * /80\" - protocol can't be empty",
+      "rule": "+ * /80"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * */*\" - omit port if should match any",
+      "rule": "+ * */*"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * TCP/0\" - port number cannot be 0",
+      "rule": "+ * TCP/0"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * TCP/1-0\" - port number cannot be 0",
+      "rule": "+ * TCP/1-0"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * TCP/1-2-3\" - ports must be in format from-to",
+      "rule": "+ * TCP/1-2-3"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * TCP/80/90\" - protocol and port must be in format \u003cprotocol\u003e/\u003cport\u003e",
+      "rule": "+ * TCP/80/90"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * FOO\" - protocol number parsing error",
+      "rule": "+ * FOO"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * 300\" - protocol number parsing error",
+      "rule": "+ * 300"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * TCP/70000\" - port number parsing error",
+      "rule": "+ * TCP/70000"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * TCP/80 extra\" - there should be only 2 or 3 segments",
+      "rule": "+ * TCP/80 extra"
+    },
+    {
+      "error": "encountered 1 errors, first was: unknown endpoint definition: \"+ 1234\"",
+      "rule": "+ 1234"
+    },
+    {
+      "error": "encountered 1 errors, first was: unknown endpoint definition: \"+ bad..com\"",
+      "rule": "+ bad..com"
+    }
+  ],
+  "entities": [
+    {
+      "name": "domain_only",
+      "domain": "example.com.",
+      "protocol": 0,
+      "port": 0
+    },
+    {
+      "name": "domain_tcp443",
+      "ip": "10.2.3.4",
+      "domain": "example.com.",
+      "protocol": 6,
+      "port": 443
+    },
+    {
+      "name": "sub_domain",
+      "ip": "10.2.3.4",
+      "domain": "www.example.com.",
+      "protocol": 6,
+      "port": 443
+    },
+    {
+      "name": "deep_sub",
+      "domain": "a.b.example.com.",
+      "protocol": 17,
+      "port": 53
+    },
+    {
+      "name": "other_domain",
+      "domain": "notexample.com.",
+      "protocol": 6,
+      "port": 80
+    },
+    {
+      "name": "bad_contains",
+      "domain": "xbadx.org.",
+      "protocol": 6,
+      "port": 8080
+    },
+    {
+      "name": "prefix_domain",
+      "domain": "bad.net.",
+      "protocol": 6,
+      "port": 22
+    },
+    {
+      "name": "cname_blocked",
+      "domain": "cdn.example.org.",
+      "cname": [
+        "tracker.bad.com.",
+        "edge.example.net."
+      ],
+      "cname_check": true,
+      "protocol": 6,
+      "port": 443
+    },
+    {
+      "name": "cname_unchecked",
+      "domain": "cdn.example.org.",
+      "cname": [
+        "tracker.bad.com."
+      ],
+      "protocol": 6,
+      "port": 443
+    },
+    {
+      "name": "localhost_v4",
+      "ip": "127.0.0.1",
+      "protocol": 6,
+      "port": 817
+    },
+    {
+      "name": "localhost_v6",
+      "ip": "::1",
+      "protocol": 17,
+      "port": 53
+    },
+    {
+      "name": "lan",
+      "ip": "192.168.0.1",
+      "protocol": 17,
+      "port": 1234
+    },
+    {
+      "name": "lan_range",
+      "ip": "192.168.0.200",
+      "protocol": 6,
+      "port": 445
+    },
+    {
+      "name": "link_local",
+      "ip": "fe80::1",
+      "protocol": 58,
+      "port": 0
+    },
+    {
+      "name": "multicast",
+      "ip": "224.0.0.251",
+      "protocol": 17,
+      "port": 5353
+    },
+    {
+      "name": "global_v4",
+      "ip": "104.82.234.109",
+      "protocol": 6,
+      "port": 443,
+      "location_error": "geoip data not available (test)"
+    },
+    {
+      "name": "global_v4_udp",
+      "ip": "104.82.234.109",
+      "protocol": 17,
+      "port": 27015,
+      "location_error": "geoip data not available (test)"
+    },
+    {
+      "name": "global_v6",
+      "ip": "2606:4700:4700::1111",
+      "protocol": 17,
+      "port": 53,
+      "location_error": "geoip data not available (test)"
+    },
+    {
+      "name": "global_icmp",
+      "ip": "1.1.1.1",
+      "protocol": 1,
+      "port": 0,
+      "location_error": "geoip data not available (test)"
+    },
+    {
+      "name": "port_1024",
+      "ip": "10.0.0.1",
+      "protocol": 6,
+      "port": 1024
+    },
+    {
+      "name": "port_1025",
+      "ip": "10.0.0.1",
+      "protocol": 6,
+      "port": 1025
+    },
+    {
+      "name": "no_ip_no_domain",
+      "protocol": 6,
+      "port": 80
+    }
+  ],
+  "lists": [
+    {
+      "parsed": 2,
+      "results": {
+        "bad_contains": 2,
+        "cname_blocked": 2,
+        "cname_unchecked": 2,
+        "deep_sub": 2,
+        "domain_only": 2,
+        "domain_tcp443": 2,
+        "lan": 2,
+        "lan_range": 2,
+        "link_local": 2,
+        "localhost_v4": 2,
+        "localhost_v6": 2,
+        "multicast": 2,
+        "no_ip_no_domain": 2,
+        "other_domain": 2,
+        "port_1024": 2,
+        "port_1025": 2,
+        "prefix_domain": 2,
+        "sub_domain": 2
+      },
+      "rules": [
+        "+ AS32590",
+        "- *"
+      ],
+      "string": "[+ AS32590, - *]"
+    },
+    {
+      "parsed": 2,
+      "results": {
+        "bad_contains": 3,
+        "cname_blocked": 2,
+        "cname_unchecked": 3,
+        "deep_sub": 3,
+        "domain_only": 3,
+        "domain_tcp443": 3,
+        "global_icmp": 3,
+        "global_v4": 3,
+        "global_v4_udp": 3,
+        "global_v6": 3,
+        "lan": 3,
+        "lan_range": 3,
+        "link_local": 3,
+        "localhost_v4": 3,
+        "localhost_v6": 3,
+        "multicast": 3,
+        "no_ip_no_domain": 3,
+        "other_domain": 3,
+        "port_1024": 3,
+        "port_1025": 3,
+        "prefix_domain": 3,
+        "sub_domain": 3
+      },
+      "rules": [
+        "- .bad.com",
+        "+ *"
+      ],
+      "string": "[- .bad.com, + *]"
+    },
+    {
+      "parsed": 3,
+      "results": {
+        "bad_contains": 2,
+        "cname_blocked": 2,
+        "cname_unchecked": 2,
+        "deep_sub": 2,
+        "domain_only": 3,
+        "domain_tcp443": 3,
+        "global_icmp": 2,
+        "global_v4": 2,
+        "global_v4_udp": 2,
+        "global_v6": 2,
+        "lan": 2,
+        "lan_range": 2,
+        "link_local": 2,
+        "localhost_v4": 2,
+        "localhost_v6": 2,
+        "multicast": 2,
+        "no_ip_no_domain": 2,
+        "other_domain": 2,
+        "port_1024": 2,
+        "port_1025": 2,
+        "prefix_domain": 2,
+        "sub_domain": 2
+      },
+      "rules": [
+        "+ example.com",
+        "- *example.com",
+        "- *"
+      ],
+      "string": "[+ example.com, - *example.com, - *]"
+    },
+    {
+      "error": "encountered 2 errors, first was: invalid endpoint definition: \"bogus\"",
+      "parsed": 1,
+      "results": {
+        "bad_contains": 3,
+        "cname_blocked": 3,
+        "cname_unchecked": 3,
+        "deep_sub": 3,
+        "domain_only": 3,
+        "domain_tcp443": 3,
+        "global_icmp": 3,
+        "global_v4": 3,
+        "global_v4_udp": 3,
+        "global_v6": 3,
+        "lan": 3,
+        "lan_range": 3,
+        "link_local": 3,
+        "localhost_v4": 3,
+        "localhost_v6": 3,
+        "multicast": 3,
+        "no_ip_no_domain": 3,
+        "other_domain": 3,
+        "port_1024": 3,
+        "port_1025": 3,
+        "prefix_domain": 3,
+        "sub_domain": 3
+      },
+      "rules": [
+        "bogus",
+        "+ *",
+        "also bogus"
+      ],
+      "string": "[+ *]"
+    }
+  ],
+  "validationRegex": "^(\\+|\\-) (! +)?[A-z0-9\\.:\\-*/]+( [A-z0-9*]+(/[A-z0-9]+(\\-[A-z0-9]+)?)?)?( +#.*)?"
+}
