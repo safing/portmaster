@@ -3,6 +3,30 @@ use std::net::IpAddr;
 use pm_resolver::*;
 
 #[test]
+fn test_nil_ip_names_match_go() {
+    let info = ResolverInfo {
+        name: String::new(),
+        r#type: "dns".to_string(),
+        source: "config".to_string(),
+        ip: None,
+        domain: String::new(),
+        ip_scope: IpScope::Global,
+        port: 53,
+    };
+    assert_eq!(info.id(), "dns://<nil>:53#config");
+    assert_eq!(info.descriptive_name(), "<nil> (dns://<nil>:53#config)");
+}
+
+#[test]
+fn test_ipv4_mapped_ip_canonical_json() {
+    let json = r#"{"Name":"","Type":"dns","Source":"","IP":"::ffff:1.2.3.4","Domain":"","IPScope":4,"Port":53}"#;
+    let info: ResolverInfo = serde_json::from_str(json).unwrap();
+    assert_eq!(info.ip, Some("1.2.3.4".parse::<IpAddr>().unwrap()));
+    let out = String::from_utf8(pm_dsd::gojson::to_vec(&info).unwrap()).unwrap();
+    assert!(out.contains(r#""IP":"1.2.3.4""#), "{}", out);
+}
+
+#[test]
 fn test_resolver_info_json() {
     let info = ResolverInfo {
         name: "Cloudflare".to_string(),

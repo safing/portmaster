@@ -24,6 +24,7 @@ url.workspace = true
 webpki-roots.workspace = true
 
 [dev-dependencies]
+rcgen.workspace = true
 tokio = { workspace = true, features = ["full", "test-util"] }
 
 [lints]

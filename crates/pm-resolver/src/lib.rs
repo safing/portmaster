@@ -20,7 +20,8 @@ pub use model::{
 };
 pub use transports::{HttpsResolver, PlainResolver, TcpResolver};
 pub use url::{
-    check_search_scope, configure_search_domains, create_resolver, format_host_and_port,
+    check_search_scope, configure_search_domains, create_resolver, create_resolver_with_local_net,
+    format_host_and_port,
     format_ip_and_port, MAX_SEARCH_DOMAINS, SPECIAL_SERVICE_DOMAINS,
 };
 

@@ -90,10 +90,7 @@ impl PlainResolver {
                 continue;
             }
 
-            if reply.truncation {
-                return Err(ResolveError::Truncated);
-            }
-
+            // Truncated replies are returned as answers, like miekg/dns does.
             if self.resolver.is_blocked_upstream(&reply) {
                 return Err(ResolveError::BlockedUpstream(
                     self.resolver.info.descriptive_name(),
@@ -108,13 +105,8 @@ impl PlainResolver {
 #[async_trait::async_trait]
 impl ResolverConn for PlainResolver {
     async fn query(&self, q: Query) -> Result<Message, ResolveError> {
-        match self.execute_query(&q).await {
-            Ok(msg) => Ok(msg),
-            Err(err) => {
-                self.report_failure();
-                Err(err)
-            }
-        }
+        // Failure reporting belongs to the orchestrator (Go resolve.go).
+        self.execute_query(&q).await
     }
 
     fn report_failure(&self) {

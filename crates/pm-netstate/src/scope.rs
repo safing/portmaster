@@ -2,17 +2,59 @@
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
-/// The network scope of an IP address.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+/// The network scope of an IP address. Discriminants match Go `netutils.IPScope`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[repr(i8)]
 pub enum IpScope {
-    Invalid,
-    Undefined,
-    HostLocal,
-    LinkLocal,
-    SiteLocal,
-    Global,
-    LocalMulticast,
-    GlobalMulticast,
+    Invalid = -1,
+    #[default]
+    Undefined = 0,
+    HostLocal = 1,
+    LinkLocal = 2,
+    SiteLocal = 3,
+    Global = 4,
+    LocalMulticast = 5,
+    GlobalMulticast = 6,
+}
+
+impl IpScope {
+    /// Returns true if the scope refers to the host itself.
+    pub fn is_localhost(self) -> bool {
+        self == Self::HostLocal
+    }
+
+    /// Returns true if the scope is site-local, link-local or local multicast.
+    pub fn is_lan(self) -> bool {
+        matches!(self, Self::SiteLocal | Self::LinkLocal | Self::LocalMulticast)
+    }
+
+    /// Returns true if the scope is global.
+    pub fn is_global(self) -> bool {
+        matches!(self, Self::Global | Self::GlobalMulticast)
+    }
+}
+
+impl Serialize for IpScope {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_i8(*self as i8)
+    }
+}
+
+impl<'de> Deserialize<'de> for IpScope {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Ok(match i8::deserialize(deserializer)? {
+            0 => Self::Undefined,
+            1 => Self::HostLocal,
+            2 => Self::LinkLocal,
+            3 => Self::SiteLocal,
+            4 => Self::Global,
+            5 => Self::LocalMulticast,
+            6 => Self::GlobalMulticast,
+            _ => Self::Invalid,
+        })
+    }
 }
 
 /// Returns the network scope of the given IP address.
@@ -67,13 +109,6 @@ fn scope_v6(ip: Ipv6Addr) -> IpScope {
     }
 }
 
-impl IpScope {
-    /// Returns whether the scope is global, like Go `IPScope.IsGlobal`.
-    pub fn is_global(self) -> bool {
-        matches!(self, IpScope::Global | IpScope::GlobalMulticast)
-    }
-}
-
 /// Returns whether the IP is a local multicast or broadcast address.
 pub fn is_local_multicast(ip: IpAddr) -> bool {
     ip_scope(ip) == IpScope::LocalMulticast
@@ -82,6 +117,28 @@ pub fn is_local_multicast(ip: IpAddr) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn discriminants_and_serde_match_go() {
+        let all = [
+            (IpScope::Invalid, -1),
+            (IpScope::Undefined, 0),
+            (IpScope::HostLocal, 1),
+            (IpScope::LinkLocal, 2),
+            (IpScope::SiteLocal, 3),
+            (IpScope::Global, 4),
+            (IpScope::LocalMulticast, 5),
+            (IpScope::GlobalMulticast, 6),
+        ];
+        for (scope, n) in all {
+            assert_eq!(scope as i8, n);
+            assert_eq!(serde_json::to_string(&scope).unwrap(), n.to_string());
+            assert_eq!(serde_json::from_str::<IpScope>(&n.to_string()).unwrap(), scope);
+        }
+        assert!(IpScope::LinkLocal.is_lan() && !IpScope::Global.is_lan());
+        assert!(IpScope::GlobalMulticast.is_global() && !IpScope::HostLocal.is_global());
+        assert!(IpScope::HostLocal.is_localhost());
+    }
 
     #[test]
     fn ipv4_scopes() {

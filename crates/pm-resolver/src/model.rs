@@ -2,7 +2,9 @@ use std::fmt;
 use std::net::IpAddr;
 use std::sync::Arc;
 
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
+
+pub use pm_netstate::IpScope;
 
 use crate::block::is_blocked_upstream;
 use crate::conn::ResolverConn;
@@ -35,97 +37,6 @@ pub const BLOCK_DETECTION_ZERO_IP: &str = "zeroip";
 pub const BLOCK_DETECTION_EMPTY_ANSWER: &str = "empty";
 pub const BLOCK_DETECTION_DISABLED: &str = "disabled";
 
-/// Network scope of an IP address, matching Go `netutils.IPScope`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-#[repr(i8)]
-pub enum IpScope {
-    Invalid = -1,
-    #[default]
-    Undefined = 0,
-    HostLocal = 1,
-    LinkLocal = 2,
-    SiteLocal = 3,
-    Global = 4,
-    LocalMulticast = 5,
-    GlobalMulticast = 6,
-}
-
-impl IpScope {
-    /// Returns whether the IP refers to the host itself.
-    pub fn is_localhost(self) -> bool {
-        self == Self::HostLocal
-    }
-
-    /// Returns true if the scope is site-local or link-local.
-    pub fn is_lan(self) -> bool {
-        matches!(self, Self::SiteLocal | Self::LinkLocal | Self::LocalMulticast)
-    }
-
-    /// Returns true if the scope is global.
-    pub fn is_global(self) -> bool {
-        matches!(self, Self::Global | Self::GlobalMulticast)
-    }
-}
-
-impl Serialize for IpScope {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_i8(*self as i8)
-    }
-}
-
-impl<'de> Deserialize<'de> for IpScope {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let v = i8::deserialize(deserializer)?;
-        match v {
-            -1 => Ok(Self::Invalid),
-            0 => Ok(Self::Undefined),
-            1 => Ok(Self::HostLocal),
-            2 => Ok(Self::LinkLocal),
-            3 => Ok(Self::SiteLocal),
-            4 => Ok(Self::Global),
-            5 => Ok(Self::LocalMulticast),
-            6 => Ok(Self::GlobalMulticast),
-            _ => Ok(Self::Invalid),
-        }
-    }
-}
-
-impl From<pm_netstate::IpScope> for IpScope {
-    fn from(s: pm_netstate::IpScope) -> Self {
-        match s {
-            pm_netstate::IpScope::Invalid => Self::Invalid,
-            pm_netstate::IpScope::Undefined => Self::Undefined,
-            pm_netstate::IpScope::HostLocal => Self::HostLocal,
-            pm_netstate::IpScope::LinkLocal => Self::LinkLocal,
-            pm_netstate::IpScope::SiteLocal => Self::SiteLocal,
-            pm_netstate::IpScope::Global => Self::Global,
-            pm_netstate::IpScope::LocalMulticast => Self::LocalMulticast,
-            pm_netstate::IpScope::GlobalMulticast => Self::GlobalMulticast,
-        }
-    }
-}
-
-impl From<IpScope> for pm_netstate::IpScope {
-    fn from(s: IpScope) -> Self {
-        match s {
-            IpScope::Invalid => pm_netstate::IpScope::Invalid,
-            IpScope::Undefined => pm_netstate::IpScope::Undefined,
-            IpScope::HostLocal => pm_netstate::IpScope::HostLocal,
-            IpScope::LinkLocal => pm_netstate::IpScope::LinkLocal,
-            IpScope::SiteLocal => pm_netstate::IpScope::SiteLocal,
-            IpScope::Global => pm_netstate::IpScope::Global,
-            IpScope::LocalMulticast => pm_netstate::IpScope::LocalMulticast,
-            IpScope::GlobalMulticast => pm_netstate::IpScope::GlobalMulticast,
-        }
-    }
-}
-
 /// Helper module to serialize Option<IpAddr> as string or empty string in Go JSON style.
 mod optional_ip_serde {
     use std::net::IpAddr;
@@ -136,7 +47,7 @@ mod optional_ip_serde {
         S: Serializer,
     {
         match ip {
-            Some(addr) => serializer.serialize_str(&addr.to_string()),
+            Some(addr) => serializer.serialize_str(&addr.to_canonical().to_string()),
             None => serializer.serialize_str(""),
         }
     }
@@ -147,7 +58,9 @@ mod optional_ip_serde {
     {
         let opt: Option<String> = Option::deserialize(deserializer)?;
         match opt {
-            Some(s) if !s.is_empty() => s.parse::<IpAddr>().map(Some).map_err(serde::de::Error::custom),
+            Some(s) if !s.is_empty() => s.parse::<IpAddr>()
+                .map(|ip| Some(ip.to_canonical()))
+                .map_err(serde::de::Error::custom),
             _ => Ok(None),
         }
     }
@@ -188,7 +101,7 @@ impl ResolverInfo {
             SERVER_TYPE_DOH => format!("https://{}:{}#{}", self.domain, self.port, self.source),
             SERVER_TYPE_DOT => format!("dot://{}:{}#{}", self.domain, self.port, self.source),
             _ => {
-                let ip_str = self.ip.map(|ip| ip.to_string()).unwrap_or_default();
+                let ip_str = self.ip_string();
                 format!("{}://{}:{}#{}", self.r#type, ip_str, self.port, self.source)
             }
         }
@@ -204,10 +117,16 @@ impl ResolverInfo {
             format!("{} ({})", self.name, self.id())
         } else if !self.domain.is_empty() {
             format!("{} ({})", self.domain, self.id())
-        } else if let Some(ip) = self.ip {
-            format!("{} ({})", ip, self.id())
         } else {
-            format!(" ({})", self.id())
+            format!("{} ({})", self.ip_string(), self.id())
+        }
+    }
+
+    /// Go `net.IP.String()`: canonical text form, `<nil>` when unset.
+    fn ip_string(&self) -> String {
+        match self.ip {
+            Some(ip) => ip.to_canonical().to_string(),
+            None => "<nil>".to_string(),
         }
     }
 }

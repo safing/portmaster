@@ -6,6 +6,7 @@ description = "Socket to process resolution for the Portmaster core (proc tables
 license.workspace = true
 
 [dependencies]
+serde.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 

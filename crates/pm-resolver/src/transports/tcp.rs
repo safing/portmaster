@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
@@ -11,7 +11,7 @@ use tokio::io::{
     split, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf, ReadHalf, WriteHalf,
 };
 use tokio::net::TcpStream;
-use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::sync::{mpsc, oneshot, Notify};
 use tokio::time::timeout;
 use tokio_rustls::client::TlsStream;
 use tokio_rustls::rustls::{self, pki_types::ServerName, ClientConfig, RootCertStore};
@@ -76,18 +76,18 @@ impl AsyncWrite for AnyWriteHalf {
     }
 }
 
-struct PendingQuery {
-    msg: Message,
-    reply_tx: oneshot::Sender<Result<Message, ResolveError>>,
-}
-
-type InFlightMap = Arc<std::sync::Mutex<HashMap<u16, oneshot::Sender<Result<Message, ResolveError>>>>>;
+type Reply = Result<Message, ResolveError>;
+type InFlightMap = Arc<std::sync::Mutex<HashMap<u16, oneshot::Sender<Reply>>>>;
 
 #[derive(Clone)]
 struct ActiveTcpConn {
-    query_tx: mpsc::Sender<PendingQuery>,
+    instance_id: u64,
+    query_tx: mpsc::Sender<Vec<u8>>,
     heartbeat_tx: mpsc::Sender<oneshot::Sender<()>>,
     abandoned: Arc<AtomicBool>,
+    in_flight: InFlightMap,
+    /// Wakes the writer to re-check whether the connection can be recycled.
+    wake: Arc<Notify>,
 }
 
 impl ActiveTcpConn {
@@ -101,7 +101,26 @@ impl ActiveTcpConn {
             return false;
         }
 
-        timeout(HEARTBEAT_TIMEOUT, rx).await.is_ok()
+        matches!(timeout(HEARTBEAT_TIMEOUT, rx).await, Ok(Ok(())))
+    }
+
+    fn abandon(&self) {
+        self.abandoned.store(true, Ordering::Relaxed);
+        self.wake.notify_one();
+    }
+}
+
+/// Removes a query from the in-flight registry when it finishes, times out or is cancelled.
+struct InFlightGuard {
+    conn: ActiveTcpConn,
+    id: u16,
+}
+
+impl Drop for InFlightGuard {
+    fn drop(&mut self) {
+        self.conn.in_flight.lock().unwrap().remove(&self.id);
+        // A connection waiting to be recycled may have become idle.
+        self.conn.wake.notify_one();
     }
 }
 
@@ -112,30 +131,20 @@ pub struct TcpResolver {
     is_tls: bool,
     connect_timeout: Duration,
     request_timeout: Duration,
-    active_conn: Mutex<Option<ActiveTcpConn>>,
+    client_ttl: Duration,
+    active_conn: std::sync::Mutex<Option<ActiveTcpConn>>,
+    next_instance_id: AtomicU64,
+    dial_lock: tokio::sync::Mutex<()>,
+    tls_config: std::sync::Mutex<Option<Arc<ClientConfig>>>,
 }
 
 impl TcpResolver {
     pub fn new_tcp(resolver: Resolver) -> Self {
-        Self {
-            resolver,
-            basic: BasicResolverConn::new(),
-            is_tls: false,
-            connect_timeout: TCP_CONNECT_TIMEOUT,
-            request_timeout: DEFAULT_REQUEST_TIMEOUT,
-            active_conn: Mutex::new(None),
-        }
+        Self::with_timeouts(resolver, false, TCP_CONNECT_TIMEOUT, DEFAULT_REQUEST_TIMEOUT)
     }
 
     pub fn new_dot(resolver: Resolver) -> Self {
-        Self {
-            resolver,
-            basic: BasicResolverConn::new(),
-            is_tls: true,
-            connect_timeout: TCP_CONNECT_TIMEOUT,
-            request_timeout: DEFAULT_REQUEST_TIMEOUT,
-            active_conn: Mutex::new(None),
-        }
+        Self::with_timeouts(resolver, true, TCP_CONNECT_TIMEOUT, DEFAULT_REQUEST_TIMEOUT)
     }
 
     pub fn with_timeouts(
@@ -150,46 +159,100 @@ impl TcpResolver {
             is_tls,
             connect_timeout,
             request_timeout,
-            active_conn: Mutex::new(None),
+            client_ttl: DEFAULT_CLIENT_TTL,
+            active_conn: std::sync::Mutex::new(None),
+            next_instance_id: AtomicU64::new(1),
+            dial_lock: tokio::sync::Mutex::new(()),
+            tls_config: std::sync::Mutex::new(None),
         }
     }
 
-    async fn get_or_create_conn(&self) -> Result<ActiveTcpConn, ResolveError> {
-        let mut lock = self.active_conn.lock().await;
+    /// Sets how long a connection is used before it is recycled.
+    pub fn with_client_ttl(mut self, ttl: Duration) -> Self {
+        self.client_ttl = ttl;
+        self
+    }
 
-        if let Some(conn) = lock.as_ref() {
+    /// Replaces the default TLS configuration (webpki roots), e.g. to trust a test CA.
+    pub fn with_tls_config(self, config: Arc<ClientConfig>) -> Self {
+        *self.tls_config.lock().unwrap() = Some(config);
+        self
+    }
+
+    /// Number of queries currently awaiting a reply on the active connection.
+    pub fn in_flight_count(&self) -> usize {
+        self.active_conn
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map_or(0, |c| c.in_flight.lock().unwrap().len())
+    }
+
+    fn tls_config(&self) -> Result<Arc<ClientConfig>, ResolveError> {
+        let mut guard = self.tls_config.lock().unwrap();
+        if let Some(cfg) = guard.as_ref() {
+            return Ok(cfg.clone());
+        }
+        let mut root_store = RootCertStore::empty();
+        root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+        let config = ClientConfig::builder_with_provider(Arc::new(
+            rustls::crypto::ring::default_provider(),
+        ))
+        .with_safe_default_protocol_versions()
+        .map_err(|e| ResolveError::Tls(e.to_string()))?
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+        let config = Arc::new(config);
+        *guard = Some(config.clone());
+        Ok(config)
+    }
+
+    /// Returns the live connection or dials a new one. The lock is never held
+    /// across the heartbeat or the dial, like Go.
+    async fn get_or_create_conn(&self) -> Result<ActiveTcpConn, ResolveError> {
+        let (existing, seen_instance_id) = {
+            let guard = self.active_conn.lock().unwrap();
+            let seen = guard.as_ref().map_or(0, |c| c.instance_id);
+            let existing = guard
+                .as_ref()
+                .filter(|c| !c.abandoned.load(Ordering::Relaxed))
+                .cloned();
+            (existing, seen)
+        };
+
+        if let Some(conn) = existing {
             if conn.is_alive().await {
-                return Ok(conn.clone());
+                return Ok(conn);
+            }
+        }
+
+        // Concurrent queries wait for one dial instead of each opening a connection.
+        let _dial_guard = self.dial_lock.lock().await;
+        {
+            let guard = self.active_conn.lock().unwrap();
+            if let Some(current) = guard.as_ref() {
+                if current.instance_id != seen_instance_id
+                    && !current.abandoned.load(Ordering::Relaxed)
+                {
+                    return Ok(current.clone());
+                }
             }
         }
 
         let new_conn = self.dial().await?;
-        *lock = Some(new_conn.clone());
+        *self.active_conn.lock().unwrap() = Some(new_conn.clone());
         Ok(new_conn)
     }
 
     async fn dial(&self) -> Result<ActiveTcpConn, ResolveError> {
         let server_addr_str = &self.resolver.server_address;
-        let tcp_stream = timeout(
-            self.connect_timeout,
-            TcpStream::connect(server_addr_str),
-        )
-        .await
-        .map_err(|_| ResolveError::Timeout)?
-        .map_err(ResolveError::Io)?;
+        let tcp_stream = timeout(self.connect_timeout, TcpStream::connect(server_addr_str))
+            .await
+            .map_err(|_| ResolveError::Timeout)?
+            .map_err(ResolveError::Io)?;
 
         let (reader, writer) = if self.is_tls {
-            let mut root_store = RootCertStore::empty();
-            root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-            let config = ClientConfig::builder_with_provider(Arc::new(
-                rustls::crypto::ring::default_provider(),
-            ))
-            .with_safe_default_protocol_versions()
-            .map_err(|e| ResolveError::Tls(e.to_string()))?
-            .with_root_certificates(root_store)
-            .with_no_client_auth();
-
-            let connector = tokio_rustls::TlsConnector::from(Arc::new(config));
+            let connector = tokio_rustls::TlsConnector::from(self.tls_config()?);
             let domain = self.resolver.info.domain.clone();
             let server_name = ServerName::try_from(domain)
                 .map_err(|e| ResolveError::Tls(format!("invalid SNI domain: {}", e)))?
@@ -211,64 +274,79 @@ impl TcpResolver {
         };
 
         let in_flight: InFlightMap = Arc::new(std::sync::Mutex::new(HashMap::new()));
-        let (query_tx, query_rx) = mpsc::channel::<PendingQuery>(32);
+        let (query_tx, query_rx) = mpsc::channel::<Vec<u8>>(32);
         let (heartbeat_tx, heartbeat_rx) = mpsc::channel::<oneshot::Sender<()>>(8);
+        let (kill_tx, kill_rx) = oneshot::channel::<()>();
         let abandoned = Arc::new(AtomicBool::new(false));
+        let wake = Arc::new(Notify::new());
 
-        // Start writer task.
-        let in_flight_writer = in_flight.clone();
-        let abandoned_writer = abandoned.clone();
-        tokio::spawn(async move {
-            writer_loop(
-                writer,
-                query_rx,
-                heartbeat_rx,
-                in_flight_writer,
-                abandoned_writer,
-            )
-            .await;
-        });
-
-        // Start reader task.
-        let in_flight_reader = in_flight;
-        let abandoned_reader = abandoned.clone();
-        tokio::spawn(async move {
-            reader_loop(reader, in_flight_reader, abandoned_reader).await;
-        });
+        tokio::spawn(writer_loop(WriterCtx {
+            writer,
+            query_rx,
+            heartbeat_rx,
+            in_flight: in_flight.clone(),
+            abandoned: abandoned.clone(),
+            wake: wake.clone(),
+            ttl: self.client_ttl,
+            _kill_tx: kill_tx,
+        }));
+        tokio::spawn(reader_loop(
+            reader,
+            in_flight.clone(),
+            abandoned.clone(),
+            wake.clone(),
+            kill_rx,
+        ));
 
         Ok(ActiveTcpConn {
+            instance_id: self.next_instance_id.fetch_add(1, Ordering::Relaxed),
             query_tx,
             heartbeat_tx,
             abandoned,
+            in_flight,
+            wake,
         })
+    }
+
+    /// Picks a message ID that is not in flight and registers the reply channel.
+    fn register(conn: &ActiveTcpConn, tx: oneshot::Sender<Reply>) -> Result<u16, ResolveError> {
+        let mut lock = conn.in_flight.lock().unwrap();
+        let start = crate::conn::random_u16();
+        for offset in 0..=u16::MAX {
+            let id = start.wrapping_add(offset);
+            if let std::collections::hash_map::Entry::Vacant(e) = lock.entry(id) {
+                e.insert(tx);
+                return Ok(id);
+            }
+        }
+        Err(ResolveError::Failure("no free message ID".to_string()))
     }
 
     async fn execute_query(&self, q: &Query) -> Result<Message, ResolveError> {
         let conn = self.get_or_create_conn().await?;
-        let dummy_msg = q.to_message(0)?;
         let (reply_tx, reply_rx) = oneshot::channel();
+        let id = Self::register(&conn, reply_tx)?;
+        let query_tx = conn.query_tx.clone();
+        let _guard = InFlightGuard { conn, id };
 
-        let pending = PendingQuery {
-            msg: dummy_msg,
-            reply_tx,
-        };
+        let wire = q.to_message(id)?.to_vec()?;
+        let len = u16::try_from(wire.len())
+            .map_err(|_| ResolveError::Protocol("query too large".to_string()))?;
+        let mut packet = Vec::with_capacity(2 + wire.len());
+        packet.extend_from_slice(&len.to_be_bytes());
+        packet.extend_from_slice(&wire);
 
-        conn.query_tx
-            .send(pending)
-            .await
-            .map_err(|_| ResolveError::Failure("connection query queue closed".to_string()))?;
-
-        let reply_res = timeout(self.request_timeout, reply_rx)
+        timeout(self.request_timeout, query_tx.send(packet))
             .await
             .map_err(|_| ResolveError::Timeout)?
-            .map_err(|_| ResolveError::Failure("query response channel closed".to_string()))?;
+            .map_err(|_| ResolveError::Failure("connection query queue closed".to_string()))?;
 
-        let reply = reply_res?;
+        let reply = timeout(self.request_timeout, reply_rx)
+            .await
+            .map_err(|_| ResolveError::Timeout)?
+            .map_err(|_| ResolveError::Failure("query response channel closed".to_string()))??;
 
-        if reply.truncation {
-            return Err(ResolveError::Truncated);
-        }
-
+        // Truncated replies are returned as answers, like miekg/dns does.
         if self.resolver.is_blocked_upstream(&reply) {
             return Err(ResolveError::BlockedUpstream(
                 self.resolver.info.descriptive_name(),
@@ -279,115 +357,95 @@ impl TcpResolver {
     }
 }
 
-async fn writer_loop(
-    mut writer: AnyWriteHalf,
-    mut query_rx: mpsc::Receiver<PendingQuery>,
-    mut heartbeat_rx: mpsc::Receiver<oneshot::Sender<()>>,
+fn fail_all(in_flight: &InFlightMap, reason: &str) {
+    let mut lock = in_flight.lock().unwrap();
+    for (_, tx) in lock.drain() {
+        let _ = tx.send(Err(ResolveError::Failure(reason.to_string())));
+    }
+}
+
+struct WriterCtx {
+    writer: AnyWriteHalf,
+    query_rx: mpsc::Receiver<Vec<u8>>,
+    heartbeat_rx: mpsc::Receiver<oneshot::Sender<()>>,
     in_flight: InFlightMap,
     abandoned: Arc<AtomicBool>,
-) {
-    let mut next_id: u16 = crate::conn::random_u16();
-    let ttl_sleep = tokio::time::sleep(DEFAULT_CLIENT_TTL);
+    wake: Arc<Notify>,
+    ttl: Duration,
+    /// Dropped when the writer exits, which stops the reader.
+    _kill_tx: oneshot::Sender<()>,
+}
+
+async fn writer_loop(mut ctx: WriterCtx) {
+    let ttl_sleep = tokio::time::sleep(ctx.ttl);
     tokio::pin!(ttl_sleep);
+    let mut ttl_fired = false;
 
     loop {
         tokio::select! {
-            _ = &mut ttl_sleep => {
-                // Connection TTL reached; recycle connection once idle.
-                abandoned.store(true, Ordering::Relaxed);
-                let is_idle = in_flight.lock().unwrap().is_empty();
-                if is_idle {
-                    let _ = writer.shutdown().await;
-                    return;
+            // A completed Sleep is always ready, so it must be disarmed after firing.
+            _ = &mut ttl_sleep, if !ttl_fired => {
+                // Recycle: no new queries use this connection; it closes once idle.
+                ttl_fired = true;
+                ctx.abandoned.store(true, Ordering::Relaxed);
+            }
+
+            _ = ctx.wake.notified() => {}
+
+            hb = ctx.heartbeat_rx.recv() => match hb {
+                Some(tx) => { let _ = tx.send(()); }
+                None => break,
+            },
+
+            q = ctx.query_rx.recv() => match q {
+                Some(packet) => {
+                    let res = timeout(TCP_WRITE_TIMEOUT, ctx.writer.write_all(&packet)).await;
+                    if !matches!(res, Ok(Ok(()))) {
+                        ctx.abandoned.store(true, Ordering::Relaxed);
+                        fail_all(&ctx.in_flight, "write failed");
+                        break;
+                    }
                 }
-            }
+                None => break,
+            },
+        }
 
-            Some(hb_tx) = heartbeat_rx.recv() => {
-                let _ = hb_tx.send(());
-            }
-
-            Some(mut pending) = query_rx.recv() => {
-                // Assign a unique 16-bit message ID not currently in flight.
-                let id = {
-                    let mut lock = in_flight.lock().unwrap();
-                    let mut chosen_id = next_id;
-                    for _ in 0..65535 {
-                        if !lock.contains_key(&chosen_id) {
-                            break;
-                        }
-                        chosen_id = chosen_id.wrapping_add(1);
-                    }
-                    next_id = chosen_id.wrapping_add(1);
-                    lock.insert(chosen_id, pending.reply_tx);
-                    chosen_id
-                };
-
-                pending.msg.metadata.id = id;
-
-                let wire_bytes = match pending.msg.to_vec() {
-                    Ok(b) => b,
-                    Err(e) => {
-                        if let Some(tx) = in_flight.lock().unwrap().remove(&id) {
-                            let _ = tx.send(Err(ResolveError::Proto(e)));
-                        }
-                        continue;
-                    }
-                };
-
-                let len = wire_bytes.len() as u16;
-                let mut packet = Vec::with_capacity(2 + wire_bytes.len());
-                packet.extend_from_slice(&len.to_be_bytes());
-                packet.extend_from_slice(&wire_bytes);
-
-                let write_res = timeout(TCP_WRITE_TIMEOUT, writer.write_all(&packet)).await;
-                if let Err(_) | Ok(Err(_)) = write_res {
-                    abandoned.store(true, Ordering::Relaxed);
-                    if let Some(tx) = in_flight.lock().unwrap().remove(&id) {
-                        let _ = tx.send(Err(ResolveError::Failure("write failed".to_string())));
-                    }
-                    let _ = writer.shutdown().await;
-                    return;
-                }
-            }
-
-            else => {
-                // Channels closed.
-                abandoned.store(true, Ordering::Relaxed);
-                let _ = writer.shutdown().await;
-                return;
-            }
+        if ctx.abandoned.load(Ordering::Relaxed) && ctx.in_flight.lock().unwrap().is_empty() {
+            break;
         }
     }
+
+    ctx.abandoned.store(true, Ordering::Relaxed);
+    // Fail queries that were queued but never answered, then close.
+    ctx.query_rx.close();
+    fail_all(&ctx.in_flight, "connection closed");
+    let _ = ctx.writer.shutdown().await;
 }
 
 async fn reader_loop(
     mut reader: AnyReadHalf,
     in_flight: InFlightMap,
     abandoned: Arc<AtomicBool>,
+    wake: Arc<Notify>,
+    mut kill_rx: oneshot::Receiver<()>,
 ) {
-    loop {
+    let reason = loop {
         let mut len_buf = [0u8; 2];
-        if reader.read_exact(&mut len_buf).await.is_err() {
-            // Connection closed or EOF.
-            abandoned.store(true, Ordering::Relaxed);
-            let mut lock = in_flight.lock().unwrap();
-            for (_, tx) in lock.drain() {
-                let _ = tx.send(Err(ResolveError::Failure(
-                    "connection closed by peer".to_string(),
-                )));
-            }
-            return;
+        let read_len = tokio::select! {
+            r = reader.read_exact(&mut len_buf) => r,
+            _ = &mut kill_rx => break "connection closed",
+        };
+        if read_len.is_err() {
+            break "connection closed by peer";
         }
 
-        let msg_len = u16::from_be_bytes(len_buf) as usize;
-        let mut msg_buf = vec![0u8; msg_len];
-        if reader.read_exact(&mut msg_buf).await.is_err() {
-            abandoned.store(true, Ordering::Relaxed);
-            let mut lock = in_flight.lock().unwrap();
-            for (_, tx) in lock.drain() {
-                let _ = tx.send(Err(ResolveError::Failure("read payload failed".to_string())));
-            }
-            return;
+        let mut msg_buf = vec![0u8; u16::from_be_bytes(len_buf) as usize];
+        let read_body = tokio::select! {
+            r = reader.read_exact(&mut msg_buf) => r,
+            _ = &mut kill_rx => break "connection closed",
+        };
+        if read_body.is_err() {
+            break "read payload failed";
         }
 
         let message = match Message::from_vec(&msg_buf) {
@@ -398,30 +456,27 @@ async fn reader_loop(
             }
         };
 
-        let id = message.id;
-        let target_tx = {
-            let mut lock = in_flight.lock().unwrap();
-            lock.remove(&id)
-        };
-
-        if let Some(tx) = target_tx {
-            let _ = tx.send(Ok(message));
-        } else {
-            tracing::debug!("received unsolicited TCP DNS message with id {}", id);
+        let target_tx = in_flight.lock().unwrap().remove(&message.id);
+        match target_tx {
+            Some(tx) => {
+                let _ = tx.send(Ok(message));
+                // Let the writer recycle an expired connection that is now idle.
+                wake.notify_one();
+            }
+            None => tracing::debug!("received unsolicited TCP DNS message with id {}", message.id),
         }
-    }
+    };
+
+    abandoned.store(true, Ordering::Relaxed);
+    fail_all(&in_flight, reason);
+    wake.notify_one();
 }
 
 #[async_trait::async_trait]
 impl ResolverConn for TcpResolver {
     async fn query(&self, q: Query) -> Result<Message, ResolveError> {
-        match self.execute_query(&q).await {
-            Ok(msg) => Ok(msg),
-            Err(err) => {
-                self.report_failure();
-                Err(err)
-            }
-        }
+        // Failure reporting belongs to the orchestrator (Go resolve.go).
+        self.execute_query(&q).await
     }
 
     fn report_failure(&self) {
@@ -437,9 +492,9 @@ impl ResolverConn for TcpResolver {
     }
 
     async fn force_reconnect(&self) {
-        let mut lock = self.active_conn.lock().await;
-        if let Some(conn) = lock.take() {
-            conn.abandoned.store(true, Ordering::Relaxed);
+        // The old connection finishes its in-flight queries, then closes.
+        if let Some(conn) = self.active_conn.lock().unwrap().as_ref() {
+            conn.abandon();
         }
     }
 }

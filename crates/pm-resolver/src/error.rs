@@ -49,7 +49,7 @@ pub enum ParseResolverError {
     #[error("too many search domains, for security reasons only 100 search domains are supported")]
     TooManySearchDomains,
 
-    #[error("invalid URL: {0}")]
+    #[error("{0}")]
     UrlParse(String),
 }
 
@@ -58,9 +58,6 @@ pub enum ParseResolverError {
 pub enum ResolveError {
     #[error("timeout waiting for query")]
     Timeout,
-
-    #[error("DNS response was truncated")]
-    Truncated,
 
     #[error("query was blocked upstream by {0}")]
     BlockedUpstream(String),

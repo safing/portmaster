@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
 
-use url::Url;
+use url::{Host, Url};
 
 use crate::error::ParseResolverError;
 use crate::model::{
@@ -71,8 +71,9 @@ pub fn format_ip_and_port(ip: IpAddr, port: u16) -> String {
 
 /// Formats a host and port into host:port (brackets IPv6 addresses).
 pub fn format_host_and_port(host: &str, port: u16) -> String {
-    if let Ok(ip) = host.parse::<IpAddr>() {
-        format_ip_and_port(ip, port)
+    // Go net.JoinHostPort: bracket anything containing a colon.
+    if host.contains(':') {
+        format!("[{}]:{}", host, port)
     } else {
         format!("{}:{}", host, port)
     }
@@ -170,18 +171,28 @@ pub fn configure_search_domains(
 }
 
 /// Parses a resolver URL, mirroring Go `createResolver`.
-/// Returns `Ok((resolver, skip))`.
+/// Returns `Ok((resolver, skip))`. Link-local availability is assumed
+/// (flag stays false); use [`create_resolver_with_local_net`] to inject a check.
 pub fn create_resolver(
     resolver_url: &str,
     source: &str,
 ) -> Result<(Option<Resolver>, bool), ParseResolverError> {
+    create_resolver_with_local_net(resolver_url, source, None)
+}
+
+/// Like [`create_resolver`], with an injectable replacement for Go
+/// `netenv.GetLocalNetwork`: `local_network(ip)` returns whether the IP is in a
+/// directly attached network. It is consulted only for the `link-local`
+/// parameter; `None` assumes available, so `LinkLocalUnavailable` stays false.
+/// With a check, a resolver without IP is unavailable (Go: lookup error).
+pub fn create_resolver_with_local_net(
+    resolver_url: &str,
+    source: &str,
+    local_network: Option<&dyn Fn(IpAddr) -> bool>,
+) -> Result<(Option<Resolver>, bool), ParseResolverError> {
     let parsed_url = match Url::parse(resolver_url) {
         Ok(u) => u,
-        Err(url::ParseError::InvalidPort) => {
-            let port_str = extract_invalid_port(resolver_url);
-            return Err(ParseResolverError::InvalidPort(port_str));
-        }
-        Err(e) => return Err(ParseResolverError::UrlParse(e.to_string())),
+        Err(e) => return Err(url_parse_error(resolver_url, e)),
     };
 
     let scheme = parsed_url.scheme();
@@ -194,19 +205,38 @@ pub fn create_resolver(
         _ => return Err(ParseResolverError::InvalidScheme(scheme.to_string())),
     };
 
-    let query_map: HashMap<String, String> = parsed_url.query_pairs().into_owned().collect();
-    let raw_query_keys: Vec<String> = parsed_url
-        .query()
-        .map(|q| {
-            q.split('&')
-                .filter(|s| !s.is_empty())
-                .map(|pair| pair.split('=').next().unwrap_or("").to_string())
-                .collect()
-        })
-        .unwrap_or_default();
+    // Go `url.Values`: the first value of a repeated key wins (`Query().Get`).
+    let mut query_map: HashMap<String, String> = HashMap::new();
+    let mut query_keys: Vec<String> = Vec::new();
+    for (k, v) in parsed_url.query_pairs() {
+        if let std::collections::hash_map::Entry::Vacant(e) = query_map.entry(k.into_owned()) {
+            query_keys.push(e.key().clone());
+            e.insert(v.into_owned());
+        }
+    }
 
-    // Check unknown parameters.
-    for key in &raw_query_keys {
+    // Same order as Go `checkAndSetResolverParamters`: IP/scheme, port, params.
+    let (hostname, parsed_ip): (String, Option<IpAddr>) = match parsed_url.host() {
+        Some(Host::Ipv4(ip)) => (ip.to_string(), Some(IpAddr::V4(ip))),
+        Some(Host::Ipv6(ip)) => (ip.to_string(), Some(IpAddr::V6(ip).to_canonical())),
+        Some(Host::Domain(d)) => (
+            d.to_string(),
+            d.parse::<IpAddr>().ok().map(|ip| ip.to_canonical()),
+        ),
+        None => (String::new(), None),
+    };
+    let hostname_is_domain = parsed_ip.is_none();
+
+    if hostname_is_domain
+        && normalized_scheme != SERVER_TYPE_DOH
+        && normalized_scheme != SERVER_TYPE_DOT
+    {
+        return Err(ParseResolverError::InvalidIp(hostname));
+    }
+
+    let port = default_port(parsed_url.port(), &normalized_scheme)?;
+
+    for key in &query_keys {
         match key.as_str() {
             PARAMETER_NAME
             | PARAMETER_VERIFY
@@ -218,20 +248,6 @@ pub fn create_resolver(
             _ => return Err(ParseResolverError::UnknownParameter(key.clone())),
         }
     }
-
-    let hostname = parsed_url.host_str().unwrap_or("");
-    let parsed_ip = hostname.parse::<IpAddr>().ok();
-    let hostname_is_domain = parsed_ip.is_none();
-
-    if hostname_is_domain
-        && normalized_scheme != SERVER_TYPE_DOH
-        && normalized_scheme != SERVER_TYPE_DOT
-    {
-        return Err(ParseResolverError::InvalidIp(hostname.to_string()));
-    }
-
-    // Parse port from URL or use scheme default.
-    let port = parse_port_from_url(&parsed_url, &normalized_scheme)?;
 
     let mut new_resolver = Resolver {
         config_url: resolver_url.to_string(),
@@ -248,7 +264,7 @@ pub fn create_resolver(
         upstream_block_detection: String::new(),
         search: None,
         search_only: false,
-        path: parsed_url.path().to_string(),
+        path: raw_path(resolver_url),
         link_local_unavailable: false,
         conn: None,
     };
@@ -268,26 +284,32 @@ pub fn create_resolver(
         }
 
         if hostname_is_domain && !param_server_ip.is_empty() {
-            new_resolver.info.ip = param_server_ip.parse::<IpAddr>().ok();
+            new_resolver.info.ip = param_server_ip
+                .parse::<IpAddr>()
+                .ok()
+                .map(|ip| ip.to_canonical());
             new_resolver.server_address = format_host_and_port(&param_server_ip, port);
-            new_resolver.info.domain = hostname.to_string();
-        } else if !hostname_is_domain && !verify_domain.is_empty() {
+            new_resolver.info.domain = hostname;
+        } else if let Some(ip) = parsed_ip {
             new_resolver.info.domain = verify_domain;
-            new_resolver.server_address = format_host_and_port(hostname, port);
-        } else if hostname_is_domain && verify_domain.is_empty() && param_server_ip.is_empty() {
-            new_resolver.info.domain = hostname.to_string();
+            new_resolver.server_address = format_ip_and_port(ip, port);
+        } else {
+            new_resolver.info.domain = hostname;
             new_resolver.server_address = format_host_and_port(&new_resolver.info.domain, port);
         }
     } else {
         if !verify_domain.is_empty() {
             return Err(ParseResolverError::DomainVerificationNotSupported);
         }
-        new_resolver.server_address = format_host_and_port(hostname, port);
+        if let Some(ip) = parsed_ip {
+            new_resolver.server_address = format_ip_and_port(ip, port);
+        }
     }
 
     // Upstream block detection.
     let block_detection = query_map
         .get(PARAMETER_BLOCKED_IF)
+        .filter(|v| !v.is_empty())
         .cloned()
         .unwrap_or_else(|| BLOCK_DETECTION_ZERO_IP.to_string());
     match block_detection.as_str() {
@@ -302,7 +324,7 @@ pub fn create_resolver(
 
     // IP scope determination.
     if let Some(ip) = new_resolver.info.ip {
-        let scope = IpScope::from(pm_netstate::ip_scope(ip));
+        let scope = pm_netstate::ip_scope(ip);
         new_resolver.info.ip_scope = scope;
         if scope.is_localhost() && source == SERVER_SOURCE_OPERATING_SYSTEM {
             return Ok((None, true)); // skip localhost resolvers from the OS
@@ -318,10 +340,9 @@ pub fn create_resolver(
     }
 
     // Search-only.
-    if raw_query_keys.iter().any(|k| k == PARAMETER_SEARCH_ONLY) {
+    if let Some(value) = query_map.get(PARAMETER_SEARCH_ONLY) {
         new_resolver.search_only = true;
-        let val = query_map.get(PARAMETER_SEARCH_ONLY).map(|s| s.as_str()).unwrap_or("");
-        if !val.is_empty() {
+        if !value.is_empty() {
             return Err(ParseResolverError::SearchOnlyNotEmpty);
         }
         if new_resolver.search.as_ref().map_or(0, |s| s.len()) == 0 {
@@ -330,33 +351,25 @@ pub fn create_resolver(
     }
 
     // Link-local.
-    if raw_query_keys.iter().any(|k| k == PARAMETER_LINK_LOCAL) {
-        let val = query_map.get(PARAMETER_LINK_LOCAL).map(|s| s.as_str()).unwrap_or("");
-        if !val.is_empty() {
+    if let Some(value) = query_map.get(PARAMETER_LINK_LOCAL) {
+        if !value.is_empty() {
             return Err(ParseResolverError::LinkLocalNotEmpty);
         }
-        new_resolver.link_local_unavailable = true;
+        if let Some(check) = local_network {
+            new_resolver.link_local_unavailable = match new_resolver.info.ip {
+                Some(ip) => !check(ip),
+                None => true,
+            };
+        }
     }
 
     Ok((Some(new_resolver), false))
 }
 
-fn parse_port_from_url(url: &Url, scheme: &str) -> Result<u16, ParseResolverError> {
-    if let Some(port) = url.port() {
+fn default_port(port: Option<u16>, scheme: &str) -> Result<u16, ParseResolverError> {
+    if let Some(port) = port {
         return Ok(port);
     }
-
-    let host_with_port = url.host_str().unwrap_or("");
-    if let Some(idx) = host_with_port.rfind(':') {
-        let port_part = &host_with_port[idx + 1..];
-        if !port_part.is_empty() && !host_with_port.ends_with(']') {
-            return match port_part.parse::<u16>() {
-                Ok(p) => Ok(p),
-                Err(_) => Err(ParseResolverError::InvalidPort(port_part.to_string())),
-            };
-        }
-    }
-
     match scheme {
         SERVER_TYPE_DNS | SERVER_TYPE_TCP => Ok(53),
         SERVER_TYPE_DOH => Ok(443),
@@ -365,19 +378,59 @@ fn parse_port_from_url(url: &Url, scheme: &str) -> Result<u16, ParseResolverErro
     }
 }
 
-fn extract_invalid_port(url_str: &str) -> String {
-    // Find ':' after scheme "://" but before '/' or '?'
-    let rest = if let Some(idx) = url_str.find("://") {
-        &url_str[idx + 3..]
-    } else {
-        url_str
-    };
+/// Maps a `url` crate error to the message Go `url.Parse` would return.
+fn url_parse_error(input: &str, err: url::ParseError) -> ParseResolverError {
+    if err == url::ParseError::InvalidPort {
+        let port = authority_of(input)
+            .rsplit_once(':')
+            .map_or("", |(_, p)| p)
+            .to_string();
+        // Go accepts any digits in url.Parse and fails later in ParseUint.
+        if !port.is_empty() && port.bytes().all(|b| b.is_ascii_digit()) {
+            return ParseResolverError::InvalidPort(port);
+        }
+        return ParseResolverError::UrlParse(format!(
+            "parse {:?}: invalid port \":{}\" after host",
+            input, port
+        ));
+    }
+    ParseResolverError::UrlParse(format!("parse {:?}: {}", input, err))
+}
 
-    let authority = rest.split(['/', '?']).next().unwrap_or(rest);
-    let port_str = if let Some(idx) = authority.rfind(':') {
-        &authority[idx + 1..]
-    } else {
-        authority
+fn authority_of(url_str: &str) -> &str {
+    let rest = url_str.find("://").map_or(url_str, |i| &url_str[i + 3..]);
+    rest.split(['/', '?', '#']).next().unwrap_or(rest)
+}
+
+/// Go `u.Path`: empty when the URL has no path (the `url` crate yields "/"
+/// for special schemes such as https), percent-decoded.
+fn raw_path(url_str: &str) -> String {
+    let rest = url_str.find("://").map_or(url_str, |i| &url_str[i + 3..]);
+    let Some(start) = rest.find(['/', '?', '#']) else {
+        return String::new();
     };
-    port_str.to_string()
+    let tail = &rest[start..];
+    if !tail.starts_with('/') {
+        return String::new();
+    }
+    let end = tail.find(['?', '#']).unwrap_or(tail.len());
+    percent_decode(&tail[..end])
+}
+
+fn percent_decode(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'%' {
+            if let Some(v) = s.get(i + 1..i + 3).and_then(|h| u8::from_str_radix(h, 16).ok()) {
+                out.push(v);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(b[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }

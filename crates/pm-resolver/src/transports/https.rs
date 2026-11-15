@@ -1,9 +1,10 @@
+use std::net::SocketAddr;
 use std::sync::RwLock;
 use std::time::Duration;
 
 use base64::prelude::*;
 use hickory_proto::op::Message;
-use reqwest::{Client, StatusCode};
+use reqwest::{redirect, Client, StatusCode};
 
 use crate::conn::{BasicResolverConn, Query, ResolverConn};
 use crate::error::ResolveError;
@@ -20,6 +21,7 @@ pub struct HttpsResolver {
     client: RwLock<Client>,
     request_timeout: Duration,
     use_post: bool,
+    extra_root: Option<reqwest::Certificate>,
 }
 
 impl HttpsResolver {
@@ -32,13 +34,35 @@ impl HttpsResolver {
         timeout: Duration,
         use_post: bool,
     ) -> Result<Self, ResolveError> {
-        let client = build_http_client(timeout)?;
+        let client = build_http_client(&resolver, timeout, None)?;
         Ok(Self {
             resolver,
             basic: BasicResolverConn::new(),
             client: RwLock::new(client),
             request_timeout: timeout,
             use_post,
+            extra_root: None,
+        })
+    }
+
+    /// Trusts the given extra root certificates (DER) in addition to the
+    /// built-in web roots. Intended for tests against a local server.
+    pub fn with_extra_root_der(
+        resolver: Resolver,
+        timeout: Duration,
+        use_post: bool,
+        root_der: &[u8],
+    ) -> Result<Self, ResolveError> {
+        let cert = reqwest::Certificate::from_der(root_der)
+            .map_err(|e| ResolveError::Tls(e.to_string()))?;
+        let client = build_http_client(&resolver, timeout, Some(cert.clone()))?;
+        Ok(Self {
+            resolver,
+            basic: BasicResolverConn::new(),
+            client: RwLock::new(client),
+            request_timeout: timeout,
+            use_post,
+            extra_root: Some(cert),
         })
     }
 
@@ -56,14 +80,17 @@ impl HttpsResolver {
             guard.clone()
         };
 
-        let path = if self.resolver.path.is_empty() {
-            "/dns-query"
-        } else {
-            &self.resolver.path
-        };
+        // The URL carries the verified domain (SNI and certificate name); the
+        // connection itself goes to ServerAddress via the client's resolve override.
+        let base = format!(
+            "https://{}:{}",
+            self.resolver.info.domain, self.resolver.info.port
+        );
+        // Path exactly as configured (Go uses Resolver.Path unchanged).
+        let path = self.resolver.path.as_str();
 
         let response = if self.use_post {
-            let url = format!("https://{}{}", self.resolver.server_address, path);
+            let url = format!("{}{}", base, path);
             client
                 .post(&url)
                 .header(reqwest::header::CONTENT_TYPE, MIME_DNS_MESSAGE)
@@ -75,8 +102,8 @@ impl HttpsResolver {
         } else {
             let b64_dns = BASE64_URL_SAFE_NO_PAD.encode(&wire_bytes);
             let url = format!(
-                "https://{}{}{}dns={}",
-                self.resolver.server_address,
+                "{}{}{}dns={}",
+                base,
                 path,
                 if path.contains('?') { "&" } else { "?" },
                 b64_dns
@@ -101,26 +128,31 @@ impl HttpsResolver {
             .await
             .map_err(|e| ResolveError::Http(format!("failed to read response body: {}", e)))?;
 
-        let reply = Message::from_vec(&body_bytes)?;
-
-        if reply.truncation {
-            return Err(ResolveError::Truncated);
-        }
-
-        if self.resolver.is_blocked_upstream(&reply) {
-            return Err(ResolveError::BlockedUpstream(
-                self.resolver.info.descriptive_name(),
-            ));
-        }
-
-        Ok(reply)
+        // No block detection here: Go's HTTPS resolver does not run it.
+        Ok(Message::from_vec(&body_bytes)?)
     }
 }
 
-fn build_http_client(request_timeout: Duration) -> Result<Client, ResolveError> {
-    Client::builder()
+fn build_http_client(
+    resolver: &Resolver,
+    request_timeout: Duration,
+    extra_root: Option<reqwest::Certificate>,
+) -> Result<Client, ResolveError> {
+    let mut builder = Client::builder()
         .timeout(request_timeout)
         .connect_timeout(DEFAULT_CONNECT_TIMEOUT)
+        // Go's transport has no proxy and the resolver must not leak through one.
+        .no_proxy()
+        .redirect(redirect::Policy::none());
+    if let Some(cert) = extra_root {
+        builder = builder.add_root_certificate(cert);
+    }
+    // Connect to the configured address while verifying the certificate for the domain.
+    // reqwest ignores the port of the override; the request URL carries it.
+    if let Ok(addr) = resolver.server_address.parse::<SocketAddr>() {
+        builder = builder.resolve(&resolver.info.domain, addr);
+    }
+    builder
         .build()
         .map_err(|e| ResolveError::Http(format!("failed to create HTTP client: {}", e)))
 }
@@ -128,13 +160,8 @@ fn build_http_client(request_timeout: Duration) -> Result<Client, ResolveError> 
 #[async_trait::async_trait]
 impl ResolverConn for HttpsResolver {
     async fn query(&self, q: Query) -> Result<Message, ResolveError> {
-        match self.execute_query(&q).await {
-            Ok(msg) => Ok(msg),
-            Err(err) => {
-                self.report_failure();
-                Err(err)
-            }
-        }
+        // Failure reporting belongs to the orchestrator (Go resolve.go).
+        self.execute_query(&q).await
     }
 
     fn report_failure(&self) {
@@ -150,7 +177,7 @@ impl ResolverConn for HttpsResolver {
     }
 
     async fn force_reconnect(&self) {
-        if let Ok(new_client) = build_http_client(self.request_timeout) {
+        if let Ok(new_client) = build_http_client(&self.resolver, self.request_timeout, self.extra_root.clone()) {
             let mut guard = self.client.write().unwrap();
             *guard = new_client;
         }

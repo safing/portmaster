@@ -135,8 +135,96 @@ fn test_query_parameters() {
     assert!(r.search_only);
 
     // Link-local
+    // Link-local: no check injected assumes available.
     let (res, _) = create_resolver("dns://1.1.1.1?link-local", SERVER_SOURCE_CONFIGURED).unwrap();
+    assert!(!res.unwrap().link_local_unavailable);
+}
+
+#[test]
+fn test_link_local_injected_check() {
+    let none_local: &dyn Fn(std::net::IpAddr) -> bool = &|_| false;
+    let all_local: &dyn Fn(std::net::IpAddr) -> bool = &|_| true;
+    let url = "dns://192.168.1.1?link-local";
+
+    let (res, _) = create_resolver_with_local_net(url, SERVER_SOURCE_CONFIGURED, Some(none_local)).unwrap();
     assert!(res.unwrap().link_local_unavailable);
+    let (res, _) = create_resolver_with_local_net(url, SERVER_SOURCE_CONFIGURED, Some(all_local)).unwrap();
+    assert!(!res.unwrap().link_local_unavailable);
+    let (res, _) = create_resolver_with_local_net(url, SERVER_SOURCE_CONFIGURED, None).unwrap();
+    assert!(!res.unwrap().link_local_unavailable);
+    // Without the parameter the check is not used.
+    let (res, _) =
+        create_resolver_with_local_net("dns://192.168.1.1", SERVER_SOURCE_CONFIGURED, Some(none_local)).unwrap();
+    assert!(!res.unwrap().link_local_unavailable);
+}
+
+#[test]
+fn test_ipv6_bracketed_hosts() {
+    let (res, _) = create_resolver("dns://[2001:db8::1]:53", SERVER_SOURCE_CONFIGURED).unwrap();
+    let r = res.unwrap();
+    assert_eq!(r.info.ip, Some("2001:db8::1".parse().unwrap()));
+    assert_eq!(r.info.port, 53);
+    assert_eq!(r.server_address, "[2001:db8::1]:53");
+
+    let (res, _) = create_resolver("dns://[2001:db8::1]", SERVER_SOURCE_CONFIGURED).unwrap();
+    assert_eq!(res.unwrap().server_address, "[2001:db8::1]:53");
+
+    let (res, _) =
+        create_resolver("dot://[2001:db8::1]?verify=dns.example", SERVER_SOURCE_CONFIGURED).unwrap();
+    let r = res.unwrap();
+    assert_eq!(r.info.domain, "dns.example");
+    assert_eq!(r.info.ip, Some("2001:db8::1".parse().unwrap()));
+    assert_eq!(r.info.port, 853);
+    assert_eq!(r.server_address, "[2001:db8::1]:853");
+
+    // ip= parameter with IPv6 value is bracketed like net.JoinHostPort.
+    let (res, _) = create_resolver("dot://dns.example?ip=2001:db8::2", SERVER_SOURCE_CONFIGURED).unwrap();
+    assert_eq!(res.unwrap().server_address, "[2001:db8::2]:853");
+}
+
+#[test]
+fn test_https_alias_path_matches_go() {
+    // Go u.Path is empty without a path, also for the https alias.
+    for (url, path) in [
+        ("https://dns.example", ""),
+        ("https://dns.example/", "/"),
+        ("https://dns.example?name=x", ""),
+        ("doh://dns.example", ""),
+        ("doh://dns.example/dns-query?name=x", "/dns-query"),
+        ("https://dns.example/a%20b", "/a b"),
+    ] {
+        let (res, _) = create_resolver(url, SERVER_SOURCE_CONFIGURED).unwrap();
+        assert_eq!(res.unwrap().path, path, "{}", url);
+    }
+}
+
+#[test]
+fn test_check_order_and_query_semantics() {
+    // IP check precedes port check and params (Go order).
+    let err = create_resolver("dns://example.com:abc?foo=1", SERVER_SOURCE_CONFIGURED).unwrap_err();
+    assert!(err.to_string().contains("invalid port"), "{}", err);
+    let err = create_resolver("dns://example.com?foo=1", SERVER_SOURCE_CONFIGURED).unwrap_err();
+    assert_eq!(err.to_string(), "resolver IP \"example.com\" is invalid");
+
+    // Repeated key: first value wins (url.Values.Get).
+    let (res, _) =
+        create_resolver("dns://1.1.1.1?name=first&name=second", SERVER_SOURCE_CONFIGURED).unwrap();
+    assert_eq!(res.unwrap().info.name, "first");
+
+    // Percent-decoded keys.
+    let (res, _) = create_resolver("dns://1.1.1.1?n%61me=decoded", SERVER_SOURCE_CONFIGURED).unwrap();
+    assert_eq!(res.unwrap().info.name, "decoded");
+    let err = create_resolver("dns://1.1.1.1?fo%6f=1", SERVER_SOURCE_CONFIGURED).unwrap_err();
+    assert_eq!(err.to_string(), "unknown parameter \"\"foo\"\"");
+}
+
+#[test]
+fn test_ipv4_mapped_ip_canonicalized() {
+    let (res, _) = create_resolver("dns://[::ffff:1.2.3.4]", SERVER_SOURCE_CONFIGURED).unwrap();
+    let r = res.unwrap();
+    assert_eq!(r.info.ip, Some("1.2.3.4".parse().unwrap()));
+    assert_eq!(r.server_address, "1.2.3.4:53");
+    assert_eq!(r.info.id(), "dns://1.2.3.4:53#config");
 }
 
 #[test]
@@ -200,8 +288,9 @@ fn test_validation_errors() {
         ),
         (
             "dns://1.1.1.1:abc",
-            "invalid port \"abc\"",
+            "parse \"dns://1.1.1.1:abc\": invalid port \":abc\" after host",
         ),
+        ("dns://1.1.1.1:99999", "invalid port \"99999\""),
         (
             "dns://1.1.1.1?foo=bar",
             "unknown parameter \"\"foo\"\"",
