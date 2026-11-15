@@ -90,6 +90,7 @@ func main() {
 	genGeoIP()
 	genUpdates()
 	genEndpoints()
+	genJess()
 	genSQLite()
 }
 

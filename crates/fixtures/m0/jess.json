@@ -1,0 +1,590 @@
+{
+  "cases": [
+    {
+      "name": "valid",
+      "input": "{\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"Name\": \"Portmaster Intel\",\n \"Version\": \"v1.2.3\",\n \"Nested\": {\n  \"b\": {\n   \"y\": 1,\n   \"x\": [],\n   \"w\": {}\n  },\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"é\": 1\n },\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"URLs\": [],\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\"\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"_jess-signature\": \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU\"\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU"
+      ],
+      "trust_set": "a",
+      "sig_error": "",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "valid-both-trusted",
+      "input": "{\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"Name\": \"Portmaster Intel\",\n \"Version\": \"v1.2.3\",\n \"Nested\": {\n  \"b\": {\n   \"y\": 1,\n   \"x\": [],\n   \"w\": {}\n  },\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"é\": 1\n },\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"URLs\": [],\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\"\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"_jess-signature\": \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU\"\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU"
+      ],
+      "trust_set": "ab",
+      "sig_error": "",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "valid-second-key",
+      "input": "{\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"Name\": \"Portmaster Intel\",\n \"Version\": \"v1.2.3\",\n \"Nested\": {\n  \"b\": {\n   \"y\": 1,\n   \"x\": [],\n   \"w\": {}\n  },\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"é\": 1\n },\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"URLs\": [],\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\"\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"_jess-signature\": \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlRBnigzRqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWJlVmFsdWVYQAop5YpQxMYekanZLGFVp9fyTNUQhSeTfQyjYpsaQwxLPvtOFrE8BqyizJ404moY4giGdVm2PwqpATyKLBjWRQg\"\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlRBnigzRqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWJlVmFsdWVYQAop5YpQxMYekanZLGFVp9fyTNUQhSeTfQyjYpsaQwxLPvtOFrE8BqyizJ404moY4giGdVm2PwqpATyKLBjWRQg"
+      ],
+      "trust_set": "ab",
+      "sig_error": "",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "two-signatures",
+      "input": "{\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"Name\": \"Portmaster Intel\",\n \"Version\": \"v1.2.3\",\n \"Nested\": {\n  \"b\": {\n   \"y\": 1,\n   \"x\": [],\n   \"w\": {}\n  },\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"é\": 1\n },\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"URLs\": [],\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\"\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"_jess-signature\": [\n  \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlRLfjI3JqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWJlVmFsdWVYQLvrAc3hbmnJ4hY9xQdwrUtfxKe0yOzJN7xfW6Qhr1ZCNMceF3SefqYRnk2_VqJUTekym42ualiJsUHIHNZSNgE\",\n  \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU\"\n ]\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlRLfjI3JqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWJlVmFsdWVYQLvrAc3hbmnJ4hY9xQdwrUtfxKe0yOzJN7xfW6Qhr1ZCNMceF3SefqYRnk2_VqJUTekym42ualiJsUHIHNZSNgE",
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU"
+      ],
+      "trust_set": "ab",
+      "sig_error": "",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "two-signatures-one-untrusted",
+      "input": "{\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"Name\": \"Portmaster Intel\",\n \"Version\": \"v1.2.3\",\n \"Nested\": {\n  \"b\": {\n   \"y\": 1,\n   \"x\": [],\n   \"w\": {}\n  },\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"é\": 1\n },\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"URLs\": [],\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\"\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"_jess-signature\": [\n  \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlRLfjI3JqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWJlVmFsdWVYQLvrAc3hbmnJ4hY9xQdwrUtfxKe0yOzJN7xfW6Qhr1ZCNMceF3SefqYRnk2_VqJUTekym42ualiJsUHIHNZSNgE\",\n  \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU\"\n ]\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlRLfjI3JqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWJlVmFsdWVYQLvrAc3hbmnJ4hY9xQdwrUtfxKe0yOzJN7xfW6Qhr1ZCNMceF3SefqYRnk2_VqJUTekym42ualiJsUHIHNZSNgE",
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU"
+      ],
+      "trust_set": "a",
+      "sig_error": "signature 1 invalid: failed to get signet with ID \"test-key-b\" from truststore: could not find signet",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "signfile-suite",
+      "input": "{\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"Name\": \"Portmaster Intel\",\n \"Version\": \"v1.2.3\",\n \"Nested\": {\n  \"b\": {\n   \"y\": 1,\n   \"x\": [],\n   \"w\": {}\n  },\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"é\": 1\n },\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"URLs\": [],\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\"\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"_jess-signature\": \"Q6RnVmVyc2lvbgFnU3VpdGVJRGtzaWduZmlsZV92MWVOb25jZUQwT74ralNpZ25hdHVyZXOBo2ZTY2hlbWVnRWQyNTUxOWJJRG10ZXN0LWtleS1maWxlZVZhbHVlWEC-ELj5biURxvyFkxiYyQAU9vfRIJOWLXucRxP_ng_a07hKm_33yA7Ihc4B9aM_vMQ9_9IOzNlNy7slzIM86wEF\"\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGtzaWduZmlsZV92MWVOb25jZUQwT74ralNpZ25hdHVyZXOBo2ZTY2hlbWVnRWQyNTUxOWJJRG10ZXN0LWtleS1maWxlZVZhbHVlWEC-ELj5biURxvyFkxiYyQAU9vfRIJOWLXucRxP_ng_a07hKm_33yA7Ihc4B9aM_vMQ9_9IOzNlNy7slzIM86wEF"
+      ],
+      "trust_set": "file",
+      "sig_error": "",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "sign-v2-suite",
+      "input": "{\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"Name\": \"Portmaster Intel\",\n \"Version\": \"v1.2.3\",\n \"Nested\": {\n  \"b\": {\n   \"y\": 1,\n   \"x\": [],\n   \"w\": {}\n  },\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"é\": 1\n },\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"URLs\": [],\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\"\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"_jess-signature\": \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YyZU5vbmNlRI2GdNxqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEa3Rlc3Qta2V5LXYyZVZhbHVlWEAJ7CDWeoqtHAE-LzWcXh8ii_oXcdG49Z4_xRdIuBjv58gMHFBcb-mb3JKJD5V1ZjOtQgCzgJqfsdKQI1rMYkII\"\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YyZU5vbmNlRI2GdNxqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEa3Rlc3Qta2V5LXYyZVZhbHVlWEAJ7CDWeoqtHAE-LzWcXh8ii_oXcdG49Z4_xRdIuBjv58gMHFBcb-mb3JKJD5V1ZjOtQgCzgJqfsdKQI1rMYkII"
+      ],
+      "trust_set": "v2",
+      "sig_error": "",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "unknown-signer",
+      "input": "{\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"Name\": \"Portmaster Intel\",\n \"Version\": \"v1.2.3\",\n \"Nested\": {\n  \"b\": {\n   \"y\": 1,\n   \"x\": [],\n   \"w\": {}\n  },\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"é\": 1\n },\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"URLs\": [],\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\"\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"_jess-signature\": \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlRM1AuiJqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEcHRlc3Qta2V5LXVua25vd25lVmFsdWVYQH-opo22UrCy4YhATjkC9hKL76u0h7LX05fOpb0gYaIKrdFfA0GaTSgoo0Cyem-lHF8Okx00SBHx2Alz0RGkego\"\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlRM1AuiJqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEcHRlc3Qta2V5LXVua25vd25lVmFsdWVYQH-opo22UrCy4YhATjkC9hKL76u0h7LX05fOpb0gYaIKrdFfA0GaTSgoo0Cyem-lHF8Okx00SBHx2Alz0RGkego"
+      ],
+      "trust_set": "a",
+      "sig_error": "signature 1 invalid: failed to get signet with ID \"test-key-unknown\" from truststore: could not find signet",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "wrong-trust-set",
+      "input": "{\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"Name\": \"Portmaster Intel\",\n \"Version\": \"v1.2.3\",\n \"Nested\": {\n  \"b\": {\n   \"y\": 1,\n   \"x\": [],\n   \"w\": {}\n  },\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"é\": 1\n },\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"URLs\": [],\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\"\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"_jess-signature\": \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU\"\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU"
+      ],
+      "trust_set": "b",
+      "sig_error": "signature 1 invalid: failed to get signet with ID \"test-key-a\" from truststore: could not find signet",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "empty-trust-set",
+      "input": "{\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"Name\": \"Portmaster Intel\",\n \"Version\": \"v1.2.3\",\n \"Nested\": {\n  \"b\": {\n   \"y\": 1,\n   \"x\": [],\n   \"w\": {}\n  },\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"é\": 1\n },\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"URLs\": [],\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\"\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"_jess-signature\": \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU\"\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU"
+      ],
+      "trust_set": "empty",
+      "sig_error": "signature 1 invalid: failed to get signet with ID \"test-key-a\" from truststore: could not find signet",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "tampered-content",
+      "input": "{\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"Name\": \"Portmaster Intel\",\n \"Version\": \"v1.2.4\",\n \"Nested\": {\n  \"b\": {\n   \"y\": 1,\n   \"x\": [],\n   \"w\": {}\n  },\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"é\": 1\n },\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"URLs\": [],\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\"\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"_jess-signature\": \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU\"\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.4\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU"
+      ],
+      "trust_set": "a",
+      "sig_error": "signature 1 invalid: failed to verify signature (Ed25519) with ID test-key-a: signature invalid",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "tampered-signature",
+      "input": "{\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"Name\": \"Portmaster Intel\",\n \"Version\": \"v1.2.3\",\n \"Nested\": {\n  \"b\": {\n   \"y\": 1,\n   \"x\": [],\n   \"w\": {}\n  },\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"é\": 1\n },\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"URLs\": [],\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\"\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"_jess-signature\": \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngA864mygU\"\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngA864mygU"
+      ],
+      "trust_set": "a",
+      "sig_error": "signature 1 invalid: failed to verify signature (Ed25519) with ID test-key-a: signature invalid",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "unsigned",
+      "input": "{\n  \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n  \"Name\": \"Portmaster Intel\",\n  \"Version\": \"v1.2.3\",\n  \"Nested\": {\"b\": {\"y\": 1, \"x\": [ ], \"w\": {}}, \"a\": \"x\\\"y\\\\z\\/\", \"é\": 1},\n  \"Artifacts\": [\n    {\"Filename\": \"base.dsdl\", \"SHA256\": \"aa\", \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]},\n    {\"URLs\": [], \"Filename\": \"geoipv4.mmdb.gz\", \"SHA256\": \"bb\"}\n  ],\n  \"Long\": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60],\n  \"Published\": \"2023-11-14T22:13:20Z\"\n}",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": null,
+      "trust_set": "a",
+      "sig_error": "signature not found",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "checksum-only",
+      "input": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"_jess-checksum\": \"ZwjDgziMUHTb8Ti8XsyPKyFSA15yYAxPgWcrz6zheuNSZH\"\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": [
+        "ZwjDgziMUHTb8Ti8XsyPKyFSA15yYAxPgWcrz6zheuNSZH"
+      ],
+      "signatures": null,
+      "trust_set": "a",
+      "sig_error": "signature not found",
+      "sum_error": ""
+    },
+    {
+      "name": "checksum-tampered",
+      "input": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v9.9.9\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"_jess-checksum\": \"ZwjDgziMUHTb8Ti8XsyPKyFSA15yYAxPgWcrz6zheuNSZH\"\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v9.9.9\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": [
+        "ZwjDgziMUHTb8Ti8XsyPKyFSA15yYAxPgWcrz6zheuNSZH"
+      ],
+      "signatures": null,
+      "trust_set": "a",
+      "sig_error": "signature not found",
+      "sum_error": "checksum does not match"
+    },
+    {
+      "name": "checksum-and-signature",
+      "input": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null],\n \"_jess-checksum\": \"ZwjDgziMUHTb8Ti8XsyPKyFSA15yYAxPgWcrz6zheuNSZH\",\n \"_jess-signature\": \"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU\"\n}\n",
+      "content": "{\n \"Artifacts\": [\n  {\n   \"Filename\": \"base.dsdl\",\n   \"SHA256\": \"aa\",\n   \"URLs\": [\"https://example.com/a?x=1\u0026y=2\"]\n  },\n  {\n   \"Filename\": \"geoipv4.mmdb.gz\",\n   \"SHA256\": \"bb\",\n   \"URLs\": []\n  }\n ],\n \"Long\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ],\n \"Name\": \"Portmaster Intel\",\n \"Nested\": {\n  \"a\": \"x\\\"y\\\\z\\/\",\n  \"b\": {\n   \"w\": {},\n   \"x\": [],\n   \"y\": 1\n  },\n  \"é\": 1\n },\n \"Published\": \"2023-11-14T22:13:20Z\",\n \"Version\": \"v1.2.3\",\n \"zeta\": [1, 2.50, -3e2, \"ü \u003c\u003e\u0026 é 🦀\", true, null]\n}\n",
+      "split_error": "",
+      "checksums": [
+        "ZwjDgziMUHTb8Ti8XsyPKyFSA15yYAxPgWcrz6zheuNSZH"
+      ],
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlROMO6yBqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQEYKcwY5JxHrrp8BKiBzcM14LSOyEzoDGUZ3FBrNTb6X-utXovFqgVlJtrluDX0KX2Aqx4ol4r_LVngp864mygU"
+      ],
+      "trust_set": "a",
+      "sig_error": "",
+      "sum_error": ""
+    },
+    {
+      "name": "whitespace-independent",
+      "input": "{\"Name\": \"Portmaster Intel\",   \"Version\": \"v1.2.3\",\"_jess-signature\":\"Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlRFufXHpqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQBnAw58xlf32pw0gWwO77mZA0uYYfbhUsf3yU25LWdMbCGczTSoGZuFsEuD9U_VyPZZOoe0YnO0xeVaD3rTsrA0\"}",
+      "content": "{\n \"Name\": \"Portmaster Intel\",\n \"Version\": \"v1.2.3\"\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "Q6RnVmVyc2lvbgFnU3VpdGVJRGdzaWduX3YxZU5vbmNlRFufXHpqU2lnbmF0dXJlc4GjZlNjaGVtZWdFZDI1NTE5YklEanRlc3Qta2V5LWFlVmFsdWVYQBnAw58xlf32pw0gWwO77mZA0uYYfbhUsf3yU25LWdMbCGczTSoGZuFsEuD9U_VyPZZOoe0YnO0xeVaD3rTsrA0"
+      ],
+      "trust_set": "a",
+      "sig_error": "",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "invalid-json",
+      "input": "{\"a\": 1,}",
+      "content": "",
+      "split_error": "invalid json",
+      "checksums": null,
+      "signatures": null,
+      "trust_set": "a",
+      "sig_error": "invalid json structure: invalid json",
+      "sum_error": "invalid json"
+    },
+    {
+      "name": "not-an-object",
+      "input": "[1, 2, {\"b\": 1, \"a\": 2}]",
+      "content": "[\n 1,\n 2,\n {\n  \"a\": 2,\n  \"b\": 1\n }\n]\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": null,
+      "trust_set": "a",
+      "sig_error": "signature not found",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "signature-not-base64",
+      "input": "{\"a\": 1, \"_jess-signature\": \"!!!\"}",
+      "content": "{\n \"a\": 1\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "!!!"
+      ],
+      "trust_set": "a",
+      "sig_error": "signature 1 malformed: illegal base64 data at input byte 0",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "signature-not-cbor",
+      "input": "{\"a\": 1, \"_jess-signature\": \"AAAA\"}",
+      "content": "{\n \"a\": 1\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "AAAA"
+      ],
+      "trust_set": "a",
+      "sig_error": "signature 1 malformed: dsd: format is incompatible with operation",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "signature-number",
+      "input": "{\"a\": 1, \"_jess-signature\": 5}",
+      "content": "{\n \"a\": 1\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": null,
+      "trust_set": "a",
+      "sig_error": "signature not found",
+      "sum_error": "no checksum found"
+    },
+    {
+      "name": "checksum-bad-label",
+      "input": "{\"a\": 1, \"_jess-checksum\": \"abc\"}",
+      "content": "{\n \"a\": 1\n}\n",
+      "split_error": "",
+      "checksums": [
+        "abc"
+      ],
+      "signatures": null,
+      "trust_set": "a",
+      "sig_error": "signature not found",
+      "sum_error": "checksum does not match: failed to parse labeled hash: failed to parse digest: container: not enough data to return"
+    },
+    {
+      "name": "duplicate-meta-key",
+      "input": "{\"a\": 1, \"_jess-checksum\": \"x\", \"_jess-checksum\": \"y\"}",
+      "content": "{\n \"_jess-checksum\": \"y\",\n \"a\": 1\n}\n",
+      "split_error": "",
+      "checksums": [
+        "x"
+      ],
+      "signatures": null,
+      "trust_set": "a",
+      "sig_error": "signature not found",
+      "sum_error": "checksum does not match: failed to parse labeled hash: failed to parse digest: varint: buf too small"
+    },
+    {
+      "name": "escaped-meta-key",
+      "input": "{\"a\": 1, \"_jess-signature\": \"AAAA\"}",
+      "content": "{\n \"a\": 1\n}\n",
+      "split_error": "",
+      "checksums": null,
+      "signatures": [
+        "AAAA"
+      ],
+      "trust_set": "a",
+      "sig_error": "signature 1 malformed: dsd: format is incompatible with operation",
+      "sum_error": "no checksum found"
+    }
+  ],
+  "pretty_cases": [
+    {
+      "input": "{}",
+      "output": "{}\n",
+      "valid": true
+    },
+    {
+      "input": "[]",
+      "output": "[]\n",
+      "valid": true
+    },
+    {
+      "input": "\"\"",
+      "output": "\"\"\n",
+      "valid": true
+    },
+    {
+      "input": "0",
+      "output": "0\n",
+      "valid": true
+    },
+    {
+      "input": "-1.5e3",
+      "output": "-1.5e3\n",
+      "valid": true
+    },
+    {
+      "input": "true",
+      "output": "true\n",
+      "valid": true
+    },
+    {
+      "input": "null",
+      "output": "null\n",
+      "valid": true
+    },
+    {
+      "input": "{\"b\":1,\"a\":2}",
+      "output": "{\n \"a\": 2,\n \"b\": 1\n}\n",
+      "valid": true
+    },
+    {
+      "input": "{\"a\":{\"d\":1,\"c\":[3,2,1]},\"B\":\"x\"}",
+      "output": "{\n \"B\": \"x\",\n \"a\": {\n  \"c\": [3, 2, 1],\n  \"d\": 1\n }\n}\n",
+      "valid": true
+    },
+    {
+      "input": "{\"k\":1,\"k\":0,\"k\":\"s\",\"k\":null,\"k\":true,\"k\":[1],\"k\":{\"z\":1,\"y\":2}}",
+      "output": "{\n \"k\": null,\n \"k\": 0,\n \"k\": 1,\n \"k\": \"s\",\n \"k\": true,\n \"k\": [1],\n \"k\": {\n  \"y\": 2,\n  \"z\": 1\n }\n}\n",
+      "valid": true
+    },
+    {
+      "input": "{\"a\":2,\"a\":1,\"b\":3}",
+      "output": "{\n \"a\": 1,\n \"a\": 2,\n \"b\": 3\n}\n",
+      "valid": true
+    },
+    {
+      "input": "{\"s\":\"é\",\"é\":1,\"e\":2,\"z\":\"\\ud800\",\"y\":\"\\udc00x\"}",
+      "output": "{\n \"e\": 2,\n \"s\": \"é\",\n \"y\": \"\\udc00x\",\n \"z\": \"\\ud800\",\n \"é\": 1\n}\n",
+      "valid": true
+    },
+    {
+      "input": "{\"n\":10,\"m\":9,\"l\":-1,\"k\":1e2,\"j\":1E-2,\"i\":2.0,\"h\":2}",
+      "output": "{\n \"h\": 2,\n \"i\": 2.0,\n \"j\": 1E-2,\n \"k\": 1e2,\n \"l\": -1,\n \"m\": 9,\n \"n\": 10\n}\n",
+      "valid": true
+    },
+    {
+      "input": "{\"o\":{\"b\":1,\"a\":2},\"n\":[{\"b\":1,\"a\":2},[1,2,{\"b\":1}]],\"m\":\"x\"}",
+      "output": "{\n \"m\": \"x\",\n \"n\": [\n  {\n   \"a\": 2,\n   \"b\": 1\n  },\n  [\n   1,\n   2,\n   {\n    \"b\": 1\n   }\n  ]\n ],\n \"o\": {\n  \"a\": 2,\n  \"b\": 1\n }\n}\n",
+      "valid": true
+    },
+    {
+      "input": "[[1,2,3],[],{},[[]],[{\"a\":1}],\"str\",12]",
+      "output": "[\n [1, 2, 3],\n [],\n {},\n [[]],\n [\n  {\n   \"a\": 1\n  }\n ],\n \"str\",\n 12\n]\n",
+      "valid": true
+    },
+    {
+      "input": "  \n\t{ \"a\" : [ 1 ,\n 2 ] , \"b\" :\r\n{ } }  ",
+      "output": "{\n \"a\": [1, 2],\n \"b\": {}\n}\n",
+      "valid": true
+    },
+    {
+      "input": "[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70]",
+      "output": "[\n 1,\n 2,\n 3,\n 4,\n 5,\n 6,\n 7,\n 8,\n 9,\n 10,\n 11,\n 12,\n 13,\n 14,\n 15,\n 16,\n 17,\n 18,\n 19,\n 20,\n 21,\n 22,\n 23,\n 24,\n 25,\n 26,\n 27,\n 28,\n 29,\n 30,\n 31,\n 32,\n 33,\n 34,\n 35,\n 36,\n 37,\n 38,\n 39,\n 40,\n 41,\n 42,\n 43,\n 44,\n 45,\n 46,\n 47,\n 48,\n 49,\n 50,\n 51,\n 52,\n 53,\n 54,\n 55,\n 56,\n 57,\n 58,\n 59,\n 60,\n 61,\n 62,\n 63,\n 64,\n 65,\n 66,\n 67,\n 68,\n 69,\n 70\n]\n",
+      "valid": true
+    },
+    {
+      "input": "{\"x\":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60]}",
+      "output": "{\n \"x\": [\n  1,\n  2,\n  3,\n  4,\n  5,\n  6,\n  7,\n  8,\n  9,\n  10,\n  11,\n  12,\n  13,\n  14,\n  15,\n  16,\n  17,\n  18,\n  19,\n  20,\n  21,\n  22,\n  23,\n  24,\n  25,\n  26,\n  27,\n  28,\n  29,\n  30,\n  31,\n  32,\n  33,\n  34,\n  35,\n  36,\n  37,\n  38,\n  39,\n  40,\n  41,\n  42,\n  43,\n  44,\n  45,\n  46,\n  47,\n  48,\n  49,\n  50,\n  51,\n  52,\n  53,\n  54,\n  55,\n  56,\n  57,\n  58,\n  59,\n  60\n ]\n}\n",
+      "valid": true
+    },
+    {
+      "input": "{\"x\":[[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"],[\"cccccccccccccccccccccccccccccccccccc\",\"dddddddddddddddddddddddddddddddddddddddddd\"]]}",
+      "output": "{\n \"x\": [[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"], [\"cccccccccccccccccccccccccccccccccccc\", \"dddddddddddddddddddddddddddddddddddddddddd\"]]\n}\n",
+      "valid": true
+    },
+    {
+      "input": "{\"x\":[{\"a\":1},2]}",
+      "output": "{\n \"x\": [\n  {\n   \"a\": 1\n  },\n  2\n ]\n}\n",
+      "valid": true
+    },
+    {
+      "input": "{\"1e400\":1e400,\"a\":-1e400,\"b\":1e-400}",
+      "output": "{\n \"1e400\": 1e400,\n \"a\": -1e400,\n \"b\": 1e-400\n}\n",
+      "valid": true
+    },
+    {
+      "input": "\"a\\\"b\\\\\"",
+      "output": "\"a\\\"b\\\\\"\n",
+      "valid": true
+    },
+    {
+      "input": "{\"z\":\"\u003c/script\u003e\u0026\u003c\u003e\",\"y\":\"\u2028\u2029\"}",
+      "output": "{\n \"y\": \"\u2028\u2029\",\n \"z\": \"\u003c/script\u003e\u0026\u003c\u003e\"\n}\n",
+      "valid": true
+    }
+  ],
+  "signing_keys": {
+    "a": "recipient:public-ed25519-key:test-key-a:ragJn8e7eVoKdMXFScmqLsBoESKbzhQUuPoxZMtyJjHGCaC6FDesU7aPBcEM17QMeq1QpFe9NrgdhCcVULJ9b4jD5TdMTjz5suFWooCRFLr2WzpXFwuAMPgCWtVpqo2QU78g5s1BPG7GiZkQ9JvKH5JD8rHfzhJqQns5h5TfNfJyeNFjrBhFhjmhbFGXNraaTrV",
+    "b": "recipient:public-ed25519-key:test-key-b:ragJn8e7eVoKdMXFScmqLsBoESKbzhQUuRdboK66EQLjh3a2ZUadaUCnkfLHWKZnwqw4EBFhE9uNRzgC6XuPQjX7PyXABd6fcP5Q8sVMKE66geKTfYeZtxGo76zwUEpm7YWfC9yYKR4ChyrtV7qg3kGtJMwQWv8ADoePha3u9GLGm9qnu8APpTfgJm9fWLhfmn5",
+    "file": "recipient:public-ed25519-key:test-key-file:2syZu3d6ErBeUT3GnL8jfEZrbPuyuk8xKpmehwzYZN2vunjJBiAXUqpfNiWo7X1B2qX981jJ4t5u2Ch2tP16RZyV5Ki5WkPYPmh15toVfkQwLMPCAMgQsdfKap6jQYNTW85cs4SK2vJqs2xmE6rygKFL9PfMDoCMLV32judTb1EpW8WeuvC7ZUhEwgkKjmhyhTympXyDStEq",
+    "v2": "recipient:public-ed25519-key:test-key-v2:HeuiUf4jZw5VUhzJvH6CAZ3jHpH15HPvyH9bkqkKg9uvBm7cSvnrV2RswPYvCc8ngDNcKBJdNM7NUoNHZkXVidjtiMpjDCL66Je9FwBpU4WSdvPFabzjAyHGKNhv8udyfsdkKNSs16rG2ZdRV5Ahc1yd7CoaLVX8g772ehAVepSqfDjSHWwR6v7cwThLqXS9P2r3y7"
+  },
+  "valid_cases": [
+    {
+      "input": "",
+      "valid": false
+    },
+    {
+      "input": " ",
+      "valid": false
+    },
+    {
+      "input": "{",
+      "valid": false
+    },
+    {
+      "input": "}",
+      "valid": false
+    },
+    {
+      "input": "{\"a\"}",
+      "valid": false
+    },
+    {
+      "input": "{\"a\":}",
+      "valid": false
+    },
+    {
+      "input": "{\"a\":1,}",
+      "valid": false
+    },
+    {
+      "input": "[1,]",
+      "valid": false
+    },
+    {
+      "input": "[,1]",
+      "valid": false
+    },
+    {
+      "input": "[1 2]",
+      "valid": false
+    },
+    {
+      "input": "01",
+      "valid": false
+    },
+    {
+      "input": "-",
+      "valid": false
+    },
+    {
+      "input": "1.",
+      "valid": false
+    },
+    {
+      "input": "1e",
+      "valid": false
+    },
+    {
+      "input": ".5",
+      "valid": false
+    },
+    {
+      "input": "+1",
+      "valid": false
+    },
+    {
+      "input": "NaN",
+      "valid": false
+    },
+    {
+      "input": "tru",
+      "valid": false
+    },
+    {
+      "input": "nul",
+      "valid": false
+    },
+    {
+      "input": "\"a",
+      "valid": false
+    },
+    {
+      "input": "\"a\nb\"",
+      "valid": false
+    },
+    {
+      "input": "\"\\x\"",
+      "valid": false
+    },
+    {
+      "input": "\"\\u12\"",
+      "valid": false
+    },
+    {
+      "input": "{\"a\":1}{\"b\":2}",
+      "valid": false
+    },
+    {
+      "input": "{\"a\":1} x",
+      "valid": false
+    },
+    {
+      "input": "﻿{}",
+      "valid": false
+    },
+    {
+      "input": "\u000b{}",
+      "valid": false
+    },
+    {
+      "input": "{a:1}",
+      "valid": false
+    },
+    {
+      "input": "{'a':1}",
+      "valid": false
+    },
+    {
+      "input": "[1,2",
+      "valid": false
+    },
+    {
+      "input": "{\"a\":[1,{\"b\":[]}]}",
+      "valid": true
+    },
+    {
+      "input": "\t\r\n 1 \t\r\n",
+      "valid": true
+    },
+    {
+      "input": "-0",
+      "valid": true
+    },
+    {
+      "input": "1E+5",
+      "valid": true
+    },
+    {
+      "input": "0.5e-3",
+      "valid": true
+    }
+  ]
+}
