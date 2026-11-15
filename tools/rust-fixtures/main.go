@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"math"
@@ -17,6 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/safing/portmaster/base/api"
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/database/storage/sqlite"
@@ -57,6 +59,7 @@ func main() {
 	genAPIRecord()
 	genQuery()
 	genGoStrconv()
+	genConfig()
 	genSQLite()
 }
 
@@ -617,4 +620,141 @@ func verifyDatabase(location string) {
 		fail(err)
 	}
 	fmt.Println(string(out))
+}
+
+// fakeInstance implements the config module's instance interface for fixture
+// generation; no data directory is needed because saving is disabled.
+type fakeInstance struct{}
+
+func (fakeInstance) DataDir() string                  { return "" }
+func (fakeInstance) SetCmdLineOperation(func() error) {}
+
+// genConfig records the config file written by the Go implementation and the
+// exported options of every type.
+func genConfig() {
+	if _, err := config.New(fakeInstance{}); err != nil {
+		fail(err)
+	}
+
+	register := func(option *config.Option) {
+		if err := config.Register(option); err != nil {
+			fail(err)
+		}
+	}
+	register(&config.Option{
+		Name:            "String Option",
+		Key:             "test/string",
+		Description:     "A string option.",
+		Help:            "Some help text.",
+		Sensitive:       true,
+		OptType:         config.OptTypeString,
+		ExpertiseLevel:  config.ExpertiseLevelExpert,
+		ReleaseLevel:    config.ReleaseLevelStable,
+		DefaultValue:    "default",
+		ValidationRegex: "^(default|banana|water)$",
+		PossibleValues: []config.PossibleValue{
+			{Name: "Default", Value: "default", Description: "The default."},
+			{Name: "Banana", Value: "banana", Description: "A fruit."},
+			{Name: "Water", Value: "water", Description: "A drink."},
+		},
+		Annotations: config.Annotations{
+			config.DisplayHintAnnotation:  config.DisplayHintOneOf,
+			config.DisplayOrderAnnotation: 10,
+			config.CategoryAnnotation:     "Test",
+		},
+	})
+	register(&config.Option{
+		Name:           "String Array Option",
+		Key:            "test/stringArray",
+		Description:    "A string array option.",
+		OptType:        config.OptTypeStringArray,
+		ExpertiseLevel: config.ExpertiseLevelUser,
+		ReleaseLevel:   config.ReleaseLevelBeta,
+		DefaultValue:   []string{"default"},
+	})
+	register(&config.Option{
+		Name:           "Int Option",
+		Key:            "test/int",
+		Description:    "An int option.",
+		OptType:        config.OptTypeInt,
+		ExpertiseLevel: config.ExpertiseLevelUser,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		DefaultValue:   7,
+	})
+	register(&config.Option{
+		Name:           "Bool Option",
+		Key:            "test/bool",
+		Description:    "A bool option.",
+		OptType:        config.OptTypeBool,
+		ExpertiseLevel: config.ExpertiseLevelUser,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		DefaultValue:   false,
+	})
+	register(&config.Option{
+		Name:           "Default Option",
+		Key:            "test/withDefault",
+		Description:    "An option with an internal default.",
+		OptType:        config.OptTypeString,
+		ExpertiseLevel: config.ExpertiseLevelUser,
+		ReleaseLevel:   config.ReleaseLevelStable,
+		DefaultValue:   "fallback",
+	})
+
+	set := func(key string, value any) {
+		if err := config.SetConfigOption(key, value); err != nil {
+			fail(err)
+		}
+	}
+	set("test/string", "banana")
+	set("test/stringArray", []string{"x<&>", "y"})
+	set("test/int", 42)
+	set("test/bool", true)
+	if err := config.SetDefaultConfigOption("test/withDefault", "internal"); err != nil {
+		fail(err)
+	}
+
+	file, err := config.MapToJSON(config.GetActiveConfigValues())
+	if err != nil {
+		fail(err)
+	}
+	flattened, err := config.JSONToMap(file)
+	if err != nil {
+		fail(err)
+	}
+
+	exports := map[string]string{}
+	for _, key := range []string{
+		"test/string", "test/stringArray", "test/int", "test/bool", "test/withDefault",
+	} {
+		option, err := config.GetOption(key)
+		if err != nil {
+			fail(err)
+		}
+		r, err := option.Export()
+		if err != nil {
+			fail(err)
+		}
+		wrapper, ok := r.(*record.Wrapper)
+		if !ok {
+			fail(errors.New("export is not a wrapper"))
+		}
+		exports[key] = string(wrapper.Data)
+	}
+
+	writeObject("config.json", map[string]any{
+		"file":        string(file),
+		"flattened":   flattened,
+		"exports":     exports,
+		"definitions": config.ExportOptions(),
+	})
+}
+
+func writeObject(name string, object any) {
+	data, err := json.MarshalIndent(object, "", "  ")
+	if err != nil {
+		fail(err)
+	}
+	if err := os.WriteFile(filepath.Join(outDir, name), append(data, '\n'), 0o644); err != nil {
+		fail(err)
+	}
 }

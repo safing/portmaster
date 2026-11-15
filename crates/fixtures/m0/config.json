@@ -1,0 +1,247 @@
+{
+  "definitions": [
+    {
+      "Name": "Development Mode",
+      "Key": "core/devMode",
+      "Description": "In Development Mode, security restrictions are lifted/softened to enable unrestricted access for debugging and testing purposes.",
+      "Help": "",
+      "Sensitive": false,
+      "OptType": 4,
+      "ExpertiseLevel": 2,
+      "ReleaseLevel": 0,
+      "RequiresRestart": false,
+      "DefaultValue": false,
+      "ValidationRegex": "",
+      "Annotations": {
+        "safing/portbase:ui:category": "Development",
+        "safing/portbase:ui:order": 512
+      }
+    },
+    {
+      "Name": "UI Mode",
+      "Key": "core/expertiseLevel",
+      "Description": "Control the default amount of settings and information shown. Hidden settings are still in effect. Can be changed temporarily in the top right corner.",
+      "Help": "",
+      "Sensitive": false,
+      "OptType": 1,
+      "ExpertiseLevel": 0,
+      "ReleaseLevel": 0,
+      "RequiresRestart": false,
+      "DefaultValue": "user",
+      "ValidationRegex": "^(user|expert|developer)$",
+      "PossibleValues": [
+        {
+          "Name": "Simple Interface",
+          "Description": "Hide complex settings and information.",
+          "Value": "user"
+        },
+        {
+          "Name": "Advanced Interface",
+          "Description": "Show technical details.",
+          "Value": "expert"
+        },
+        {
+          "Name": "Developer Interface",
+          "Description": "Developer mode. Please be careful!",
+          "Value": "developer"
+        }
+      ],
+      "Annotations": {
+        "safing/portbase:ui:category": "User Interface",
+        "safing/portbase:ui:display-hint": "one-of",
+        "safing/portbase:ui:order": -16
+      }
+    },
+    {
+      "Name": "Log Level",
+      "Key": "core/log/level",
+      "Description": "Configure the logging level.",
+      "Help": "",
+      "Sensitive": false,
+      "OptType": 1,
+      "ExpertiseLevel": 2,
+      "ReleaseLevel": 0,
+      "RequiresRestart": false,
+      "DefaultValue": "info",
+      "ValidationRegex": "^(critical|error|warning|info|debug|trace)$",
+      "PossibleValues": [
+        {
+          "Name": "Critical",
+          "Description": "The critical level only logs errors that lead to a partial, but imminent failure.",
+          "Value": "critical"
+        },
+        {
+          "Name": "Error",
+          "Description": "The error level logs errors that potentially break functionality. Everything logged by the critical level is included here too.",
+          "Value": "error"
+        },
+        {
+          "Name": "Warning",
+          "Description": "The warning level logs minor errors and worse. Everything logged by the error level is included here too.",
+          "Value": "warning"
+        },
+        {
+          "Name": "Info",
+          "Description": "The info level logs the main events that are going on and are interesting to the user. Everything logged by the warning level is included here too.",
+          "Value": "info"
+        },
+        {
+          "Name": "Debug",
+          "Description": "The debug level logs some additional debugging details. Everything logged by the info level is included here too.",
+          "Value": "debug"
+        },
+        {
+          "Name": "Trace",
+          "Description": "The trace level logs loads of detailed information as well as operation and request traces. Everything logged by the debug level is included here too.",
+          "Value": "trace"
+        }
+      ],
+      "Annotations": {
+        "safing/portbase:ui:category": "Development",
+        "safing/portbase:ui:display-hint": "one-of",
+        "safing/portbase:ui:order": 513
+      }
+    },
+    {
+      "Name": "Feature Stability",
+      "Key": "core/releaseLevel",
+      "Description": "May break things. Decide if you want to experiment with unstable features. \"Beta\" has been tested roughly by the Safing team while \"Experimental\" is really raw. When \"Beta\" or \"Experimental\" are disabled, their settings use the default again.",
+      "Help": "",
+      "Sensitive": false,
+      "OptType": 1,
+      "ExpertiseLevel": 2,
+      "ReleaseLevel": 0,
+      "RequiresRestart": false,
+      "DefaultValue": "stable",
+      "ValidationRegex": "^(stable|beta|experimental)$",
+      "PossibleValues": [
+        {
+          "Name": "Stable",
+          "Description": "Only show stable features.",
+          "Value": "stable"
+        },
+        {
+          "Name": "Beta",
+          "Description": "Show stable and beta features.",
+          "Value": "beta"
+        },
+        {
+          "Name": "Experimental",
+          "Description": "Show all features",
+          "Value": "experimental"
+        }
+      ],
+      "Annotations": {
+        "safing/portbase:ui:category": "Updates",
+        "safing/portbase:ui:display-hint": "one-of",
+        "safing/portbase:ui:order": -8
+      }
+    },
+    {
+      "Name": "Bool Option",
+      "Key": "test/bool",
+      "Description": "A bool option.",
+      "Help": "",
+      "Sensitive": false,
+      "OptType": 4,
+      "ExpertiseLevel": 0,
+      "ReleaseLevel": 0,
+      "RequiresRestart": false,
+      "DefaultValue": false,
+      "ValidationRegex": "",
+      "Annotations": null
+    },
+    {
+      "Name": "Int Option",
+      "Key": "test/int",
+      "Description": "An int option.",
+      "Help": "",
+      "Sensitive": false,
+      "OptType": 3,
+      "ExpertiseLevel": 0,
+      "ReleaseLevel": 0,
+      "RequiresRestart": false,
+      "DefaultValue": 7,
+      "ValidationRegex": "",
+      "Annotations": null
+    },
+    {
+      "Name": "String Option",
+      "Key": "test/string",
+      "Description": "A string option.",
+      "Help": "Some help text.",
+      "Sensitive": true,
+      "OptType": 1,
+      "ExpertiseLevel": 1,
+      "ReleaseLevel": 0,
+      "RequiresRestart": false,
+      "DefaultValue": "default",
+      "ValidationRegex": "^(default|banana|water)$",
+      "PossibleValues": [
+        {
+          "Name": "Default",
+          "Description": "The default.",
+          "Value": "default"
+        },
+        {
+          "Name": "Banana",
+          "Description": "A fruit.",
+          "Value": "banana"
+        },
+        {
+          "Name": "Water",
+          "Description": "A drink.",
+          "Value": "water"
+        }
+      ],
+      "Annotations": {
+        "safing/portbase:ui:category": "Test",
+        "safing/portbase:ui:display-hint": "one-of",
+        "safing/portbase:ui:order": 10
+      }
+    },
+    {
+      "Name": "String Array Option",
+      "Key": "test/stringArray",
+      "Description": "A string array option.",
+      "Help": "",
+      "Sensitive": false,
+      "OptType": 2,
+      "ExpertiseLevel": 0,
+      "ReleaseLevel": 1,
+      "RequiresRestart": false,
+      "DefaultValue": [
+        "default"
+      ],
+      "ValidationRegex": "",
+      "Annotations": null
+    },
+    {
+      "Name": "Default Option",
+      "Key": "test/withDefault",
+      "Description": "An option with an internal default.",
+      "Help": "",
+      "Sensitive": false,
+      "OptType": 1,
+      "ExpertiseLevel": 0,
+      "ReleaseLevel": 0,
+      "RequiresRestart": false,
+      "DefaultValue": "fallback",
+      "ValidationRegex": "",
+      "Annotations": null
+    }
+  ],
+  "exports": {
+    "test/bool": "{\"Name\":\"Bool Option\",\"Key\":\"test/bool\",\"Description\":\"A bool option.\",\"Help\":\"\",\"Sensitive\":false,\"OptType\":4,\"ExpertiseLevel\":0,\"ReleaseLevel\":0,\"RequiresRestart\":false,\"DefaultValue\":false,\"ValidationRegex\":\"\",\"Annotations\":null,\"Value\":true}",
+    "test/int": "{\"Name\":\"Int Option\",\"Key\":\"test/int\",\"Description\":\"An int option.\",\"Help\":\"\",\"Sensitive\":false,\"OptType\":3,\"ExpertiseLevel\":0,\"ReleaseLevel\":0,\"RequiresRestart\":false,\"DefaultValue\":7,\"ValidationRegex\":\"\",\"Annotations\":null,\"Value\":42}",
+    "test/string": "{\"Name\":\"String Option\",\"Key\":\"test/string\",\"Description\":\"A string option.\",\"Help\":\"Some help text.\",\"Sensitive\":true,\"OptType\":1,\"ExpertiseLevel\":1,\"ReleaseLevel\":0,\"RequiresRestart\":false,\"DefaultValue\":\"default\",\"ValidationRegex\":\"^(default|banana|water)$\",\"PossibleValues\":[{\"Name\":\"Default\",\"Description\":\"The default.\",\"Value\":\"default\"},{\"Name\":\"Banana\",\"Description\":\"A fruit.\",\"Value\":\"banana\"},{\"Name\":\"Water\",\"Description\":\"A drink.\",\"Value\":\"water\"}],\"Annotations\":{\"safing/portbase:ui:category\":\"Test\",\"safing/portbase:ui:display-hint\":\"one-of\",\"safing/portbase:ui:order\":10},\"Value\":\"banana\"}",
+    "test/stringArray": "{\"Name\":\"String Array Option\",\"Key\":\"test/stringArray\",\"Description\":\"A string array option.\",\"Help\":\"\",\"Sensitive\":false,\"OptType\":2,\"ExpertiseLevel\":0,\"ReleaseLevel\":1,\"RequiresRestart\":false,\"DefaultValue\":[\"default\"],\"ValidationRegex\":\"\",\"Annotations\":null,\"Value\":[\"x\\u003c\\u0026\\u003e\",\"y\"]}",
+    "test/withDefault": "{\"Name\":\"Default Option\",\"Key\":\"test/withDefault\",\"Description\":\"An option with an internal default.\",\"Help\":\"\",\"Sensitive\":false,\"OptType\":1,\"ExpertiseLevel\":0,\"ReleaseLevel\":0,\"RequiresRestart\":false,\"DefaultValue\":\"internal\",\"ValidationRegex\":\"\",\"Annotations\":null}"
+  },
+  "file": "{\n  \"test\": {\n    \"bool\": true,\n    \"int\": 42,\n    \"string\": \"banana\"\n  }\n}",
+  "flattened": {
+    "test/bool": true,
+    "test/int": 42,
+    "test/string": "banana"
+  }
+}

@@ -1,0 +1,22 @@
+[package]
+name = "pm-config"
+version = "0.1.0"
+edition.workspace = true
+description = "Compatible implementation of the Portmaster configuration system"
+license.workspace = true
+
+[dependencies]
+pm-database = { path = "../pm-database" }
+pm-dsd = { path = "../pm-dsd" }
+pm-record = { path = "../pm-record" }
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+hex.workspace = true
+
+[lints]
+workspace = true
