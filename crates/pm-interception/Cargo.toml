@@ -1,0 +1,16 @@
+[package]
+name = "pm-interception"
+version = "0.1.0"
+edition.workspace = true
+description = "Linux packet interception for the Portmaster core (iptables rules, nfqueue, verdict marks)"
+license.workspace = true
+
+[dependencies]
+nfq = "0.2.6"
+pm-netstate = { path = "../pm-netstate" }
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

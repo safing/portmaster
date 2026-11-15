@@ -1,0 +1,254 @@
+//! Layer 3/4 header parsing, port of Go `network/packet/parse.go`.
+
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+
+use pm_netstate::{IpProtocol, IpVersion};
+
+pub const PROTO_ICMP: u8 = 1;
+pub const PROTO_IGMP: u8 = 2;
+pub const PROTO_TCP: u8 = 6;
+pub const PROTO_UDP: u8 = 17;
+pub const PROTO_ICMPV6: u8 = 58;
+
+/// Why a packet could not be parsed; such packets are dropped (like Go).
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum ParseError {
+    #[error("empty packet")]
+    Empty,
+    #[error("unknown IP version or network protocol: {0:02x}")]
+    UnknownVersion(u8),
+    #[error("truncated {0} header")]
+    Truncated(&'static str),
+}
+
+/// Header data of an intercepted packet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Parsed {
+    pub version: IpVersion,
+    pub src: IpAddr,
+    pub dst: IpAddr,
+    /// IP protocol number of the transport layer.
+    pub protocol: u8,
+    pub src_port: u16,
+    pub dst_port: u16,
+    /// Offset of the transport payload (layer 5 data) in the packet, if any.
+    pub payload_offset: Option<usize>,
+}
+
+impl Parsed {
+    /// Protocol in the form used by the netstate lookups.
+    pub fn ip_protocol(&self) -> IpProtocol {
+        match self.protocol {
+            PROTO_TCP => IpProtocol::TCP,
+            PROTO_UDP => IpProtocol::UDP,
+            PROTO_ICMP | PROTO_ICMPV6 => IpProtocol::Icmp,
+            _ => IpProtocol::Unknown,
+        }
+    }
+}
+
+/// Parses an IP packet as delivered by nfqueue.
+pub fn parse_layer3(data: &[u8]) -> Result<Parsed, ParseError> {
+    let first = *data.first().ok_or(ParseError::Empty)?;
+    match first >> 4 {
+        4 => parse_ipv4(data),
+        6 => parse_ipv6(data),
+        v => Err(ParseError::UnknownVersion(v)),
+    }
+}
+
+fn parse_ipv4(data: &[u8]) -> Result<Parsed, ParseError> {
+    if data.len() < 20 {
+        return Err(ParseError::Truncated("IPv4"));
+    }
+    let ihl = usize::from(data[0] & 0x0f) * 4;
+    if ihl < 20 || data.len() < ihl {
+        return Err(ParseError::Truncated("IPv4"));
+    }
+    let fragment_offset = u16::from_be_bytes([data[6], data[7]]) & 0x1fff;
+    let src = Ipv4Addr::new(data[12], data[13], data[14], data[15]);
+    let dst = Ipv4Addr::new(data[16], data[17], data[18], data[19]);
+    let mut parsed = Parsed {
+        version: IpVersion::V4,
+        src: IpAddr::V4(src),
+        dst: IpAddr::V4(dst),
+        protocol: data[9],
+        src_port: 0,
+        dst_port: 0,
+        payload_offset: None,
+    };
+    // Non-first fragments carry no transport header.
+    if fragment_offset == 0 {
+        parse_transport(&mut parsed, data, ihl)?;
+    }
+    Ok(parsed)
+}
+
+fn parse_ipv6(data: &[u8]) -> Result<Parsed, ParseError> {
+    if data.len() < 40 {
+        return Err(ParseError::Truncated("IPv6"));
+    }
+    let src: [u8; 16] = data[8..24]
+        .try_into()
+        .map_err(|_| ParseError::Truncated("IPv6"))?;
+    let dst: [u8; 16] = data[24..40]
+        .try_into()
+        .map_err(|_| ParseError::Truncated("IPv6"))?;
+    let mut next = data[6];
+    let mut offset = 40usize;
+    let mut first_fragment = true;
+
+    // Walk extension headers to the transport layer.
+    loop {
+        let header_len = match next {
+            0 | 43 | 60 => {
+                let len = *data
+                    .get(offset + 1)
+                    .ok_or(ParseError::Truncated("IPv6 extension"))?;
+                (usize::from(len) + 1) * 8
+            }
+            44 => {
+                let frag = data
+                    .get(offset + 2..offset + 4)
+                    .ok_or(ParseError::Truncated("IPv6 fragment"))?;
+                first_fragment = u16::from_be_bytes([frag[0], frag[1]]) >> 3 == 0;
+                8
+            }
+            51 => {
+                let len = *data
+                    .get(offset + 1)
+                    .ok_or(ParseError::Truncated("IPv6 extension"))?;
+                (usize::from(len) + 2) * 4
+            }
+            _ => break,
+        };
+        let header = data
+            .get(offset..offset + header_len)
+            .ok_or(ParseError::Truncated("IPv6 extension"))?;
+        next = header[0];
+        offset += header_len;
+        if !first_fragment {
+            break;
+        }
+    }
+
+    let mut parsed = Parsed {
+        version: IpVersion::V6,
+        src: IpAddr::V6(Ipv6Addr::from(src)),
+        dst: IpAddr::V6(Ipv6Addr::from(dst)),
+        protocol: next,
+        src_port: 0,
+        dst_port: 0,
+        payload_offset: None,
+    };
+    if first_fragment {
+        parse_transport(&mut parsed, data, offset)?;
+    }
+    Ok(parsed)
+}
+
+fn parse_transport(parsed: &mut Parsed, data: &[u8], offset: usize) -> Result<(), ParseError> {
+    let rest = &data[offset.min(data.len())..];
+    match parsed.protocol {
+        PROTO_TCP => {
+            if rest.len() < 20 {
+                return Err(ParseError::Truncated("TCP"));
+            }
+            let data_offset = usize::from(rest[12] >> 4) * 4;
+            if data_offset < 20 || rest.len() < data_offset {
+                return Err(ParseError::Truncated("TCP"));
+            }
+            parsed.src_port = u16::from_be_bytes([rest[0], rest[1]]);
+            parsed.dst_port = u16::from_be_bytes([rest[2], rest[3]]);
+            parsed.payload_offset = Some(offset + data_offset);
+        }
+        PROTO_UDP => {
+            if rest.len() < 8 {
+                return Err(ParseError::Truncated("UDP"));
+            }
+            parsed.src_port = u16::from_be_bytes([rest[0], rest[1]]);
+            parsed.dst_port = u16::from_be_bytes([rest[2], rest[3]]);
+            parsed.payload_offset = Some(offset + 8);
+        }
+        PROTO_ICMP | PROTO_ICMPV6 => {
+            if rest.len() < 4 {
+                return Err(ParseError::Truncated("ICMP"));
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ipv4(protocol: u8, transport: &[u8]) -> Vec<u8> {
+        let mut p = vec![
+            0x45, 0, 0, 0, 0, 0, 0, 0, 64, protocol, 0, 0, 10, 0, 0, 1, 1, 1, 1, 1,
+        ];
+        let total = (20 + transport.len()) as u16;
+        p[2..4].copy_from_slice(&total.to_be_bytes());
+        p.extend_from_slice(transport);
+        p
+    }
+
+    fn udp(src: u16, dst: u16) -> Vec<u8> {
+        let mut u = Vec::new();
+        u.extend_from_slice(&src.to_be_bytes());
+        u.extend_from_slice(&dst.to_be_bytes());
+        u.extend_from_slice(&[0, 8, 0, 0]);
+        u
+    }
+
+    #[test]
+    fn parses_ipv4_udp_and_tcp() {
+        let p = parse_layer3(&ipv4(PROTO_UDP, &udp(5353, 53))).unwrap();
+        assert_eq!(p.src, "10.0.0.1".parse::<IpAddr>().unwrap());
+        assert_eq!(p.dst, "1.1.1.1".parse::<IpAddr>().unwrap());
+        assert_eq!((p.src_port, p.dst_port), (5353, 53));
+        assert_eq!(p.ip_protocol(), IpProtocol::UDP);
+        assert_eq!(p.payload_offset, Some(28));
+
+        let mut tcp = vec![0u8; 20];
+        tcp[0..2].copy_from_slice(&40000u16.to_be_bytes());
+        tcp[2..4].copy_from_slice(&443u16.to_be_bytes());
+        tcp[12] = 5 << 4;
+        let p = parse_layer3(&ipv4(PROTO_TCP, &tcp)).unwrap();
+        assert_eq!(
+            (p.src_port, p.dst_port, p.protocol),
+            (40000, 443, PROTO_TCP)
+        );
+    }
+
+    #[test]
+    fn parses_ipv6_with_extension_header() {
+        let mut p = vec![0x60, 0, 0, 0, 0, 0, 0, 64];
+        p.extend_from_slice(&"2001:db8::1".parse::<Ipv6Addr>().unwrap().octets());
+        p.extend_from_slice(&"2001:db8::2".parse::<Ipv6Addr>().unwrap().octets());
+        // Hop-by-hop header (8 bytes) pointing to UDP.
+        p[6] = 0;
+        p.extend_from_slice(&[PROTO_UDP, 0, 0, 0, 0, 0, 0, 0]);
+        p.extend_from_slice(&udp(1000, 53));
+        let parsed = parse_layer3(&p).unwrap();
+        assert_eq!(parsed.version, IpVersion::V6);
+        assert_eq!(parsed.protocol, PROTO_UDP);
+        assert_eq!(parsed.dst_port, 53);
+    }
+
+    #[test]
+    fn truncated_packets_are_errors() {
+        assert_eq!(parse_layer3(&[]), Err(ParseError::Empty));
+        assert_eq!(parse_layer3(&[0x20]), Err(ParseError::UnknownVersion(2)));
+        let full = ipv4(PROTO_UDP, &udp(1, 2));
+        for len in 1..full.len() {
+            assert!(parse_layer3(&full[..len]).is_err(), "len {len}");
+        }
+        // Non-first fragment: no transport header needed.
+        let mut frag = ipv4(PROTO_UDP, &[]);
+        frag[6] = 0x00;
+        frag[7] = 0x10;
+        assert_eq!(parse_layer3(&frag).unwrap().dst_port, 0);
+    }
+}
