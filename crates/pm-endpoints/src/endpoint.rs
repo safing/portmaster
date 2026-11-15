@@ -39,22 +39,28 @@ pub struct IpNet {
 }
 
 impl IpNet {
-    /// Parses CIDR notation; the address is masked to the network.
+    /// Parses CIDR notation like Go `net.ParseCIDR`; the address is masked to
+    /// the network. An IPv4-mapped network with a prefix of 96 or more becomes
+    /// an IPv4 network, as Go prints and matches it.
     pub fn parse(s: &str) -> Option<IpNet> {
         let (addr, prefix) = s.split_once('/')?;
-        if prefix.is_empty() || !prefix.bytes().all(|b| b.is_ascii_digit()) || prefix.len() > 3 {
-            return None;
-        }
-        let prefix: u8 = prefix.parse().ok()?;
-        let ip = parse_ip(addr)?;
+        let prefix: u8 = parse_uint(prefix)?;
+        // The literal decides the width (Go keeps 16 bytes for any IPv6 literal).
+        let ip: IpAddr = addr.parse().ok()?;
         let max = if ip.is_ipv4() { 32 } else { 128 };
         if prefix > max {
             return None;
         }
-        Some(IpNet {
-            network: mask(ip, prefix),
-            prefix,
-        })
+        let network = mask(ip, prefix);
+        if let IpAddr::V6(v6) = network {
+            if let (Some(v4), true) = (v6.to_ipv4_mapped(), prefix >= 96) {
+                return Some(IpNet {
+                    network: IpAddr::V4(v4),
+                    prefix: prefix - 96,
+                });
+            }
+        }
+        Some(IpNet { network, prefix })
     }
 
     /// Returns whether the network contains the IP. IPv4 and IPv6 never mix.
@@ -154,12 +160,12 @@ fn parse_kind(fields: &[&str]) -> Result<Option<EndpointKind>, Error> {
         return Ok(Some(EndpointKind::IpRange(net)));
     }
     if COUNTRY.is_match(value) {
-        return Ok(Some(EndpointKind::Country(value.to_uppercase())));
+        return Ok(Some(EndpointKind::Country(go_upper(value))));
     }
     if CONTINENT.is_match(value) {
-        let code = value.to_uppercase();
+        let code = go_upper(value);
         return Ok(Some(EndpointKind::Continent(
-            code.trim_start_matches("C:").to_string(),
+            code.strip_prefix("C:").unwrap_or(&code).to_string(),
         )));
     }
     if ASN.is_match(value) {
@@ -182,7 +188,7 @@ fn parse_kind(fields: &[&str]) -> Result<Option<EndpointKind>, Error> {
 
 fn parse_scopes(value: &str) -> Option<u8> {
     let mut scopes = 0u8;
-    for val in value.to_lowercase().split(',') {
+    for val in go_lower(value).split(',') {
         // Go toggles bits, so a repeated scope cancels itself out.
         match val {
             "localhost" => scopes ^= SCOPE_LOCALHOST,
@@ -202,7 +208,7 @@ fn parse_domain(value: &str) -> Result<Option<EndpointKind>, Error> {
     if LOOKS_LIKE_AN_IP.is_match(&domain) {
         return Ok(None);
     }
-    let domain = domain.to_lowercase();
+    let domain = go_lower(&domain);
 
     let mut need_valid_fqdn = true;
     let mut zone = String::new();
@@ -248,6 +254,31 @@ fn parse_domain(value: &str) -> Result<Option<EndpointKind>, Error> {
         domain_zone: zone,
         match_type,
     }))
+}
+
+/// Go `strings.ToLower`: per-rune simple case mapping (no SpecialCasing).
+pub(crate) fn go_lower(s: &str) -> String {
+    s.chars()
+        .map(|c| c.to_lowercase().next().unwrap_or(c))
+        .collect()
+}
+
+/// Go `strings.ToUpper`: runes without a single-rune mapping stay unchanged.
+pub(crate) fn go_upper(s: &str) -> String {
+    s.chars()
+        .map(|c| {
+            let mut up = c.to_uppercase();
+            match (up.next(), up.next()) {
+                (Some(u), None) => u,
+                _ => c,
+            }
+        })
+        .collect()
+}
+
+/// Go `int(uint)` conversion when printing an AS number.
+pub(crate) fn go_int(asn: u64) -> i64 {
+    asn as i64
 }
 
 /// Go `strconv.ParseUint(s, 10, bits)`: digits only, no sign.
@@ -343,7 +374,7 @@ impl Endpoint {
             EndpointKind::IpRange(net) => net.to_string(),
             EndpointKind::Country(code) => code.clone(),
             EndpointKind::Continent(code) => format!("C:{code}"),
-            EndpointKind::Asn(asn) => format!("AS{asn}"),
+            EndpointKind::Asn(asn) => format!("AS{}", go_int(*asn)),
             EndpointKind::Scope(scopes) => scope_names(*scopes),
             EndpointKind::Lists { lists, .. } => lists.clone(),
             EndpointKind::Domain { original_value, .. } => original_value.clone(),

@@ -59,6 +59,17 @@ fn entity_from_spec(env: &Env, spec: &Value) -> Entity {
     e.protocol = spec["protocol"].as_u64().unwrap() as u8;
     e.port = spec["port"].as_u64().unwrap() as u16;
     e.location_error = s("location_error");
+    if let Some(lists) = spec.get("lists").and_then(Value::as_object) {
+        for (key, ids) in lists {
+            let ids = ids
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|v| v.as_str().unwrap().to_string())
+                .collect();
+            e.list_occurences.insert(key.clone(), ids);
+        }
+    }
     e.init(0);
     e.enable_cname_check(
         spec.get("cname_check")
@@ -298,4 +309,29 @@ fn comment_only_rule_is_an_error_not_a_panic() {
     assert!(parse_endpoint("+ # just a comment").is_err());
     assert!(parse_endpoint("+ * TCP/+80").is_err());
     assert!(parse_endpoint("+ * +6").is_err());
+}
+
+#[test]
+fn match_multi_validate_and_is_set() {
+    let env = env(StaticLocations::new());
+    let mut a = Entity::new(Arc::clone(&env.lists), env.locations.clone());
+    a.domain = "a.example.".to_string();
+    a.init(0);
+    let mut b = Entity::new(Arc::clone(&env.lists), env.locations.clone());
+    b.domain = "b.example.".to_string();
+    b.init(0);
+
+    let (eps, err) = parse_endpoints(&["- b.example", "+ a.example"]);
+    assert!(err.is_none() && eps.is_set());
+    // Every entity is checked against a rule before the next rule.
+    assert_eq!(eps.match_multi(&mut [&mut a, &mut b]).0, EpResult::Denied);
+    assert_eq!(eps.match_entity(&mut a).0, EpResult::Permitted);
+    assert!(!parse_endpoints::<&str>(&[]).0.is_set());
+
+    assert!(pm_endpoints::validate_endpoint_list(&["+ *", "- 10.0.0.0/8"]).is_ok());
+    let err = pm_endpoints::validate_endpoint_list(&["+ *", "nope", "x y"]).unwrap_err();
+    assert_eq!(
+        err.0,
+        r#"encountered 2 errors, first was: invalid endpoint definition: "nope""#
+    );
 }

@@ -74,12 +74,17 @@ impl Endpoint {
                 if !ok {
                     return self.without_data(
                         entity,
-                        asn.to_string(),
+                        crate::endpoint::go_int(*asn).to_string(),
                         "ASN data not available to match",
                     );
                 }
                 if u64::from(entity_asn) == *asn {
-                    self.result(entity, asn.to_string(), "IP is part of AS", None)
+                    self.result(
+                        entity,
+                        crate::endpoint::go_int(*asn).to_string(),
+                        "IP is part of AS",
+                        None,
+                    )
                 } else {
                     no_match()
                 }
@@ -122,8 +127,8 @@ impl Endpoint {
             return result;
         }
         if entity.cname_check_enabled() {
-            for cname in entity.cname.clone() {
-                let result = self.check_domain(entity, &cname);
+            for cname in &entity.cname {
+                let result = self.check_domain(entity, cname);
                 if result.0 == EpResult::Denied {
                     return result;
                 }

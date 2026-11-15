@@ -67,6 +67,21 @@
           "reason": "denied by rule: matches *",
           "result": 2
         },
+        "listed_domain": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "listed_multi": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
+        "listed_other": {
+          "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: matches *",
+          "result": 2
+        },
         "localhost_v4": {
           "context": "{\"Filter\":\"- *\",\"Value\":\"*\",\"Permitted\":false,\"Extra\":{}}",
           "reason": "denied by rule: matches *",
@@ -179,6 +194,21 @@
           "result": 3
         },
         "link_local": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "listed_domain": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "listed_multi": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "listed_other": {
           "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
           "reason": "allowed by rule: matches *",
           "result": 3
@@ -299,6 +329,21 @@
           "reason": "allowed by rule: matches *",
           "result": 3
         },
+        "listed_domain": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "listed_multi": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
+        "listed_other": {
+          "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches *",
+          "result": 3
+        },
         "localhost_v4": {
           "context": "{\"Filter\":\"+ *\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
           "reason": "allowed by rule: matches *",
@@ -397,6 +442,17 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "context": "{\"Filter\":\"+ * TCP/HTTPS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTPS",
+          "result": 3
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -475,6 +531,17 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "context": "{\"Filter\":\"- *bad*\",\"Value\":\"*bad*\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: domain matches *bad*",
+          "result": 2
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -547,6 +614,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -625,6 +701,17 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "context": "{\"Filter\":\"- *bad.com\",\"Value\":\"*bad.com\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: domain matches *bad.com",
+          "result": 2
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -699,6 +786,17 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "context": "{\"Filter\":\"- .bad.com\",\"Value\":\".bad.com\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: domain matches .bad.com",
+          "result": 2
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -769,6 +867,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -843,6 +950,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -913,6 +1029,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -991,6 +1116,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -1073,6 +1207,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -1149,6 +1292,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -1229,6 +1381,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -1303,6 +1464,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -1375,6 +1545,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -1455,6 +1634,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -1529,6 +1717,17 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "context": "{\"Filter\":\"- *bad.com TCP/HTTPS\",\"Value\":\"*bad.com\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: domain matches *bad.com TCP/HTTPS",
+          "result": 2
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -1599,6 +1798,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -1677,6 +1885,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -1747,6 +1964,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -1821,6 +2047,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -1891,6 +2126,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -1965,6 +2209,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -2035,6 +2288,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -2109,6 +2371,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -2179,6 +2450,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -2253,6 +2533,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -2323,6 +2612,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -2413,6 +2711,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -2483,6 +2790,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -2557,6 +2873,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -2629,6 +2954,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -2699,6 +3033,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -2781,6 +3124,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "context": "{\"Filter\":\"+ 127.0.0.1\",\"Value\":\"127.0.0.1\",\"Permitted\":true,\"Extra\":{}}",
           "reason": "allowed by rule: IP matches 127.0.0.1",
@@ -2857,6 +3209,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -2927,6 +3288,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -3005,6 +3375,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -3075,6 +3454,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -3149,6 +3537,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -3229,6 +3626,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -3301,6 +3707,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -3377,6 +3792,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -3441,6 +3865,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -3499,6 +3932,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -3561,6 +4003,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -3619,6 +4070,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -3681,6 +4141,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -3741,6 +4210,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -3799,6 +4277,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -3877,6 +4364,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -3935,6 +4431,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -3997,6 +4502,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -4055,6 +4569,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -4117,6 +4640,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -4175,6 +4707,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -4237,6 +4778,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -4295,6 +4845,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -4357,6 +4916,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -4417,6 +4985,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -4475,6 +5052,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -4551,6 +5137,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -4636,6 +5231,17 @@
           "context": "{\"Filter\":\"+ LAN\",\"Value\":\"LAN\",\"Permitted\":true,\"Extra\":{}}",
           "reason": "allowed by rule: scope matches LAN",
           "result": 3
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "context": "{\"Filter\":\"+ LAN\",\"Value\":\"LAN\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches LAN",
+          "result": 3
+        },
+        "listed_other": {
+          "result": 0
         },
         "localhost_v4": {
           "result": 0
@@ -4725,6 +5331,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -4812,6 +5427,17 @@
           "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
           "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
           "result": 3
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Localhost,LAN,Internet",
+          "result": 3
+        },
+        "listed_other": {
+          "result": 0
         },
         "localhost_v4": {
           "context": "{\"Filter\":\"+ Localhost,LAN,Internet\",\"Value\":\"Localhost,LAN,Internet\",\"Permitted\":true,\"Extra\":{}}",
@@ -4913,6 +5539,17 @@
           "reason": "denied by rule: scope matches LAN,Internet",
           "result": 2
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "context": "{\"Filter\":\"- LAN,Internet\",\"Value\":\"LAN,Internet\",\"Permitted\":false,\"Extra\":{}}",
+          "reason": "denied by rule: scope matches LAN,Internet",
+          "result": 2
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -4993,6 +5630,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -5029,19 +5675,421 @@
       "rule": "+ LAN,foo"
     },
     {
-      "results": {},
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "context": "{\"Filter\":\"- L:TRAC,MAL\",\"Value\":\"L:TRAC,MAL\",\"Permitted\":false,\"Extra\":{\"filterlist\":{\"filterlists\":[{\"Entity\":\"tracker.bad.com.\",\"ActiveLists\":[\"TRAC\"],\"InactiveLists\":[\"ADS\"]}]}}}",
+          "reason": "denied by rule: filterlist contains L:TRAC,MAL",
+          "result": 2
+        },
+        "listed_multi": {
+          "context": "{\"Filter\":\"- L:TRAC,MAL\",\"Value\":\"L:TRAC,MAL\",\"Permitted\":false,\"Extra\":{\"filterlist\":{\"filterlists\":[{\"Entity\":\"10.9.9.9\",\"ActiveLists\":[\"TRAC\",\"MAL\"],\"InactiveLists\":null}]}}}",
+          "reason": "denied by rule: filterlist contains L:TRAC,MAL",
+          "result": 2
+        },
+        "listed_other": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
       "rule": "- L:TRAC,MAL",
       "string": "- L:TRAC,MAL"
     },
     {
-      "results": {},
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
       "rule": "+ L:",
       "string": "+ L:"
     },
     {
-      "results": {},
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "context": "{\"Filter\":\"- L:TRAC TCP/HTTPS\",\"Value\":\"L:TRAC\",\"Permitted\":false,\"Extra\":{\"filterlist\":{\"filterlists\":[{\"Entity\":\"tracker.bad.com.\",\"ActiveLists\":[\"TRAC\"],\"InactiveLists\":[\"ADS\"]}]}}}",
+          "reason": "denied by rule: filterlist contains L:TRAC TCP/HTTPS",
+          "result": 2
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
       "rule": "- L:TRAC TCP/443",
       "string": "- L:TRAC TCP/HTTPS"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "context": "{\"Filter\":\"+ L:ADS\",\"Value\":\"L:ADS\",\"Permitted\":true,\"Extra\":{\"filterlist\":{\"filterlists\":[{\"Entity\":\"tracker.bad.com.\",\"ActiveLists\":[\"ADS\"],\"InactiveLists\":[\"TRAC\"]}]}}}",
+          "reason": "allowed by rule: filterlist contains L:ADS",
+          "result": 3
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "context": "{\"Filter\":\"+ L:ADS\",\"Value\":\"L:ADS\",\"Permitted\":true,\"Extra\":{\"filterlist\":{\"filterlists\":[{\"Entity\":\"ads.example.net.\",\"ActiveLists\":[\"ADS\"],\"InactiveLists\":null}]}}}",
+          "reason": "allowed by rule: filterlist contains L:ADS",
+          "result": 3
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ L:ADS",
+      "string": "+ L:ADS"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "context": "{\"Filter\":\"- L:MAL UDP\",\"Value\":\"L:MAL\",\"Permitted\":false,\"Extra\":{\"filterlist\":{\"filterlists\":[{\"Entity\":\"10.9.9.9\",\"ActiveLists\":[\"MAL\"],\"InactiveLists\":[\"TRAC\"]}]}}}",
+          "reason": "denied by rule: filterlist contains L:MAL UDP",
+          "result": 2
+        },
+        "listed_other": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "- L:MAL UDP",
+      "string": "- L:MAL UDP"
     },
     {
       "results": {
@@ -5093,6 +6141,19 @@
         },
         "link_local": {
           "result": 0
+        },
+        "listed_domain": {
+          "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/1-1024",
+          "result": 3
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/1-1024",
+          "result": 3
         },
         "localhost_v4": {
           "context": "{\"Filter\":\"+ * TCP/1-1024\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
@@ -5182,6 +6243,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -5258,6 +6328,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -5328,6 +6407,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -5404,6 +6492,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -5475,6 +6572,17 @@
         },
         "link_local": {
           "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "context": "{\"Filter\":\"+ * TCP/HTTP\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTP",
+          "result": 3
         },
         "localhost_v4": {
           "result": 0
@@ -5560,6 +6668,19 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "context": "{\"Filter\":\"+ * TCP/80-443\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/80-443",
+          "result": 3
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "context": "{\"Filter\":\"+ * TCP/80-443\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/80-443",
+          "result": 3
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -5642,6 +6763,15 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -5718,6 +6848,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -5800,6 +6939,17 @@
         "link_local": {
           "result": 0
         },
+        "listed_domain": {
+          "context": "{\"Filter\":\"+ * TCP/HTTPS\",\"Value\":\"*\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: matches * TCP/HTTPS",
+          "result": 3
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -5876,6 +7026,15 @@
           "reason": "allowed by rule: matches * ICMP6",
           "result": 3
         },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
         "localhost_v4": {
           "result": 0
         },
@@ -5946,6 +7105,15 @@
           "result": 0
         },
         "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
           "result": 0
         },
         "localhost_v4": {
@@ -6050,6 +7218,518 @@
     {
       "error": "encountered 1 errors, first was: unknown endpoint definition: \"+ bad..com\"",
       "rule": "+ bad..com"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ 10.0.0.0/8\",\"Value\":\"10.0.0.0/8\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 10.0.0.0/8",
+          "result": 3
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "context": "{\"Filter\":\"+ 10.0.0.0/8\",\"Value\":\"10.0.0.0/8\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 10.0.0.0/8",
+          "result": 3
+        },
+        "listed_other": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "context": "{\"Filter\":\"+ 10.0.0.0/8\",\"Value\":\"10.0.0.0/8\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 10.0.0.0/8",
+          "result": 3
+        },
+        "port_1025": {
+          "context": "{\"Filter\":\"+ 10.0.0.0/8\",\"Value\":\"10.0.0.0/8\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 10.0.0.0/8",
+          "result": 3
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ 10.0.0.0/8\",\"Value\":\"10.0.0.0/8\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 10.0.0.0/8",
+          "result": 3
+        }
+      },
+      "rule": "+ ::ffff:10.0.0.0/104",
+      "string": "+ 10.0.0.0/8"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "context": "{\"Filter\":\"+ ::/8\",\"Value\":\"::/8\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in ::/8",
+          "result": 3
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ ::ffff:10.0.0.0/8",
+      "string": "+ ::/8"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "context": "{\"Filter\":\"+ 10.0.0.0/8\",\"Value\":\"10.0.0.0/8\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 10.0.0.0/8",
+          "result": 3
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "context": "{\"Filter\":\"+ 10.0.0.0/8\",\"Value\":\"10.0.0.0/8\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 10.0.0.0/8",
+          "result": 3
+        },
+        "listed_other": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "context": "{\"Filter\":\"+ 10.0.0.0/8\",\"Value\":\"10.0.0.0/8\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 10.0.0.0/8",
+          "result": 3
+        },
+        "port_1025": {
+          "context": "{\"Filter\":\"+ 10.0.0.0/8\",\"Value\":\"10.0.0.0/8\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 10.0.0.0/8",
+          "result": 3
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "context": "{\"Filter\":\"+ 10.0.0.0/8\",\"Value\":\"10.0.0.0/8\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: IP is in 10.0.0.0/8",
+          "result": 3
+        }
+      },
+      "rule": "+ 10.0.0.0/0008",
+      "string": "+ 10.0.0.0/8"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "context": "{\"Filter\":\"+ Internet\",\"Value\":\"Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Internet",
+          "result": 3
+        },
+        "global_v4": {
+          "context": "{\"Filter\":\"+ Internet\",\"Value\":\"Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Internet",
+          "result": 3
+        },
+        "global_v4_udp": {
+          "context": "{\"Filter\":\"+ Internet\",\"Value\":\"Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Internet",
+          "result": 3
+        },
+        "global_v6": {
+          "context": "{\"Filter\":\"+ Internet\",\"Value\":\"Internet\",\"Permitted\":true,\"Extra\":{}}",
+          "reason": "allowed by rule: scope matches Internet",
+          "result": 3
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ İNTERNET",
+      "string": "+ Internet"
+    },
+    {
+      "error": "encountered 1 errors, first was: invalid endpoint definition: \"+ * TCP/ßh\" - port number parsing error",
+      "rule": "+ * TCP/ßh"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ AS18446744073709551615",
+      "string": "+ AS-1"
+    },
+    {
+      "results": {
+        "bad_contains": {
+          "result": 0
+        },
+        "cname_blocked": {
+          "result": 0
+        },
+        "cname_unchecked": {
+          "result": 0
+        },
+        "deep_sub": {
+          "result": 0
+        },
+        "domain_only": {
+          "result": 0
+        },
+        "domain_tcp443": {
+          "result": 0
+        },
+        "global_icmp": {
+          "result": 0
+        },
+        "global_v4": {
+          "result": 0
+        },
+        "global_v4_udp": {
+          "result": 0
+        },
+        "global_v6": {
+          "result": 0
+        },
+        "lan": {
+          "result": 0
+        },
+        "lan_range": {
+          "result": 0
+        },
+        "link_local": {
+          "result": 0
+        },
+        "listed_domain": {
+          "result": 0
+        },
+        "listed_multi": {
+          "result": 0
+        },
+        "listed_other": {
+          "result": 0
+        },
+        "localhost_v4": {
+          "result": 0
+        },
+        "localhost_v6": {
+          "result": 0
+        },
+        "multicast": {
+          "result": 0
+        },
+        "no_ip_no_domain": {
+          "result": 0
+        },
+        "other_domain": {
+          "result": 0
+        },
+        "port_1024": {
+          "result": 0
+        },
+        "port_1025": {
+          "result": 0
+        },
+        "prefix_domain": {
+          "result": 0
+        },
+        "sub_domain": {
+          "result": 0
+        }
+      },
+      "rule": "+ EXAMPLE.ORG",
+      "string": "+ EXAMPLE.ORG"
+    },
+    {
+      "error": "encountered 1 errors, first was: unknown endpoint definition: \"+ ÉXAMPLE.ORG\"",
+      "rule": "+ ÉXAMPLE.ORG"
     }
   ],
   "entities": [
@@ -6197,6 +7877,42 @@
       "name": "no_ip_no_domain",
       "protocol": 6,
       "port": 80
+    },
+    {
+      "name": "listed_domain",
+      "domain": "tracker.bad.com.",
+      "protocol": 6,
+      "port": 443,
+      "lists": {
+        "tracker.bad.com.": [
+          "TRAC",
+          "ADS"
+        ]
+      }
+    },
+    {
+      "name": "listed_multi",
+      "ip": "10.9.9.9",
+      "domain": "cdn.example.org.",
+      "protocol": 17,
+      "port": 443,
+      "lists": {
+        "10.9.9.9": [
+          "TRAC",
+          "MAL"
+        ]
+      }
+    },
+    {
+      "name": "listed_other",
+      "domain": "ads.example.net.",
+      "protocol": 6,
+      "port": 80,
+      "lists": {
+        "ads.example.net.": [
+          "ADS"
+        ]
+      }
     }
   ],
   "lists": [
@@ -6212,6 +7928,9 @@
         "lan": 2,
         "lan_range": 2,
         "link_local": 2,
+        "listed_domain": 2,
+        "listed_multi": 2,
+        "listed_other": 2,
         "localhost_v4": 2,
         "localhost_v6": 2,
         "multicast": 2,
@@ -6244,6 +7963,9 @@
         "lan": 3,
         "lan_range": 3,
         "link_local": 3,
+        "listed_domain": 2,
+        "listed_multi": 3,
+        "listed_other": 3,
         "localhost_v4": 3,
         "localhost_v6": 3,
         "multicast": 3,
@@ -6276,6 +7998,9 @@
         "lan": 2,
         "lan_range": 2,
         "link_local": 2,
+        "listed_domain": 2,
+        "listed_multi": 2,
+        "listed_other": 2,
         "localhost_v4": 2,
         "localhost_v6": 2,
         "multicast": 2,
@@ -6310,6 +8035,9 @@
         "lan": 3,
         "lan_range": 3,
         "link_local": 3,
+        "listed_domain": 3,
+        "listed_multi": 3,
+        "listed_other": 3,
         "localhost_v4": 3,
         "localhost_v6": 3,
         "multicast": 3,

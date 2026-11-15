@@ -69,10 +69,12 @@ fn is_domain_name(s: &str) -> bool {
     let mut off = 0usize;
     let mut begin = 0usize;
     let mut was_dot = false;
+    let mut escape = false;
     let mut i = 0usize;
     while i < s.len() {
         match s[i] {
             b'\\' => {
+                escape = !escape;
                 if off + 1 > LENMSG {
                     return false;
                 }
@@ -87,6 +89,7 @@ fn is_domain_name(s: &str) -> bool {
                 was_dot = false;
             }
             b'.' => {
+                escape = false;
                 if i == 0 && s.len() > 1 {
                     return false;
                 }
@@ -104,11 +107,14 @@ fn is_domain_name(s: &str) -> bool {
                 }
                 begin = i + 1;
             }
-            _ => was_dot = false,
+            _ => {
+                escape = false;
+                was_dot = false;
+            }
         }
         i += 1;
     }
-    true
+    !escape
 }
 
 #[cfg(test)]

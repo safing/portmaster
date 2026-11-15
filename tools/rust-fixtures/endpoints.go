@@ -18,11 +18,13 @@ type endpointEntity struct {
 	Protocol      uint8    `json:"protocol"`
 	Port          uint16   `json:"port"`
 	LocationError string   `json:"location_error,omitempty"`
+	// Lists is set directly as ListOccurences; Go MatchLists only reads it.
+	Lists map[string][]string `json:"lists,omitempty"`
 }
 
-// Global IPs always carry a LocationError: without a running geoip module a
-// lookup would wait for the database. Country/ASN matches with data are
-// covered by Rust tests against a static location provider.
+// Country/continent/ASN rules are not evaluated for global IPs: Go would query
+// the geoip module, which is not running here. Those matches are covered by
+// Rust tests against a static location provider.
 var endpointEntities = []endpointEntity{
 	{Name: "domain_only", Domain: "example.com."},
 	{Name: "domain_tcp443", Domain: "example.com.", IP: "10.2.3.4", Protocol: 6, Port: 443},
@@ -46,6 +48,9 @@ var endpointEntities = []endpointEntity{
 	{Name: "port_1024", IP: "10.0.0.1", Protocol: 6, Port: 1024},
 	{Name: "port_1025", IP: "10.0.0.1", Protocol: 6, Port: 1025},
 	{Name: "no_ip_no_domain", Protocol: 6, Port: 80},
+	{Name: "listed_domain", Domain: "tracker.bad.com.", Protocol: 6, Port: 443, Lists: map[string][]string{"tracker.bad.com.": {"TRAC", "ADS"}}},
+	{Name: "listed_multi", Domain: "cdn.example.org.", IP: "10.9.9.9", Protocol: 17, Port: 443, Lists: map[string][]string{"10.9.9.9": {"TRAC", "MAL"}}},
+	{Name: "listed_other", Domain: "ads.example.net.", Protocol: 6, Port: 80, Lists: map[string][]string{"ads.example.net.": {"ADS"}}},
 }
 
 var endpointRules = []string{
@@ -69,7 +74,7 @@ var endpointRules = []string{
 	// Scopes.
 	"+ Localhost", "+ LAN", "+ Internet", "+ Localhost,LAN,Internet", "- lan,internet", "+ LAN,LAN", "+ LAN,foo",
 	// Lists.
-	"- L:TRAC,MAL", "+ L:", "- L:TRAC TCP/443",
+	"- L:TRAC,MAL", "+ L:", "- L:TRAC TCP/443", "+ L:ADS", "- L:MAL UDP",
 	// Protocols and ports.
 	"+ * TCP/1-1024", "+ * */DNS", "+ * ICMP", "+ * 127", "+ * UDP/1234", "+ * TCP/HTTP", "+ * TCP/80-443",
 	"+ * udp/dns", "+ * TCP/dhcp-server", "+ * TCP/443-80", "+ * 6/443", "+ * ICMP6", "+ * UDP-LITE",
@@ -77,15 +82,19 @@ var endpointRules = []string{
 	"", "+", "*", "x *", "+ * TCP/", "+ * TCP/*", "+ * /80", "+ * */*", "+ * TCP/0", "+ * TCP/1-0",
 	"+ * TCP/1-2-3", "+ * TCP/80/90", "+ * FOO", "+ * 300", "+ * TCP/70000", "+ * TCP/80 extra",
 	"+ 1234", "+ bad..com",
+	// Exotic forms.
+	"+ ::ffff:10.0.0.0/104", "+ ::ffff:10.0.0.0/8", "+ 10.0.0.0/0008", "+ İNTERNET", "+ * TCP/ßh", "+ AS18446744073709551615",
+	"+ EXAMPLE.ORG", "+ ÉXAMPLE.ORG",
 }
 
 func newEndpointEntity(spec endpointEntity) *intel.Entity {
 	e := &intel.Entity{
-		Domain:        spec.Domain,
-		CNAME:         spec.CNAME,
-		Protocol:      spec.Protocol,
-		Port:          spec.Port,
-		LocationError: spec.LocationError,
+		Domain:         spec.Domain,
+		CNAME:          spec.CNAME,
+		Protocol:       spec.Protocol,
+		Port:           spec.Port,
+		LocationError:  spec.LocationError,
+		ListOccurences: spec.Lists,
 	}
 	if spec.IP != "" {
 		e.IP = net.ParseIP(spec.IP)
@@ -99,8 +108,6 @@ func newEndpointEntity(spec endpointEntity) *intel.Entity {
 // list modules, which are not running in the generator.
 func needsIntelModules(ep endpoints.Endpoint, spec endpointEntity) bool {
 	switch ep.(type) {
-	case *endpoints.EndpointLists:
-		return true
 	case *endpoints.EndpointCountry, *endpoints.EndpointContinent, *endpoints.EndpointASN:
 		ip := net.ParseIP(spec.IP)
 		return ip != nil && ip.IsGlobalUnicast() && !ip.IsPrivate()

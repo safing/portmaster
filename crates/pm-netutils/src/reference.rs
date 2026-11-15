@@ -48,6 +48,19 @@ const PORT_ALIASES: &[(&str, u16)] = &[
     ("POP3-SSL", 995),
 ];
 
+/// Go `strings.ToUpper`: runes without a single-rune mapping stay unchanged.
+fn go_upper(s: &str) -> String {
+    s.chars()
+        .map(|c| {
+            let mut up = c.to_uppercase();
+            match (up.next(), up.next()) {
+                (Some(u), None) => u,
+                _ => c,
+            }
+        })
+        .collect()
+}
+
 /// Returns the name of a protocol number, or the number itself.
 pub fn protocol_name(protocol: u8) -> String {
     PROTOCOLS
@@ -58,7 +71,7 @@ pub fn protocol_name(protocol: u8) -> String {
 
 /// Returns the number of a protocol name (case-insensitive).
 pub fn protocol_number(name: &str) -> Option<u8> {
-    let name = name.to_uppercase();
+    let name = go_upper(name);
     PROTOCOLS
         .iter()
         .find(|(_, n)| *n == name)
@@ -75,7 +88,7 @@ pub fn port_name(port: u16) -> String {
 
 /// Returns the number of a port name (case-insensitive).
 pub fn port_number(name: &str) -> Option<u16> {
-    let name = name.to_uppercase();
+    let name = go_upper(name);
     PORT_NAMES
         .iter()
         .map(|(number, n)| (*n, *number))
