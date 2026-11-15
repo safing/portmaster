@@ -131,3 +131,22 @@ fn global_config_refreshes() {
     assert!(global.endpoints().is_set());
     assert_eq!(global.keep_history.as_ref()(), 30);
 }
+
+#[test]
+fn proxy_credential_limits() {
+    use pm_profile::validate_upstream_proxy_url as check;
+    // Percent-encoded: 300 raw bytes but only 100 decoded.
+    let encoded = "%61".repeat(100);
+    assert!(check(&format!("socks5://{encoded}:{encoded}@h:1")).is_ok());
+    let long = "a".repeat(256);
+    assert!(check(&format!("socks5://{long}@h:1")).is_err());
+    assert!(check(&format!("socks5://u:{long}@h:1")).is_err());
+    assert!(check(&format!("socks5://{}@h:1", "a".repeat(255))).is_ok());
+    assert!(check("socks5://u:@h:1").is_ok());
+    assert!(check("nonsense")
+        .unwrap_err()
+        .contains("unsupported proxy scheme"));
+    assert!(check("socks4://u:@h:1")
+        .unwrap_err()
+        .contains("does not support password"));
+}

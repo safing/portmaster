@@ -216,13 +216,9 @@ impl GlobalProfileConfig {
         };
         parsed.endpoints = parse(&self.endpoints_list);
         parsed.service_endpoints = parse(&self.service_endpoints_list);
-        parsed.split_tun_usage_policy = parse(&self.split_tun_usage_policy_list);
-        parsed.spn_usage_policy = parse(&self.spn_usage_policy_list);
-        parsed.spn_transit_hub_policy = parse(&self.transit_hub_policy_list);
-        parsed.spn_exit_hub_policy = parse(&self.exit_hub_policy_list);
 
         let ids = (self.filter_lists_list)();
-        parsed.filter_lists = match self.resolver.read().expect("lock poisoned").as_ref() {
+        let resolved = match self.resolver.read().expect("lock poisoned").as_ref() {
             Some(resolve) => match resolve(&ids) {
                 Ok(resolved) => resolved,
                 Err(err) => {
@@ -232,6 +228,19 @@ impl GlobalProfileConfig {
             },
             None => ids,
         };
+
+        let mut parse = |list: &Getter<Vec<String>>| {
+            let (endpoints, err) = parse_endpoints(&list());
+            if let Some(err) = err {
+                last_err = Some(err.0);
+            }
+            Arc::new(endpoints)
+        };
+        parsed.split_tun_usage_policy = parse(&self.split_tun_usage_policy_list);
+        parsed.spn_usage_policy = parse(&self.spn_usage_policy_list);
+        parsed.spn_transit_hub_policy = parse(&self.transit_hub_policy_list);
+        parsed.spn_exit_hub_policy = parse(&self.exit_hub_policy_list);
+        parsed.filter_lists = resolved;
 
         *self.parsed.write().expect("lock poisoned") = parsed;
         last_err.map_or(Ok(()), Err)
@@ -263,6 +272,8 @@ impl GlobalProfileConfig {
     pub fn spn_exit_hub_policy(&self) -> Arc<Endpoints> {
         self.read(|p| Arc::clone(&p.spn_exit_hub_policy))
     }
+    /// Returns the filter list IDs. They are the configured category/source
+    /// IDs, unresolved, until a list resolver is set.
     pub fn filter_lists(&self) -> Vec<String> {
         self.read(|p| p.filter_lists.clone())
     }

@@ -6,14 +6,13 @@
 //!
 //! # Compatibility notes
 //!
-//! * Endpoint rules (`endpoints.Endpoints`) are not parsed yet; profiles expose
-//!   the raw rule strings. Parsing arrives with a `pm-endpoints` crate.
+//! * Endpoint rules are parsed with `pm-endpoints`; [`GlobalProfileConfig`]
+//!   keeps the parsed global lists.
 //! * `LayeredProfile` currently carries the local profile and its parsed
-//!   settings; merging with the global config layers comes with the config
-//!   layers port.
-//! * Profile configs are read directly from the config map instead of through a
-//!   `config.Perspective`, because the profile options are registered by the
-//!   service config package, which is not ported yet.
+//!   settings; merging with the global config layers is not ported yet.
+//! * The profile options are registered by [`options::register_options`]. Profile
+//!   configs are still read directly from the config map instead of through a
+//!   `config.Perspective`.
 //! * Binaries (`binmeta` icons) are modelled as data only; fetching icons and
 //!   metadata from executables is not ported.
 //! * Profile lifecycle events, active-profile caches and database hooks are not

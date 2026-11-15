@@ -36,6 +36,8 @@ pub struct Service {
     pub geoip: Arc<pm_geoip::GeoIp>,
     /// Global profile settings (filter rules and switches).
     pub profile_config: Arc<pm_profile::GlobalProfileConfig>,
+    /// Subscribed in `new` so changes before `run` are not missed.
+    profile_changes: Mutex<Option<tokio::sync::broadcast::Receiver<()>>>,
     listener: Mutex<Option<TcpListener>>,
     local_addr: std::net::SocketAddr,
     data_dir: PathBuf,
@@ -111,6 +113,7 @@ impl Service {
             Err(error) => return Err(error.into()),
         }
 
+        let profile_changes = config.subscribe_changes();
         let profile_config = Arc::new(pm_profile::GlobalProfileConfig::new(&config));
         if let Err(error) = profile_config.refresh() {
             tracing::warn!(%error, "profile: some global settings are invalid");
@@ -154,6 +157,7 @@ impl Service {
             filter_lists,
             geoip,
             profile_config,
+            profile_changes: Mutex::new(Some(profile_changes)),
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
             data_dir,
@@ -185,7 +189,12 @@ impl Service {
 
         // Keep the parsed global rules in sync with config changes.
         let profile_config = Arc::clone(&self.profile_config);
-        let mut changes = self.config.subscribe_changes();
+        let mut changes = self
+            .profile_changes
+            .lock()
+            .expect("lock poisoned")
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("service is already running"))?;
         let refresher = tokio::spawn(async move {
             while let Ok(()) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) =
                 changes.recv().await
