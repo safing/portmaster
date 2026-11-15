@@ -5,6 +5,7 @@ members = [
     "crates/pm-record",
     "crates/pm-proxy",
     "crates/pm-query",
+    "crates/pm-mgr",
 ]
 
 [workspace.package]
