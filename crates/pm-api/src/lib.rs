@@ -19,6 +19,7 @@ pub mod database_ws;
 mod endpoint;
 mod permission;
 mod session;
+pub mod ui;
 
 use std::collections::{BTreeMap, HashMap};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -39,6 +40,7 @@ pub use permission::{
     PERMIT_ANYONE, PERMIT_SELF, PERMIT_USER,
 };
 pub use session::{session_cookie, Sessions, SESSION_COOKIE_NAME};
+pub use ui::UiArchives;
 
 /// Errors of the API layer.
 #[derive(Debug, thiserror::Error)]
@@ -280,6 +282,7 @@ pub struct Api {
     api_keys: RwLock<HashMap<String, AuthToken>>,
     authenticator: RwLock<Option<Arc<dyn Authenticator>>>,
     databases: RwLock<Option<Arc<pm_database::Databases>>>,
+    ui_archives: RwLock<Option<Arc<ui::UiArchives>>>,
     sessions: session::Sessions,
     ready: AtomicBool,
     dev_mode: AtomicBool,
@@ -294,6 +297,7 @@ impl Api {
             api_keys: RwLock::new(HashMap::new()),
             authenticator: RwLock::new(None),
             databases: RwLock::new(None),
+            ui_archives: RwLock::new(None),
             sessions: session::Sessions::new(),
             ready: AtomicBool::new(false),
             dev_mode: AtomicBool::new(false),
@@ -359,6 +363,16 @@ impl Api {
     /// Returns whether the core finished starting.
     pub fn ready(&self) -> bool {
         self.ready.load(Ordering::SeqCst)
+    }
+
+    /// Provides the UI archives served by the UI routes.
+    pub fn set_ui_archives(&self, archives: Arc<ui::UiArchives>) {
+        *self.ui_archives.write().expect("lock poisoned") = Some(archives);
+    }
+
+    /// Returns the UI archives, if one was set.
+    pub fn ui_archives(&self) -> Option<Arc<ui::UiArchives>> {
+        self.ui_archives.read().expect("lock poisoned").clone()
     }
 
     /// Returns the session store.
@@ -560,6 +574,30 @@ impl Api {
         Ok(token)
     }
 
+    /// Adds the security headers of the Go router to a response.
+    pub fn apply_security_headers(&self, headers: &mut HeaderMap) {
+        let security: &[(&str, &str)] = &[
+            ("referrer-policy", "same-origin"),
+            ("x-content-type-options", "nosniff"),
+            ("x-frame-options", "deny"),
+            ("x-xss-protection", "1; mode=block"),
+            ("x-dns-prefetch-control", "off"),
+        ];
+        for (name, value) in security {
+            if !headers.contains_key(*name) {
+                headers.insert(name_as_name(name), HeaderValue::from_static(value));
+            }
+        }
+        if !self.dev_mode() {
+            headers.insert(
+                http::HeaderName::from_static("content-security-policy"),
+                HeaderValue::from_static(
+                    "default-src 'self'; connect-src https://*.safing.io 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:",
+                ),
+            );
+        }
+    }
+
     fn check_session_cookie(&self, request: &Request) -> Option<AuthToken> {
         let cookie = request.header("cookie")?;
         let value = session::cookie_value(cookie, SESSION_COOKIE_NAME)?;
@@ -642,28 +680,7 @@ impl Api {
             response.headers.insert(name.clone(), value.clone());
         }
 
-        let security: &[(&str, &str)] = &[
-            ("referrer-policy", "same-origin"),
-            ("x-content-type-options", "nosniff"),
-            ("x-frame-options", "deny"),
-            ("x-xss-protection", "1; mode=block"),
-            ("x-dns-prefetch-control", "off"),
-        ];
-        for (name, value) in security {
-            if !response.headers.contains_key(*name) {
-                response
-                    .headers
-                    .insert(name_as_name(name), HeaderValue::from_static(value));
-            }
-        }
-        if !self.dev_mode() {
-            response.headers.insert(
-                http::HeaderName::from_static("content-security-policy"),
-                HeaderValue::from_static(
-                    "default-src 'self'; connect-src https://*.safing.io 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:",
-                ),
-            );
-        }
+        self.apply_security_headers(&mut response.headers);
 
         if let Some(origin) = cors_origin {
             response.headers.insert(
@@ -1015,6 +1032,20 @@ pub async fn serve(api: Arc<Api>, listener: tokio::net::TcpListener) -> std::io:
             database_ws::DB_API_PATH,
             axum::routing::get(database_ws::database_ws_upgrade),
         )
+        .route("/assets/{*path}", axum::routing::get(ui::serve_assets))
+        .route(
+            "/ui/modules/{module}",
+            axum::routing::get(ui::redirect_module),
+        )
+        .route(
+            "/ui/modules/{module}/",
+            axum::routing::get(ui::serve_module_index),
+        )
+        .route(
+            "/ui/modules/{module}/{*path}",
+            axum::routing::get(ui::serve_module_file),
+        )
+        .route("/", axum::routing::get(ui::redirect_root))
         .fallback(axum::routing::any(handle_axum))
         .with_state(api);
     axum::serve(listener, app).await

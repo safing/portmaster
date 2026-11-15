@@ -20,6 +20,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
+zip.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]

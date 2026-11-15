@@ -58,6 +58,14 @@ async fn core_serves_api_and_database() {
 
     let server = tokio::spawn(Arc::clone(&service).run());
 
+    // The UI root redirects to the default module, like in Go.
+    let response = http_get(address, "/", "").await;
+    assert!(response.starts_with("HTTP/1.1 307"), "{response}");
+    assert!(
+        response.contains("location: /ui/modules/portmaster/"),
+        "{response}"
+    );
+
     // Public endpoints.
     let response = http_get(address, "/api/v1/ping", "").await;
     assert!(response.starts_with("HTTP/1.1 200"), "{response}");

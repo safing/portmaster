@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use pm_api::Api;
+use pm_api::{Api, UiArchives};
 use pm_config::{Config, ConfigOption, PossibleValue};
 use pm_database::{DatabaseInfo, Databases};
 use serde_json::{json, Value};
@@ -77,6 +77,7 @@ impl Service {
         api.set_databases(Arc::clone(&databases));
         api.register_config_endpoints(Arc::clone(&config));
         api.update_api_keys(&api_keys);
+        api.set_ui_archives(Arc::new(UiArchives::new(&options.bin_dir)));
 
         let listener = TcpListener::bind(&listen_address)
             .await
