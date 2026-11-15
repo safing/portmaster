@@ -93,17 +93,22 @@ pub fn start(
     queue.set_copy_range(num, MAX_PACKET_LEN)?;
     queue.set_queue_max_len(num, MAX_QUEUE_LEN)?;
     queue.set_nonblocking(true);
-    // nfq::Queue owns its socket (OwnedFd) for its whole life and always returns
-    // the same fd, so the I/O-safety concern behind the deprecation does not apply.
-    // The non-deprecated replacement `register` is `unsafe`, which the workspace forbids.
-    #[allow(deprecated)]
-    let fd = AsyncFd::new(queue)?;
+    let fd = register(queue)?;
     let (stop_tx, stop_rx) = oneshot::channel();
     let task = tokio::spawn(run(fd, num, inbound, out, stop_rx));
     Ok(QueueHandle {
         stop: Some(stop_tx),
         task,
     })
+}
+
+/// The only `unsafe` in the crate (allowed by the user for this spot).
+#[allow(unsafe_code)]
+fn register(queue: nfq::Queue) -> std::io::Result<AsyncFd<nfq::Queue>> {
+    // SAFETY: `nfq::Queue` owns its netlink socket as an `OwnedFd` field and
+    // `as_raw_fd` always returns that fd. The queue is moved into the AsyncFd,
+    // so the fd stays open and unchanged for the AsyncFd's whole lifetime.
+    unsafe { AsyncFd::register(queue) }.map_err(|e| e.into_parts().1)
 }
 
 /// Channel capacity for handing packets to the firewall.

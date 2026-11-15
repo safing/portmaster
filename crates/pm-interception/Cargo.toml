@@ -12,5 +12,7 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
-[lints]
-workspace = true
+# Same as the workspace lints, but `deny` instead of `forbid` so that the single
+# documented unsafe block in queue.rs can be allowed locally.
+[lints.rust]
+unsafe_code = "deny"
