@@ -18,6 +18,7 @@
 pub mod database_ws;
 mod endpoint;
 mod permission;
+mod session;
 
 use std::collections::{BTreeMap, HashMap};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -37,6 +38,7 @@ pub use permission::{
     AuthToken, Authenticator, Permission, DYNAMIC, NOT_FOUND, NOT_SUPPORTED, PERMIT_ADMIN,
     PERMIT_ANYONE, PERMIT_SELF, PERMIT_USER,
 };
+pub use session::{session_cookie, Sessions, SESSION_COOKIE_NAME};
 
 /// Errors of the API layer.
 #[derive(Debug, thiserror::Error)]
@@ -278,6 +280,8 @@ pub struct Api {
     api_keys: RwLock<HashMap<String, AuthToken>>,
     authenticator: RwLock<Option<Arc<dyn Authenticator>>>,
     databases: RwLock<Option<Arc<pm_database::Databases>>>,
+    sessions: session::Sessions,
+    ready: AtomicBool,
     dev_mode: AtomicBool,
     listen_address: String,
 }
@@ -290,6 +294,8 @@ impl Api {
             api_keys: RwLock::new(HashMap::new()),
             authenticator: RwLock::new(None),
             databases: RwLock::new(None),
+            sessions: session::Sessions::new(),
+            ready: AtomicBool::new(false),
             dev_mode: AtomicBool::new(false),
             listen_address: listen_address.to_string(),
         });
@@ -343,6 +349,21 @@ impl Api {
     /// Sets the authenticator used for requests without API key.
     pub fn set_authenticator(&self, authenticator: Arc<dyn Authenticator>) {
         *self.authenticator.write().expect("lock poisoned") = Some(authenticator);
+    }
+
+    /// Marks the core as ready (or not).
+    pub fn set_ready(&self, ready: bool) {
+        self.ready.store(ready, Ordering::SeqCst);
+    }
+
+    /// Returns whether the core finished starting.
+    pub fn ready(&self) -> bool {
+        self.ready.load(Ordering::SeqCst)
+    }
+
+    /// Returns the session store.
+    pub fn sessions(&self) -> &session::Sessions {
+        &self.sessions
     }
 
     /// Provides the database system served by the WebSocket API.
@@ -482,13 +503,19 @@ impl Api {
             Some(AuthToken::full())
         } else {
             self.check_api_key(request)
+                .or_else(|| self.check_session_cookie(request))
         };
 
         if token.is_none() {
             let authenticator = self.authenticator.read().expect("lock poisoned").clone();
             if let Some(authenticator) = authenticator {
                 match authenticator.authenticate(request) {
-                    Ok(found) => token = found,
+                    Ok(found) => {
+                        if let Some(found) = found {
+                            self.create_session(request, found);
+                        }
+                        token = found;
+                    }
                     Err(AuthError::Denied(message)) => {
                         if required > PERMIT_ANYONE {
                             return Err(Response::error(403, &message));
@@ -531,6 +558,23 @@ impl Api {
         }
 
         Ok(token)
+    }
+
+    fn check_session_cookie(&self, request: &Request) -> Option<AuthToken> {
+        let cookie = request.header("cookie")?;
+        let value = session::cookie_value(cookie, SESSION_COOKIE_NAME)?;
+        self.sessions.check(&value)
+    }
+
+    fn create_session(&self, request: &mut Request, token: AuthToken) {
+        let Some(value) = self.sessions.create(token) else {
+            return;
+        };
+        if let Ok(header) = HeaderValue::from_str(&session_cookie(&value)) {
+            request
+                .response_header
+                .append(http::header::SET_COOKIE, header);
+        }
     }
 
     fn check_api_key(&self, request: &Request) -> Option<AuthToken> {
@@ -820,6 +864,35 @@ impl Api {
         .expect("meta endpoint is valid");
 
         self.register_endpoint(
+            public_endpoint("ping", "Ping", "Pong.").with_action(|_| Ok("Pong.".to_string())),
+        )
+        .expect("meta endpoint is valid");
+
+        let ready_state = weak.clone();
+        self.register_endpoint(
+            public_endpoint(
+                "ready",
+                "Ready",
+                "Check if Portmaster has completed starting and is ready.",
+            )
+            .with_action(move |_| {
+                let ready = ready_state
+                    .upgrade()
+                    .map(|api| api.ready())
+                    .unwrap_or(false);
+                if ready {
+                    Ok("Portmaster is ready.".to_string())
+                } else {
+                    Err(ApiError::WithStatus {
+                        status: 425,
+                        message: "portmaster is not ready, reload (F5) to try again".to_string(),
+                    })
+                }
+            }),
+        )
+        .expect("meta endpoint is valid");
+
+        self.register_endpoint(
             Endpoint::new(
                 "auth/permissions",
                 "View Current Permissions",
@@ -901,23 +974,34 @@ impl Api {
                 "Resets authentication status internally and in the browser.",
             )
             .with_read(PERMIT_ANYONE)
-            .with_handler(|request| {
-                request.response_header.insert(
-                    http::header::SET_COOKIE,
-                    HeaderValue::from_static(
-                        "Portmaster-API-Token=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict",
-                    ),
-                );
-                let mut response = Response::error(401, "Session deleted.");
-                response.headers.insert(
-                    http::HeaderName::from_static("clear-site-data"),
-                    HeaderValue::from_static("*"),
-                );
-                response.headers.insert(
-                    http::header::WWW_AUTHENTICATE,
-                    HeaderValue::from_static("None realm=\"Portmaster API\""),
-                );
-                response
+            .with_handler({
+                let weak = weak.clone();
+                move |request| {
+                    if let Some(api) = weak.upgrade() {
+                        if let Some(cookie) = request.header("cookie") {
+                            if let Some(value) = session::cookie_value(cookie, SESSION_COOKIE_NAME)
+                            {
+                                api.sessions.delete(&value);
+                            }
+                        }
+                    }
+                    request.response_header.insert(
+                        http::header::SET_COOKIE,
+                        HeaderValue::from_static(
+                            "Portmaster-API-Token=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict",
+                        ),
+                    );
+                    let mut response = Response::error(401, "Session deleted.");
+                    response.headers.insert(
+                        http::HeaderName::from_static("clear-site-data"),
+                        HeaderValue::from_static("*"),
+                    );
+                    response.headers.insert(
+                        http::header::WWW_AUTHENTICATE,
+                        HeaderValue::from_static("None realm=\"Portmaster API\""),
+                    );
+                    response
+                }
             }),
         )
         .expect("meta endpoint is valid");

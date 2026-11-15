@@ -9,6 +9,7 @@ members = [
     "crates/pm-database",
     "crates/pm-config",
     "crates/pm-api",
+    "crates/pm-core",
 ]
 
 [workspace.package]
@@ -25,6 +26,7 @@ axum = { version = "0.8.9", default-features = false, features = ["http1", "toki
 async-trait = "0.1.92"
 ciborium = "0.2.2"
 flate2 = "1.1.11"
+getrandom = "0.4.3"
 hex = "0.4.3"
 http = "1.5.0"
 regex = "1.13.1"
@@ -36,3 +38,4 @@ thiserror = "2.0.21"
 tokio = { version = "1.54.1", features = ["full"] }
 tokio-util = "0.7.20"
 tracing = "0.1.44"
+tracing-subscriber = "0.3.23"

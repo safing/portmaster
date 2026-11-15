@@ -1,0 +1,31 @@
+[package]
+name = "pm-core"
+version = "0.1.0"
+edition.workspace = true
+description = "The Rust Portmaster core binary and its startup library"
+license.workspace = true
+
+[[bin]]
+name = "portmaster-core-rs"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+pm-api = { path = "../pm-api" }
+pm-config = { path = "../pm-config" }
+pm-database = { path = "../pm-database" }
+pm-dsd = { path = "../pm-dsd" }
+pm-mgr = { path = "../pm-mgr" }
+pm-query = { path = "../pm-query" }
+pm-record = { path = "../pm-record" }
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+tokio-tungstenite = "0.30.0"
+futures-util = "0.3.34"
+
+[lints]
+workspace = true

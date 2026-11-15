@@ -520,3 +520,71 @@ async fn serves_http_over_tcp() {
 
     server.abort();
 }
+
+#[test]
+fn sessions_are_issued_used_and_reset() {
+    struct Login;
+    impl Authenticator for Login {
+        fn authenticate(&self, request: &Request) -> Result<Option<AuthToken>, AuthError> {
+            if request.header("x-login") == Some("yes") {
+                Ok(Some(AuthToken::new(PERMIT_SELF, PERMIT_SELF)))
+            } else {
+                Ok(None)
+            }
+        }
+    }
+
+    let api = open_api();
+    api.register_endpoint(
+        Endpoint::new("self", "Self", "Only the software itself")
+            .with_read(PERMIT_SELF)
+            .with_data(|_| Ok(b"secret".to_vec())),
+    )
+    .unwrap();
+    api.set_authenticator(Arc::new(Login));
+
+    let response = api.handle(
+        Request::new("GET", "/api/v1/self")
+            .with_host("host")
+            .with_header("x-login", "yes"),
+    );
+    assert_eq!(response.status, 200);
+    let set_cookie = response
+        .headers
+        .get("set-cookie")
+        .expect("session cookie")
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert!(set_cookie.starts_with("Portmaster-API-Token="));
+    assert!(set_cookie.contains("HttpOnly"));
+    let cookie = set_cookie.split(';').next().unwrap().to_string();
+    assert_eq!(api.sessions().len(), 1);
+
+    // The session cookie alone authenticates.
+    let response = api.handle(
+        Request::new("GET", "/api/v1/self")
+            .with_host("host")
+            .with_header("cookie", &cookie),
+    );
+    assert_eq!(response.status, 200);
+
+    // Resetting the session deletes it and clears the cookie.
+    let response = api.handle(
+        Request::new("GET", "/api/v1/auth/reset")
+            .with_host("host")
+            .with_header("cookie", &cookie),
+    );
+    assert_eq!(response.status, 401);
+    assert_eq!(response.body_string(), "Session deleted.\n");
+    assert_eq!(response.headers.get("clear-site-data").unwrap(), "*");
+    assert!(api.sessions().is_empty());
+
+    // The old cookie no longer authenticates.
+    let response = api.handle(
+        Request::new("GET", "/api/v1/self")
+            .with_host("host")
+            .with_header("cookie", &cookie),
+    );
+    assert_eq!(response.status, 401);
+}

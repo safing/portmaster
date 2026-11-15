@@ -7,6 +7,8 @@ license.workspace = true
 
 [dependencies]
 axum.workspace = true
+getrandom.workspace = true
+hex.workspace = true
 http.workspace = true
 pm-config = { path = "../pm-config" }
 pm-database = { path = "../pm-database" }
@@ -22,7 +24,6 @@ tracing.workspace = true
 
 [dev-dependencies]
 futures-util = "0.3.34"
-hex.workspace = true
 tokio-tungstenite = "0.30.0"
 
 [lints]
