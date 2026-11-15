@@ -13,6 +13,7 @@ members = [
     "crates/pm-netstate",
     "crates/pm-process",
     "crates/pm-profile",
+    "crates/pm-notifications",
 ]
 
 [workspace.package]

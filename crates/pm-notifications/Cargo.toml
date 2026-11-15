@@ -1,0 +1,22 @@
+[package]
+name = "pm-notifications"
+version = "0.1.0"
+edition.workspace = true
+description = "User notifications for the Portmaster core"
+license.workspace = true
+
+[dependencies]
+pm-config = { path = "../pm-config" }
+pm-database = { path = "../pm-database" }
+pm-dsd = { path = "../pm-dsd" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid = { version = "1.29.2", features = ["v4", "v5"] }
+
+[dev-dependencies]
+
+[lints]
+workspace = true

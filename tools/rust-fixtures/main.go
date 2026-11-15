@@ -25,6 +25,7 @@ import (
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/database/storage/sqlite"
+	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/network/proc"
 	"github.com/safing/portmaster/service/network/socket"
 	"github.com/safing/portmaster/service/process"
@@ -71,6 +72,7 @@ func main() {
 	genNetState()
 	genProcess()
 	genProfile()
+	genNotifications()
 	genSQLite()
 }
 
@@ -1320,5 +1322,64 @@ func genProfile() {
 		"profile":     string(dumped[1:]),
 		"match_cases": matchCases,
 		"id_cases":    idCases,
+	})
+}
+
+// genNotifications records the JSON form of a notification.
+func genNotifications() {
+	n := &notifications.Notification{
+		EventID:      "module:event-1",
+		GUID:         "9f8b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d",
+		Type:         notifications.Prompt,
+		Title:        "Test Notification",
+		Category:     "Test",
+		Message:      "Do you want to continue?",
+		ShowOnSystem: true,
+		EventData: map[string]interface{}{
+			"process": "curl",
+			"count":   2,
+		},
+		Expires: 1_700_000_900,
+		State:   notifications.Active,
+		AvailableActions: []*notifications.Action{
+			{
+				ID:   "allow",
+				Text: "Allow",
+				Type: notifications.ActionTypeOpenSetting,
+				Payload: notifications.ActionTypeOpenSettingPayload{
+					Key:     "filter/defaultAction",
+					Profile: "local/abc",
+				},
+				Visibility: notifications.ActionVisibilityDefault,
+			},
+			{
+				ID:         "deny",
+				Text:       "Deny",
+				Type:       notifications.ActionTypeNone,
+				Visibility: notifications.ActionVisibilityDetailed,
+			},
+			{
+				ID:   "hook",
+				Text: "Call",
+				Type: notifications.ActionTypeWebhook,
+				Payload: notifications.ActionTypeWebhookPayload{
+					Method:       "POST",
+					URL:          "/api/v1/test",
+					Payload:      map[string]interface{}{"a": 1},
+					ResultAction: "display",
+				},
+				Visibility: notifications.ActionVisibilityInAppOnly,
+			},
+		},
+		SelectedActionID: "allow",
+	}
+
+	dumped, err := dsd.Dump(n, dsd.JSON)
+	if err != nil {
+		fail(err)
+	}
+
+	writeObject("notifications.json", map[string]any{
+		"notification": string(dumped[1:]),
 	})
 }
