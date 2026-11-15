@@ -277,3 +277,47 @@ fn verdict_order_follows_values() {
     assert!(Verdict::Block < Verdict::Drop);
     assert!(Verdict::Failed < Verdict::RerouteToSplitTun);
 }
+
+#[test]
+fn matched_lists_without_hit_serialize_as_empty_arrays() {
+    let mut e = entity();
+    e.ip = ip("1.1.1.1");
+    e.ip_scope = IpScope::Global;
+    e.protocol = 6;
+    e.port = 443;
+    e.domain = "one.example".into();
+    assert!(!e.match_lists(&["NOPE".to_string()]));
+
+    let conn = Connection {
+        id: "6-192.168.1.5-50000-1.1.1.1-443".into(),
+        conn_type: ConnectionType::Ip,
+        scope: "one.example".into(),
+        ip_version: 4,
+        ip_protocol: 6,
+        local_ip: ip("192.168.1.5"),
+        local_port: 50000,
+        pid: 4242,
+        entity: Some(e),
+        started: 1_700_000_500,
+        ..Connection::default()
+    };
+    check("ip_matched_empty_lists", 4242, "ip", &conn);
+    let json = String::from_utf8(pm_dsd::gojson::to_vec(&conn).unwrap()).unwrap();
+    assert!(json.contains("\"BlockedByLists\":[],\"BlockedEntities\":[]"));
+}
+
+#[test]
+fn packet_info_from_parsed_headers() {
+    let parsed = pm_interception::packet::Parsed {
+        version: pm_netstate::IpVersion::V4,
+        src: "10.0.0.2".parse().unwrap(),
+        dst: "8.8.8.8".parse().unwrap(),
+        protocol: pm_network::protocol::TCP,
+        src_port: 1234,
+        dst_port: 443,
+        payload_offset: None,
+    };
+    let info = pm_network::PacketInfo::from(&parsed);
+    assert_eq!(info.version, 4);
+    assert_eq!(info.connection_id(), "6-10.0.0.2-1234-8.8.8.8-443");
+}

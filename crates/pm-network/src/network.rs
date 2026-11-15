@@ -86,6 +86,16 @@ impl Network {
         self.conns.list()
     }
 
+    /// Returns the first IP connection whose ID starts with the prefix.
+    pub fn find_connection_by_prefix(&self, prefix: &str) -> Option<SharedConnection> {
+        self.conns.find_by_prefix(prefix)
+    }
+
+    /// Counts IP connections with `ended != 0`, like Go `active()`.
+    pub fn active_connection_count(&self) -> usize {
+        self.conns.active()
+    }
+
     /// Returns the DNS request connection with the given ID.
     pub fn get_dns_connection(&self, id: &str) -> Option<SharedConnection> {
         self.dns_conns.get(id)
@@ -388,11 +398,13 @@ impl Network {
                 .domains
                 .most_recent_domain(&profile.id, remote_ip)
                 // The DNS request may have gone through the system resolver.
-                .or_else(|| {
+                .or_else(|_| {
                     self.env
                         .domains
                         .most_recent_domain(IP_INFO_PROFILE_SCOPE_GLOBAL, remote_ip)
-                });
+                })
+                .ok()
+                .flatten();
             if let Some(resolved) = resolved {
                 conn.scope = resolved.domain.clone();
                 if let Some(entity) = conn.entity.as_mut() {

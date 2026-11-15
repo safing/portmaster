@@ -8,11 +8,10 @@ use serde::{Serialize, Serializer};
 
 /// IP protocol numbers, as in Go `packet.IPProtocol`.
 pub mod protocol {
-    pub const ICMP: u8 = 1;
-    pub const IGMP: u8 = 2;
-    pub const TCP: u8 = 6;
-    pub const UDP: u8 = 17;
-    pub const ICMPV6: u8 = 58;
+    pub use pm_interception::packet::{
+        PROTO_ICMP as ICMP, PROTO_ICMPV6 as ICMPV6, PROTO_IGMP as IGMP, PROTO_TCP as TCP,
+        PROTO_UDP as UDP,
+    };
     pub const UDP_LITE: u8 = 136;
     pub const RAW: u8 = 255;
 }
@@ -256,6 +255,28 @@ impl PacketInfo {
         info.dst_port = self.dst_port;
         info.pid = self.pid;
         info.seen_at = self.seen_at;
+        info
+    }
+}
+
+impl From<&pm_interception::packet::Parsed> for PacketInfo {
+    /// Converts parsed headers of an intercepted packet. The direction is not
+    /// part of the headers: the result is outbound and the caller sets
+    /// `inbound` from the packet mark.
+    fn from(parsed: &pm_interception::packet::Parsed) -> PacketInfo {
+        let mut info = PacketInfo::new(
+            parsed.protocol,
+            parsed.src,
+            parsed.src_port,
+            parsed.dst,
+            parsed.dst_port,
+            false,
+        );
+        info.version = match parsed.version {
+            pm_netstate::IpVersion::V4 => version::V4,
+            pm_netstate::IpVersion::V6 => version::V6,
+            pm_netstate::IpVersion::Unknown => 0,
+        };
         info
     }
 }
