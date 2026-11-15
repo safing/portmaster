@@ -17,6 +17,7 @@ members = [
     "crates/pm-runtime",
     "crates/pm-netenv",
     "crates/pm-status",
+    "crates/pm-intel",
 ]
 
 [workspace.package]

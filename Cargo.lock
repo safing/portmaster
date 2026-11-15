@@ -923,6 +923,7 @@ dependencies = [
  "pm-config",
  "pm-database",
  "pm-dsd",
+ "pm-intel",
  "pm-mgr",
  "pm-netenv",
  "pm-notifications",
@@ -963,6 +964,22 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+]
+
+[[package]]
+name = "pm-intel"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "flate2",
+ "hex",
+ "pm-database",
+ "pm-dsd",
+ "pm-record",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]

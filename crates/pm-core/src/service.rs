@@ -29,6 +29,8 @@ pub struct Service {
     pub notifications: Arc<pm_notifications::Notifications>,
     /// System status: module states and `runtime:system/status`.
     pub status: Arc<pm_status::Status>,
+    /// Filter list intelligence on top of the cache database.
+    pub filter_lists: Arc<pm_intel::FilterLists>,
     listener: Mutex<Option<TcpListener>>,
     local_addr: std::net::SocketAddr,
     data_dir: PathBuf,
@@ -80,6 +82,11 @@ impl Service {
         ));
         status.register(runtime.registry())?;
 
+        // Filter lists live in the cache database.
+        let filter_lists = Arc::new(pm_intel::FilterLists::new(pm_intel::cache_interface(
+            &databases,
+        )));
+
         // Configuration.
         let config = Config::new();
         register_options(&config, options)?;
@@ -121,6 +128,7 @@ impl Service {
             runtime,
             notifications,
             status,
+            filter_lists,
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
             data_dir,

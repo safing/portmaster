@@ -3,7 +3,11 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"database/sql"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -36,6 +40,7 @@ import (
 	"github.com/safing/portmaster/service/status"
 	"github.com/safing/structures/dsd"
 	"github.com/safing/structures/varint"
+	"github.com/tannerryan/ring"
 )
 
 type fixtureFile struct {
@@ -77,6 +82,7 @@ func main() {
 	genProfile()
 	genNotifications()
 	genStatus()
+	genIntel()
 	genSQLite()
 }
 
@@ -1447,5 +1453,212 @@ func genStatus() {
 			map[string]any{"value": int(netenv.StatusSemiOnline), "name": netenv.StatusSemiOnline.String()},
 			map[string]any{"value": int(netenv.StatusOnline), "name": netenv.StatusOnline.String()},
 		},
+	})
+}
+
+// genIntel records the filterlists bloom filters, DSDL decoding and the
+// records written to the cache database.
+func genIntel() {
+	// Bloom filter parameters and content of a small test filter.
+	type ringCase struct {
+		Elements      int      `json:"elements"`
+		FalsePositive float64  `json:"false_positive"`
+		Size          uint64   `json:"size"`
+		Hash          uint64   `json:"hash"`
+		Values        []string `json:"values"`
+		MarshalHex    string   `json:"marshal_hex"`
+		Tests         []string `json:"tests"`
+		TestResults   []bool   `json:"test_results"`
+	}
+
+	makeCase := func(elements int, falsePositive float64, values, tests []string) ringCase {
+		r, err := ring.Init(elements, falsePositive)
+		if err != nil {
+			fail(err)
+		}
+		for _, value := range values {
+			r.Add([]byte(value))
+		}
+		blob, err := r.MarshalBinary()
+		if err != nil {
+			fail(err)
+		}
+		// The size and hash rounds are unexported; read them from the
+		// serialized filter (version byte, then two big-endian uint64s).
+		results := make([]bool, 0, len(tests))
+		for _, value := range tests {
+			results = append(results, r.Test([]byte(value)))
+		}
+		return ringCase{
+			Elements:      elements,
+			FalsePositive: falsePositive,
+			Size:          binary.BigEndian.Uint64(blob[1:9]),
+			Hash:          binary.BigEndian.Uint64(blob[9:17]),
+			Values:        values,
+			MarshalHex:    hex.EncodeToString(blob),
+			Tests:         tests,
+			TestResults:   results,
+		}
+	}
+
+	// The scoped filters of the filterlists package use these capacities with
+	// a false positive rate of 0.001.
+	type bfSize struct {
+		Scope    string `json:"scope"`
+		Elements int    `json:"elements"`
+		Size     uint64 `json:"size"`
+		Hash     uint64 `json:"hash"`
+	}
+	sizes := []bfSize{
+		{Scope: "domain", Elements: 2000000},
+		{Scope: "asn", Elements: 10000},
+		{Scope: "country", Elements: 300},
+		{Scope: "ipv4", Elements: 200000},
+		{Scope: "ipv6", Elements: 20000},
+	}
+	for i := range sizes {
+		r, err := ring.Init(sizes[i].Elements, 0.001)
+		if err != nil {
+			fail(err)
+		}
+		blob, err := r.MarshalBinary()
+		if err != nil {
+			fail(err)
+		}
+		sizes[i].Size = binary.BigEndian.Uint64(blob[1:9])
+		sizes[i].Hash = binary.BigEndian.Uint64(blob[9:17])
+	}
+
+	values := []string{"example.com.", "192.0.2.10", "2001:db8::1", ""}
+	ringTests := []ringCase{
+		makeCase(1000, 0.001, values, append(values, "not-added.example.")),
+		makeCase(100, 0.01, []string{"a", "b", "c"}, []string{"a", "b", "c", "d"}),
+	}
+
+	// DSDL filterlist file with four entries.
+	type fixtureResource struct {
+		SourceID   string `json:"sourceID"`
+		ResourceID string `json:"resourceID"`
+	}
+	type fixtureEntry struct {
+		Type      string            `json:"type"`
+		Entity    string            `json:"entity"`
+		Whitelist bool              `json:"whitelist"`
+		Resources []fixtureResource `json:"resources"`
+	}
+	entries := []fixtureEntry{
+		{
+			Type:   "domain",
+			Entity: "Example.COM",
+			Resources: []fixtureResource{
+				{SourceID: "list-a", ResourceID: "r1"},
+				{SourceID: "list-a", ResourceID: "r2"},
+				{SourceID: "list-b", ResourceID: "r3"},
+			},
+		},
+		{
+			Type:      "ipv4",
+			Entity:    "192.0.2.10",
+			Resources: []fixtureResource{{SourceID: "list-b", ResourceID: "r4"}},
+		},
+		{
+			Type:      "domain",
+			Entity:    "removed.example.",
+			Whitelist: true,
+			Resources: []fixtureResource{{SourceID: "list-a", ResourceID: "r5"}},
+		},
+		{
+			Type:   "country",
+			Entity: "XX",
+		},
+	}
+
+	var body bytes.Buffer
+	for _, entry := range entries {
+		blob, err := dsd.Dump(entry, dsd.JSON)
+		if err != nil {
+			fail(err)
+		}
+		// Strip the format byte; the file header carries the format.
+		blob = blob[1:]
+		body.Write(varint.Pack64(uint64(len(blob))))
+		body.Write(blob)
+	}
+
+	plain := append([]byte{dsd.LIST, dsd.JSON}, body.Bytes()...)
+
+	var compressed bytes.Buffer
+	gz := gzip.NewWriter(&compressed)
+	if _, err := gz.Write(body.Bytes()); err != nil {
+		fail(err)
+	}
+	if err := gz.Close(); err != nil {
+		fail(err)
+	}
+	gzipped := append([]byte{dsd.LIST, dsd.GZIP, dsd.JSON}, compressed.Bytes()...)
+
+	// Records written for the entries above, after normalization.
+	type fixtureRecord struct {
+		Key     string   `json:"key"`
+		Deleted bool     `json:"deleted"`
+		Sources []string `json:"sources"`
+	}
+	normalized := []fixtureRecord{
+		{
+			Key:     "cache:intel/filterlists/lists/domain/example.com.",
+			Sources: []string{"list-a", "list-b"},
+		},
+		{
+			Key:     "cache:intel/filterlists/lists/ipv4/192.0.2.10",
+			Sources: []string{"list-b"},
+		},
+		{
+			Key:     "cache:intel/filterlists/lists/domain/removed.example.",
+			Deleted: true,
+			Sources: []string{"list-a"},
+		},
+		{
+			Key:     "cache:intel/filterlists/lists/country/XX",
+			Sources: []string{},
+		},
+	}
+
+	// JSON forms of the records.
+	type entityRecordJSON struct {
+		Value     string
+		Sources   []string
+		Type      string
+		UpdatedAt int64
+	}
+	entityJSON, err := dsd.Dump(&entityRecordJSON{
+		Value:     "example.com.",
+		Sources:   []string{"list-a", "list-b"},
+		Type:      "domain",
+		UpdatedAt: 1_700_000_000,
+	}, dsd.JSON)
+	if err != nil {
+		fail(err)
+	}
+	type versionRecordJSON struct {
+		Version string
+		Reset   string
+	}
+	versionJSON, err := dsd.Dump(&versionRecordJSON{
+		Version: "v0.6.4",
+		Reset:   "v0.6.0",
+	}, dsd.JSON)
+	if err != nil {
+		fail(err)
+	}
+
+	writeObject("intel.json", map[string]any{
+		"rings":          ringTests,
+		"bf_sizes":       sizes,
+		"entries":        entries,
+		"file_plain":     base64.StdEncoding.EncodeToString(plain),
+		"file_gzipped":   base64.StdEncoding.EncodeToString(gzipped),
+		"records":        normalized,
+		"entity_record":  string(entityJSON[1:]),
+		"version_record": string(versionJSON[1:]),
 	})
 }

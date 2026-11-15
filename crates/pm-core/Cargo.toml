@@ -20,6 +20,7 @@ pm-runtime = { path = "../pm-runtime" }
 pm-netenv = { path = "../pm-netenv" }
 pm-notifications = { path = "../pm-notifications" }
 pm-status = { path = "../pm-status" }
+pm-intel = { path = "../pm-intel" }
 pm-query = { path = "../pm-query" }
 pm-record = { path = "../pm-record" }
 serde_json.workspace = true
