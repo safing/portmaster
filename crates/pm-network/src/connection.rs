@@ -281,6 +281,15 @@ fn non_empty<T>(slice: &[T]) -> Option<&[T]> {
     }
 }
 
+/// Like [`non_empty`], but `matched` slices are non-nil in Go and stay `[]`.
+fn nil_unless<T>(slice: &[T], matched: bool) -> Option<&[T]> {
+    if matched {
+        Some(slice)
+    } else {
+        non_empty(slice)
+    }
+}
+
 impl<'a> EntityJson<'a> {
     fn new(entity: &'a Entity) -> EntityJson<'a> {
         EntityJson {
@@ -296,8 +305,8 @@ impl<'a> EntityJson<'a> {
             asn: entity.asn,
             as_org: &entity.as_org,
             location_error: &entity.location_error,
-            blocked_by_lists: non_empty(&entity.blocked_by_lists),
-            blocked_entities: non_empty(&entity.blocked_entities),
+            blocked_by_lists: nil_unless(&entity.blocked_by_lists, entity.lists_matched),
+            blocked_entities: nil_unless(&entity.blocked_entities, entity.lists_matched),
             list_occurences: if entity.list_occurences.is_empty() {
                 None
             } else {
@@ -456,6 +465,8 @@ impl Connection {
                 }
             }
         }
+        // Deliberately follows the user's local Go change (always true), not
+        // upstream (false).
         self.bandwidth_enabled = true;
     }
 

@@ -7,7 +7,7 @@ use pm_netstate::UNDEFINED_PROCESS_ID;
 use pm_process::SYSTEM_PROCESS_ID;
 use pm_process::UNIDENTIFIED_PROCESS_ID;
 
-use crate::connection::SharedConnection;
+use crate::connection::{Connection, SharedConnection};
 use crate::network::{Network, DNS_REQUEST_CONN_GRACE};
 use crate::types::{format_ip, PacketInfo};
 
@@ -67,10 +67,25 @@ fn dns_request_connection_key(info: &PacketInfo) -> Option<String> {
 
 impl Network {
     /// Saves a DNS request connection for fast attribution of later requests.
+    ///
+    /// Locking rule: the plain variants lock the connection themselves and must
+    /// not be called with the lock held; callers that hold the lock (as the Go
+    /// firewall and nameserver do) use the `_locked` variants. The internal map
+    /// locks are never held while a connection is locked.
     pub fn save_dns_request_connection(&self, conn: &SharedConnection, info: &PacketInfo) {
-        let pid = conn.lock().expect("lock poisoned").pid;
+        let guard = conn.lock().expect("lock poisoned");
+        self.save_dns_request_connection_locked(conn, &guard, info);
+    }
+
+    /// Like [`Network::save_dns_request_connection`] for a locked connection.
+    pub fn save_dns_request_connection_locked(
+        &self,
+        shared: &SharedConnection,
+        conn: &Connection,
+        info: &PacketInfo,
+    ) {
         // Re-injected packets on Windows are reported with the kernel PID.
-        if pid == UNDEFINED_PROCESS_ID || pid == SYSTEM_PROCESS_ID {
+        if conn.pid == UNDEFINED_PROCESS_ID || conn.pid == SYSTEM_PROCESS_ID {
             return;
         }
         let Some(key) = dns_request_connection_key(info) else {
@@ -79,7 +94,7 @@ impl Network {
         self.dns_request_conns
             .lock()
             .expect("lock poisoned")
-            .insert(key, Arc::clone(conn));
+            .insert(key, Arc::clone(shared));
     }
 
     /// Returns a saved DNS request connection.
@@ -95,13 +110,23 @@ impl Network {
     /// Deletes old DNS request connections.
     pub(crate) fn clean_dns_request_connections(&self) {
         let delete_older_than = self.env.clock.now() - DNS_REQUEST_CONN_GRACE;
-        self.dns_request_conns
+        // Do not hold the map lock while locking connections.
+        let snapshot: Vec<(String, SharedConnection)> = self
+            .dns_request_conns
             .lock()
             .expect("lock poisoned")
-            .retain(|_, conn| {
-                let conn = conn.lock().expect("lock poisoned");
-                !(conn.ended > 0 && conn.ended < delete_older_than)
-            });
+            .iter()
+            .map(|(key, conn)| (key.clone(), Arc::clone(conn)))
+            .collect();
+        for (key, shared) in snapshot {
+            let ended = shared.lock().expect("lock poisoned").ended;
+            if ended > 0 && ended < delete_older_than {
+                let mut map = self.dns_request_conns.lock().expect("lock poisoned");
+                if map.get(&key).is_some_and(|c| Arc::ptr_eq(c, &shared)) {
+                    map.remove(&key);
+                }
+            }
+        }
     }
 
     /// Removes the open requests for the domain, also those without a process.
@@ -121,8 +146,19 @@ impl Network {
     /// Saves a DNS request connection that was allowed to proceed. Without a
     /// following connection it is written by
     /// [`Network::write_open_dns_requests`]. The connection must not be locked
-    /// by the caller.
+    /// by the caller; see [`Network::save_open_dns_request_locked`].
     pub fn save_open_dns_request(&self, query: Option<&OpenDnsQuery>, conn: &SharedConnection) {
+        let mut guard = conn.lock().expect("lock poisoned");
+        self.save_open_dns_request_locked(query, conn, &mut guard);
+    }
+
+    /// Like [`Network::save_open_dns_request`] for a locked connection.
+    pub fn save_open_dns_request_locked(
+        &self,
+        query: Option<&OpenDnsQuery>,
+        shared: &SharedConnection,
+        conn: &mut Connection,
+    ) {
         // Only save requests that actually went out (or triggered an async
         // resolve) to reduce clutter.
         let Some(query) = query else {
@@ -134,30 +170,30 @@ impl Network {
 
         // Unsupported requests are saved immediately.
         if !is_supported_dns_record_type(query.qtype) {
-            self.save(conn);
+            self.save_locked(shared, conn);
             return;
         }
 
         // Duplicates in quick succession are not worth keeping, so an existing
         // open request is replaced.
-        let key = {
-            let conn = conn.lock().expect("lock poisoned");
-            let domain = conn
-                .entity
-                .as_ref()
-                .map(|e| e.domain.as_str())
-                .unwrap_or("");
-            request_cache_key(conn.process_pid(), domain, query.qtype)
-        };
+        let domain = conn
+            .entity
+            .as_ref()
+            .map(|e| e.domain.as_str())
+            .unwrap_or("");
+        let key = request_cache_key(conn.process_pid(), domain, query.qtype);
         self.open_dns_requests
             .lock()
             .expect("lock poisoned")
-            .insert(key, Arc::clone(conn));
+            .insert(key, Arc::clone(shared));
     }
 
     /// Writes open DNS requests that were not followed by a connection.
     pub fn write_open_dns_requests(&self) {
         let threshold = self.env.clock.now() - OPEN_DNS_REQUEST_LIMIT;
+        // Do not hold the map lock while locking connections: gathering holds
+        // a connection lock and takes the map lock. Entries are removed under
+        // the map lock first and only the removed ones are saved.
         let snapshot: Vec<(String, SharedConnection)> = self
             .open_dns_requests
             .lock()
@@ -166,17 +202,22 @@ impl Network {
             .map(|(key, conn)| (key.clone(), Arc::clone(conn)))
             .collect();
 
-        // The map lock is not held while locking connections: gathering holds
-        // a connection lock and takes the map lock.
         for (key, shared) in snapshot {
             let mut conn = shared.lock().expect("lock poisoned");
-            if conn.ended < threshold {
-                self.save_locked(&shared, &mut conn);
-                drop(conn);
+            if conn.ended >= threshold {
+                continue;
+            }
+            let removed = {
                 let mut open = self.open_dns_requests.lock().expect("lock poisoned");
                 if open.get(&key).is_some_and(|c| Arc::ptr_eq(c, &shared)) {
                     open.remove(&key);
+                    true
+                } else {
+                    false
                 }
+            };
+            if removed {
+                self.save_locked(&shared, &mut conn);
             }
         }
     }

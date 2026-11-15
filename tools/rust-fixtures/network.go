@@ -222,6 +222,29 @@ func genNetwork() {
 		},
 	})
 
+	// Entity after MatchLists without a hit: the block lists are empty but
+	// not nil, so they serialize as [].
+	matched := &intel.Entity{
+		IP:       net.ParseIP("1.1.1.1"),
+		IPScope:  netutils.Global,
+		Protocol: 6,
+		Port:     443,
+		Domain:   "one.example",
+	}
+	matched.MatchLists([]string{"NOPE"})
+	add("ip_matched_empty_lists", 4242, "ip", &network.Connection{
+		ID:         "6-192.168.1.5-50000-1.1.1.1-443",
+		Type:       network.IPConnection,
+		Scope:      "one.example",
+		IPVersion:  packet.IPv4,
+		IPProtocol: packet.TCP,
+		LocalIP:    net.ParseIP("192.168.1.5"),
+		LocalPort:  50000,
+		PID:        4242,
+		Entity:     matched,
+		Started:    1700000500,
+	})
+
 	var ids []networkIDFixture
 	type idCase struct {
 		protocol packet.IPProtocol

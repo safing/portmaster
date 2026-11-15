@@ -201,9 +201,19 @@ pub struct ResolvedDomain {
 /// Profile scope for IP info that was resolved through the system resolver.
 pub const IP_INFO_PROFILE_SCOPE_GLOBAL: &str = "global";
 
+/// No IP info exists for the IP in the profile scope (Go `GetIPInfo` error).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct IpInfoNotFound;
+
 /// Lookup of the most recent domain that resolved to an IP.
 pub trait DomainLookup: Send + Sync {
-    fn most_recent_domain(&self, profile_scope: &str, ip: IpAddr) -> Option<ResolvedDomain>;
+    /// Returns `Err` if no IP info exists in the scope, and `Ok(None)` if info
+    /// exists but has no domain. Only the error triggers the global fallback.
+    fn most_recent_domain(
+        &self,
+        profile_scope: &str,
+        ip: IpAddr,
+    ) -> Result<Option<ResolvedDomain>, IpInfoNotFound>;
 }
 
 /// A [`DomainLookup`] that never finds anything.
@@ -211,8 +221,12 @@ pub trait DomainLookup: Send + Sync {
 pub struct NoDomains;
 
 impl DomainLookup for NoDomains {
-    fn most_recent_domain(&self, _profile_scope: &str, _ip: IpAddr) -> Option<ResolvedDomain> {
-        None
+    fn most_recent_domain(
+        &self,
+        _profile_scope: &str,
+        _ip: IpAddr,
+    ) -> Result<Option<ResolvedDomain>, IpInfoNotFound> {
+        Err(IpInfoNotFound)
     }
 }
 

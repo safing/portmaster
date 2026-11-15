@@ -6,8 +6,12 @@
 //!
 //! * Connections serialize with Go field names and order. Go writes nil
 //!   slices and maps as `null`; Rust cannot tell nil from empty, so empty
-//!   entity lists (`CNAME`, `BlockedByLists`, `BlockedEntities`,
-//!   `ListOccurences`) are written as `null`.
+//!   entity lists are written as `null` unless noted below.
+//! * `BlockedByLists`/`BlockedEntities` are `[]` after `Entity::match_lists`
+//!   (Go `makeDistinct` returns non-nil) and `null` before; `CNAME` and
+//!   `ListOccurences` cannot be distinguished and stay `null` when empty.
+//! * `BandwidthEnabled` is always `true`, deliberately following the user's
+//!   local Go change and not upstream (`false`).
 //! * `TunnelContext` (SPN) is not ported and always `null`.
 //! * `DNSContext.Modified`/`Expires` are RFC 3339 strings, like Go's
 //!   `time.Time` JSON.
@@ -54,8 +58,9 @@ pub use dns::{
 };
 pub use env::{
     CaptivePortal, CaptivePortalGetter, Clock, DomainLookup, EntityFactory, Environment,
-    LocalProfileInfo, ManualClock, NoDomains, NoProfiles, ProcessResolver, ProfileLookup,
-    ResolvedDomain, SystemClock, SystemProcessResolver, IP_INFO_PROFILE_SCOPE_GLOBAL,
+    IpInfoNotFound, LocalProfileInfo, ManualClock, NoDomains, NoProfiles, ProcessResolver,
+    ProfileLookup, ResolvedDomain, SystemClock, SystemProcessResolver,
+    IP_INFO_PROFILE_SCOPE_GLOBAL,
 };
 pub use network::{make_key, Network, DB_SCOPE_DNS, DB_SCOPE_IP};
 pub use store::ConnectionStore;

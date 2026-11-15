@@ -112,6 +112,9 @@ pub struct Entity {
     pub blocked_by_lists: Vec<String>,
     /// Entities that were matched (domain, IP, ASN, country).
     pub blocked_entities: Vec<String>,
+    /// Set by [`Entity::match_lists`]: Go then holds non-nil (possibly empty)
+    /// `BlockedByLists`/`BlockedEntities`, which serialize as `[]` instead of `null`.
+    pub lists_matched: bool,
     /// Mapping of entities to the sources that contain them.
     pub list_occurences: BTreeMap<String, Vec<String>>,
     /// Error message if loading the lists failed.
@@ -160,6 +163,7 @@ impl Entity {
             location_error: String::new(),
             blocked_by_lists: Vec::new(),
             blocked_entities: Vec::new(),
+            lists_matched: false,
             list_occurences: BTreeMap::new(),
             lists_error: String::new(),
             resolve_sub_domain_lists: false,
@@ -374,6 +378,7 @@ impl Entity {
     pub fn reset_lists(&mut self) {
         self.blocked_by_lists.clear();
         self.blocked_entities.clear();
+        self.lists_matched = false;
         self.list_occurences.clear();
         self.lists_error.clear();
 
@@ -543,6 +548,7 @@ impl Entity {
 
         self.blocked_by_lists = distinct(self.blocked_by_lists.clone());
         self.blocked_entities = distinct(self.blocked_entities.clone());
+        self.lists_matched = true;
 
         !self.blocked_by_lists.is_empty()
     }

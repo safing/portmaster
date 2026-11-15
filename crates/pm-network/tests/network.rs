@@ -155,15 +155,21 @@ fn unidentified_connection_uses_fallback_process() {
 struct Domains;
 
 impl DomainLookup for Domains {
-    fn most_recent_domain(&self, scope: &str, ip: IpAddr) -> Option<ResolvedDomain> {
+    fn most_recent_domain(
+        &self,
+        scope: &str,
+        ip: IpAddr,
+    ) -> Result<Option<ResolvedDomain>, pm_network::IpInfoNotFound> {
         // Only the global scope knows the domain.
-        (scope == "global" && ip == "93.184.216.34".parse::<IpAddr>().unwrap()).then(|| {
-            ResolvedDomain {
+        if scope == "global" && ip == "93.184.216.34".parse::<IpAddr>().unwrap() {
+            Ok(Some(ResolvedDomain {
                 domain: "example.com.".into(),
                 cnames: vec!["cdn.example.net.".into()],
                 ..ResolvedDomain::default()
-            }
-        })
+            }))
+        } else {
+            Err(pm_network::IpInfoNotFound)
+        }
     }
 }
 
@@ -634,12 +640,51 @@ fn cleaner_drops_old_dns_request_connection_entries() {
 fn store_find_by_prefix_and_active_count() {
     let (setup, _) = with_network();
     let shared = established(&setup, 43210, 6);
-    let store = &setup.network;
-    assert_eq!(store.get_all_connections().len(), 1);
-    assert!(store.get_dns_connection("x").is_none());
-    shared.lock().unwrap().ended = 5;
     let id = shared.lock().unwrap().id.clone();
-    assert_eq!(store.get_connection(&id).unwrap().lock().unwrap().ended, 5);
+    let net = &setup.network;
+    assert_eq!(net.get_all_connections().len(), 1);
+    assert!(net.get_dns_connection("x").is_none());
+
+    // Store API through the connection stores of the network.
+    let found = net
+        .find_connection_by_prefix("6-192.168.1.5-")
+        .expect("prefix");
+    assert_eq!(found.lock().unwrap().id, id);
+    assert!(net.find_connection_by_prefix("17-").is_none());
+
+    assert_eq!(net.active_connection_count(), 0);
+    shared.lock().unwrap().ended = 5;
+    assert_eq!(net.active_connection_count(), 1);
+    assert_eq!(net.get_connection(&id).unwrap().lock().unwrap().ended, 5);
+}
+
+#[test]
+fn locked_variants_work_with_the_lock_held() {
+    let (setup, _) = with_network();
+    let conn = setup.network.new_connection_from_dns_request(
+        "a.example.",
+        vec![],
+        "dns-a",
+        ip("192.168.1.5"),
+        43210,
+    );
+    let info = packet(17, "192.168.1.5", 43210, "9.9.9.9", 53, false);
+    let q = OpenDnsQuery {
+        qtype: DNS_TYPE_A,
+        served_from_cache: false,
+        requesting_new: false,
+    };
+    {
+        let mut guard = conn.lock().unwrap();
+        setup
+            .network
+            .save_dns_request_connection_locked(&conn, &guard, &info);
+        setup
+            .network
+            .save_open_dns_request_locked(Some(&q), &conn, &mut guard);
+    }
+    assert!(setup.network.get_dns_request_connection(&info).is_some());
+    assert_eq!(setup.network.open_dns_request_count(), 1);
 }
 
 #[test]
