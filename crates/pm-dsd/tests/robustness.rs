@@ -52,6 +52,11 @@ fn load_corrupt() {
         Err(pm_dsd::Error::Unsupported(_))
     ));
     assert!(load::<serde_json::Value>(&[0x55, 1]).is_err());
+    assert!(load::<serde_json::Value>(&[0x80]).is_err());
+    // Trailing garbage after a gzip member.
+    let mut gz = dump(&serde_json::json!({"a": 1}), format::GZIP).unwrap();
+    gz.extend_from_slice(&[1, 2, 3, 4]);
+    assert!(load::<serde_json::Value>(&gz).is_err());
     // Truncated gzip stream.
     let full = dump(&serde_json::json!({"a": "x".repeat(200)}), format::GZIP).unwrap();
     for n in 0..full.len() {

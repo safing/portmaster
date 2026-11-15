@@ -1,4 +1,9 @@
 //! JSON output that is byte-identical to Go `encoding/json` (with HTML escaping).
+//!
+//! `serde_json::Value` keeps insertion order (preserve_order), so values parsed
+//! from Go JSON round-trip in Go's order. Go maps sort keys: model them as
+//! `BTreeMap`. Go `[]byte` is base64 in Go JSON and needs a serde adapter,
+//! which is not provided here.
 
 use std::io::{self, Write};
 

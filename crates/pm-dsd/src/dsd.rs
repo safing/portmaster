@@ -42,7 +42,7 @@ pub fn load<T: DeserializeOwned>(data: &[u8]) -> Result<(T, u8)> {
         return Err(Error::IncompatibleFormat);
     }
     let mut buf = Vec::new();
-    flate2::read::GzDecoder::new(payload).read_to_end(&mut buf)?;
+    flate2::read::MultiGzDecoder::new(payload).read_to_end(&mut buf)?;
     let (inner, inner_payload) = split_format(&buf)?;
     Ok((load_as_format(inner_payload, inner)?, inner))
 }

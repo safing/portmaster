@@ -67,12 +67,11 @@ fn gojson_cases() {
             }
             kind => {
                 let v: Value = serde_json::from_str(expected).unwrap();
-                // Go sorts map keys; re-sort the parsed value the same way.
-                let sorted = sort(&v);
+                // Value keeps insertion order, so this is a round-trip of Go's output.
                 let out = if kind == "map" {
-                    gojson::to_vec(&sorted).unwrap()
+                    gojson::to_vec(&v).unwrap()
                 } else {
-                    gojson::to_vec_indent(&sorted, "", "  ").unwrap()
+                    gojson::to_vec_indent(&v, "", "  ").unwrap()
                 };
                 assert_eq!(String::from_utf8(out).unwrap(), expected, "{kind}");
             }
@@ -80,15 +79,16 @@ fn gojson_cases() {
     }
 }
 
-fn sort(v: &Value) -> Value {
-    match v {
-        Value::Object(m) => {
-            let b: BTreeMap<_, _> = m.iter().map(|(k, v)| (k.clone(), sort(v))).collect();
-            serde_json::to_value(b).unwrap()
-        }
-        Value::Array(a) => Value::Array(a.iter().map(sort).collect()),
-        o => o.clone(),
+#[test]
+fn gojson_btreemap_sorted() {
+    let mut m = BTreeMap::new();
+    for k in ["zeta", "alpha", "mid"] {
+        m.insert(k.to_string(), k.len());
     }
+    assert_eq!(
+        String::from_utf8(gojson::to_vec(&m).unwrap()).unwrap(),
+        r#"{"alpha":5,"mid":3,"zeta":4}"#
+    );
 }
 
 #[test]
@@ -161,6 +161,5 @@ fn dsd_cases() {
         if f == format::JSON {
             assert_eq!(ours, go);
         }
-        eprintln!("format {f}: byte-equal with Go = {}", ours == go);
     }
 }

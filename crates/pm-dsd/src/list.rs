@@ -35,7 +35,7 @@ impl<'a> ListReader<'a> {
         };
         let body = if compressed {
             let mut buf = Vec::new();
-            flate2::read::GzDecoder::new(rest).read_to_end(&mut buf)?;
+            flate2::read::MultiGzDecoder::new(rest).read_to_end(&mut buf)?;
             Cow::Owned(buf)
         } else {
             Cow::Borrowed(rest)
