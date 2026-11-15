@@ -1,0 +1,30 @@
+[package]
+name = "pm-resolver"
+version = "0.1.0"
+edition.workspace = true
+description = "DNS resolver model, URL parsing, block detection, and transports for Portmaster core"
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+base64.workspace = true
+getrandom.workspace = true
+hickory-proto.workspace = true
+pm-dsd = { path = "../pm-dsd" }
+pm-netstate = { path = "../pm-netstate" }
+psl.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-rustls.workspace = true
+tracing.workspace = true
+url.workspace = true
+webpki-roots.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full", "test-util"] }
+
+[lints]
+workspace = true
