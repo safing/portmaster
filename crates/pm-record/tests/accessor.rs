@@ -68,7 +68,7 @@ fn accessor_table() {
     }
     check_get(&a, 44, 44.44, "coconut", ["green", "blue"], false);
 
-    for k in ["S", "A", "F32", "B"].into_iter().chain(INTS) {
+    for k in ["S", "A", "F32", "F64", "B"].into_iter().chain(INTS) {
         assert!(a.exists(k), "{k}");
     }
     assert!(!a.exists("X"));
@@ -117,7 +117,11 @@ fn paths() {
     a.set("Tags.0", json!("A")).unwrap();
     assert!(a.set("Tags.0", json!(5)).is_err());
     assert!(a.set("Tags.x", json!("v")).is_err());
-    assert!(a.set("Nested.a.b", json!("v")).is_err());
+    a.set("Nested.a.b", json!("v")).unwrap();
+    assert_eq!(a.get("Nested.a"), Some(json!({"b": "v"})));
+    assert!(!a.exists("Tags.#.x"));
+    assert!(a.set("Tags", json!("notarray")).is_err());
+    a.set(r"plain\.key", json!(["x"])).unwrap();
     assert!(a.set("", json!("v")).is_err());
 }
 

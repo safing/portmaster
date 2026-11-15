@@ -90,10 +90,18 @@ impl JsonAccessor {
             return None;
         }
         let mut cur = &self.value;
-        for seg in parse_path(path) {
+        let segs = parse_path(path);
+        let n = segs.len();
+        for (i, seg) in segs.into_iter().enumerate() {
+            let last = i + 1 == n;
             match cur {
                 Value::Object(m) => cur = m.get(&seg.text)?,
-                Value::Array(a) if seg.hash => return Some(Cow::Owned(Value::from(a.len()))),
+                Value::Array(a) if seg.hash => {
+                    if !last {
+                        return None;
+                    }
+                    return Some(Cow::Owned(Value::from(a.len())));
+                }
                 Value::Array(a) => cur = a.get(index(&seg.text)?)?,
                 _ => return None,
             }
@@ -163,7 +171,8 @@ impl JsonAccessor {
                 Value::String(_) => existing.is_string(),
                 Value::Number(_) => existing.is_number(),
                 Value::Bool(_) => existing.is_boolean(),
-                Value::Array(_) => existing.is_array(),
+                // Go never type-checks arrays in practice (callers pass
+                // []interface{}), so any array value is accepted.
                 _ => true,
             };
             if !ok {
@@ -188,7 +197,8 @@ fn set_at(cur: &mut Value, segs: &[&str], value: Value, path: &str) -> Result<()
         *cur = value;
         return Ok(());
     };
-    if cur.is_null() {
+    // sjson replaces a non-container parent with a fresh container.
+    if !cur.is_object() && !cur.is_array() {
         *cur = if index(seg).is_some() {
             Value::Array(Vec::new())
         } else {
@@ -211,6 +221,6 @@ fn set_at(cur: &mut Value, segs: &[&str], value: Value, path: &str) -> Result<()
             }
             set_at(&mut a[i], rest, value, path)
         }
-        _ => Err(Error::InvalidPath(path.into())),
+        _ => unreachable!("cur was just made a container"),
     }
 }

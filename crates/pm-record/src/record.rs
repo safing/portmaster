@@ -80,6 +80,8 @@ impl Record {
     }
 
     /// Like Go `api.MarshalRecord`: the JSON payload with `_meta` (including `Key`) as last field.
+    ///
+    /// Non-object payloads return `NotJsonObject`; Go sjson would wrap them (deliberate deviation).
     pub fn to_json_with_meta(&self, with_dsd_id: bool) -> Result<Vec<u8>> {
         let payload: &[u8] = if self.meta.is_deleted() {
             &[]
