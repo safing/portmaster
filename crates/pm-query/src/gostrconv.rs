@@ -63,7 +63,9 @@ pub fn format_float_g(v: f64) -> String {
 
     // Rust's `{:e}` also produces the shortest round-trip mantissa.
     let sci = format!("{v:e}");
-    let (mantissa, exponent) = sci.split_once('e').expect("LowerExp always has an exponent");
+    let (mantissa, exponent) = sci
+        .split_once('e')
+        .expect("LowerExp always has an exponent");
     let exponent: i32 = exponent.parse().expect("LowerExp exponent is an integer");
 
     let negative = mantissa.starts_with('-');
@@ -165,7 +167,9 @@ pub fn parse_float(s: &[u8]) -> Result<f64, NumError> {
         _ => {}
     }
 
-    let value: f64 = text.parse().map_err(|_| error(NumErrorKind::InvalidSyntax))?;
+    let value: f64 = text
+        .parse()
+        .map_err(|_| error(NumErrorKind::InvalidSyntax))?;
     if value.is_infinite() {
         return Err(error(NumErrorKind::Range));
     }
@@ -250,7 +254,10 @@ fn is_print(c: char) -> bool {
     if c.is_control() {
         return false;
     }
-    !matches!(c, '\u{00ad}' | '\u{200b}'..='\u{200f}' | '\u{2028}' | '\u{2029}' | '\u{feff}')
+    !matches!(
+        c,
+        '\u{00ad}' | '\u{200b}'..='\u{200f}' | '\u{2028}' | '\u{2029}' | '\u{feff}'
+    )
 }
 
 #[cfg(test)]

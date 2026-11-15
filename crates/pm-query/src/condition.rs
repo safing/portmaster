@@ -204,8 +204,14 @@ impl PartialEq for Condition {
             (Condition::And(a), Condition::And(b)) | (Condition::Or(a), Condition::Or(b)) => a == b,
             (Condition::Not(a), Condition::Not(b)) => a == b,
             (
-                Condition::Exists { key: k1, operator: o1 },
-                Condition::Exists { key: k2, operator: o2 },
+                Condition::Exists {
+                    key: k1,
+                    operator: o1,
+                },
+                Condition::Exists {
+                    key: k2,
+                    operator: o2,
+                },
             ) => k1 == k2 && o1 == o2,
             (
                 Condition::Int {
@@ -736,11 +742,7 @@ fn bool_condition(key: &[u8], operator: u8, value: Value) -> Condition {
             Ok(v) => v,
             Err(err) => {
                 return Condition::Error {
-                    message: format!(
-                        "could not parse {} to bool: {}",
-                        gostrconv::quote(s),
-                        err
-                    ),
+                    message: format!("could not parse {} to bool: {}", gostrconv::quote(s), err),
                 }
             }
         },
@@ -748,7 +750,7 @@ fn bool_condition(key: &[u8], operator: u8, value: Value) -> Condition {
             // Go reports "int64" here; kept for compatible error strings.
             return Condition::Error {
                 message: format!("incompatible value {other} for int64"),
-            }
+            };
         }
     };
     Condition::Bool {

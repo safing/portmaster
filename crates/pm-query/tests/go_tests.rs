@@ -196,10 +196,7 @@ fn parse_errors_match_go() {
         ("query", "unexpected end at position 5"),
         ("query test: where", "unexpected end at position 17"),
         ("query test: where (", "unexpected end at position 19"),
-        (
-            "query test: where )",
-            "unknown clause \")\" at position 19",
-        ),
+        ("query test: where )", "unknown clause \")\" at position 19"),
         ("query test: where not", "unexpected end at position 21"),
         ("query test: where banana", "unexpected end at position 24"),
         (
@@ -257,7 +254,10 @@ fn parse_errors_match_go() {
             "query test: where (foo == 1)",
             "unexpected end at position 28",
         ),
-        ("query test: where banana is", "unexpected end at position 27"),
+        (
+            "query test: where banana is",
+            "unexpected end at position 27",
+        ),
         (
             "query test: where banana == bar limit -1",
             "could not parse integer (-1) at position 39",
@@ -314,7 +314,9 @@ fn parse_errors_match_go() {
     assert!(parse_query("query test: where banana re (").is_err());
     // `in` with an empty element is accepted, like in Go.
     assert_eq!(
-        parse_query("query test: where banana in ,").unwrap().print(),
+        parse_query("query test: where banana in ,")
+            .unwrap()
+            .print(),
         "query test: where banana in ,"
     );
 }
@@ -378,31 +380,99 @@ fn query_matching_matches_go() {
 
     test_query(&record, true, Condition::new("age", EQUALS, 100));
     test_query(&record, true, Condition::new("age", GREATER_THAN, 99u8));
-    test_query(&record, true, Condition::new("age", GREATER_THAN_OR_EQUAL, 99));
-    test_query(&record, true, Condition::new("age", GREATER_THAN_OR_EQUAL, 100));
+    test_query(
+        &record,
+        true,
+        Condition::new("age", GREATER_THAN_OR_EQUAL, 99),
+    );
+    test_query(
+        &record,
+        true,
+        Condition::new("age", GREATER_THAN_OR_EQUAL, 100),
+    );
     test_query(&record, true, Condition::new("age", LESS_THAN, 101));
-    test_query(&record, true, Condition::new("age", LESS_THAN_OR_EQUAL, "101"));
-    test_query(&record, true, Condition::new("age", LESS_THAN_OR_EQUAL, 100));
+    test_query(
+        &record,
+        true,
+        Condition::new("age", LESS_THAN_OR_EQUAL, "101"),
+    );
+    test_query(
+        &record,
+        true,
+        Condition::new("age", LESS_THAN_OR_EQUAL, 100),
+    );
 
-    test_query(&record, true, Condition::new("temperature", FLOAT_EQUALS, 120.413));
-    test_query(&record, true, Condition::new("temperature", FLOAT_GREATER_THAN, 120));
-    test_query(&record, true, Condition::new("temperature", FLOAT_GREATER_THAN_OR_EQUAL, 120));
-    test_query(&record, true, Condition::new("temperature", FLOAT_GREATER_THAN_OR_EQUAL, 120.413));
-    test_query(&record, true, Condition::new("temperature", FLOAT_LESS_THAN, 121));
-    test_query(&record, true, Condition::new("temperature", FLOAT_LESS_THAN_OR_EQUAL, "121"));
-    test_query(&record, true, Condition::new("temperature", FLOAT_LESS_THAN_OR_EQUAL, "120.413"));
+    test_query(
+        &record,
+        true,
+        Condition::new("temperature", FLOAT_EQUALS, 120.413),
+    );
+    test_query(
+        &record,
+        true,
+        Condition::new("temperature", FLOAT_GREATER_THAN, 120),
+    );
+    test_query(
+        &record,
+        true,
+        Condition::new("temperature", FLOAT_GREATER_THAN_OR_EQUAL, 120),
+    );
+    test_query(
+        &record,
+        true,
+        Condition::new("temperature", FLOAT_GREATER_THAN_OR_EQUAL, 120.413),
+    );
+    test_query(
+        &record,
+        true,
+        Condition::new("temperature", FLOAT_LESS_THAN, 121),
+    );
+    test_query(
+        &record,
+        true,
+        Condition::new("temperature", FLOAT_LESS_THAN_OR_EQUAL, "121"),
+    );
+    test_query(
+        &record,
+        true,
+        Condition::new("temperature", FLOAT_LESS_THAN_OR_EQUAL, "120.413"),
+    );
 
-    test_query(&record, true, Condition::new("lastly.yay", SAME_AS, "final"));
+    test_query(
+        &record,
+        true,
+        Condition::new("lastly.yay", SAME_AS, "final"),
+    );
     test_query(&record, true, Condition::new("lastly.yay", CONTAINS, "ina"));
-    test_query(&record, true, Condition::new("lastly.yay", STARTS_WITH, "fin"));
-    test_query(&record, true, Condition::new("lastly.yay", ENDS_WITH, "nal"));
-    test_query(&record, true, Condition::new("lastly.yay", IN, "draft,final"));
-    test_query(&record, true, Condition::new("lastly.yay", IN, "final,draft"));
+    test_query(
+        &record,
+        true,
+        Condition::new("lastly.yay", STARTS_WITH, "fin"),
+    );
+    test_query(
+        &record,
+        true,
+        Condition::new("lastly.yay", ENDS_WITH, "nal"),
+    );
+    test_query(
+        &record,
+        true,
+        Condition::new("lastly.yay", IN, "draft,final"),
+    );
+    test_query(
+        &record,
+        true,
+        Condition::new("lastly.yay", IN, "final,draft"),
+    );
 
     test_query(&record, true, Condition::new("happy", IS, true));
     test_query(&record, true, Condition::new("happy", IS, "true"));
     test_query(&record, true, Condition::new("happy", IS, "t"));
-    test_query(&record, true, Condition::not(Condition::new("happy", IS, "0")));
+    test_query(
+        &record,
+        true,
+        Condition::not(Condition::new("happy", IS, "0")),
+    );
     test_query(
         &record,
         true,
@@ -456,7 +526,9 @@ fn condition_value_types_match_go() {
         Condition::new("banana", IS, true),
         Condition::new("banana", IS, "t"),
     ] {
-        condition.check().unwrap_or_else(|err| panic!("{condition}: {err}"));
+        condition
+            .check()
+            .unwrap_or_else(|err| panic!("{condition}: {err}"));
     }
 
     // Invalid value types.

@@ -231,10 +231,7 @@ fn prep_token(raw: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(trimmed.len());
     let mut index = 0;
     while index < trimmed.len() {
-        if trimmed[index] == b'\\'
-            && index + 1 < trimmed.len()
-            && trimmed[index + 1] != b'\\'
-        {
+        if trimmed[index] == b'\\' && index + 1 < trimmed.len() && trimmed[index + 1] != b'\\' {
             out.push(trimmed[index + 1]);
             index += 2;
         } else {
@@ -374,7 +371,9 @@ fn parse_uint31(text: &[u8]) -> Option<usize> {
     }
     let mut value: u64 = 0;
     for &digit in text {
-        value = value.checked_mul(10)?.checked_add(u64::from(digit - b'0'))?;
+        value = value
+            .checked_mul(10)?
+            .checked_add(u64::from(digit - b'0'))?;
         if value > i32::MAX as u64 {
             return None;
         }

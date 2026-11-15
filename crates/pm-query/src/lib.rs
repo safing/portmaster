@@ -49,7 +49,9 @@ pub enum Error {
     Integer { value: String, position: usize },
     #[error("you may not mix \"and\" and \"or\" (position: {0})")]
     MixedAndOr(usize),
-    #[error("parenthesis ('\"') may not be used within words, please escape with '\\' (position: {0})")]
+    #[error(
+        "parenthesis ('\"') may not be used within words, please escape with '\\' (position: {0})"
+    )]
     QuoteInWord(usize),
     #[error("{0}")]
     Condition(String),
