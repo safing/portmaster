@@ -1,0 +1,18 @@
+[package]
+name = "pm-record"
+version = "0.1.0"
+edition.workspace = true
+description = "Portmaster database record layer: keys, metadata, wrapped records and JSON accessors"
+license.workspace = true
+
+[dependencies]
+pm-dsd = { path = "../pm-dsd" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+hex.workspace = true
+
+[lints]
+workspace = true

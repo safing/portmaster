@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/pm-dsd",
+    "crates/pm-record",
     "crates/pm-proxy",
 ]
 
