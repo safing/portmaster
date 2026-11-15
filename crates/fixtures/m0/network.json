@@ -1,0 +1,150 @@
+{
+  "connections": [
+    {
+      "name": "ip_outbound_full",
+      "key": "network:tree/4242/ip/6-192.168.1.5-43210-93.184.216.34-443",
+      "json": "{\"ID\":\"6-192.168.1.5-43210-93.184.216.34-443\",\"Type\":1,\"External\":false,\"Scope\":\"example.com\",\"IPVersion\":4,\"Inbound\":false,\"IPProtocol\":6,\"LocalIP\":\"192.168.1.5\",\"LocalIPScope\":3,\"LocalPort\":43210,\"PID\":4242,\"Entity\":{\"IP\":\"93.184.216.34\",\"IPScope\":4,\"Protocol\":6,\"Port\":443,\"Domain\":\"example.com\",\"ReverseDomain\":\"reverse.example.net.\",\"CNAME\":[\"www.example.com.\"],\"Country\":\"US\",\"Coordinates\":{\"AccuracyRadius\":100,\"Latitude\":37.751,\"Longitude\":-97.822},\"ASN\":15133,\"ASOrg\":\"Edgecast \\u003cInc\\u003e \\u0026 Co\",\"LocationError\":\"\",\"BlockedByLists\":[\"TRAC\"],\"BlockedEntities\":[\"example.com\"],\"ListOccurences\":{\"AS15133\":[\"MAL\"],\"example.com\":[\"TRAC\",\"MAL\"]},\"ListsError\":\"\"},\"Resolver\":{\"Name\":\"Cloudflare\",\"Type\":\"dot\",\"Source\":\"config\",\"IP\":\"1.1.1.1\",\"Domain\":\"cloudflare-dns.com\",\"IPScope\":4,\"Port\":853},\"Verdict\":8,\"ConnectionEstablished\":true,\"Reason\":{\"Msg\":\"allowed by rule\",\"OptionKey\":\"filter/endpoints\",\"Profile\":\"local/abc\",\"Context\":{\"a\":\"x\",\"b\":2,\"list\":[\"p\",\"q\"]}},\"Started\":1700000000,\"Ended\":1700000100,\"VerdictPermanent\":true,\"Inspecting\":true,\"Tunneled\":true,\"Encrypted\":true,\"TunnelOpts\":{\"mode\":\"fast\"},\"ProcessContext\":{\"ProcessName\":\"firefox\",\"ProfileName\":\"Firefox\",\"BinaryPath\":\"/usr/lib/firefox/firefox\",\"CmdLine\":\"firefox --new-window\",\"PID\":4242,\"CreatedAt\":1700000000000,\"Profile\":\"abc\",\"Source\":\"local\"},\"DNSContext\":{\"Domain\":\"example.com.\",\"Question\":\"example.com. IN A\",\"RCode\":\"NOERROR\",\"ServedFromCache\":true,\"RequestingNew\":false,\"IsBackup\":true,\"Filtered\":false,\"Modified\":\"2023-11-14T22:13:20Z\",\"Expires\":\"2023-11-14T22:18:20.123456Z\"},\"TunnelContext\":null,\"SplitTunContext\":{\"Interface\":\"wg0\",\"IP\":\"10.8.0.2\",\"Proxy\":\"socks5://proxy.example:1080\"},\"HistoryEnabled\":true,\"BandwidthEnabled\":true,\"BytesReceived\":1099511627776,\"BytesSent\":12345,\"Internal\":true,\"ProfileRevisionCounter\":7}"
+    },
+    {
+      "name": "ip_inbound_minimal",
+      "key": "network:tree/-3/ip/17-2001:db8::1-5353-2001:db8::2-40000",
+      "json": "{\"ID\":\"17-2001:db8::1-5353-2001:db8::2-40000\",\"Type\":1,\"External\":false,\"Scope\":\"II\",\"IPVersion\":6,\"Inbound\":true,\"IPProtocol\":17,\"LocalIP\":\"2001:db8::1\",\"LocalIPScope\":4,\"LocalPort\":5353,\"PID\":-3,\"Entity\":{\"IP\":\"2001:db8::2\",\"IPScope\":4,\"Protocol\":17,\"Port\":40000,\"Domain\":\"\",\"ReverseDomain\":\"\",\"CNAME\":null,\"Country\":\"\",\"Coordinates\":null,\"ASN\":0,\"ASOrg\":\"\",\"LocationError\":\"\",\"BlockedByLists\":null,\"BlockedEntities\":null,\"ListOccurences\":null,\"ListsError\":\"\"},\"Resolver\":null,\"Verdict\":4,\"ConnectionEstablished\":false,\"Reason\":{\"Msg\":\"\",\"OptionKey\":\"\",\"Profile\":\"\",\"Context\":null},\"Started\":1700000200,\"Ended\":0,\"VerdictPermanent\":false,\"Inspecting\":false,\"Tunneled\":false,\"Encrypted\":false,\"TunnelOpts\":null,\"ProcessContext\":{\"ProcessName\":\"Network Noise\",\"ProfileName\":\"\",\"BinaryPath\":\"\",\"CmdLine\":\"\",\"PID\":-3,\"CreatedAt\":0,\"Profile\":\"\",\"Source\":\"\"},\"DNSContext\":null,\"TunnelContext\":null,\"SplitTunContext\":{\"Interface\":\"eth0\",\"IP\":\"192.0.2.9\"},\"HistoryEnabled\":false,\"BandwidthEnabled\":false,\"BytesReceived\":0,\"BytesSent\":0,\"Internal\":false,\"ProfileRevisionCounter\":0}"
+    },
+    {
+      "name": "ip_icmp_mapped",
+      "key": "network:tree/-2/ip/1-10.0.0.2-8.8.8.8",
+      "json": "{\"ID\":\"1-10.0.0.2-8.8.8.8\",\"Type\":1,\"External\":false,\"Scope\":\"PI\",\"IPVersion\":4,\"Inbound\":false,\"IPProtocol\":1,\"LocalIP\":\"10.0.0.2\",\"LocalIPScope\":3,\"LocalPort\":0,\"PID\":-2,\"Entity\":{\"IP\":\"8.8.8.8\",\"IPScope\":4,\"Protocol\":1,\"Port\":0,\"Domain\":\"\",\"ReverseDomain\":\"\",\"CNAME\":null,\"Country\":\"\",\"Coordinates\":null,\"ASN\":0,\"ASOrg\":\"\",\"LocationError\":\"\",\"BlockedByLists\":null,\"BlockedEntities\":null,\"ListOccurences\":null,\"ListsError\":\"\"},\"Resolver\":null,\"Verdict\":0,\"ConnectionEstablished\":false,\"Reason\":{\"Msg\":\"\",\"OptionKey\":\"\",\"Profile\":\"\",\"Context\":null},\"Started\":1700000300,\"Ended\":0,\"VerdictPermanent\":false,\"Inspecting\":false,\"Tunneled\":false,\"Encrypted\":false,\"TunnelOpts\":null,\"ProcessContext\":{\"ProcessName\":\"\",\"ProfileName\":\"\",\"BinaryPath\":\"\",\"CmdLine\":\"\",\"PID\":0,\"CreatedAt\":0,\"Profile\":\"\",\"Source\":\"\"},\"DNSContext\":null,\"TunnelContext\":null,\"SplitTunContext\":null,\"HistoryEnabled\":false,\"BandwidthEnabled\":false,\"BytesReceived\":0,\"BytesSent\":0,\"Internal\":false,\"ProfileRevisionCounter\":0}"
+    },
+    {
+      "name": "dns_request",
+      "key": "network:tree/4242/dns/dns-4242-1",
+      "json": "{\"ID\":\"dns-4242-1\",\"Type\":2,\"External\":true,\"Scope\":\"example.org.\",\"IPVersion\":0,\"Inbound\":false,\"IPProtocol\":0,\"LocalIP\":\"\",\"LocalIPScope\":0,\"LocalPort\":0,\"PID\":4242,\"Entity\":{\"IP\":\"\",\"IPScope\":4,\"Protocol\":0,\"Port\":0,\"Domain\":\"example.org.\",\"ReverseDomain\":\"\",\"CNAME\":null,\"Country\":\"\",\"Coordinates\":null,\"ASN\":0,\"ASOrg\":\"\",\"LocationError\":\"\",\"BlockedByLists\":null,\"BlockedEntities\":null,\"ListOccurences\":null,\"ListsError\":\"\"},\"Resolver\":null,\"Verdict\":3,\"ConnectionEstablished\":false,\"Reason\":{\"Msg\":\"blocked by list\",\"OptionKey\":\"\",\"Profile\":\"\",\"Context\":null},\"Started\":1700000400,\"Ended\":1700000400,\"VerdictPermanent\":false,\"Inspecting\":false,\"Tunneled\":false,\"Encrypted\":false,\"TunnelOpts\":null,\"ProcessContext\":{\"ProcessName\":\"curl\",\"ProfileName\":\"\",\"BinaryPath\":\"\",\"CmdLine\":\"\",\"PID\":4242,\"CreatedAt\":0,\"Profile\":\"\",\"Source\":\"\"},\"DNSContext\":null,\"TunnelContext\":null,\"SplitTunContext\":null,\"HistoryEnabled\":false,\"BandwidthEnabled\":false,\"BytesReceived\":0,\"BytesSent\":0,\"Internal\":false,\"ProfileRevisionCounter\":0}"
+    }
+  ],
+  "ids": [
+    {
+      "protocol": 6,
+      "src": "192.168.1.5",
+      "src_port": 43210,
+      "dst": "93.184.216.34",
+      "dst_port": 443,
+      "inbound": false,
+      "id": "6-192.168.1.5-43210-93.184.216.34-443"
+    },
+    {
+      "protocol": 6,
+      "src": "93.184.216.34",
+      "src_port": 443,
+      "dst": "192.168.1.5",
+      "dst_port": 43210,
+      "inbound": true,
+      "id": "6-192.168.1.5-43210-93.184.216.34-443"
+    },
+    {
+      "protocol": 17,
+      "src": "2001:db8::1",
+      "src_port": 5353,
+      "dst": "ff02::fb",
+      "dst_port": 5353,
+      "inbound": false,
+      "id": "17-2001:db8::1-5353-ff02::fb-5353"
+    },
+    {
+      "protocol": 17,
+      "src": "::ffff:10.0.0.2",
+      "src_port": 1000,
+      "dst": "::ffff:10.0.0.3",
+      "dst_port": 2000,
+      "inbound": true,
+      "id": "17-10.0.0.3-2000-10.0.0.2-1000"
+    },
+    {
+      "protocol": 1,
+      "src": "10.0.0.2",
+      "src_port": 0,
+      "dst": "8.8.8.8",
+      "dst_port": 0,
+      "inbound": false,
+      "id": "1-10.0.0.2-8.8.8.8"
+    },
+    {
+      "protocol": 58,
+      "src": "fe80::1",
+      "src_port": 0,
+      "dst": "fe80::2",
+      "dst_port": 0,
+      "inbound": true,
+      "id": "58-fe80::2-fe80::1"
+    },
+    {
+      "protocol": 136,
+      "src": "10.0.0.2",
+      "src_port": 7,
+      "dst": "10.0.0.3",
+      "dst_port": 8,
+      "inbound": false,
+      "id": "136-10.0.0.2-10.0.0.3"
+    },
+    {
+      "protocol": 6,
+      "src": "0.0.0.0",
+      "src_port": 1,
+      "dst": "255.255.255.255",
+      "dst_port": 2,
+      "inbound": false,
+      "id": "6-0.0.0.0-1-255.255.255.255-2"
+    }
+  ],
+  "verdicts": [
+    {
+      "value": 0,
+      "string": "\u003cUndecided\u003e",
+      "verb": "undecided"
+    },
+    {
+      "value": 1,
+      "string": "\u003cUndeterminable\u003e",
+      "verb": "undeterminable"
+    },
+    {
+      "value": 2,
+      "string": "Accept",
+      "verb": "accepted"
+    },
+    {
+      "value": 3,
+      "string": "Block",
+      "verb": "blocked"
+    },
+    {
+      "value": 4,
+      "string": "Drop",
+      "verb": "dropped"
+    },
+    {
+      "value": 5,
+      "string": "RerouteToNameserver",
+      "verb": "redirected to nameserver"
+    },
+    {
+      "value": 6,
+      "string": "RerouteToTunnel",
+      "verb": "tunneled"
+    },
+    {
+      "value": 7,
+      "string": "Failed",
+      "verb": "failed"
+    },
+    {
+      "value": 8,
+      "string": "RerouteToSplitTun",
+      "verb": "split tunneled"
+    },
+    {
+      "value": 9,
+      "string": "\u003cINVALID VERDICT\u003e",
+      "verb": "invalid"
+    }
+  ]
+}

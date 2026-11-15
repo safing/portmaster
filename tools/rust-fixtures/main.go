@@ -82,6 +82,7 @@ func main() {
 	genProfileOptions()
 	genNetState()
 	genProcess()
+	genNetwork()
 	genProfile()
 	genNotifications()
 	genStatus()

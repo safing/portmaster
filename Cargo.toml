@@ -24,6 +24,7 @@ members = [
     "crates/pm-endpoints",
     "crates/pm-interception",
     "crates/pm-resolver",
+    "crates/pm-network",
 ]
 
 [workspace.package]

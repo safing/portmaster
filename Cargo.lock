@@ -1286,6 +1286,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pm-network"
+version = "0.1.0"
+dependencies = [
+ "pm-database",
+ "pm-dsd",
+ "pm-geoip",
+ "pm-intel",
+ "pm-netstate",
+ "pm-process",
+ "pm-query",
+ "pm-record",
+ "pm-resolver",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "pm-notifications"
 version = "0.1.0"
 dependencies = [
