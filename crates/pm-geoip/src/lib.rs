@@ -27,7 +27,7 @@ use std::sync::OnceLock;
 
 use serde::{Deserialize, Serialize};
 
-pub use database::{Error, GeoIp};
+pub use database::{Error, GeoIp, V4_RESOURCE, V6_RESOURCE};
 
 /// Earth circumference in kilometers.
 pub const EARTH_CIRCUMFERENCE_IN_KM: f64 = 40100.0;

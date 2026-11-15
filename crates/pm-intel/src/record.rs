@@ -183,6 +183,23 @@ impl FilterLists {
             .test(entity_type, value)
     }
 
+    /// Loads a DSDL filter list file, like Go `processListFile`.
+    ///
+    /// Every decoded entry is normalized and stored; the caller marks the
+    /// filter lists as loaded when all files were processed.
+    pub fn load_list_file(
+        &self,
+        path: impl AsRef<std::path::Path>,
+        updated_at: i64,
+    ) -> Result<usize> {
+        let file = std::fs::File::open(path)?;
+        let entries = crate::decode_file(file)?;
+        for entry in &entries {
+            self.store_entry(entry, updated_at)?;
+        }
+        Ok(entries.len())
+    }
+
     /// Looks up the sources that contain the entity, like Go `lookupBlockLists`.
     pub fn lookup(&self, entity_type: &str, value: &str) -> Result<Vec<String>> {
         let key = list_cache_key(entity_type, value);

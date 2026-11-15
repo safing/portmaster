@@ -12,6 +12,11 @@ use serde::Deserialize;
 
 use crate::{Coordinates, CountryInfo, Location};
 
+/// Filename of the IPv4 database resource.
+pub const V4_RESOURCE: &str = "geoipv4.mmdb";
+/// Filename of the IPv6 database resource.
+pub const V6_RESOURCE: &str = "geoipv6.mmdb";
+
 /// A reader over one of the MaxMind databases.
 ///
 /// The Go implementation memory-maps the file; `open_readfile` loads it into
@@ -27,6 +32,8 @@ pub enum Error {
     Maxmind(#[from] maxminddb::MaxMindDbError),
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
+    #[error("unknown geoip resource: {0}")]
+    UnknownResource(String),
 }
 
 /// Result type of the GeoIP database.
@@ -124,6 +131,20 @@ impl GeoIp {
         let reader = Reader::open_readfile(path)?;
         self.replace_reader(Arc::new(reader), v6);
         Ok(())
+    }
+
+    /// Replaces a database by its update resource name, like the Go updater
+    /// (`geoipv4.mmdb` / `geoipv6.mmdb`).
+    pub fn replace_resource(
+        &self,
+        path: impl AsRef<std::path::Path>,
+        resource: &str,
+    ) -> Result<()> {
+        match resource {
+            V4_RESOURCE => self.replace_database(path, false),
+            V6_RESOURCE => self.replace_database(path, true),
+            other => Err(Error::UnknownResource(other.to_string())),
+        }
     }
 
     /// Replaces the database from an already opened reader.

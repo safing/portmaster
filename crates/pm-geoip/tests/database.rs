@@ -58,3 +58,18 @@ fn reads_real_databases_when_available() {
         assert!(!location.country.name.is_empty(), "{location:?}");
     }
 }
+
+#[test]
+fn resources_are_selected_by_name() {
+    let geoip = GeoIp::new();
+    match geoip.replace_resource("/nonexistent/geoip.mmdb", "other.mmdb") {
+        Err(pm_geoip::Error::UnknownResource(name)) => assert_eq!(name, "other.mmdb"),
+        other => panic!("unexpected result: {other:?}"),
+    }
+
+    // A known resource is opened (and fails because the file is missing).
+    assert!(geoip
+        .replace_resource("/nonexistent/geoipv4.mmdb", pm_geoip::V4_RESOURCE)
+        .is_err());
+    assert!(!geoip.is_initialized(false));
+}

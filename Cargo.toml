@@ -19,6 +19,7 @@ members = [
     "crates/pm-status",
     "crates/pm-intel",
     "crates/pm-geoip",
+    "crates/pm-updates",
 ]
 
 [workspace.package]

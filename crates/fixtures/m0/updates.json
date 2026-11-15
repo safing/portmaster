@@ -1,0 +1,436 @@
+{
+  "comparisons": [
+    {
+      "a": "1.2.3",
+      "b": "1.2.3",
+      "result": 0
+    },
+    {
+      "a": "1.2.3",
+      "b": "1.2.4",
+      "result": -1
+    },
+    {
+      "a": "1.2.4",
+      "b": "1.2.3",
+      "result": 1
+    },
+    {
+      "a": "1.2",
+      "b": "1.2.0",
+      "result": 0
+    },
+    {
+      "a": "1",
+      "b": "1.0.0",
+      "result": 0
+    },
+    {
+      "a": "1.2.3-rc1",
+      "b": "1.2.3",
+      "result": -1
+    },
+    {
+      "a": "1.2.3-rc1",
+      "b": "1.2.3-rc2",
+      "result": -1
+    },
+    {
+      "a": "1.2.3-alpha.1",
+      "b": "1.2.3-alpha.2",
+      "result": -1
+    },
+    {
+      "a": "v0.6.4",
+      "b": "0.6.4",
+      "result": 0
+    },
+    {
+      "a": "2.0.0",
+      "b": "1.9.9",
+      "result": 1
+    }
+  ],
+  "eligibility": [
+    {
+      "name": "ok",
+      "index_json": "{\"Artifacts\":[],\"Name\":\"test-index\",\"Published\":\"2026-11-15T14:28:06Z\",\"Version\":\"v1.2.3\"}",
+      "ok": true
+    },
+    {
+      "name": "missing-version",
+      "index_json": "{\"Artifacts\":[],\"Name\":\"test-index\",\"Published\":\"2026-11-15T14:28:06Z\",\"Version\":\"\"}",
+      "ok": false,
+      "error": "missing version number"
+    },
+    {
+      "name": "missing-publish-date",
+      "index_json": "{\"Artifacts\":[],\"Name\":\"test-index\",\"Version\":\"v1.2.3\"}",
+      "ok": false,
+      "error": "missing publish date"
+    },
+    {
+      "name": "future",
+      "index_json": "{\"Artifacts\":[],\"Name\":\"test-index\",\"Published\":\"2026-11-15T15:33:06Z\",\"Version\":\"v1.2.3\"}",
+      "ok": false,
+      "error": "is from the future (1h0m0s)"
+    }
+  ],
+  "filenames": [
+    {
+      "name": "filterlists.zip",
+      "ok": true
+    },
+    {
+      "name": "geoipv4.mmdb",
+      "ok": true
+    },
+    {
+      "name": "portmaster-core",
+      "ok": true
+    },
+    {
+      "name": "base.dsdl",
+      "ok": true
+    },
+    {
+      "name": "index.dsd",
+      "ok": true
+    },
+    {
+      "name": "file.with.dots.tar.gz",
+      "ok": true
+    },
+    {
+      "name": "file_with_underscores",
+      "ok": true
+    },
+    {
+      "name": "file-with-dashes",
+      "ok": true
+    },
+    {
+      "name": "",
+      "ok": false,
+      "error": "invalid artifact filename \"\""
+    },
+    {
+      "name": ".",
+      "ok": false,
+      "error": "invalid artifact filename \".\""
+    },
+    {
+      "name": "..",
+      "ok": false,
+      "error": "invalid artifact filename \"..\": invalid path"
+    },
+    {
+      "name": "../evil",
+      "ok": false,
+      "error": "invalid artifact filename \"../evil\": invalid path"
+    },
+    {
+      "name": "./evil",
+      "ok": false,
+      "error": "invalid artifact filename \"./evil\": non-canonical path"
+    },
+    {
+      "name": "a/../evil",
+      "ok": false,
+      "error": "invalid artifact filename \"a/../evil\": non-canonical path"
+    },
+    {
+      "name": "dir/file",
+      "ok": false,
+      "error": "invalid artifact filename \"dir/file\": contains path components"
+    },
+    {
+      "name": "dir\\file",
+      "ok": false,
+      "error": "invalid artifact filename \"dir\\\\file\": contains path components"
+    },
+    {
+      "name": "//evil",
+      "ok": false,
+      "error": "invalid artifact filename \"//evil\": non-canonical path"
+    },
+    {
+      "name": "evil/",
+      "ok": false,
+      "error": "invalid artifact filename \"evil/\": non-canonical path"
+    },
+    {
+      "name": "C:file",
+      "ok": false,
+      "error": "invalid artifact filename \"C:file\": contains ':'"
+    },
+    {
+      "name": "file:stream",
+      "ok": false,
+      "error": "invalid artifact filename \"file:stream\": contains ':'"
+    }
+  ],
+  "index_json": "{\"Artifacts\":[{\"Filename\":\"base.dsdl\",\"SHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"URLs\":[\"https://example.com/base.dsdl\"]},{\"Filename\":\"linux.zip\",\"Platform\":\"linux_amd64\",\"SHA256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"URLs\":[\"https://example.com/linux.zip\"],\"Unpack\":\"zip\",\"Version\":\"v1.2.2\"},{\"Filename\":\"windows.zip\",\"Platform\":\"windows_amd64\",\"SHA256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"URLs\":[\"https://example.com/windows.zip\"]}],\"Name\":\"test-index\",\"Published\":\"2023-11-14T22:13:20Z\",\"Version\":\"v1.2.3\"}",
+  "parsed": {
+    "linux_amd64": {
+      "name": "test-index",
+      "version": "v1.2.3",
+      "published": "2023-11-14T22:13:20Z",
+      "artifacts": [
+        {
+          "filename": "base.dsdl",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "urls": [
+            "https://example.com/base.dsdl"
+          ],
+          "platform": "",
+          "unpack": "",
+          "version": "v1.2.3"
+        },
+        {
+          "filename": "linux.zip",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "urls": [
+            "https://example.com/linux.zip"
+          ],
+          "platform": "linux_amd64",
+          "unpack": "zip",
+          "version": "v1.2.2"
+        }
+      ]
+    },
+    "windows_amd64": {
+      "name": "test-index",
+      "version": "v1.2.3",
+      "published": "2023-11-14T22:13:20Z",
+      "artifacts": [
+        {
+          "filename": "base.dsdl",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "urls": [
+            "https://example.com/base.dsdl"
+          ],
+          "platform": "",
+          "unpack": "",
+          "version": "v1.2.3"
+        },
+        {
+          "filename": "windows.zip",
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "urls": [
+            "https://example.com/windows.zip"
+          ],
+          "platform": "windows_amd64",
+          "unpack": "",
+          "version": "v1.2.3"
+        }
+      ]
+    }
+  },
+  "sha256": [
+    {
+      "data": "portmaster",
+      "name": "ok",
+      "ok": true,
+      "sha256": "cc829aeec2aec8b74b8952616208859bd3a4f83d8271aa410ac475febc8c1efb"
+    },
+    {
+      "data": "portmaster",
+      "name": "mismatch",
+      "ok": false,
+      "sha256": "d9298a10d1b0735837dc4bd85dac641b0f3cef27a47e5d53a54f2f3f5b2fcffa"
+    },
+    {
+      "data": "portmaster",
+      "name": "invalid-hex",
+      "ok": false,
+      "sha256": "zz"
+    },
+    {
+      "data": "portmaster",
+      "name": "wrong-size",
+      "ok": false,
+      "sha256": "abcd"
+    }
+  ],
+  "upgrade_cases": [
+    {
+      "name": "upgrade",
+      "current_json": "{\"Name\":\"test-index\",\"Version\":\"v1.0.0\",\"Published\":\"2026-11-15T12:33:06Z\",\"Artifacts\":[]}",
+      "new_json": "{\"Name\":\"test-index\",\"Version\":\"v1.1.0\",\"Published\":\"2026-11-15T14:28:06Z\",\"Artifacts\":[]}",
+      "ok": true
+    },
+    {
+      "name": "same-index",
+      "current_json": "{\"Name\":\"test-index\",\"Version\":\"v1.2.3\",\"Published\":\"2026-11-15T14:28:06Z\",\"Artifacts\":[]}",
+      "new_json": "{\"Name\":\"test-index\",\"Version\":\"v1.2.3\",\"Published\":\"2026-11-15T14:28:06Z\",\"Artifacts\":[]}",
+      "ok": false,
+      "error": "same index"
+    },
+    {
+      "name": "name-mismatch",
+      "current_json": "{\"Name\":\"test-index\",\"Version\":\"v1.2.3\",\"Published\":\"2026-11-15T14:28:06Z\",\"Artifacts\":[]}",
+      "new_json": "{\"Name\":\"other-index\",\"Version\":\"v1.2.4\",\"Published\":\"2026-11-15T14:28:06Z\",\"Artifacts\":[]}",
+      "ok": false,
+      "error": "new index name (\"other-index\") does not match current index name (\"test-index\")"
+    },
+    {
+      "name": "newer-version-older-date",
+      "current_json": "{\"Name\":\"test-index\",\"Version\":\"v1.2.3\",\"Published\":\"2026-11-15T14:28:06Z\",\"Artifacts\":[]}",
+      "new_json": "{\"Name\":\"test-index\",\"Version\":\"v1.2.4\",\"Published\":\"2026-11-15T12:33:06Z\",\"Artifacts\":[]}",
+      "ok": false,
+      "error": "new index has newer version but older publish date"
+    },
+    {
+      "name": "older-version-newer-date",
+      "current_json": "{\"Name\":\"test-index\",\"Version\":\"v1.2.3\",\"Published\":\"2026-11-15T12:33:06Z\",\"Artifacts\":[]}",
+      "new_json": "{\"Name\":\"test-index\",\"Version\":\"v1.2.2\",\"Published\":\"2026-11-15T14:28:06Z\",\"Artifacts\":[]}",
+      "ok": false,
+      "error": "new index has older version but newer publish date"
+    },
+    {
+      "name": "breaking-downgrade",
+      "current_json": "{\"Name\":\"test-index\",\"Version\":\"v2.0.0\",\"Published\":\"2026-11-15T12:33:06Z\",\"Artifacts\":[]}",
+      "new_json": "{\"Name\":\"test-index\",\"Version\":\"v1.9.0\",\"Published\":\"2026-11-15T12:33:06Z\",\"Artifacts\":[]}",
+      "ok": false,
+      "error": "new index is a breaking change downgrade"
+    },
+    {
+      "name": "downgrade",
+      "current_json": "{\"Name\":\"test-index\",\"Version\":\"v1.9.0\",\"Published\":\"2026-11-15T12:33:06Z\",\"Artifacts\":[]}",
+      "new_json": "{\"Name\":\"test-index\",\"Version\":\"v1.8.0\",\"Published\":\"2026-11-15T12:33:06Z\",\"Artifacts\":[]}",
+      "ok": false,
+      "error": "same index"
+    },
+    {
+      "name": "bootstrap",
+      "current_json": "{\"Name\":\"test-index\",\"Version\":\"0.0.0\",\"Published\":\"2026-11-15T12:33:06Z\",\"Artifacts\":[]}",
+      "new_json": "{\"Name\":\"other-index\",\"Version\":\"v9.9.9\",\"Published\":\"2026-11-15T14:28:06Z\",\"Artifacts\":[]}",
+      "ok": true
+    },
+    {
+      "name": "current-cannot-upgrade",
+      "current_json": "{\"Name\":\"test-index\",\"Version\":\"\",\"Published\":\"2026-11-15T12:33:06Z\",\"Artifacts\":[]}",
+      "new_json": "{\"Name\":\"test-index\",\"Version\":\"v1.0.0\",\"Published\":\"2026-11-15T14:28:06Z\",\"Artifacts\":[]}",
+      "ok": false,
+      "error": "current index cannot do upgrades: missing version number"
+    }
+  ],
+  "versions": [
+    {
+      "input": "1.2.3",
+      "ok": true,
+      "parsed": "1.2.3"
+    },
+    {
+      "input": "v1.2.3",
+      "ok": true,
+      "parsed": "1.2.3"
+    },
+    {
+      "input": "1.2",
+      "ok": true,
+      "parsed": "1.2.0"
+    },
+    {
+      "input": "1",
+      "ok": true,
+      "parsed": "1.0.0"
+    },
+    {
+      "input": "1.2.3-rc1",
+      "ok": true,
+      "parsed": "1.2.3-rc1"
+    },
+    {
+      "input": "1.2.3-alpha.1",
+      "ok": true,
+      "parsed": "1.2.3-alpha.1"
+    },
+    {
+      "input": "1.2.3+build.5",
+      "ok": true,
+      "parsed": "1.2.3+build.5"
+    },
+    {
+      "input": "1.2.3-rc1+build",
+      "ok": true,
+      "parsed": "1.2.3-rc1+build"
+    },
+    {
+      "input": "v0.6.4",
+      "ok": true,
+      "parsed": "0.6.4"
+    },
+    {
+      "input": "0.0.0",
+      "ok": true,
+      "parsed": "0.0.0"
+    },
+    {
+      "input": "",
+      "ok": false
+    },
+    {
+      "input": "v",
+      "ok": false
+    },
+    {
+      "input": "1.2.3.4",
+      "ok": true,
+      "parsed": "1.2.3.4"
+    },
+    {
+      "input": "1..3",
+      "ok": false
+    },
+    {
+      "input": "1.2.x",
+      "ok": false
+    },
+    {
+      "input": "-1.2.3",
+      "ok": false
+    },
+    {
+      "input": "1.2.4",
+      "ok": true,
+      "parsed": "1.2.4"
+    },
+    {
+      "input": "1.2.0",
+      "ok": true,
+      "parsed": "1.2.0"
+    },
+    {
+      "input": "1.0.0",
+      "ok": true,
+      "parsed": "1.0.0"
+    },
+    {
+      "input": "1.9.9",
+      "ok": true,
+      "parsed": "1.9.9"
+    },
+    {
+      "input": "2.0.0",
+      "ok": true,
+      "parsed": "2.0.0"
+    },
+    {
+      "input": "0.6.4",
+      "ok": true,
+      "parsed": "0.6.4"
+    },
+    {
+      "input": "1.2.3-rc2",
+      "ok": true,
+      "parsed": "1.2.3-rc2"
+    },
+    {
+      "input": "1.2.3-alpha.2",
+      "ok": true,
+      "parsed": "1.2.3-alpha.2"
+    }
+  ]
+}

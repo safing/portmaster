@@ -368,3 +368,53 @@ fn split_domains_match_go() {
         assert_eq!(pm_intel::split_domain(domain), expected, "{domain:?}");
     }
 }
+
+#[test]
+fn list_files_are_loaded_from_disk() {
+    let fixture = fixture();
+    let databases = cache_databases();
+    let filter_lists = small_filter_lists(&databases);
+
+    let mut dir = std::env::temp_dir();
+    dir.push(format!("pm-intel-lists-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+
+    for (name, key) in [
+        ("plain.dsdl", "file_plain"),
+        ("gzipped.dsdl", "file_gzipped"),
+    ] {
+        let path = dir.join(name);
+        std::fs::write(&path, base64(fixture[key].as_str().unwrap())).unwrap();
+
+        let loaded = filter_lists.load_list_file(&path, 1_700_000_000).unwrap();
+        assert_eq!(loaded, 4, "{name}");
+    }
+    filter_lists.set_loaded(true);
+
+    // The stored entries are found through the bloom filter and the cache.
+    assert_eq!(
+        filter_lists.lookup_domain("example.com.").unwrap(),
+        vec!["list-a", "list-b"]
+    );
+    assert_eq!(
+        filter_lists
+            .lookup_ip("192.0.2.10".parse().unwrap())
+            .unwrap(),
+        vec!["list-b"]
+    );
+    assert!(filter_lists.lookup_country("XX").unwrap().is_empty());
+    assert!(filter_lists
+        .lookup_domain("removed.example.")
+        .unwrap()
+        .is_empty());
+    assert!(filter_lists.bloom_test("domain", "example.com."));
+    assert!(!filter_lists.bloom_test("domain", "not-listed.example."));
+
+    // Broken files are reported.
+    let broken = dir.join("broken.dsdl");
+    std::fs::write(&broken, b"XX").unwrap();
+    assert!(filter_lists.load_list_file(&broken, 0).is_err());
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
