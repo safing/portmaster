@@ -1048,7 +1048,12 @@ pub async fn serve(api: Arc<Api>, listener: tokio::net::TcpListener) -> std::io:
         .route("/", axum::routing::get(ui::redirect_root))
         .fallback(axum::routing::any(handle_axum))
         .with_state(api);
-    axum::serve(listener, app).await
+    // Connect info gives requests their remote address for authentication.
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .await
 }
 
 async fn handle_axum(

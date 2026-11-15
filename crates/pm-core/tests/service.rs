@@ -18,6 +18,7 @@ fn test_options(data_dir: &std::path::Path) -> Options {
         log_level: "debug".to_string(),
         api_address: "127.0.0.1:0".to_string(),
         dev_mode: true,
+        allowed_clients: Vec::new(),
         print_version: false,
         help: false,
     }
@@ -225,9 +226,10 @@ async fn config_file_controls_api_keys_and_address() {
     let response = http_get(address, "/api/v1/ping", "").await;
     assert!(response.starts_with("HTTP/1.1 200"), "{response}");
 
-    // The database API requires the configured admin key.
+    // The database API requires the configured admin key; the test client is
+    // not a trusted process, so the process authenticator denies it.
     let response = http_get(address, "/api/database/v1", "").await;
-    assert!(response.starts_with("HTTP/1.1 401"), "{response}");
+    assert!(response.starts_with("HTTP/1.1 403"), "{response}");
 
     let response = http_get(
         address,
@@ -247,7 +249,7 @@ async fn config_file_controls_api_keys_and_address() {
         "Authorization: Bearer wrong-key\r\n",
     )
     .await;
-    assert!(response.starts_with("HTTP/1.1 401"), "{response}");
+    assert!(response.starts_with("HTTP/1.1 403"), "{response}");
 
     server.abort();
     service.shutdown().unwrap();

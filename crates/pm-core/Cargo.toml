@@ -18,6 +18,8 @@ pm-dsd = { path = "../pm-dsd" }
 pm-mgr = { path = "../pm-mgr" }
 pm-runtime = { path = "../pm-runtime" }
 pm-netenv = { path = "../pm-netenv" }
+pm-netstate = { path = "../pm-netstate" }
+pm-process = { path = "../pm-process" }
 pm-notifications = { path = "../pm-notifications" }
 pm-status = { path = "../pm-status" }
 pm-intel = { path = "../pm-intel" }

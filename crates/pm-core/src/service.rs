@@ -10,6 +10,7 @@ use pm_database::{DatabaseInfo, Databases};
 use serde_json::{json, Value};
 use tokio::net::TcpListener;
 
+use crate::api_auth::{ApiAuthenticator, SystemLookup};
 use crate::cli::Options;
 
 /// Configuration keys of the core.
@@ -123,6 +124,15 @@ impl Service {
             .await
             .map_err(|error| anyhow::anyhow!("failed to listen on {listen_address}: {error}"))?;
         tracing::info!(address = %listener.local_addr()?, "api: listening");
+
+        // Authenticate local clients by their process; the server address is
+        // the bound one, so a port of 0 works.
+        api.set_authenticator(Arc::new(ApiAuthenticator::new(
+            Arc::new(SystemLookup::new()),
+            options.bin_dir.clone(),
+            options.allowed_clients.clone(),
+            listener.local_addr()?,
+        )));
 
         api.set_ready(true);
 

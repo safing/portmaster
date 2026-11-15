@@ -18,6 +18,8 @@ pub struct Options {
     pub log_level: String,
     pub api_address: String,
     pub dev_mode: bool,
+    /// Binaries that may use the API without a key (`--allowed-clients`, repeatable).
+    pub allowed_clients: Vec<PathBuf>,
     pub print_version: bool,
     pub help: bool,
 }
@@ -32,6 +34,7 @@ impl Default for Options {
             log_level: "info".to_string(),
             api_address: DEFAULT_API_ADDRESS.to_string(),
             dev_mode: false,
+            allowed_clients: Vec::new(),
             print_version: false,
             help: false,
         }
@@ -65,6 +68,9 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Options, String> 
             "--api-address" => options.api_address = value(&name)?,
             "--log-stdout" => options.log_to_stdout = true,
             "--devmode" => options.dev_mode = true,
+            "--allowed-clients" => options
+                .allowed_clients
+                .push(crate::api_auth::clean_path(&value(&name)?)),
             "--version" => options.print_version = true,
             "--help" | "-h" => options.help = true,
             other => return Err(format!("unknown flag: {other}")),
@@ -86,6 +92,7 @@ Flags:
       --log string           set log level to [trace|debug|info|warning|error|critical]
       --api-address string   set api listen address; configuration is stronger
       --devmode              enable development mode
+      --allowed-clients string  binary that is allowed to connect to the API (repeatable)
       --version              print version and exit
   -h, --help                 print this help and exit"
 }
@@ -136,6 +143,20 @@ mod tests {
         assert!(options.dev_mode);
         assert!(options.log_to_stdout);
         assert_eq!(options.log_level, "debug");
+    }
+
+    #[test]
+    fn allowed_clients_is_repeatable_and_cleaned() {
+        let options = parse(args(&[
+            "--allowed-clients",
+            "/opt/app//bin/../ui",
+            "--allowed-clients=/usr/bin/tool",
+        ]))
+        .unwrap();
+        assert_eq!(
+            options.allowed_clients,
+            vec![PathBuf::from("/opt/app/ui"), PathBuf::from("/usr/bin/tool")]
+        );
     }
 
     #[test]

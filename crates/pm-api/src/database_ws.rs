@@ -406,6 +406,11 @@ pub async fn database_ws_upgrade(
         .and_then(|value| value.to_str().ok())
         .unwrap_or("")
         .to_string();
+    api_request.remote_addr = parts
+        .extensions
+        .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+        .map(|info| info.0.to_string())
+        .unwrap_or_default();
     api_request.header = parts.headers.clone();
     api_request.read_method = true;
     if let Err(response) = api.authorize_required(&mut api_request, PERMIT_ADMIN) {
