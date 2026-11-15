@@ -20,10 +20,14 @@
 //!   ported; [`ProfileStore`] provides explicit reads and writes.
 
 mod fingerprint;
+mod global;
 mod icon;
 mod matching;
 mod merge;
+mod option_texts;
+pub mod options;
 mod profile;
+mod proxy_url;
 mod store;
 
 pub use fingerprint::{
@@ -33,6 +37,8 @@ pub use fingerprint::{
     FINGERPRINT_OPERATION_REGEX, FINGERPRINT_TYPE_CMDLINE, FINGERPRINT_TYPE_ENV,
     FINGERPRINT_TYPE_PATH, FINGERPRINT_TYPE_TAG,
 };
+pub use global::{GlobalProfileConfig, ListResolver};
+pub use proxy_url::validate_upstream_proxy_url;
 pub use icon::{
     sort_and_compact_icons, Icon, IconSource, IconType, ICON_SOURCE_CORE, ICON_SOURCE_IMPORT,
     ICON_SOURCE_UI, ICON_SOURCE_USER, ICON_TYPE_API, ICON_TYPE_DATABASE, ICON_TYPE_FILE,

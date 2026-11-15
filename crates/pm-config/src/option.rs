@@ -4,6 +4,8 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
+use std::fmt;
+use std::sync::Arc;
 
 /// Type of a configuration value. `0` means "any" and is not allowed for
 /// registered options.
@@ -57,6 +59,36 @@ pub const DISPLAY_HINT_ONE_OF: &str = "one-of";
 pub const DISPLAY_HINT_ORDERED: &str = "ordered";
 pub const DISPLAY_HINT_FILE_PICKER: &str = "file-picker";
 
+/// Additional validation of a value that already passed the type, regex and
+/// possible-value checks, like Go `Option.ValidationFunc`. It receives the
+/// validated value as JSON (string, string array, int or bool).
+#[derive(Clone)]
+pub struct ValidationFunc(Arc<ValidationFn>);
+
+type ValidationFn = dyn Fn(&Value) -> Result<(), String> + Send + Sync;
+
+impl ValidationFunc {
+    pub fn new(func: impl Fn(&Value) -> Result<(), String> + Send + Sync + 'static) -> Self {
+        ValidationFunc(Arc::new(func))
+    }
+
+    pub fn call(&self, value: &Value) -> Result<(), String> {
+        (self.0)(value)
+    }
+}
+
+impl fmt::Debug for ValidationFunc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("ValidationFunc")
+    }
+}
+
+impl PartialEq for ValidationFunc {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
 /// A value that is allowed for an option.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PossibleValue {
@@ -104,6 +136,9 @@ pub struct ConfigOption {
     pub possible_values: Vec<PossibleValue>,
     #[serde(rename = "Annotations")]
     pub annotations: Option<Map<String, Value>>,
+    /// Not part of the exported definition.
+    #[serde(skip)]
+    pub validation_func: Option<ValidationFunc>,
 }
 
 impl Default for ConfigOption {
@@ -122,6 +157,7 @@ impl Default for ConfigOption {
             validation_regex: String::new(),
             possible_values: Vec::new(),
             annotations: None,
+            validation_func: None,
         }
     }
 }
@@ -179,6 +215,16 @@ impl ConfigOption {
         self.annotations
             .get_or_insert_with(Map::new)
             .insert(key.to_string(), value);
+        self
+    }
+
+    /// Sets the additional validation function.
+    #[must_use]
+    pub fn with_validation_func(
+        mut self,
+        func: impl Fn(&Value) -> Result<(), String> + Send + Sync + 'static,
+    ) -> ConfigOption {
+        self.validation_func = Some(ValidationFunc::new(func));
         self
     }
 
@@ -345,6 +391,11 @@ pub fn validate_value(
             ))
         }
     };
+
+    if let Some(func) = &option.validation_func {
+        func.call(&validated.to_json())
+            .map_err(|message| ValidationError::new(&option.key, message))?;
+    }
 
     Ok(validated)
 }

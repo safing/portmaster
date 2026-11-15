@@ -672,3 +672,30 @@ fn option_annotations_are_mutable() {
         json!(1)
     );
 }
+
+#[test]
+fn validation_func_runs_after_regex_and_on_defaults() {
+    use pm_config::ConfigOption;
+
+    let config = Config::new();
+    let option = ConfigOption::new(
+        "Even",
+        "test/even",
+        "Only even numbers.",
+        OPT_TYPE_INT,
+        json!(2),
+    )
+    .with_validation_func(|value| match value.as_i64() {
+        Some(n) if n % 2 == 0 => Ok(()),
+        _ => Err("must be even".to_string()),
+    });
+    config.register(option).unwrap();
+    assert!(config.set_config_option("test/even", json!(4)).is_ok());
+    let err = config.set_config_option("test/even", json!(3)).unwrap_err();
+    assert!(err.to_string().contains("must be even"), "{err}");
+
+    // A default value failing the function rejects the registration.
+    let bad = ConfigOption::new("Bad", "test/bad", "Bad.", OPT_TYPE_INT, json!(1))
+        .with_validation_func(|_| Err("never".to_string()));
+    assert!(config.register(bad).is_err());
+}

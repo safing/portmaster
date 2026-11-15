@@ -34,6 +34,8 @@ pub struct Service {
     pub filter_lists: Arc<pm_intel::FilterLists>,
     /// GeoIP databases; a future updater loads them.
     pub geoip: Arc<pm_geoip::GeoIp>,
+    /// Global profile settings (filter rules and switches).
+    pub profile_config: Arc<pm_profile::GlobalProfileConfig>,
     listener: Mutex<Option<TcpListener>>,
     local_addr: std::net::SocketAddr,
     data_dir: PathBuf,
@@ -96,6 +98,7 @@ impl Service {
         // Configuration.
         let config = Config::new();
         register_options(&config, options)?;
+        pm_profile::options::register_options(&config)?;
         config.register_database(&databases)?;
         let config_file = data_dir.join("config.json");
         match config.start(&config_file) {
@@ -106,6 +109,11 @@ impl Service {
             }
             Err(pm_config::Error::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(error) => return Err(error.into()),
+        }
+
+        let profile_config = Arc::new(pm_profile::GlobalProfileConfig::new(&config));
+        if let Err(error) = profile_config.refresh() {
+            tracing::warn!(%error, "profile: some global settings are invalid");
         }
 
         // The config file is stronger than the command line flags.
@@ -145,6 +153,7 @@ impl Service {
             status,
             filter_lists,
             geoip,
+            profile_config,
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
             data_dir,
@@ -174,6 +183,19 @@ impl Service {
 
         let server = pm_api::serve(api, listener);
 
+        // Keep the parsed global rules in sync with config changes.
+        let profile_config = Arc::clone(&self.profile_config);
+        let mut changes = self.config.subscribe_changes();
+        let refresher = tokio::spawn(async move {
+            while let Ok(()) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) =
+                changes.recv().await
+            {
+                if let Err(error) = profile_config.refresh() {
+                    tracing::warn!(%error, "profile: some global settings are invalid");
+                }
+            }
+        });
+
         tokio::select! {
             result = server => result?,
             _ = shutdown_signal() => {
@@ -182,6 +204,7 @@ impl Service {
             _ = maintenance(Arc::clone(&databases)) => {}
         }
 
+        refresher.abort();
         databases.shutdown()?;
         Ok(())
     }

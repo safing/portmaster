@@ -79,6 +79,7 @@ func main() {
 	genQuery()
 	genGoStrconv()
 	genConfig()
+	genProfileOptions()
 	genNetState()
 	genProcess()
 	genProfile()

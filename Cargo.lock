@@ -983,6 +983,7 @@ dependencies = [
  "pm-netstate",
  "pm-notifications",
  "pm-process",
+ "pm-profile",
  "pm-query",
  "pm-record",
  "pm-runtime",
@@ -1073,6 +1074,7 @@ version = "0.1.0"
 dependencies = [
  "nfq",
  "pm-netstate",
+ "rustix",
  "thiserror",
  "tokio",
  "tracing",
@@ -1160,12 +1162,14 @@ dependencies = [
  "pm-config",
  "pm-database",
  "pm-dsd",
+ "pm-endpoints",
  "regex",
  "serde",
  "serde_json",
  "sha3",
  "thiserror",
  "tokio",
+ "url",
 ]
 
 [[package]]
