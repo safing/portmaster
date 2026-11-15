@@ -152,22 +152,6 @@ func registerAPIEndpoints() error {
 	}
 
 	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:        "updates/from-url",
-		WriteMethod: "POST",
-		Write:       api.PermitAnyone,
-		ActionFunc: func(ar *api.Request) (string, error) {
-			err := module.instance.BinaryUpdates().UpdateFromURL(string(ar.InputData))
-			if err != nil {
-				return err.Error(), err
-			}
-			return "upgrade triggered", nil
-		},
-		Name: "Replace current version from the version supplied in the URL",
-	}); err != nil {
-		return err
-	}
-
-	if err := api.RegisterEndpoint(api.Endpoint{
 		Name:        "Get Resource",
 		Description: "Returns the requested resource from the update system",
 		Path:        `updates/get/{artifact_path:[A-Za-z0-9/\.\-_]{1,255}}/{artifact_name:[A-Za-z0-9\.\-_]{1,255}}`,

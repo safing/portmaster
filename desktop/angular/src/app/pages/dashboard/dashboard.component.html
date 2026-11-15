@@ -208,7 +208,7 @@
   </app-dashboard-widget>
 
   <app-dashboard-widget class="flex-grow" id="bwvis-bar" [ngStyle]="{minHeight: featureBw ? '400px' : 'unset'}" label="Recent Top Consumers" beta="true">
-    <sfng-netquery-circular-bar-chart *ngIf="featureBw" class="block w-full h-full" [data]="bandwidthBarData" [config]="bandwidthBarConfig"></sfng-netquery-circular-bar-chart>
+    <sfng-netquery-circular-bar-chart *ngIf="featureBw" class="block w-full h-full" [data]="bandwidthBarData" [config]="bandwidthBarConfig" (stackClick)="openProfile($event)"></sfng-netquery-circular-bar-chart>
 
     <span *ngIf="!featureBw"
       class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">

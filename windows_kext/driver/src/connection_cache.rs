@@ -69,6 +69,31 @@ impl ConnectionCache {
         self.connections_v6.read(key, process_connection)
     }
 
+    /// Reads the connection for an ALE authorization request issued by
+    /// `process_id`. Entries that no longer describe the requesting socket
+    /// (ended, or owner unknown) are removed and reported as a miss, so the
+    /// flow gets a fresh verdict. See `ConnectionMap::read_for_process`.
+    pub fn read_connection_for_process_v4<T>(
+        &mut self,
+        key: &Key,
+        process_id: u64,
+        process_connection: fn(&ConnectionV4) -> Option<T>,
+    ) -> Option<T> {
+        let _guard = self.lock_v4.write_lock();
+        self.connections_v4.read_for_process(key, process_id, process_connection)
+    }
+
+    /// Same as read_connection_for_process_v4, for IPv6 connections.
+    pub fn read_connection_for_process_v6<T>(
+        &mut self,
+        key: &Key,
+        process_id: u64,
+        process_connection: fn(&ConnectionV6) -> Option<T>,
+    ) -> Option<T> {
+        let _guard = self.lock_v6.write_lock();
+        self.connections_v6.read_for_process(key, process_id, process_connection)
+    }
+
     pub fn end_connection_v4(&mut self, key: Key) -> Option<ConnectionV4> {
         let _guard = self.lock_v4.write_lock();
         self.connections_v4.end(key)

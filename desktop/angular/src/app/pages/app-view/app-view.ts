@@ -509,6 +509,11 @@ export class AppViewComponent implements OnInit, OnDestroy {
         }
 
         if (!!this.netqueryViewer && this._loading) {
+          // The viewer builds its query synchronously when the last reload is
+          // more than a second ago. Push the new profile to its mergeFilter
+          // input first, otherwise the query is built with the profile of
+          // the previously shown app.
+          this.cdr.detectChanges();
           this.netqueryViewer.performSearch();
         }
 

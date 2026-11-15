@@ -25,6 +25,13 @@ func (pkt *Base) FastTrackedByIntegration() bool {
 	return false
 }
 
+// VerdictSet returns whether a verdict was already applied to the packet, so
+// that no further verdict can take effect. Packet types that cannot tell
+// report false, meaning the packet is treated as still pending.
+func (pkt *Base) VerdictSet() bool {
+	return false
+}
+
 // InfoOnly returns whether the packet is informational only and does not
 // represent an actual packet.
 func (pkt *Base) InfoOnly() bool {
@@ -235,6 +242,7 @@ type Packet interface {
 	FastTrackedByIntegration() bool
 	InfoOnly() bool
 	ExpectInfo() bool
+	VerdictSet() bool
 
 	// Info.
 	SetCtx(ctx context.Context)

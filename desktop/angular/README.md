@@ -10,45 +10,31 @@ you can simply switch back when something is still missing or buggy.
 
 1. **Prepare your tooling**
 
-There's a simple dockerized way to build and test the new UI. Just make sure to have docker installed:
-
-```bash
-sudo apt update
-sudo apt install -y docker.io git
-sudo systemctl enable --now docker
-sudo gpasswd -a $USER docker
-```
+Install `git` and Node.js.
 
 2. **Portmaster installation**
 
-Next, make sure to install the Portmaster using the official .deb installer from [here](https://updates.safing.io/latest/linux_amd64/packages/portmaster-installer.deb). See the [Wiki](https://github.com/safing/portmaster/wiki/Linux) for more information.
+Next, make sure to install the Portmaster using the official Linux installer package.
 
-Once the Portmaster is installed we need to add two new configuration flags. Execute the following:
-
-```bash
-echo 'PORTMASTER_ARGS="--experimental-nfqueue --devmode"' | sudo tee /etc/default/portmaster
-sudo systemctl daemon-reload
-sudo systemctl restart portmaster
-```
+Once the Portmaster is installed, enable **Development Mode** in its settings
+(Settings → Core → Development, visible with the expertise level set to
+Developer). This lifts the API restrictions so that the UI served by the
+development server can talk to the Portmaster.
 
 3. **Build and run the new UI**
 
-Now, clone this repository and execute the `docker.sh` script:
+Now, clone this repository and start the development server:
 
 ```bash
 # Clone the repository
-git clone https://github.com/safing/portmaster-ui
+git clone https://github.com/safing/portmaster
 
-# Enter the repo and checkout the correct branch
-cd portmaster-ui
-git checkout feature/new-ui
-
-# Enter the directory and run docker.sh
-cd modules/portmaster
-sudo bash ./docker.sh
+# Enter the UI directory, install dependencies and start the development server
+cd portmaster/desktop/angular
+npm start
 ```
 
-Finally open your browser and point it to http://localhost:8080.
+Finally open your browser and point it to http://localhost:4200.
 
 ## Hacking Quick Start
 
@@ -79,7 +65,7 @@ From the project root (the folder containing this [README.md](./)) there are onl
 
 ### Development server
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The app will automatically reload if you change any of the source files.
+Run `npm start` for a dev server. Navigate to `http://localhost:4200/`. The app will automatically reload if you change any of the source files.
 
 In development mode (that is, you don't pass `--prod`) the UI expects portmaster running at `ws://127.0.0.1:817/api/database/v1`. See [environment](./src/app/environments/environment.ts).
 

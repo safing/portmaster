@@ -22,6 +22,10 @@ import (
 var (
 	RebootOnRestart  bool
 	PrintStackOnExit bool
+
+	// OnShutdownTimeout is called when the shutdown did not complete in time,
+	// right before the process exits anyway. It must return quickly.
+	OnShutdownTimeout func()
 )
 
 type SystemService interface {
@@ -123,6 +127,9 @@ func RunService(cmd *cobra.Command, args []string) {
 		}
 	case <-time.After(3 * time.Minute):
 		printStackTo(log.GlobalWriter, "PRINTING STACK - TAKING TOO LONG FOR SHUTDOWN")
+		if OnShutdownTimeout != nil {
+			OnShutdownTimeout()
+		}
 	}
 
 	// Check if restart was triggered and send start service command if true.
