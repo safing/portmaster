@@ -23,6 +23,8 @@ pub struct Service {
     pub config: Arc<Config>,
     pub databases: Arc<Databases>,
     pub api: Arc<Api>,
+    /// Runtime value registry, injected as the `runtime` database.
+    pub runtime: pm_runtime::Runtime,
     listener: Mutex<Option<TcpListener>>,
     local_addr: std::net::SocketAddr,
     data_dir: PathBuf,
@@ -51,6 +53,10 @@ impl Service {
             })?;
             databases.controller(name)?;
         }
+
+        // Runtime values: modules expose computed records through `runtime`.
+        let mut runtime = pm_runtime::Runtime::new();
+        runtime.start(&databases)?;
 
         // Configuration.
         let config = Config::new();
@@ -90,6 +96,7 @@ impl Service {
             config,
             databases,
             api,
+            runtime,
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
             data_dir,

@@ -1,0 +1,21 @@
+[package]
+name = "pm-runtime"
+version = "0.1.0"
+edition.workspace = true
+description = "Runtime value providers and their injected database for the Portmaster core"
+license.workspace = true
+
+[dependencies]
+pm-database = { path = "../pm-database" }
+pm-dsd = { path = "../pm-dsd" }
+pm-query = { path = "../pm-query" }
+pm-record = { path = "../pm-record" }
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+pm-dsd = { path = "../pm-dsd" }
+tokio.workspace = true
+
+[lints]
+workspace = true

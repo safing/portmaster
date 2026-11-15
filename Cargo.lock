@@ -926,6 +926,7 @@ dependencies = [
  "pm-mgr",
  "pm-query",
  "pm-record",
+ "pm-runtime",
  "serde_json",
  "tokio",
  "tokio-tungstenite 0.30.0",
@@ -1064,6 +1065,19 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+]
+
+[[package]]
+name = "pm-runtime"
+version = "0.1.0"
+dependencies = [
+ "pm-database",
+ "pm-dsd",
+ "pm-query",
+ "pm-record",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

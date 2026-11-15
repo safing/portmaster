@@ -94,6 +94,15 @@ async fn core_serves_api_and_database() {
     assert!(data_dir.join("databases/core/sqlite/db.sqlite").exists());
     assert!(!data_dir.join("databases/config").exists());
 
+    // The runtime registry is injected as its own database.
+    assert!(service
+        .databases
+        .databases()
+        .iter()
+        .any(|info| info.name == "runtime"));
+    assert_eq!(service.runtime.database_name(), "runtime");
+    assert!(service.runtime.controller().is_some());
+
     // The database WebSocket API works end to end (dev mode grants admin).
     service
         .databases
