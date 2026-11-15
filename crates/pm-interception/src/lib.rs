@@ -1,5 +1,6 @@
 //! Port of Go `service/firewall/interception` for Linux (nfqueue backend).
 
+pub mod conntrack;
 pub mod iptables;
 pub mod marks;
 pub mod packet;
