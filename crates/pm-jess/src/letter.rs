@@ -2,7 +2,7 @@
 //! verification of its signatures (`Letter.Verify`).
 
 use ciborium::Value;
-use ed25519_dalek::{Signature, VerifyingKey};
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
 use crate::lhash::Algorithm;
 use crate::signet::{self, TrustStore};
@@ -237,7 +237,8 @@ impl Letter {
             let ok = VerifyingKey::from_bytes(key)
                 .ok()
                 .zip(Signature::from_slice(&seal.value).ok())
-                .is_some_and(|(vk, sig)| vk.verify_strict_compat(&sum, &sig));
+                // `verify` (not `verify_strict`) is cofactorless like Go crypto/ed25519.
+                .is_some_and(|(vk, sig)| vk.verify(&sum, &sig).is_ok());
             if !ok {
                 return Err(Error::Verify(format!(
                     "failed to verify signature (Ed25519) with ID {}: signature invalid",
@@ -264,17 +265,5 @@ fn suite_hash(suite_id: &str) -> Result<Algorithm, Error> {
             "suite {suite_id} is not a signing suite"
         ))),
         _ => Err(Error::Verify(format!("suite {suite_id} does not exist"))),
-    }
-}
-
-/// Ed25519 verification as in Go `crypto/ed25519` (cofactorless, canonical S).
-trait VerifyCompat {
-    fn verify_strict_compat(&self, msg: &[u8], sig: &Signature) -> bool;
-}
-
-impl VerifyCompat for VerifyingKey {
-    fn verify_strict_compat(&self, msg: &[u8], sig: &Signature) -> bool {
-        use ed25519_dalek::Verifier;
-        self.verify(msg, sig).is_ok()
     }
 }

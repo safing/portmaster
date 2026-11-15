@@ -8,6 +8,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/pretty"
@@ -79,7 +80,6 @@ func newSigner(suite, id string) (*jess.Envelope, *jess.Signet, string) {
 }
 
 func genJess() {
-	trusted := jess.NewMemTrustStore()
 	signStore := jess.NewMemTrustStore()
 
 	envA, sigA, exportA := newSigner(jess.SuiteSignV1, "test-key-a")
@@ -93,7 +93,6 @@ func genJess() {
 			fail(err)
 		}
 	}
-	_ = trusted
 
 	index := []byte(`{
   "zeta": [1, 2.50, -3e2, "ü <>& é 🦀", true, null],
@@ -147,15 +146,15 @@ func genJess() {
 	}
 
 	type sigCase struct {
-		Name       string `json:"name"`
-		Input      string `json:"input"`
-		Content    string `json:"content"`
-		SplitError string `json:"split_error"`
+		Name       string   `json:"name"`
+		Input      string   `json:"input"`
+		Content    string   `json:"content"`
+		SplitError string   `json:"split_error"`
 		Checksums  []string `json:"checksums"`
 		Signatures []string `json:"signatures"`
-		TrustSet   string `json:"trust_set"`
-		SigError   string `json:"sig_error"`
-		SumError   string `json:"sum_error"`
+		TrustSet   string   `json:"trust_set"`
+		SigError   string   `json:"sig_error"`
+		SumError   string   `json:"sum_error"`
 	}
 
 	trustSets := map[string]*jess.MemTrustStore{}
@@ -187,13 +186,8 @@ func genJess() {
 		c.Content = string(content)
 		c.Checksums = sums
 		c.Signatures = sigs
-		if err == nil {
-			c.SigError = errString(filesig.VerifyJSONSignature(input, trustSets[trust]))
-			c.SumError = errString(filesig.VerifyJSONChecksum(input))
-		} else {
-			c.SigError = errString(filesig.VerifyJSONSignature(input, trustSets[trust]))
-			c.SumError = errString(filesig.VerifyJSONChecksum(input))
-		}
+		c.SigError = errString(filesig.VerifyJSONSignature(input, trustSets[trust]))
+		c.SumError = errString(filesig.VerifyJSONChecksum(input))
 		cases = append(cases, c)
 	}
 
@@ -221,7 +215,14 @@ func genJess() {
 	add("signature-number", []byte(`{"a": 1, "_jess-signature": 5}`), "a")
 	add("checksum-bad-label", []byte(`{"a": 1, "_jess-checksum": "abc"}`), "a")
 	add("duplicate-meta-key", []byte(`{"a": 1, "_jess-checksum": "x", "_jess-checksum": "y"}`), "a")
-	add("escaped-meta-key", []byte(`{"a": 1, "_jess-signature": "AAAA"}`), "a")
+	// gjson matches meta keys after unescaping, so a JSON-escaped key still
+	// counts as the signature/checksum key.
+	add("escaped-signature-key", []byte(replaceOnce(string(signedA),
+		`"_jess-signature"`, `"\u005fjess-signature"`)), "a")
+	add("escaped-checksum-key", []byte(replaceOnce(string(withChecksum),
+		`"_jess-checksum"`, `"\u005fjess-checksum"`)), "a")
+	add("escaped-signature-key-tampered", []byte(replaceOnce(string(tamperedContent),
+		`"_jess-signature"`, `"\u005fjess-signature"`)), "a")
 
 	// Pretty-printer only cases, including odd but valid JSON.
 	prettyInputs := []string{
@@ -271,24 +272,14 @@ func genJess() {
 		"pretty_cases": prettyCases,
 		"valid_cases":  validCases,
 	})
-	_ = fmt.Sprint
 }
 
 func replaceOnce(s, old, repl string) string {
-	i := indexOf(s, old)
+	i := strings.Index(s, old)
 	if i < 0 {
 		fail(fmt.Errorf("replaceOnce: %q not found", old))
 	}
 	return s[:i] + repl + s[i+len(old):]
-}
-
-func indexOf(s, sub string) int {
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return i
-		}
-	}
-	return -1
 }
 
 // tamperSignature flips one bit in the middle of the encoded signature.

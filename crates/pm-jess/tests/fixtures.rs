@@ -100,6 +100,8 @@ fn valid_cases_succeed_and_tampered_fail() {
         ("signfile-suite", true),
         ("sign-v2-suite", true),
         ("whitespace-independent", true),
+        ("escaped-signature-key", true),
+        ("escaped-signature-key-tampered", false),
         ("tampered-content", false),
         ("tampered-signature", false),
         ("unsigned", false),

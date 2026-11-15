@@ -2,8 +2,12 @@
 //! Go `filesig.VerifyJSONSignature` / `filesig.VerifyJSONChecksum`.
 //!
 //! Only verification is implemented, for the signing-only suites
-//! (`sign_v1`, `signfile_v1`, `sign_v2`, `signfile_v2`) with Ed25519 signets.
-//! Anything else is rejected (fail closed).
+//! (`sign_v1`, `signfile_v1`, `sign_v2`, `signfile_v2`) with Ed25519 signets,
+//! and only for letters in the DSD CBOR format. Anything else is rejected
+//! (fail closed).
+//!
+//! Documents nested deeper than 1000 levels are rejected as invalid JSON
+//! (fail closed: Go accepts them).
 //!
 //! To use it as an `IndexVerifier` of `pm-updates`, see [`index_verifier`].
 
