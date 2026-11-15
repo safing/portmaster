@@ -9,9 +9,17 @@ license.workspace = true
 async-trait.workspace = true
 base64.workspace = true
 getrandom.workspace = true
+hex.workspace = true
 hickory-proto.workspace = true
+pm-api = { path = "../pm-api" }
+pm-config = { path = "../pm-config" }
+pm-database = { path = "../pm-database" }
 pm-dsd = { path = "../pm-dsd" }
+pm-netenv = { path = "../pm-netenv" }
 pm-netstate = { path = "../pm-netstate" }
+pm-netutils = { path = "../pm-netutils" }
+pm-query = { path = "../pm-query" }
+pm-record = { path = "../pm-record" }
 psl.workspace = true
 reqwest.workspace = true
 serde.workspace = true
@@ -19,6 +27,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-rustls.workspace = true
+tokio-util.workspace = true
 tracing.workspace = true
 url.workspace = true
 webpki-roots.workspace = true

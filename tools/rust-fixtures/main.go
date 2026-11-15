@@ -55,12 +55,20 @@ type fixtureFile struct {
 var (
 	outDir    string
 	verifyDir string
+
+	verifyNameRecordPath string
 )
 
 func main() {
 	flag.StringVar(&outDir, "out", "crates/fixtures/m0", "output directory")
 	flag.StringVar(&verifyDir, "verify", "", "verify a Rust-written sqlite location and print its contents as JSON")
+	flag.StringVar(&verifyNameRecordPath, "verify-namerecord", "", "read a Rust-written NameRecord JSON file the way Go does and print it")
 	flag.Parse()
+
+	if verifyNameRecordPath != "" {
+		verifyNameRecord(verifyNameRecordPath)
+		return
+	}
 
 	if verifyDir != "" {
 		verifyDatabase(verifyDir)
@@ -80,6 +88,7 @@ func main() {
 	genGoStrconv()
 	genConfig()
 	genProfileOptions()
+	genResolver()
 	genNetState()
 	genProcess()
 	genNetwork()
