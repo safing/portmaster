@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/pm-proxy",
+    "crates/pm-filter",
+    "crates/pm-dns",
+]

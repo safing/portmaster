@@ -1,6 +1,7 @@
 # Compiled binaries
 *.exe
 dist/
+target/
 
 # Dist dir
 dist
