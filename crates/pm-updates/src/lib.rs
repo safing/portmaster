@@ -16,9 +16,14 @@
 //! * The "is from the future" error message formats the remaining time with the
 //!   same Go duration layout, but the exact seconds depend on the clock.
 
+mod downloader;
 mod index;
 mod version;
 
+pub use downloader::{
+    copy_and_check_sha256_sum, decompress, default_user_agent, Downloader, HttpClient,
+    HttpsClient,
+};
 pub use index::{
     check_sha256_sum, check_sha256_sum_file, go_platform, validate_artifact_filename, Artifact,
     Index, IndexVerifier, MAX_UNPACK_SIZE,
@@ -78,6 +83,8 @@ pub enum Error {
     ChecksumMismatch,
     #[error("open file: {0}")]
     OpenFile(#[source] std::io::Error),
+    #[error("{0}")]
+    Process(String),
 }
 
 impl Error {

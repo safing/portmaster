@@ -6,13 +6,16 @@ description = "Update indexes, artifacts and their verification for the Portmast
 license.workspace = true
 
 [dependencies]
+flate2.workspace = true
 hex.workspace = true
 pm-dsd = { path = "../pm-dsd" }
 serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.10.9"
 thiserror.workspace = true
+ureq = "3.5.2"
 tracing.workspace = true
+zip.workspace = true
 
 [lints]
 workspace = true
