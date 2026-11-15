@@ -21,7 +21,7 @@ unsafe_code = "forbid"
 
 [workspace.dependencies]
 anyhow = "1.0.104"
-axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
+axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio", "ws"] }
 async-trait = "0.1.92"
 ciborium = "0.2.2"
 flate2 = "1.1.11"

@@ -11,15 +11,19 @@ http.workspace = true
 pm-config = { path = "../pm-config" }
 pm-database = { path = "../pm-database" }
 pm-dsd = { path = "../pm-dsd" }
+pm-query = { path = "../pm-query" }
 pm-record = { path = "../pm-record" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+tokio-util.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
+futures-util = "0.3.34"
 hex.workspace = true
+tokio-tungstenite = "0.30.0"
 
 [lints]
 workspace = true

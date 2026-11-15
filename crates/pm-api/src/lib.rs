@@ -15,6 +15,7 @@
 //! * Error and content-type behavior of the Go router (security headers, CORS
 //!   origin checks, permission replies) is kept.
 
+pub mod database_ws;
 mod endpoint;
 mod permission;
 
@@ -26,6 +27,7 @@ use http::{HeaderMap, HeaderValue};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
+pub use database_ws::DatabaseApi;
 pub use endpoint::{
     public_endpoint, ActionFunc, DataFunc, Endpoint, EndpointFunc, HandlerFunc, Parameter,
     RecordFunc, StructFunc, MIME_TYPE_JSON, MIME_TYPE_TEXT,
@@ -249,6 +251,25 @@ impl Response {
     pub fn body_string(&self) -> String {
         String::from_utf8_lossy(&self.body).into_owned()
     }
+
+    /// Converts the response into an axum response.
+    pub fn into_axum(self) -> axum::response::Response {
+        let mut builder = http::Response::builder().status(
+            http::StatusCode::from_u16(self.status)
+                .unwrap_or(http::StatusCode::INTERNAL_SERVER_ERROR),
+        );
+        for (name, value) in self.headers.iter() {
+            builder = builder.header(name, value);
+        }
+        builder
+            .body(axum::body::Body::from(self.body))
+            .unwrap_or_else(|_| {
+                http::Response::builder()
+                    .status(http::StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(axum::body::Body::empty())
+                    .expect("static response")
+            })
+    }
 }
 
 /// The API server state: endpoint registry, keys and authenticator.
@@ -256,6 +277,7 @@ pub struct Api {
     endpoints: RwLock<BTreeMap<String, Arc<Endpoint>>>,
     api_keys: RwLock<HashMap<String, AuthToken>>,
     authenticator: RwLock<Option<Arc<dyn Authenticator>>>,
+    databases: RwLock<Option<Arc<pm_database::Databases>>>,
     dev_mode: AtomicBool,
     listen_address: String,
 }
@@ -267,6 +289,7 @@ impl Api {
             endpoints: RwLock::new(BTreeMap::new()),
             api_keys: RwLock::new(HashMap::new()),
             authenticator: RwLock::new(None),
+            databases: RwLock::new(None),
             dev_mode: AtomicBool::new(false),
             listen_address: listen_address.to_string(),
         });
@@ -320,6 +343,16 @@ impl Api {
     /// Sets the authenticator used for requests without API key.
     pub fn set_authenticator(&self, authenticator: Arc<dyn Authenticator>) {
         *self.authenticator.write().expect("lock poisoned") = Some(authenticator);
+    }
+
+    /// Provides the database system served by the WebSocket API.
+    pub fn set_databases(&self, databases: Arc<pm_database::Databases>) {
+        *self.databases.write().expect("lock poisoned") = Some(databases);
+    }
+
+    /// Returns the database system, if one was set.
+    pub fn databases(&self) -> Option<Arc<pm_database::Databases>> {
+        self.databases.read().expect("lock poisoned").clone()
     }
 
     /// Replaces the API keys with the given configuration values.
@@ -420,7 +453,17 @@ impl Api {
         request: &mut Request,
         endpoint: &Endpoint,
     ) -> std::result::Result<AuthToken, Response> {
-        let mut required = endpoint.required_permission(request.read_method);
+        self.authorize_required(request, endpoint.required_permission(request.read_method))
+    }
+
+    /// Checks a fixed permission requirement, like Go `WrapInAuthHandler`.
+    #[allow(clippy::result_large_err)]
+    pub fn authorize_required(
+        &self,
+        request: &mut Request,
+        required: Permission,
+    ) -> std::result::Result<AuthToken, Response> {
+        let mut required = required;
         match required {
             NOT_FOUND => return Err(Response::error(404, "Not found.")),
             NOT_SUPPORTED => return Err(Response::error(405, "Method not allowed.")),
@@ -884,6 +927,10 @@ impl Api {
 /// Serves the API with axum until the future is cancelled.
 pub async fn serve(api: Arc<Api>, listener: tokio::net::TcpListener) -> std::io::Result<()> {
     let app = axum::Router::new()
+        .route(
+            database_ws::DB_API_PATH,
+            axum::routing::get(database_ws::database_ws_upgrade),
+        )
         .fallback(axum::routing::any(handle_axum))
         .with_state(api);
     axum::serve(listener, app).await
