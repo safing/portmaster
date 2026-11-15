@@ -3,6 +3,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -12,6 +13,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+
+	_ "modernc.org/sqlite"
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/database/query"
@@ -28,11 +31,20 @@ type fixtureFile struct {
 	Records map[string]fixtureRecord `json:"records,omitempty"`
 }
 
-var outDir string
+var (
+	outDir    string
+	verifyDir string
+)
 
 func main() {
 	flag.StringVar(&outDir, "out", "crates/fixtures/m0", "output directory")
+	flag.StringVar(&verifyDir, "verify", "", "verify a Rust-written sqlite location and print its contents as JSON")
 	flag.Parse()
+
+	if verifyDir != "" {
+		verifyDatabase(verifyDir)
+		return
+	}
 
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		fail(err)
@@ -509,4 +521,100 @@ func genSQLite() {
 	_ = os.Remove(filepath.Join(dir, "db.sqlite-wal"))
 	_ = os.Remove(filepath.Join(dir, "db.sqlite-shm"))
 	write("sqlite_records.json", cases)
+}
+
+// verifyDatabase opens a database location written by the Rust implementation
+// with the Go storage, then prints the query result keys, the raw table rows and
+// the migration bookkeeping as JSON.
+func verifyDatabase(location string) {
+	db, err := sqlite.NewSQLite("core", location)
+	if err != nil {
+		fail(err)
+	}
+
+	// Reading through the Go storage proves that records decode and match.
+	it, err := db.Query(query.New("core:"), true, true)
+	if err != nil {
+		fail(err)
+	}
+	queryKeys := []string{}
+	for r := range it.Next {
+		queryKeys = append(queryKeys, r.Key())
+	}
+	if err := it.Err(); err != nil {
+		fail(err)
+	}
+	if err := db.Shutdown(); err != nil {
+		fail(err)
+	}
+
+	// Dump the raw table for byte-level comparison.
+	raw, err := sql.Open("sqlite", filepath.Join(location, "db.sqlite"))
+	if err != nil {
+		fail(err)
+	}
+	defer func() {
+		if err := raw.Close(); err != nil {
+			fail(err)
+		}
+	}()
+
+	type rawRecord struct {
+		Key        string `json:"key"`
+		Format     int64  `json:"format"`
+		Value      string `json:"value"`
+		Created    int64  `json:"created"`
+		Modified   int64  `json:"modified"`
+		Expires    int64  `json:"expires"`
+		Deleted    int64  `json:"deleted"`
+		Secret     bool   `json:"secret"`
+		Crownjewel bool   `json:"crownjewel"`
+	}
+	rows, err := raw.Query(`SELECT key, COALESCE(format, -1), COALESCE(hex(value), ''),
+		created, modified, expires, deleted, secret, crownjewel FROM records ORDER BY key`)
+	if err != nil {
+		fail(err)
+	}
+	records := []rawRecord{}
+	for rows.Next() {
+		var r rawRecord
+		if err := rows.Scan(&r.Key, &r.Format, &r.Value, &r.Created, &r.Modified,
+			&r.Expires, &r.Deleted, &r.Secret, &r.Crownjewel); err != nil {
+			fail(err)
+		}
+		records = append(records, r)
+	}
+	if err := rows.Err(); err != nil {
+		fail(err)
+	}
+
+	type migration struct {
+		ID        string `json:"id"`
+		AppliedAt string `json:"applied_at"`
+	}
+	rows, err = raw.Query("SELECT id, CAST(applied_at AS TEXT) FROM gorp_migrations ORDER BY id")
+	if err != nil {
+		fail(err)
+	}
+	migrations := []migration{}
+	for rows.Next() {
+		var m migration
+		if err := rows.Scan(&m.ID, &m.AppliedAt); err != nil {
+			fail(err)
+		}
+		migrations = append(migrations, m)
+	}
+	if err := rows.Err(); err != nil {
+		fail(err)
+	}
+
+	out, err := json.MarshalIndent(map[string]any{
+		"query_keys": queryKeys,
+		"records":    records,
+		"migrations": migrations,
+	}, "", "  ")
+	if err != nil {
+		fail(err)
+	}
+	fmt.Println(string(out))
 }
