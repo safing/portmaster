@@ -8,6 +8,7 @@ members = [
     "crates/pm-mgr",
     "crates/pm-database",
     "crates/pm-config",
+    "crates/pm-api",
 ]
 
 [workspace.package]
@@ -20,10 +21,12 @@ unsafe_code = "forbid"
 
 [workspace.dependencies]
 anyhow = "1.0.104"
+axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
 async-trait = "0.1.92"
 ciborium = "0.2.2"
 flate2 = "1.1.11"
 hex = "0.4.3"
+http = "1.5.0"
 regex = "1.13.1"
 rmp-serde = "1.3.1"
 rusqlite = { version = "0.43.0", features = ["bundled"] }
