@@ -205,7 +205,7 @@ impl ProcessCache {
             return process;
         }
 
-        let mut process = Process::new(key);
+        let mut process = Process::empty(&key);
         process.pid = pid;
         process.user_id = pid;
         process.user_name = user_name.to_string();
@@ -219,7 +219,7 @@ impl ProcessCache {
 
     /// Loads and stores a process from its proc details.
     fn load(self: &Arc<Self>, info: ProcInfo) -> Result<Arc<Process>> {
-        let mut process = Process::new(process_key(info.pid, info.created_at));
+        let mut process = Process::empty(&process_key(info.pid, info.created_at));
         process.pid = info.pid;
         process.created_at = info.created_at;
         process.first_seen = now();

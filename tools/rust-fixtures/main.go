@@ -26,6 +26,8 @@ import (
 	"github.com/safing/portmaster/base/database/storage/sqlite"
 	"github.com/safing/portmaster/service/network/proc"
 	"github.com/safing/portmaster/service/network/socket"
+	"github.com/safing/portmaster/service/process"
+	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/structures/dsd"
 	"github.com/safing/structures/varint"
 )
@@ -65,6 +67,7 @@ func main() {
 	genGoStrconv()
 	genConfig()
 	genNetState()
+	genProcess()
 	genSQLite()
 }
 
@@ -1060,4 +1063,50 @@ func encodeNetStateIP(ip string) string {
 		decoded[i], decoded[i+1], decoded[i+2], decoded[i+3] = decoded[i+3], decoded[i+2], decoded[i+1], decoded[i]
 	}
 	return hex.EncodeToString(decoded)
+}
+
+// genProcess records the JSON form of a process, so the Rust port keeps the
+// same field names and order.
+func genProcess() {
+	proc := &process.Process{
+		Name:            "test-process",
+		UserID:          1000,
+		UserName:        "testuser",
+		UserHome:        "/home/test",
+		Pid:             4242,
+		CreatedAt:       1_700_000_000_000,
+		ParentPid:       1000,
+		ParentCreatedAt: 1_600_000_000_000,
+		LeaderPid:       1000,
+		Path:            "/tmp/.mount_App/AppRun",
+		ExecName:        "AppRun",
+		Cwd:             "/home/test",
+		CmdLine:         "AppRun --flag",
+		FirstArg:        "AppRun",
+		Env: map[string]string{
+			"HOME": "/home/test",
+			"PATH": "/usr/bin",
+		},
+		Tags: []profile.Tag{
+			{Key: "app-image-path", Value: "/tmp/.mount_App/AppRun"},
+			{Key: "custom", Value: "value"},
+		},
+		MatchingPath:     "/tmp/.mount_App/AppRun",
+		PrimaryProfileID: "_unidentified",
+		FirstSeen:        1_700_000_100,
+		LastSeen:         1_700_000_200,
+		Error:            "test error",
+		ExecHashes: map[string]string{
+			"sha256": "abc123",
+		},
+	}
+
+	dumped, err := dsd.Dump(proc, dsd.JSON)
+	if err != nil {
+		fail(err)
+	}
+
+	writeObject("process.json", map[string]any{
+		"process": string(dumped[1:]),
+	})
 }

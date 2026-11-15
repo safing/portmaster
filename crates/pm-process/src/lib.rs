@@ -150,7 +150,8 @@ impl Process {
         format!("tree/{}", self.process_key)
     }
 
-    pub(crate) fn new(process_key: String) -> Process {
+    /// Creates a process with empty fields and the given key.
+    pub fn empty(process_key: &str) -> Process {
         Process {
             name: String::new(),
             user_id: UNDEFINED_PROCESS_ID,
@@ -174,7 +175,7 @@ impl Process {
             last_seen: 0,
             error: String::new(),
             exec_hashes: std::collections::BTreeMap::new(),
-            process_key,
+            process_key: process_key.to_string(),
         }
     }
 }

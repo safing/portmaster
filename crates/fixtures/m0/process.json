@@ -1,0 +1,3 @@
+{
+  "process": "{\"Name\":\"test-process\",\"UserID\":1000,\"UserName\":\"testuser\",\"UserHome\":\"/home/test\",\"Pid\":4242,\"CreatedAt\":1700000000000,\"ParentPid\":1000,\"ParentCreatedAt\":1600000000000,\"LeaderPid\":1000,\"Path\":\"/tmp/.mount_App/AppRun\",\"ExecName\":\"AppRun\",\"Cwd\":\"/home/test\",\"CmdLine\":\"AppRun --flag\",\"FirstArg\":\"AppRun\",\"Env\":{\"HOME\":\"/home/test\",\"PATH\":\"/usr/bin\"},\"Tags\":[{\"Key\":\"app-image-path\",\"Value\":\"/tmp/.mount_App/AppRun\"},{\"Key\":\"custom\",\"Value\":\"value\"}],\"MatchingPath\":\"/tmp/.mount_App/AppRun\",\"PrimaryProfileID\":\"_unidentified\",\"FirstSeen\":1700000100,\"LastSeen\":1700000200,\"Error\":\"test error\",\"ExecHashes\":{\"sha256\":\"abc123\"}}"
+}
