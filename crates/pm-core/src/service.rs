@@ -31,6 +31,8 @@ pub struct Service {
     pub status: Arc<pm_status::Status>,
     /// Filter list intelligence on top of the cache database.
     pub filter_lists: Arc<pm_intel::FilterLists>,
+    /// GeoIP databases; a future updater loads them.
+    pub geoip: Arc<pm_geoip::GeoIp>,
     listener: Mutex<Option<TcpListener>>,
     local_addr: std::net::SocketAddr,
     data_dir: PathBuf,
@@ -82,6 +84,9 @@ impl Service {
         ));
         status.register(runtime.registry())?;
 
+        // GeoIP databases start empty; the updater will load them.
+        let geoip = Arc::new(pm_geoip::GeoIp::new());
+
         // Filter lists live in the cache database.
         let filter_lists = Arc::new(pm_intel::FilterLists::new(pm_intel::cache_interface(
             &databases,
@@ -129,6 +134,7 @@ impl Service {
             notifications,
             status,
             filter_lists,
+            geoip,
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
             data_dir,

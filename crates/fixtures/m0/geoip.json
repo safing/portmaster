@@ -1,0 +1,4147 @@
+{
+  "as_org_unknown": [
+    {
+      "value": "",
+      "expected": true
+    },
+    {
+      "value": "not routed",
+      "expected": true
+    },
+    {
+      "value": "Not Routed",
+      "expected": true
+    },
+    {
+      "value": "unknown",
+      "expected": true
+    },
+    {
+      "value": "UNKNOWN",
+      "expected": true
+    },
+    {
+      "value": "nil",
+      "expected": true
+    },
+    {
+      "value": "null",
+      "expected": true
+    },
+    {
+      "value": "undef",
+      "expected": true
+    },
+    {
+      "value": "undefined",
+      "expected": true
+    },
+    {
+      "value": "Cloudflare, Inc.",
+      "expected": false
+    },
+    {
+      "value": "Example Network",
+      "expected": false
+    }
+  ],
+  "countries": {
+    "AD": {
+      "Code": "AD",
+      "Name": "Andorra",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 42,
+        "Longitude": 1
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "AE": {
+      "Code": "AE",
+      "Name": "United Arab Emirates",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 23,
+        "Longitude": 53
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "AF": {
+      "Code": "AF",
+      "Name": "Afghanistan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 33,
+        "Longitude": 67
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-S",
+        "Name": "Asia"
+      }
+    },
+    "AG": {
+      "Code": "AG",
+      "Name": "Antigua and Barbuda",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 17,
+        "Longitude": -61
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "AI": {
+      "Code": "AI",
+      "Name": "Anguilla",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 18,
+        "Longitude": -63
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "AL": {
+      "Code": "AL",
+      "Name": "Albania",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 41,
+        "Longitude": 20
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "AM": {
+      "Code": "AM",
+      "Name": "Armenia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 40,
+        "Longitude": 45
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "AO": {
+      "Code": "AO",
+      "Name": "Angola",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -11,
+        "Longitude": 17
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-C",
+        "Name": "Africa"
+      }
+    },
+    "AQ": {
+      "Code": "AQ",
+      "Name": "Antarctica",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -75,
+        "Longitude": 0
+      },
+      "Continent": {
+        "Code": "AN",
+        "Region": "AN",
+        "Name": "Antarctica"
+      }
+    },
+    "AR": {
+      "Code": "AR",
+      "Name": "Argentina",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -38,
+        "Longitude": -63
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "AS": {
+      "Code": "AS",
+      "Name": "American Samoa",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -14,
+        "Longitude": -170
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-E",
+        "Name": "Oceania"
+      }
+    },
+    "AT": {
+      "Code": "AT",
+      "Name": "Austria",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 47,
+        "Longitude": 14
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-W",
+        "Name": "Europe"
+      }
+    },
+    "AU": {
+      "Code": "AU",
+      "Name": "Australia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -25,
+        "Longitude": 133
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-S",
+        "Name": "Oceania"
+      }
+    },
+    "AW": {
+      "Code": "AW",
+      "Name": "Aruba",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 12,
+        "Longitude": -69
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "AZ": {
+      "Code": "AZ",
+      "Name": "Azerbaijan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 40,
+        "Longitude": 47
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "BA": {
+      "Code": "BA",
+      "Name": "Bosnia and Herzegovina",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 43,
+        "Longitude": 17
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "BB": {
+      "Code": "BB",
+      "Name": "Barbados",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 13,
+        "Longitude": -59
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "BD": {
+      "Code": "BD",
+      "Name": "Bangladesh",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 23,
+        "Longitude": 90
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-S",
+        "Name": "Asia"
+      }
+    },
+    "BE": {
+      "Code": "BE",
+      "Name": "Belgium",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 50,
+        "Longitude": 4
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-W",
+        "Name": "Europe"
+      }
+    },
+    "BF": {
+      "Code": "BF",
+      "Name": "Burkina Faso",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 12,
+        "Longitude": -1
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "BG": {
+      "Code": "BG",
+      "Name": "Bulgaria",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 42,
+        "Longitude": 25
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-E",
+        "Name": "Europe"
+      }
+    },
+    "BH": {
+      "Code": "BH",
+      "Name": "Bahrain",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 25,
+        "Longitude": 50
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "BI": {
+      "Code": "BI",
+      "Name": "Burundi",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -3,
+        "Longitude": 29
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "BJ": {
+      "Code": "BJ",
+      "Name": "Benin",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 9,
+        "Longitude": 2
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "BL": {
+      "Code": "BL",
+      "Name": "Saint Barthélemy",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 17,
+        "Longitude": -62
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "BM": {
+      "Code": "BM",
+      "Name": "Bermuda",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 32,
+        "Longitude": -64
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-N",
+        "Name": "North America"
+      }
+    },
+    "BN": {
+      "Code": "BN",
+      "Name": "Brunei Darussalam",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 4,
+        "Longitude": 114
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-SE",
+        "Name": "Asia"
+      }
+    },
+    "BO": {
+      "Code": "BO",
+      "Name": "Bolivia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -16,
+        "Longitude": -63
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "BR": {
+      "Code": "BR",
+      "Name": "Brazil",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -14,
+        "Longitude": -51
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "BS": {
+      "Code": "BS",
+      "Name": "Bahamas",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 25,
+        "Longitude": -77
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "BT": {
+      "Code": "BT",
+      "Name": "Bhutan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 27,
+        "Longitude": 90
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-S",
+        "Name": "Asia"
+      }
+    },
+    "BV": {
+      "Code": "BV",
+      "Name": "Bouvet Island",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -54,
+        "Longitude": 3
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "BW": {
+      "Code": "BW",
+      "Name": "Botswana",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -22,
+        "Longitude": 24
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-S",
+        "Name": "Africa"
+      }
+    },
+    "BY": {
+      "Code": "BY",
+      "Name": "Belarus",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 53,
+        "Longitude": 27
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-E",
+        "Name": "Europe"
+      }
+    },
+    "BZ": {
+      "Code": "BZ",
+      "Name": "Belize",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 17,
+        "Longitude": -88
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-S",
+        "Name": "North America"
+      }
+    },
+    "CA": {
+      "Code": "CA",
+      "Name": "Canada",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 56,
+        "Longitude": -106
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-N",
+        "Name": "North America"
+      }
+    },
+    "CC": {
+      "Code": "CC",
+      "Name": "Cocos (Keeling) Islands",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -12,
+        "Longitude": 96
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-S",
+        "Name": "Oceania"
+      }
+    },
+    "CD": {
+      "Code": "CD",
+      "Name": "DR Congo",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -4,
+        "Longitude": 21
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-C",
+        "Name": "Africa"
+      }
+    },
+    "CF": {
+      "Code": "CF",
+      "Name": "Central African Republic",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 6,
+        "Longitude": 20
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-C",
+        "Name": "Africa"
+      }
+    },
+    "CG": {
+      "Code": "CG",
+      "Name": "Congo",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 0,
+        "Longitude": 15
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-C",
+        "Name": "Africa"
+      }
+    },
+    "CH": {
+      "Code": "CH",
+      "Name": "Switzerland",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 46,
+        "Longitude": 8
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-W",
+        "Name": "Europe"
+      }
+    },
+    "CI": {
+      "Code": "CI",
+      "Name": "Côte d'Ivoire",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 7,
+        "Longitude": -5
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "CK": {
+      "Code": "CK",
+      "Name": "Cook Islands",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -21,
+        "Longitude": -159
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-E",
+        "Name": "Oceania"
+      }
+    },
+    "CL": {
+      "Code": "CL",
+      "Name": "Chile",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -35,
+        "Longitude": -71
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "CM": {
+      "Code": "CM",
+      "Name": "Cameroon",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 7,
+        "Longitude": 12
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-C",
+        "Name": "Africa"
+      }
+    },
+    "CN": {
+      "Code": "CN",
+      "Name": "China",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 35,
+        "Longitude": 104
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-E",
+        "Name": "Asia"
+      }
+    },
+    "CO": {
+      "Code": "CO",
+      "Name": "Colombia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 4,
+        "Longitude": -74
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "CR": {
+      "Code": "CR",
+      "Name": "Costa Rica",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 9,
+        "Longitude": -83
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-S",
+        "Name": "North America"
+      }
+    },
+    "CU": {
+      "Code": "CU",
+      "Name": "Cuba",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 21,
+        "Longitude": -77
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "CV": {
+      "Code": "CV",
+      "Name": "Cabo Verde",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 16,
+        "Longitude": -24
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "CW": {
+      "Code": "CW",
+      "Name": "Curaçao",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 12,
+        "Longitude": -68
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "CX": {
+      "Code": "CX",
+      "Name": "Christmas Island",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -10,
+        "Longitude": 105
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-S",
+        "Name": "Oceania"
+      }
+    },
+    "CY": {
+      "Code": "CY",
+      "Name": "Cyprus",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 35,
+        "Longitude": 33
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "CZ": {
+      "Code": "CZ",
+      "Name": "Czechia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 49,
+        "Longitude": 15
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-E",
+        "Name": "Europe"
+      }
+    },
+    "DE": {
+      "Code": "DE",
+      "Name": "Germany",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 51,
+        "Longitude": 10
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-W",
+        "Name": "Europe"
+      }
+    },
+    "DJ": {
+      "Code": "DJ",
+      "Name": "Djibouti",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 11,
+        "Longitude": 42
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "DK": {
+      "Code": "DK",
+      "Name": "Denmark",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 56,
+        "Longitude": 9
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "DM": {
+      "Code": "DM",
+      "Name": "Dominica",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 15,
+        "Longitude": -61
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "DO": {
+      "Code": "DO",
+      "Name": "Dominican Republic",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 18,
+        "Longitude": -70
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "DZ": {
+      "Code": "DZ",
+      "Name": "Algeria",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 28,
+        "Longitude": 1
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-N",
+        "Name": "Africa"
+      }
+    },
+    "EC": {
+      "Code": "EC",
+      "Name": "Ecuador",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -1,
+        "Longitude": -78
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "EE": {
+      "Code": "EE",
+      "Name": "Estonia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 58,
+        "Longitude": 25
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "EG": {
+      "Code": "EG",
+      "Name": "Egypt",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 26,
+        "Longitude": 30
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-N",
+        "Name": "Africa"
+      }
+    },
+    "EH": {
+      "Code": "EH",
+      "Name": "Western Sahara",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 24,
+        "Longitude": -12
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-N",
+        "Name": "Africa"
+      }
+    },
+    "ER": {
+      "Code": "ER",
+      "Name": "Eritrea",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 15,
+        "Longitude": 39
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "ES": {
+      "Code": "ES",
+      "Name": "Spain",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 40,
+        "Longitude": -3
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "ET": {
+      "Code": "ET",
+      "Name": "Ethiopia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 9,
+        "Longitude": 40
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "FI": {
+      "Code": "FI",
+      "Name": "Finland",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 61,
+        "Longitude": 25
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "FJ": {
+      "Code": "FJ",
+      "Name": "Fiji",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -16,
+        "Longitude": 179
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-C",
+        "Name": "Oceania"
+      }
+    },
+    "FK": {
+      "Code": "FK",
+      "Name": "Falkland Islands (Malvinas)",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -51,
+        "Longitude": -59
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "FM": {
+      "Code": "FM",
+      "Name": "Micronesia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 7,
+        "Longitude": 150
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-N",
+        "Name": "Oceania"
+      }
+    },
+    "FO": {
+      "Code": "FO",
+      "Name": "Faroe Islands",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 61,
+        "Longitude": -6
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "FR": {
+      "Code": "FR",
+      "Name": "France",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 46,
+        "Longitude": 2
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-W",
+        "Name": "Europe"
+      }
+    },
+    "GA": {
+      "Code": "GA",
+      "Name": "Gabon",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 0,
+        "Longitude": 11
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-C",
+        "Name": "Africa"
+      }
+    },
+    "GB": {
+      "Code": "GB",
+      "Name": "United Kingdom",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 55,
+        "Longitude": -3
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "GD": {
+      "Code": "GD",
+      "Name": "Grenada",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 12,
+        "Longitude": -61
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "GE": {
+      "Code": "GE",
+      "Name": "Georgia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 42,
+        "Longitude": 43
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "GF": {
+      "Code": "GF",
+      "Name": "French Guiana",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 3,
+        "Longitude": -53
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "GG": {
+      "Code": "GG",
+      "Name": "Guernsey",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 49,
+        "Longitude": -2
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "GH": {
+      "Code": "GH",
+      "Name": "Ghana",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 7,
+        "Longitude": -1
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "GI": {
+      "Code": "GI",
+      "Name": "Gibraltar",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 36,
+        "Longitude": -5
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "GL": {
+      "Code": "GL",
+      "Name": "Greenland",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 71,
+        "Longitude": -42
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-N",
+        "Name": "North America"
+      }
+    },
+    "GM": {
+      "Code": "GM",
+      "Name": "Gambia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 13,
+        "Longitude": -15
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "GN": {
+      "Code": "GN",
+      "Name": "Guinea",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 9,
+        "Longitude": -9
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "GP": {
+      "Code": "GP",
+      "Name": "Guadeloupe",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 16,
+        "Longitude": -62
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "GQ": {
+      "Code": "GQ",
+      "Name": "Equatorial Guinea",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 1,
+        "Longitude": 10
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-C",
+        "Name": "Africa"
+      }
+    },
+    "GR": {
+      "Code": "GR",
+      "Name": "Greece",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 39,
+        "Longitude": 21
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "GS": {
+      "Code": "GS",
+      "Name": "South Georgia and the South Sandwich Islands",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -54,
+        "Longitude": -36
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "GT": {
+      "Code": "GT",
+      "Name": "Guatemala",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 15,
+        "Longitude": -90
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-S",
+        "Name": "North America"
+      }
+    },
+    "GU": {
+      "Code": "GU",
+      "Name": "Guam",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 13,
+        "Longitude": 144
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-N",
+        "Name": "Oceania"
+      }
+    },
+    "GW": {
+      "Code": "GW",
+      "Name": "Guinea-Bissau",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 11,
+        "Longitude": -15
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "GY": {
+      "Code": "GY",
+      "Name": "Guyana",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 4,
+        "Longitude": -58
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "HK": {
+      "Code": "HK",
+      "Name": "Hong Kong",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 22,
+        "Longitude": 114
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-E",
+        "Name": "Asia"
+      }
+    },
+    "HM": {
+      "Code": "HM",
+      "Name": "Heard Island and McDonald Islands",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -53,
+        "Longitude": 73
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-S",
+        "Name": "Oceania"
+      }
+    },
+    "HN": {
+      "Code": "HN",
+      "Name": "Honduras",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 15,
+        "Longitude": -86
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-S",
+        "Name": "North America"
+      }
+    },
+    "HR": {
+      "Code": "HR",
+      "Name": "Croatia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 45,
+        "Longitude": 15
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "HT": {
+      "Code": "HT",
+      "Name": "Haiti",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 18,
+        "Longitude": -72
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "HU": {
+      "Code": "HU",
+      "Name": "Hungary",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 47,
+        "Longitude": 19
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-E",
+        "Name": "Europe"
+      }
+    },
+    "ID": {
+      "Code": "ID",
+      "Name": "Indonesia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 0,
+        "Longitude": 113
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-SE",
+        "Name": "Asia"
+      }
+    },
+    "IE": {
+      "Code": "IE",
+      "Name": "Ireland",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 53,
+        "Longitude": -8
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "IL": {
+      "Code": "IL",
+      "Name": "Israel",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 31,
+        "Longitude": 34
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "IM": {
+      "Code": "IM",
+      "Name": "Isle of Man",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 54,
+        "Longitude": -4
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "IN": {
+      "Code": "IN",
+      "Name": "India",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 20,
+        "Longitude": 78
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-S",
+        "Name": "Asia"
+      }
+    },
+    "IO": {
+      "Code": "IO",
+      "Name": "British Indian Ocean Territory",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -6,
+        "Longitude": 71
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "IQ": {
+      "Code": "IQ",
+      "Name": "Iraq",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 33,
+        "Longitude": 43
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "IR": {
+      "Code": "IR",
+      "Name": "Iran",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 32,
+        "Longitude": 53
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-S",
+        "Name": "Asia"
+      }
+    },
+    "IS": {
+      "Code": "IS",
+      "Name": "Iceland",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 64,
+        "Longitude": -19
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "IT": {
+      "Code": "IT",
+      "Name": "Italy",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 41,
+        "Longitude": 12
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "JE": {
+      "Code": "JE",
+      "Name": "Jersey",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 49,
+        "Longitude": -2
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "JM": {
+      "Code": "JM",
+      "Name": "Jamaica",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 18,
+        "Longitude": -77
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "JO": {
+      "Code": "JO",
+      "Name": "Jordan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 30,
+        "Longitude": 36
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "JP": {
+      "Code": "JP",
+      "Name": "Japan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 36,
+        "Longitude": 138
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-E",
+        "Name": "Asia"
+      }
+    },
+    "KE": {
+      "Code": "KE",
+      "Name": "Kenya",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 0,
+        "Longitude": 37
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "KG": {
+      "Code": "KG",
+      "Name": "Kyrgyzstan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 41,
+        "Longitude": 74
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-C",
+        "Name": "Asia"
+      }
+    },
+    "KH": {
+      "Code": "KH",
+      "Name": "Cambodia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 12,
+        "Longitude": 104
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-SE",
+        "Name": "Asia"
+      }
+    },
+    "KI": {
+      "Code": "KI",
+      "Name": "Kiribati",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -3,
+        "Longitude": -168
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-N",
+        "Name": "Oceania"
+      }
+    },
+    "KM": {
+      "Code": "KM",
+      "Name": "Comoros",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -11,
+        "Longitude": 43
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "KN": {
+      "Code": "KN",
+      "Name": "Saint Kitts and Nevis",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 17,
+        "Longitude": -62
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "KP": {
+      "Code": "KP",
+      "Name": "North Korea (DPRK)",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 40,
+        "Longitude": 127
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-E",
+        "Name": "Asia"
+      }
+    },
+    "KR": {
+      "Code": "KR",
+      "Name": "South Korea",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 35,
+        "Longitude": 127
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-E",
+        "Name": "Asia"
+      }
+    },
+    "KW": {
+      "Code": "KW",
+      "Name": "Kuwait",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 29,
+        "Longitude": 47
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "KY": {
+      "Code": "KY",
+      "Name": "Cayman Islands",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 19,
+        "Longitude": -80
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "KZ": {
+      "Code": "KZ",
+      "Name": "Kazakhstan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 48,
+        "Longitude": 66
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-C",
+        "Name": "Asia"
+      }
+    },
+    "LA": {
+      "Code": "LA",
+      "Name": "Lao",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 19,
+        "Longitude": 102
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-SE",
+        "Name": "Asia"
+      }
+    },
+    "LB": {
+      "Code": "LB",
+      "Name": "Lebanon",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 33,
+        "Longitude": 35
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "LC": {
+      "Code": "LC",
+      "Name": "Saint Lucia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 13,
+        "Longitude": -60
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "LI": {
+      "Code": "LI",
+      "Name": "Liechtenstein",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 47,
+        "Longitude": 9
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-W",
+        "Name": "Europe"
+      }
+    },
+    "LK": {
+      "Code": "LK",
+      "Name": "Sri Lanka",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 7,
+        "Longitude": 80
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-S",
+        "Name": "Asia"
+      }
+    },
+    "LR": {
+      "Code": "LR",
+      "Name": "Liberia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 6,
+        "Longitude": -9
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "LS": {
+      "Code": "LS",
+      "Name": "Lesotho",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -29,
+        "Longitude": 28
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-S",
+        "Name": "Africa"
+      }
+    },
+    "LT": {
+      "Code": "LT",
+      "Name": "Lithuania",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 55,
+        "Longitude": 23
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "LU": {
+      "Code": "LU",
+      "Name": "Luxembourg",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 49,
+        "Longitude": 6
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-W",
+        "Name": "Europe"
+      }
+    },
+    "LV": {
+      "Code": "LV",
+      "Name": "Latvia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 56,
+        "Longitude": 24
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "LY": {
+      "Code": "LY",
+      "Name": "Libya",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 26,
+        "Longitude": 17
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-N",
+        "Name": "Africa"
+      }
+    },
+    "MA": {
+      "Code": "MA",
+      "Name": "Morocco",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 31,
+        "Longitude": -7
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-N",
+        "Name": "Africa"
+      }
+    },
+    "MC": {
+      "Code": "MC",
+      "Name": "Monaco",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 43,
+        "Longitude": 7
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-W",
+        "Name": "Europe"
+      }
+    },
+    "MD": {
+      "Code": "MD",
+      "Name": "Moldova",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 47,
+        "Longitude": 28
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-E",
+        "Name": "Europe"
+      }
+    },
+    "ME": {
+      "Code": "ME",
+      "Name": "Montenegro",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 42,
+        "Longitude": 19
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "MF": {
+      "Code": "MF",
+      "Name": "Saint Martin",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 18,
+        "Longitude": -63
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "MG": {
+      "Code": "MG",
+      "Name": "Madagascar",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -18,
+        "Longitude": 46
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "MH": {
+      "Code": "MH",
+      "Name": "Marshall Islands",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 7,
+        "Longitude": 171
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-N",
+        "Name": "Oceania"
+      }
+    },
+    "MK": {
+      "Code": "MK",
+      "Name": "North Macedonia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 41,
+        "Longitude": 21
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "ML": {
+      "Code": "ML",
+      "Name": "Mali",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 17,
+        "Longitude": -3
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "MM": {
+      "Code": "MM",
+      "Name": "Myanmar",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 21,
+        "Longitude": 95
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-SE",
+        "Name": "Asia"
+      }
+    },
+    "MN": {
+      "Code": "MN",
+      "Name": "Mongolia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 46,
+        "Longitude": 103
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-E",
+        "Name": "Asia"
+      }
+    },
+    "MO": {
+      "Code": "MO",
+      "Name": "Macao",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 22,
+        "Longitude": 113
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-E",
+        "Name": "Asia"
+      }
+    },
+    "MP": {
+      "Code": "MP",
+      "Name": "Northern Mariana Islands",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 17,
+        "Longitude": 145
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-N",
+        "Name": "Oceania"
+      }
+    },
+    "MQ": {
+      "Code": "MQ",
+      "Name": "Martinique",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 14,
+        "Longitude": -61
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "MR": {
+      "Code": "MR",
+      "Name": "Mauritania",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 21,
+        "Longitude": -10
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "MS": {
+      "Code": "MS",
+      "Name": "Montserrat",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 16,
+        "Longitude": -62
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "MT": {
+      "Code": "MT",
+      "Name": "Malta",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 35,
+        "Longitude": 14
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "MU": {
+      "Code": "MU",
+      "Name": "Mauritius",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -20,
+        "Longitude": 57
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "MV": {
+      "Code": "MV",
+      "Name": "Maldives",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 3,
+        "Longitude": 73
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-S",
+        "Name": "Asia"
+      }
+    },
+    "MW": {
+      "Code": "MW",
+      "Name": "Malawi",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -13,
+        "Longitude": 34
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "MX": {
+      "Code": "MX",
+      "Name": "Mexico",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 23,
+        "Longitude": -102
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-S",
+        "Name": "North America"
+      }
+    },
+    "MY": {
+      "Code": "MY",
+      "Name": "Malaysia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 4,
+        "Longitude": 101
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-SE",
+        "Name": "Asia"
+      }
+    },
+    "MZ": {
+      "Code": "MZ",
+      "Name": "Mozambique",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -18,
+        "Longitude": 35
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "NA": {
+      "Code": "NA",
+      "Name": "Namibia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -22,
+        "Longitude": 18
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-S",
+        "Name": "Africa"
+      }
+    },
+    "NC": {
+      "Code": "NC",
+      "Name": "New Caledonia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -20,
+        "Longitude": 165
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-C",
+        "Name": "Oceania"
+      }
+    },
+    "NE": {
+      "Code": "NE",
+      "Name": "Niger",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 17,
+        "Longitude": 8
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "NF": {
+      "Code": "NF",
+      "Name": "Norfolk Island",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -29,
+        "Longitude": 167
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-S",
+        "Name": "Oceania"
+      }
+    },
+    "NG": {
+      "Code": "NG",
+      "Name": "Nigeria",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 9,
+        "Longitude": 8
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "NI": {
+      "Code": "NI",
+      "Name": "Nicaragua",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 12,
+        "Longitude": -85
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-S",
+        "Name": "North America"
+      }
+    },
+    "NL": {
+      "Code": "NL",
+      "Name": "Netherlands",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 52,
+        "Longitude": 5
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-W",
+        "Name": "Europe"
+      }
+    },
+    "NO": {
+      "Code": "NO",
+      "Name": "Norway",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 60,
+        "Longitude": 8
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "NP": {
+      "Code": "NP",
+      "Name": "Nepal",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 28,
+        "Longitude": 84
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-S",
+        "Name": "Asia"
+      }
+    },
+    "NR": {
+      "Code": "NR",
+      "Name": "Nauru",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 0,
+        "Longitude": 166
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-N",
+        "Name": "Oceania"
+      }
+    },
+    "NU": {
+      "Code": "NU",
+      "Name": "Niue",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -19,
+        "Longitude": -169
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-E",
+        "Name": "Oceania"
+      }
+    },
+    "NZ": {
+      "Code": "NZ",
+      "Name": "New Zealand",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -40,
+        "Longitude": 174
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-S",
+        "Name": "Oceania"
+      }
+    },
+    "OM": {
+      "Code": "OM",
+      "Name": "Oman",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 21,
+        "Longitude": 55
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "PA": {
+      "Code": "PA",
+      "Name": "Panama",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 8,
+        "Longitude": -80
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-S",
+        "Name": "North America"
+      }
+    },
+    "PE": {
+      "Code": "PE",
+      "Name": "Peru",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -9,
+        "Longitude": -75
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "PF": {
+      "Code": "PF",
+      "Name": "French Polynesia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -17,
+        "Longitude": -149
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-E",
+        "Name": "Oceania"
+      }
+    },
+    "PG": {
+      "Code": "PG",
+      "Name": "Papua New Guinea",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -6,
+        "Longitude": 143
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-C",
+        "Name": "Oceania"
+      }
+    },
+    "PH": {
+      "Code": "PH",
+      "Name": "Philippines",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 12,
+        "Longitude": 121
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-SE",
+        "Name": "Asia"
+      }
+    },
+    "PK": {
+      "Code": "PK",
+      "Name": "Pakistan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 30,
+        "Longitude": 69
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-S",
+        "Name": "Asia"
+      }
+    },
+    "PL": {
+      "Code": "PL",
+      "Name": "Poland",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 51,
+        "Longitude": 19
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-E",
+        "Name": "Europe"
+      }
+    },
+    "PM": {
+      "Code": "PM",
+      "Name": "Saint Pierre and Miquelon",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 46,
+        "Longitude": -56
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-N",
+        "Name": "North America"
+      }
+    },
+    "PN": {
+      "Code": "PN",
+      "Name": "Pitcairn",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -24,
+        "Longitude": -127
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-E",
+        "Name": "Oceania"
+      }
+    },
+    "PR": {
+      "Code": "PR",
+      "Name": "Puerto Rico",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 18,
+        "Longitude": -66
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "PS": {
+      "Code": "PS",
+      "Name": "Palestine",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 31,
+        "Longitude": 35
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "PT": {
+      "Code": "PT",
+      "Name": "Portugal",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 39,
+        "Longitude": -8
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "PW": {
+      "Code": "PW",
+      "Name": "Palau",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 7,
+        "Longitude": 134
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-N",
+        "Name": "Oceania"
+      }
+    },
+    "PY": {
+      "Code": "PY",
+      "Name": "Paraguay",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -23,
+        "Longitude": -58
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "QA": {
+      "Code": "QA",
+      "Name": "Qatar",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 25,
+        "Longitude": 51
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "RE": {
+      "Code": "RE",
+      "Name": "Réunion",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -21,
+        "Longitude": 55
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "RO": {
+      "Code": "RO",
+      "Name": "Romania",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 45,
+        "Longitude": 24
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-E",
+        "Name": "Europe"
+      }
+    },
+    "RS": {
+      "Code": "RS",
+      "Name": "Serbia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 44,
+        "Longitude": 21
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "RU": {
+      "Code": "RU",
+      "Name": "Russian Federation",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 61,
+        "Longitude": 105
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-E",
+        "Name": "Europe"
+      }
+    },
+    "RW": {
+      "Code": "RW",
+      "Name": "Rwanda",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -1,
+        "Longitude": 29
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "SA": {
+      "Code": "SA",
+      "Name": "Saudi Arabia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 23,
+        "Longitude": 45
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "SB": {
+      "Code": "SB",
+      "Name": "Solomon Islands",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -9,
+        "Longitude": 160
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-C",
+        "Name": "Oceania"
+      }
+    },
+    "SC": {
+      "Code": "SC",
+      "Name": "Seychelles",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -4,
+        "Longitude": 55
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "SD": {
+      "Code": "SD",
+      "Name": "Sudan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 12,
+        "Longitude": 30
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-N",
+        "Name": "Africa"
+      }
+    },
+    "SE": {
+      "Code": "SE",
+      "Name": "Sweden",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 60,
+        "Longitude": 18
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "SG": {
+      "Code": "SG",
+      "Name": "Singapore",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 1,
+        "Longitude": 103
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-SE",
+        "Name": "Asia"
+      }
+    },
+    "SH": {
+      "Code": "SH",
+      "Name": "Saint Helena",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -24,
+        "Longitude": -10
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "SI": {
+      "Code": "SI",
+      "Name": "Slovenia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 46,
+        "Longitude": 14
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "SJ": {
+      "Code": "SJ",
+      "Name": "Svalbard and Jan Mayen",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 77,
+        "Longitude": 23
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-N",
+        "Name": "Europe"
+      }
+    },
+    "SK": {
+      "Code": "SK",
+      "Name": "Slovakia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 48,
+        "Longitude": 19
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-E",
+        "Name": "Europe"
+      }
+    },
+    "SL": {
+      "Code": "SL",
+      "Name": "Sierra Leone",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 8,
+        "Longitude": -11
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "SM": {
+      "Code": "SM",
+      "Name": "San Marino",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 43,
+        "Longitude": 12
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "SN": {
+      "Code": "SN",
+      "Name": "Senegal",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 14,
+        "Longitude": -14
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "SO": {
+      "Code": "SO",
+      "Name": "Somalia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 5,
+        "Longitude": 46
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "SR": {
+      "Code": "SR",
+      "Name": "Suriname",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 3,
+        "Longitude": -56
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "SS": {
+      "Code": "SS",
+      "Name": "South Sudan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 4,
+        "Longitude": 31
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "ST": {
+      "Code": "ST",
+      "Name": "Sao Tome and Principe",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 0,
+        "Longitude": 6
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-C",
+        "Name": "Africa"
+      }
+    },
+    "SV": {
+      "Code": "SV",
+      "Name": "El Salvador",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 13,
+        "Longitude": -88
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-S",
+        "Name": "North America"
+      }
+    },
+    "SX": {
+      "Code": "SX",
+      "Name": "Sint Maarten",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 18,
+        "Longitude": -63
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "SY": {
+      "Code": "SY",
+      "Name": "Syrian Arab Republic",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 34,
+        "Longitude": 38
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "SZ": {
+      "Code": "SZ",
+      "Name": "Eswatini",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -26,
+        "Longitude": 31
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-S",
+        "Name": "Africa"
+      }
+    },
+    "TC": {
+      "Code": "TC",
+      "Name": "Turks and Caicos Islands",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 21,
+        "Longitude": -71
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "TD": {
+      "Code": "TD",
+      "Name": "Chad",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 15,
+        "Longitude": 18
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-C",
+        "Name": "Africa"
+      }
+    },
+    "TF": {
+      "Code": "TF",
+      "Name": "French Southern Territories",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -49,
+        "Longitude": 69
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "TG": {
+      "Code": "TG",
+      "Name": "Togo",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 8,
+        "Longitude": 0
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-W",
+        "Name": "Africa"
+      }
+    },
+    "TH": {
+      "Code": "TH",
+      "Name": "Thailand",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 15,
+        "Longitude": 100
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-SE",
+        "Name": "Asia"
+      }
+    },
+    "TJ": {
+      "Code": "TJ",
+      "Name": "Tajikistan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 38,
+        "Longitude": 71
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-C",
+        "Name": "Asia"
+      }
+    },
+    "TK": {
+      "Code": "TK",
+      "Name": "Tokelau",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -8,
+        "Longitude": -171
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-E",
+        "Name": "Oceania"
+      }
+    },
+    "TL": {
+      "Code": "TL",
+      "Name": "Timor-Leste",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -8,
+        "Longitude": 125
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-SE",
+        "Name": "Asia"
+      }
+    },
+    "TM": {
+      "Code": "TM",
+      "Name": "Turkmenistan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 38,
+        "Longitude": 59
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-C",
+        "Name": "Asia"
+      }
+    },
+    "TN": {
+      "Code": "TN",
+      "Name": "Tunisia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 33,
+        "Longitude": 9
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-N",
+        "Name": "Africa"
+      }
+    },
+    "TO": {
+      "Code": "TO",
+      "Name": "Tonga",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -21,
+        "Longitude": -175
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-E",
+        "Name": "Oceania"
+      }
+    },
+    "TR": {
+      "Code": "TR",
+      "Name": "Turkey",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 38,
+        "Longitude": 35
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "TT": {
+      "Code": "TT",
+      "Name": "Trinidad and Tobago",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 10,
+        "Longitude": -61
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "TV": {
+      "Code": "TV",
+      "Name": "Tuvalu",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -7,
+        "Longitude": 177
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-E",
+        "Name": "Oceania"
+      }
+    },
+    "TW": {
+      "Code": "TW",
+      "Name": "Taiwan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 23,
+        "Longitude": 120
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-E",
+        "Name": "Asia"
+      }
+    },
+    "TZ": {
+      "Code": "TZ",
+      "Name": "Tanzania",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -6,
+        "Longitude": 34
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "UA": {
+      "Code": "UA",
+      "Name": "Ukraine",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 48,
+        "Longitude": 31
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-E",
+        "Name": "Europe"
+      }
+    },
+    "UG": {
+      "Code": "UG",
+      "Name": "Uganda",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 1,
+        "Longitude": 32
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "US": {
+      "Code": "US",
+      "Name": "United States of America",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 37,
+        "Longitude": -95
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-N",
+        "Name": "North America"
+      }
+    },
+    "UY": {
+      "Code": "UY",
+      "Name": "Uruguay",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -32,
+        "Longitude": -55
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "UZ": {
+      "Code": "UZ",
+      "Name": "Uzbekistan",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 41,
+        "Longitude": 64
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-C",
+        "Name": "Asia"
+      }
+    },
+    "VA": {
+      "Code": "VA",
+      "Name": "Holy See",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 41,
+        "Longitude": 12
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-S",
+        "Name": "Europe"
+      }
+    },
+    "VC": {
+      "Code": "VC",
+      "Name": "Saint Vincent and the Grenadines",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 12,
+        "Longitude": -61
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "VE": {
+      "Code": "VE",
+      "Name": "Venezuela",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 6,
+        "Longitude": -66
+      },
+      "Continent": {
+        "Code": "SA",
+        "Region": "SA",
+        "Name": "South America"
+      }
+    },
+    "VG": {
+      "Code": "VG",
+      "Name": "Virgin Islands (British)",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 18,
+        "Longitude": -64
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "VI": {
+      "Code": "VI",
+      "Name": "Virgin Islands (U.S.)",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 18,
+        "Longitude": -64
+      },
+      "Continent": {
+        "Code": "NA",
+        "Region": "NA-E",
+        "Name": "North America"
+      }
+    },
+    "VN": {
+      "Code": "VN",
+      "Name": "Viet Nam",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 14,
+        "Longitude": 108
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-SE",
+        "Name": "Asia"
+      }
+    },
+    "VU": {
+      "Code": "VU",
+      "Name": "Vanuatu",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -15,
+        "Longitude": 166
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-C",
+        "Name": "Oceania"
+      }
+    },
+    "WF": {
+      "Code": "WF",
+      "Name": "Wallis and Futuna",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -13,
+        "Longitude": -177
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-E",
+        "Name": "Oceania"
+      }
+    },
+    "WS": {
+      "Code": "WS",
+      "Name": "Samoa",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -13,
+        "Longitude": -172
+      },
+      "Continent": {
+        "Code": "OC",
+        "Region": "OC-E",
+        "Name": "Oceania"
+      }
+    },
+    "XK": {
+      "Code": "XK",
+      "Name": "Kosovo",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 42,
+        "Longitude": 20
+      },
+      "Continent": {
+        "Code": "EU",
+        "Region": "EU-E",
+        "Name": "Europe"
+      }
+    },
+    "YE": {
+      "Code": "YE",
+      "Name": "Yemen",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 15,
+        "Longitude": 48
+      },
+      "Continent": {
+        "Code": "AS",
+        "Region": "AS-W",
+        "Name": "Asia"
+      }
+    },
+    "YT": {
+      "Code": "YT",
+      "Name": "Mayotte",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -12,
+        "Longitude": 45
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "ZA": {
+      "Code": "ZA",
+      "Name": "South Africa",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -30,
+        "Longitude": 22
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-S",
+        "Name": "Africa"
+      }
+    },
+    "ZM": {
+      "Code": "ZM",
+      "Name": "Zambia",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -13,
+        "Longitude": 27
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "ZW": {
+      "Code": "ZW",
+      "Name": "Zimbabwe",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": -19,
+        "Longitude": 29
+      },
+      "Continent": {
+        "Code": "AF",
+        "Region": "AF-E",
+        "Name": "Africa"
+      }
+    },
+    "__": {
+      "Code": "__",
+      "Name": "Anycast",
+      "Center": {
+        "AccuracyRadius": 200,
+        "Latitude": 0,
+        "Longitude": 0
+      },
+      "Continent": {
+        "Code": "",
+        "Region": "",
+        "Name": ""
+      }
+    }
+  },
+  "primitive_proximity": [
+    {
+      "from": "1.1.1.1",
+      "to": "1.1.1.2",
+      "version": 4,
+      "expected": 99
+    },
+    {
+      "from": "8.8.8.8",
+      "to": "1.1.1.1",
+      "version": 4,
+      "expected": 97
+    },
+    {
+      "from": "1.1.1.1",
+      "to": "1.1.1.1",
+      "version": 4,
+      "expected": 100
+    },
+    {
+      "from": "2001:db8::1",
+      "to": "2001:db8::2",
+      "version": 6,
+      "expected": 100
+    },
+    {
+      "from": "2001:db8::1",
+      "to": "2001:db9::1",
+      "version": 6,
+      "expected": 99
+    },
+    {
+      "from": "1.1.1.1",
+      "to": "1.1.1.2",
+      "version": 0,
+      "expected": 0
+    }
+  ],
+  "proximity": [
+    {
+      "name": "same-country",
+      "from": {
+        "country": "DE",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "DE",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 1106247680
+    },
+    {
+      "name": "same-region",
+      "from": {
+        "country": "DE",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "FR",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 1101004800
+    },
+    {
+      "name": "same-continent",
+      "from": {
+        "country": "DE",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "NO",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 1092616192
+    },
+    {
+      "name": "different-continent",
+      "from": {
+        "country": "DE",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "JP",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 0
+    },
+    {
+      "name": "same-coordinates",
+      "from": {
+        "country": "DE",
+        "latitude": 52.52,
+        "longitude": 13.4,
+        "accuracy": 100,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "DE",
+        "latitude": 52.52,
+        "longitude": 13.4,
+        "accuracy": 100,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 1117782016
+    },
+    {
+      "name": "nearby-coordinates",
+      "from": {
+        "country": "DE",
+        "latitude": 52.52,
+        "longitude": 13.4,
+        "accuracy": 100,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "DE",
+        "latitude": 52.5,
+        "longitude": 13.45,
+        "accuracy": 50,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 1117782016
+    },
+    {
+      "name": "far-coordinates",
+      "from": {
+        "country": "US",
+        "latitude": 40.71,
+        "longitude": -74,
+        "accuracy": 1000,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "JP",
+        "latitude": 35.68,
+        "longitude": 139.69,
+        "accuracy": 1000,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 1100079668
+    },
+    {
+      "name": "same-asn",
+      "from": {
+        "country": "DE",
+        "latitude": 52.52,
+        "longitude": 13.4,
+        "accuracy": 0,
+        "asn": 64500,
+        "as_org": "Example Network",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "NL",
+        "latitude": 52.37,
+        "longitude": 4.9,
+        "accuracy": 0,
+        "asn": 64500,
+        "as_org": "Example Network",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 1118675626
+    },
+    {
+      "name": "same-as-org-only",
+      "from": {
+        "country": "DE",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 64501,
+        "as_org": "Example Network",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "NL",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 64502,
+        "as_org": "Example Network",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 1106247680
+    },
+    {
+      "name": "as-org-without-asn",
+      "from": {
+        "country": "DE",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "Example Network",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "NL",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "Example Network",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 1101004800
+    },
+    {
+      "name": "unknown-as-org",
+      "from": {
+        "country": "DE",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 64503,
+        "as_org": "not routed",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "NL",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 64504,
+        "as_org": "not routed",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 1101004800
+    },
+    {
+      "name": "zero-coordinates",
+      "from": {
+        "country": "DE",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "DE",
+        "latitude": 52.52,
+        "longitude": 13.4,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 1106247680
+    },
+    {
+      "name": "default-accuracy",
+      "from": {
+        "country": "DE",
+        "latitude": 52.52,
+        "longitude": 13.4,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "DE",
+        "latitude": 52.6,
+        "longitude": 13.5,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": false,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 1117782016
+    },
+    {
+      "name": "anycast",
+      "from": {
+        "country": "__",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": true,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "to": {
+        "country": "__",
+        "latitude": 0,
+        "longitude": 0,
+        "accuracy": 0,
+        "asn": 0,
+        "as_org": "",
+        "is_anycast": true,
+        "is_satellite": false,
+        "is_anonymous": false
+      },
+      "proximity_bits": 1106247680
+    }
+  ],
+  "regions": {
+    "AF-C": {
+      "ID": "AF-C",
+      "Name": "Africa, Sub-Saharan Africa, Middle Africa",
+      "Neighbors": [
+        "AF-E",
+        "AF-N",
+        "AF-S",
+        "AF-W"
+      ]
+    },
+    "AF-E": {
+      "ID": "AF-E",
+      "Name": "Africa, Sub-Saharan Africa, Eastern Africa",
+      "Neighbors": [
+        "AF-C",
+        "AF-N",
+        "AF-S"
+      ]
+    },
+    "AF-N": {
+      "ID": "AF-N",
+      "Name": "Africa, Northern Africa",
+      "Neighbors": [
+        "AF-C",
+        "AF-E",
+        "AF-W",
+        "AS-W",
+        "EU-S"
+      ]
+    },
+    "AF-S": {
+      "ID": "AF-S",
+      "Name": "Africa, Sub-Saharan Africa, Southern Africa",
+      "Neighbors": [
+        "AF-C",
+        "AF-E",
+        "AF-W"
+      ]
+    },
+    "AF-W": {
+      "ID": "AF-W",
+      "Name": "Africa, Sub-Saharan Africa, Western Africa",
+      "Neighbors": [
+        "AF-C",
+        "AF-N",
+        "AF-S"
+      ]
+    },
+    "AN": {
+      "ID": "AN",
+      "Name": "Antarctica",
+      "Neighbors": []
+    },
+    "AS-C": {
+      "ID": "AS-C",
+      "Name": "Asia, Central Asia",
+      "Neighbors": [
+        "AS-E",
+        "AS-S",
+        "AS-SE",
+        "AS-W"
+      ]
+    },
+    "AS-E": {
+      "ID": "AS-E",
+      "Name": "Asia, Eastern Asia",
+      "Neighbors": [
+        "AS-C",
+        "AS-S",
+        "AS-SE"
+      ]
+    },
+    "AS-S": {
+      "ID": "AS-S",
+      "Name": "Asia, Southern Asia",
+      "Neighbors": [
+        "AS-C",
+        "AS-E",
+        "AS-SE",
+        "AS-W"
+      ]
+    },
+    "AS-SE": {
+      "ID": "AS-SE",
+      "Name": "Asia, South-eastern Asia",
+      "Neighbors": [
+        "AS-C",
+        "AS-E",
+        "AS-S",
+        "OC-C",
+        "OC-E",
+        "OC-N",
+        "OC-S"
+      ]
+    },
+    "AS-W": {
+      "ID": "AS-W",
+      "Name": "Asia, Western Asia",
+      "Neighbors": [
+        "AF-N",
+        "AS-C",
+        "AS-S",
+        "EU-E"
+      ]
+    },
+    "EU-E": {
+      "ID": "EU-E",
+      "Name": "Europe, Eastern Europe",
+      "Neighbors": [
+        "AS-W",
+        "EU-N",
+        "EU-S",
+        "EU-W"
+      ]
+    },
+    "EU-N": {
+      "ID": "EU-N",
+      "Name": "Europe, Northern Europe",
+      "Neighbors": [
+        "EU-E",
+        "EU-S",
+        "EU-W"
+      ]
+    },
+    "EU-S": {
+      "ID": "EU-S",
+      "Name": "Europe, Southern Europe",
+      "Neighbors": [
+        "AF-N",
+        "EU-E",
+        "EU-N",
+        "EU-W"
+      ]
+    },
+    "EU-W": {
+      "ID": "EU-W",
+      "Name": "Europe, Western Europe",
+      "Neighbors": [
+        "EU-E",
+        "EU-N",
+        "EU-S"
+      ]
+    },
+    "NA-E": {
+      "ID": "NA-E",
+      "Name": "North America, Caribbean",
+      "Neighbors": [
+        "NA-N",
+        "NA-S",
+        "SA"
+      ]
+    },
+    "NA-N": {
+      "ID": "NA-N",
+      "Name": "North America, Northern America",
+      "Neighbors": [
+        "NA-E",
+        "NA-N",
+        "NA-S"
+      ]
+    },
+    "NA-S": {
+      "ID": "NA-S",
+      "Name": "North America, Central America",
+      "Neighbors": [
+        "NA-E",
+        "NA-N",
+        "NA-S",
+        "SA"
+      ]
+    },
+    "OC-C": {
+      "ID": "OC-C",
+      "Name": "Oceania, Melanesia",
+      "Neighbors": [
+        "AS-SE",
+        "OC-E",
+        "OC-N",
+        "OC-S"
+      ]
+    },
+    "OC-E": {
+      "ID": "OC-E",
+      "Name": "Oceania, Polynesia",
+      "Neighbors": [
+        "AS-SE",
+        "OC-C",
+        "OC-N",
+        "OC-S"
+      ]
+    },
+    "OC-N": {
+      "ID": "OC-N",
+      "Name": "Oceania, Micronesia",
+      "Neighbors": [
+        "AS-SE",
+        "OC-C",
+        "OC-E",
+        "OC-S"
+      ]
+    },
+    "OC-S": {
+      "ID": "OC-S",
+      "Name": "Oceania, Australia and New Zealand",
+      "Neighbors": [
+        "AS-SE",
+        "OC-C",
+        "OC-E",
+        "OC-N"
+      ]
+    },
+    "SA": {
+      "ID": "SA",
+      "Name": "South America",
+      "Neighbors": [
+        "NA-E",
+        "NA-S"
+      ]
+    }
+  }
+}

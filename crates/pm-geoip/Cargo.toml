@@ -1,0 +1,15 @@
+[package]
+name = "pm-geoip"
+version = "0.1.0"
+edition.workspace = true
+description = "GeoIP database access, country information and network proximity for the Portmaster core"
+license.workspace = true
+
+[dependencies]
+maxminddb = "0.33.0"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
