@@ -1,0 +1,478 @@
+{
+  "cases": [
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": true,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "",
+      "print": "query core:",
+      "query": "query core:"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": true,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "test/",
+      "print": "query core:test/",
+      "query": "query core:test/"
+    },
+    {
+      "error": "could not parse клю� to int64: strconv.ParseInt: parsing \"клю\\xd1\": invalid syntax (hint: use \"sameas\" to compare strings)",
+      "query": "query core:test/ where Name == ключ"
+    },
+    {
+      "error": "could not parse Ünïcode \u003c\u0026\u003e to int64: strconv.ParseInt: parsing \"Ünïcode \u003c\u0026\u003e\": invalid syntax (hint: use \"sameas\" to compare strings)",
+      "query": "query core:test/ where Name == Ünïcode\\ \u003c\u0026\u003e"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Count \u003e -50",
+      "query": "query core:test/ where Count \u003e -50"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Count \u003e= -42 and Count \u003c= -42",
+      "query": "query core:test/ where Count \u003e= -42 and Count \u003c= -42"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Count \u003c 0 or Flag is false",
+      "query": "query core:test/ where Count \u003c 0 or Flag is false"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": false,
+        "core:test/expired/1": false,
+        "core:test/sample/1": false,
+        "core:test/secret/1": false,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Flag not is true",
+      "query": "query core:test/ where not Flag is true"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Ratio f== 0.25",
+      "query": "query core:test/ where Ratio f== 0.25"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Ratio f\u003e 0.1",
+      "query": "query core:test/ where Ratio f\u003e 0.1"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": false,
+        "core:test/expired/1": false,
+        "core:test/sample/1": false,
+        "core:test/secret/1": false,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Ratio f\u003c 0.1",
+      "query": "query core:test/ where Ratio f\u003c 0.1"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": false,
+        "core:test/expired/1": false,
+        "core:test/sample/1": false,
+        "core:test/secret/1": false,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Name sameas клю�",
+      "query": "query core:test/ where Name sameas ключ"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": false,
+        "core:test/expired/1": false,
+        "core:test/sample/1": false,
+        "core:test/secret/1": false,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Name sameas клю�",
+      "query": "query core:test/ where Name s== ключ"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Name contains code",
+      "query": "query core:test/ where Name contains code"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Name contains code",
+      "query": "query core:test/ where Name co code"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Name startswith �",
+      "query": "query core:test/ where Name startswith Ü"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Name startswith �",
+      "query": "query core:test/ where Name sw Ü"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Name endswith \u003e",
+      "query": "query core:test/ where Name endswith \u003e"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Name endswith \u003e",
+      "query": "query core:test/ where Name ew \u003e"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": false,
+        "core:test/expired/1": false,
+        "core:test/sample/1": false,
+        "core:test/secret/1": false,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Name in ключ,foo",
+      "query": "query core:test/ where Name in ключ,foo"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": false,
+        "core:test/expired/1": false,
+        "core:test/sample/1": false,
+        "core:test/secret/1": false,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Tags in a,b",
+      "query": "query core:test/ where Tags in a,b"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Name matches ^Ü.*\u003e$",
+      "query": "query core:test/ where Name matches ^Ü.*\u003e$"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": false,
+        "core:test/expired/1": false,
+        "core:test/sample/1": false,
+        "core:test/secret/1": false,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Name matches ^k",
+      "query": "query core:test/ where Name re ^k"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": false,
+        "core:test/expired/1": false,
+        "core:test/sample/1": false,
+        "core:test/secret/1": false,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Nested.a exists",
+      "query": "query core:test/ where Nested.a exists"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": false,
+        "core:test/expired/1": false,
+        "core:test/sample/1": false,
+        "core:test/secret/1": false,
+        "core:test/unicode/ключ 🦀|x": false
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Nested.q exists",
+      "query": "query core:test/ where Nested.q ex"
+    },
+    {
+      "error": "could not parse a to int64: strconv.ParseInt: parsing \"a\": invalid syntax (hint: use \"sameas\" to compare strings)",
+      "query": "query core:test/ where Tags.0 == a"
+    },
+    {
+      "error": "could not parse b|c to int64: strconv.ParseInt: parsing \"b|c\": invalid syntax (hint: use \"sameas\" to compare strings)",
+      "query": "query core:test/ where Tags.1 == b|c"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where (Count \u003e 0 or Flag is true) and Name exists",
+      "query": "query core:test/ where (Count \u003e 0 or Flag is true) and Name exists"
+    },
+    {
+      "error": "unexpected end at position 69",
+      "query": "query core:test/ where Count \u003e 0 or (Flag is true and Ratio f\u003e= 0.25)"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": true,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "test/",
+      "print": "query core:test/ orderby Name",
+      "query": "query core:test/ orderby Name"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": true,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "test/",
+      "print": "query core:test/ limit 10",
+      "query": "query core:test/ limit 10"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": true,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "test/",
+      "print": "query core:test/ limit 10 offset 5",
+      "query": "query core:test/ limit 10 offset 5"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Flag is true orderby Count limit 1",
+      "query": "query core:test/ where Flag is true orderby Count limit 1 offset 0"
+    },
+    {
+      "db": "core",
+      "matches": {
+        "core:test/cbor/1": false,
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
+      },
+      "prefix": "test/",
+      "print": "query core:test/ where Count == -42",
+      "query": "query  core:test/  where   Count   ==   -42"
+    },
+    {
+      "error": "unexpected end at position 0",
+      "query": ""
+    },
+    {
+      "error": "unexpected end at position 5",
+      "query": "query"
+    },
+    {
+      "error": "queries must start with \"query\"",
+      "query": "quer core:"
+    },
+    {
+      "error": "unexpected end at position 22",
+      "query": "query core:test/ where"
+    },
+    {
+      "error": "unexpected end at position 27",
+      "query": "query core:test/ where Name"
+    },
+    {
+      "error": "unknown operator at position 29",
+      "query": "query core:test/ where Name ==="
+    },
+    {
+      "error": "could not parse abc to int64: strconv.ParseInt: parsing \"abc\": invalid syntax (hint: use \"sameas\" to compare strings)",
+      "query": "query core:test/ where Count \u003e abc"
+    },
+    {
+      "error": "unexpected end at position 33",
+      "query": "query core:test/ where (Count \u003e 1"
+    },
+    {
+      "error": "unknown clause \")\" at position 33",
+      "query": "query core:test/ where Count \u003e 1)"
+    },
+    {
+      "error": "could not parse integer (x) at position 24",
+      "query": "query core:test/ limit x"
+    },
+    {
+      "error": "you may not mix \"and\" and \"or\" (position: 38)",
+      "query": "query core:test/ where Count \u003e 1 and or Flag is true"
+    },
+    {
+      "error": "could not parse quoted value to int64: strconv.ParseInt: parsing \"quoted value\": invalid syntax (hint: use \"sameas\" to compare strings)",
+      "query": "query core:test/ where Name == \"quoted value\""
+    }
+  ]
+}

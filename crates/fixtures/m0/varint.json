@@ -1,0 +1,130 @@
+{
+  "cases": [
+    {
+      "bits": 8,
+      "packed": "00",
+      "value": 0
+    },
+    {
+      "bits": 8,
+      "packed": "01",
+      "value": 1
+    },
+    {
+      "bits": 8,
+      "packed": "7f",
+      "value": 127
+    },
+    {
+      "bits": 8,
+      "packed": "8001",
+      "value": 128
+    },
+    {
+      "bits": 8,
+      "packed": "c801",
+      "value": 200
+    },
+    {
+      "bits": 8,
+      "packed": "ff01",
+      "value": 255
+    },
+    {
+      "bits": 16,
+      "packed": "00",
+      "value": 0
+    },
+    {
+      "bits": 16,
+      "packed": "7f",
+      "value": 127
+    },
+    {
+      "bits": 16,
+      "packed": "8001",
+      "value": 128
+    },
+    {
+      "bits": 16,
+      "packed": "ff7f",
+      "value": 16383
+    },
+    {
+      "bits": 16,
+      "packed": "808001",
+      "value": 16384
+    },
+    {
+      "bits": 16,
+      "packed": "ffff03",
+      "value": 65535
+    },
+    {
+      "bits": 32,
+      "packed": "00",
+      "value": 0
+    },
+    {
+      "bits": 32,
+      "packed": "7f",
+      "value": 127
+    },
+    {
+      "bits": 32,
+      "packed": "8001",
+      "value": 128
+    },
+    {
+      "bits": 32,
+      "packed": "ffff7f",
+      "value": 2097151
+    },
+    {
+      "bits": 32,
+      "packed": "80808001",
+      "value": 2097152
+    },
+    {
+      "bits": 32,
+      "packed": "ffffffff0f",
+      "value": 4294967295
+    },
+    {
+      "bits": 64,
+      "packed": "00",
+      "value": "0"
+    },
+    {
+      "bits": 64,
+      "packed": "7f",
+      "value": "127"
+    },
+    {
+      "bits": 64,
+      "packed": "8001",
+      "value": "128"
+    },
+    {
+      "bits": 64,
+      "packed": "808080808001",
+      "value": "34359738368"
+    },
+    {
+      "bits": 64,
+      "packed": "ffffffffffffffff7f",
+      "value": "9223372036854775807"
+    },
+    {
+      "bits": 64,
+      "packed": "ffffffffffffffffff01",
+      "value": "18446744073709551615"
+    },
+    {
+      "bits": 0,
+      "input": "68656c6c6f",
+      "packed": "0568656c6c6f",
+      "value": "prepend_length"
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "cases": [
+    {
+      "input": "",
+      "json": "\"\"",
+      "kind": "string"
+    },
+    {
+      "input": "706c61696e",
+      "json": "\"plain\"",
+      "kind": "string"
+    },
+    {
+      "input": "3c7363726970743e26616d703b3c2f7363726970743e",
+      "json": "\"\\u003cscript\\u003e\\u0026amp;\\u003c/script\\u003e\"",
+      "kind": "string"
+    },
+    {
+      "input": "71756f746522206261636b736c6173685c20736c6173682f",
+      "json": "\"quote\\\" backslash\\\\ slash/\"",
+      "kind": "string"
+    },
+    {
+      "input": "74616209206e6c0a2063720d",
+      "json": "\"tab\\t nl\\n cr\\r\"",
+      "kind": "string"
+    },
+    {
+      "input": "00011f7f",
+      "json": "\"\\u0000\\u0001\\u001f\"",
+      "kind": "string"
+    },
+    {
+      "input": "756e69636f64653a20d0bad0bbd18ed18720f09fa680",
+      "json": "\"unicode: ключ 🦀\"",
+      "kind": "string"
+    },
+    {
+      "input": "e280a8e280a9",
+      "json": "\"\\u2028\\u2029\"",
+      "kind": "string"
+    },
+    {
+      "input": "706970657c636f6c6f6e3a737061636520",
+      "json": "\"pipe|colon:space \"",
+      "kind": "string"
+    },
+    {
+      "input": "61ff62c3",
+      "json": "\"a�b�\"",
+      "kind": "string"
+    },
+    {
+      "json": "{\"alpha\":[\"\\u003ca\\u003e\",\"b\"],\"empty\":[],\"mid\":{\"x\":1.5,\"y\":null},\"nil\":null,\"zeta\":1}",
+      "kind": "map"
+    },
+    {
+      "json": "{\n  \"alpha\": [\n    \"\\u003ca\\u003e\",\n    \"b\"\n  ],\n  \"empty\": [],\n  \"mid\": {\n    \"x\": 1.5,\n    \"y\": null\n  },\n  \"nil\": null,\n  \"zeta\": 1\n}",
+      "kind": "map_indent2"
+    }
+  ]
+}

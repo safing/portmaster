@@ -1,10 +1,9 @@
 [package]
 name = "pm-proxy"
 version = "0.1.0"
-edition = "2021"
-authors = ["Portmaster Contributors"]
+edition.workspace = true
 description = "High-performance async Layer-4 TCP/UDP proxy and upstream client for Portmaster"
-license = "AGPL-3.0"
+license.workspace = true
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
@@ -16,3 +15,6 @@ async-trait = "0.1"
 
 [dev-dependencies]
 tokio-test = "0.4"
+
+[lints]
+workspace = true

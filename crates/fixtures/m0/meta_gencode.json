@@ -1,0 +1,88 @@
+{
+  "cases": [
+    {
+      "created": 0,
+      "crownjewel": false,
+      "deleted": 0,
+      "dsd": "4700000000000000000000000000000000000000000000000000000000000000000000",
+      "expires": 0,
+      "gencode": "00000000000000000000000000000000000000000000000000000000000000000000",
+      "json": "{\"Created\":0,\"Modified\":0,\"Expires\":0,\"Deleted\":0}",
+      "modified": 0,
+      "name": "zero",
+      "secret": false
+    },
+    {
+      "created": 1700000000,
+      "crownjewel": false,
+      "deleted": 0,
+      "dsd": "4700f153650000000064f1536500000000804255650000000000000000000000000000",
+      "expires": 1700086400,
+      "gencode": "00f153650000000064f1536500000000804255650000000000000000000000000000",
+      "json": "{\"Created\":1700000000,\"Modified\":1700000100,\"Expires\":1700086400,\"Deleted\":0}",
+      "modified": 1700000100,
+      "name": "typical",
+      "secret": false
+    },
+    {
+      "created": 1,
+      "crownjewel": false,
+      "deleted": 3,
+      "dsd": "4701000000000000000200000000000000000000000000000003000000000000000000",
+      "expires": 0,
+      "gencode": "01000000000000000200000000000000000000000000000003000000000000000000",
+      "json": "{\"Created\":1,\"Modified\":2,\"Expires\":0,\"Deleted\":3}",
+      "modified": 2,
+      "name": "deleted",
+      "secret": false
+    },
+    {
+      "created": -1,
+      "crownjewel": false,
+      "deleted": -86400,
+      "dsd": "47ffffffffffffffff0000000000000080ffffffffffffff7f80aefeffffffffff0000",
+      "expires": 9223372036854775807,
+      "gencode": "ffffffffffffffff0000000000000080ffffffffffffff7f80aefeffffffffff0000",
+      "json": "{\"Created\":-1,\"Modified\":-9223372036854775808,\"Expires\":9223372036854775807,\"Deleted\":-86400}",
+      "modified": -9223372036854775808,
+      "name": "negative",
+      "secret": false
+    },
+    {
+      "created": 5,
+      "crownjewel": false,
+      "deleted": 0,
+      "dsd": "4705000000000000000000000000000000000000000000000000000000000000000100",
+      "expires": 0,
+      "gencode": "05000000000000000000000000000000000000000000000000000000000000000100",
+      "json": "{\"Created\":5,\"Modified\":0,\"Expires\":0,\"Deleted\":0}",
+      "modified": 0,
+      "name": "secret",
+      "secret": true
+    },
+    {
+      "created": 5,
+      "crownjewel": true,
+      "deleted": 0,
+      "dsd": "4705000000000000000000000000000000000000000000000000000000000000000001",
+      "expires": 0,
+      "gencode": "05000000000000000000000000000000000000000000000000000000000000000001",
+      "json": "{\"Created\":5,\"Modified\":0,\"Expires\":0,\"Deleted\":0}",
+      "modified": 0,
+      "name": "crownjewel",
+      "secret": false
+    },
+    {
+      "created": 5,
+      "crownjewel": true,
+      "deleted": 0,
+      "dsd": "4705000000000000000000000000000000000000000000000000000000000000000101",
+      "expires": 0,
+      "gencode": "05000000000000000000000000000000000000000000000000000000000000000101",
+      "json": "{\"Created\":5,\"Modified\":0,\"Expires\":0,\"Deleted\":0}",
+      "modified": 0,
+      "name": "both",
+      "secret": true
+    }
+  ]
+}
