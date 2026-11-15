@@ -285,7 +285,7 @@ impl<'a> EntityJson<'a> {
     fn new(entity: &'a Entity) -> EntityJson<'a> {
         EntityJson {
             ip: JsonIp(entity.ip),
-            ip_scope: entity.ip_scope.into(),
+            ip_scope: entity.ip_scope,
             protocol: entity.protocol,
             port: entity.port,
             domain: &entity.domain,
@@ -425,7 +425,7 @@ impl Connection {
     pub fn set_local_ip(&mut self, ip: Option<IpAddr>) {
         self.local_ip = ip;
         self.local_ip_scope = match ip {
-            Some(ip) => pm_netstate::ip_scope(canonical_ip(ip)).into(),
+            Some(ip) => pm_netstate::ip_scope(canonical_ip(ip)),
             None => IpScope::Undefined,
         };
     }
@@ -448,7 +448,7 @@ impl Connection {
         let localhost = self
             .entity
             .as_ref()
-            .is_some_and(|entity| IpScope::from(entity.ip_scope).is_localhost());
+            .is_some_and(|entity| entity.ip_scope.is_localhost());
         if !self.internal && !localhost {
             if let Some(process) = &self.process {
                 if let Some(profile) = self.profiles.local_profile(process) {
