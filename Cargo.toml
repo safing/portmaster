@@ -11,6 +11,7 @@ members = [
     "crates/pm-api",
     "crates/pm-core",
     "crates/pm-netstate",
+    "crates/pm-process",
 ]
 
 [workspace.package]

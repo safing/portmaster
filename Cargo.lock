@@ -963,6 +963,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pm-process"
+version = "0.1.0"
+dependencies = [
+ "pm-config",
+ "pm-database",
+ "pm-dsd",
+ "pm-netstate",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "pm-proxy"
 version = "0.1.0"
 dependencies = [

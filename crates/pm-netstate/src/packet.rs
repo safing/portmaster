@@ -3,6 +3,8 @@
 use std::net::IpAddr;
 use std::time::SystemTime;
 
+use crate::socket::UNDEFINED_PROCESS_ID;
+
 /// IP version of a packet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IpVersion {
@@ -17,6 +19,8 @@ pub enum IpProtocol {
     Unknown,
     TCP,
     UDP,
+    /// ICMP or ICMPv6; both are treated as unidentified by process detection.
+    Icmp,
 }
 
 /// Information about a network packet.
@@ -29,6 +33,8 @@ pub struct PacketInfo {
     pub dst_port: u16,
     pub src: IpAddr,
     pub dst: IpAddr,
+    /// PID already assigned by eBPF or a kernel extension.
+    pub pid: i32,
     pub seen_at: SystemTime,
 }
 
@@ -46,6 +52,7 @@ impl PacketInfo {
             dst_port: 0,
             src,
             dst,
+            pid: UNDEFINED_PROCESS_ID,
             seen_at: SystemTime::now(),
         }
     }
