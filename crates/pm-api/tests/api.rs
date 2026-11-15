@@ -521,6 +521,61 @@ async fn serves_http_over_tcp() {
     server.abort();
 }
 
+#[tokio::test(flavor = "current_thread")]
+async fn slow_authenticator_does_not_block_other_requests() {
+    use std::time::{Duration, Instant};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    struct Slow;
+    impl Authenticator for Slow {
+        fn authenticate(&self, _request: &Request) -> Result<Option<AuthToken>, AuthError> {
+            std::thread::sleep(Duration::from_millis(300));
+            Ok(None)
+        }
+    }
+
+    let api = open_api();
+    api.register_endpoint(
+        Endpoint::new("self", "Self", "Only the software itself")
+            .with_read(PERMIT_SELF)
+            .with_data(|_| Ok(b"secret".to_vec())),
+    )
+    .unwrap();
+    api.set_authenticator(Arc::new(Slow));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = tokio::spawn(pm_api::serve(api, listener));
+
+    async fn get(address: std::net::SocketAddr, path: &str) -> (String, Duration) {
+        let started = Instant::now();
+        let mut stream = tokio::net::TcpStream::connect(address).await.unwrap();
+        let request =
+            format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
+        stream.write_all(request.as_bytes()).await.unwrap();
+        let mut response = Vec::new();
+        stream.read_to_end(&mut response).await.unwrap();
+        (
+            String::from_utf8_lossy(&response).into_owned(),
+            started.elapsed(),
+        )
+    }
+
+    // This request needs authentication, so it waits in the slow authenticator.
+    let slow = tokio::spawn(get(address, "/api/v1/self"));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let (ping, took) = get(address, "/api/v1/ping").await;
+    assert!(ping.starts_with("HTTP/1.1 200"), "{ping}");
+    assert!(
+        took < Duration::from_millis(200),
+        "ping was blocked: {took:?}"
+    );
+
+    let (slow_response, _) = slow.await.unwrap();
+    assert!(slow_response.starts_with("HTTP/1.1 401"), "{slow_response}");
+    server.abort();
+}
+
 #[test]
 fn sessions_are_issued_used_and_reset() {
     struct Login;

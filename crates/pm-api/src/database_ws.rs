@@ -413,8 +413,19 @@ pub async fn database_ws_upgrade(
         .unwrap_or_default();
     api_request.header = parts.headers.clone();
     api_request.read_method = true;
-    if let Err(response) = api.authorize_required(&mut api_request, PERMIT_ADMIN) {
-        return response.into_axum();
+    // The authenticator may block, so it runs off the async workers.
+    let auth_api = Arc::clone(&api);
+    let authorized = tokio::task::spawn_blocking(move || {
+        auth_api
+            .authorize_required(&mut api_request, PERMIT_ADMIN)
+            .map(|_| ())
+            .map_err(Box::new)
+    })
+    .await;
+    match authorized {
+        Ok(Ok(())) => {}
+        Ok(Err(response)) => return (*response).into_axum(),
+        Err(_) => return Response::error(500, "Internal server error.").into_axum(),
     }
 
     let databases = match api.databases() {

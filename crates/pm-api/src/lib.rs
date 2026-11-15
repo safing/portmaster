@@ -1082,7 +1082,12 @@ async fn handle_axum(
     api_request.header = parts.headers;
     api_request.body = body.to_vec();
 
-    let response = api.handle(api_request);
+    // Handlers and authenticators are synchronous and may block (process
+    // lookups, retries), so they stay off the async workers.
+    let response = match tokio::task::spawn_blocking(move || api.handle(api_request)).await {
+        Ok(response) => response,
+        Err(_) => Response::error(500, "Internal server error."),
+    };
     let mut builder = http::Response::builder().status(
         http::StatusCode::from_u16(response.status)
             .unwrap_or(http::StatusCode::INTERNAL_SERVER_ERROR),

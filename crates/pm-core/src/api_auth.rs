@@ -72,9 +72,10 @@ pub struct ApiAuthenticator {
     retry_delay: Duration,
 }
 
-enum Denial {
-    /// Access is denied; `retry` asks for another attempt.
-    Denied { message: String, retry: bool },
+/// Access is denied; `retry` asks for another attempt.
+struct Denial {
+    message: String,
+    retry: bool,
 }
 
 impl ApiAuthenticator {
@@ -109,7 +110,7 @@ impl ApiAuthenticator {
     }
 
     fn authenticate_process(&self, client: SocketAddr) -> Result<(), Denial> {
-        let denied = |message: &str, retry: bool| Denial::Denied {
+        let denied = |message: &str, retry: bool| Denial {
             message: message.to_string(),
             retry,
         };
@@ -187,7 +188,7 @@ impl ApiAuthenticator {
                     first = checked.first().map(String::as_str).unwrap_or(""),
                     "api auth: denying access"
                 );
-                Err(Denial::Denied {
+                Err(Denial {
                     message: denied_unauthorized(&checked, &root),
                     retry: false,
                 })
@@ -209,23 +210,21 @@ impl Authenticator for ApiAuthenticator {
             return Ok(None);
         }
 
-        // It is important that this works, retry 5 times.
+        // It is important that this works: up to 5 attempts, 500 ms after each
+        // retry-flagged one (2.5 s in total).
         let mut result = Ok(());
-        for attempt in 0..AUTH_TRIES {
+        for _ in 0..AUTH_TRIES {
             result = self.authenticate_process(client);
             match &result {
-                Err(Denial::Denied { retry: true, .. }) => {
-                    if attempt + 1 < AUTH_TRIES {
-                        std::thread::sleep(self.retry_delay);
-                    }
-                }
+                // Like Go, sleep after every retry-flagged attempt.
+                Err(Denial { retry: true, .. }) => std::thread::sleep(self.retry_delay),
                 _ => break,
             }
         }
 
         match result {
             Ok(()) => Ok(Some(AuthToken::new(PERMIT_SELF, PERMIT_SELF))),
-            Err(Denial::Denied { message, .. }) => Err(AuthError::Denied(message)),
+            Err(Denial { message, .. }) => Err(AuthError::Denied(message)),
         }
     }
 }

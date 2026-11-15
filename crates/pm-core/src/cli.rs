@@ -92,7 +92,7 @@ Flags:
       --log string           set log level to [trace|debug|info|warning|error|critical]
       --api-address string   set api listen address; configuration is stronger
       --devmode              enable development mode
-      --allowed-clients string  binary that is allowed to connect to the API (repeatable)
+      --allowed-clients      binary allowed to use the API (repeatable)
       --version              print version and exit
   -h, --help                 print this help and exit"
 }
