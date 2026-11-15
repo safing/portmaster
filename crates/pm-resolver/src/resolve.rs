@@ -69,6 +69,8 @@ impl Drop for DedupeGuard {
 /// The result of asking all resolvers in scope.
 struct QueryOutcome {
     result: Result<RRCache, ResolveFailure>,
+    /// A resolver answered (not a backup cache).
+    resolver_succeeded: bool,
     failure_reported: bool,
 }
 
@@ -328,9 +330,8 @@ impl ResolverService {
         if conn.is_failing() {
             return;
         }
-        conn.report_failure();
-        // Report that a configured server failed.
-        if resolver.info.source == SERVER_SOURCE_CONFIGURED {
+        // Report that a configured server failed, only if the failure was counted.
+        if conn.report_failure() && resolver.info.source == SERVER_SOURCE_CONFIGURED {
             self.inner.env.set_connected_to_dns(false);
         }
     }
@@ -388,7 +389,7 @@ impl ResolverService {
             && self.all_configured_resolvers_are_failing()
         {
             self.inner.env.failing_resolvers_changed(true);
-        } else if outcome.result.is_ok()
+        } else if outcome.resolver_succeeded
             && primary_source == SERVER_SOURCE_CONFIGURED
             && !self.all_configured_resolvers_are_failing()
         {
@@ -423,6 +424,7 @@ impl ResolverService {
         for resolver in &resolvers {
             if self.inner.shutdown.is_cancelled() {
                 return QueryOutcome {
+                    resolver_succeeded: false,
                     result: Err(QueryError::ShuttingDown.into()),
                     failure_reported,
                 };
@@ -475,6 +477,7 @@ impl ResolverService {
                             continue;
                         }
                         return QueryOutcome {
+                            resolver_succeeded: false,
                             result: Err(QueryError::NotFound.into()),
                             failure_reported,
                         };
@@ -482,6 +485,7 @@ impl ResolverService {
                     ResolveError::BlockedUpstream(_) => {
                         // Some resolvers might also block.
                         return QueryOutcome {
+                            resolver_succeeded: false,
                             result: Err(QueryError::BlockedUpstream {
                                 resolver_name: resolver.info.descriptive_name(),
                             }
@@ -492,6 +496,7 @@ impl ResolverService {
                     _ if self.is_offline_for(q) => {
                         // We are offline and this is not an online check query.
                         return QueryOutcome {
+                            resolver_succeeded: false,
                             result: Err(ResolveFailure::with_stale(QueryError::Offline, old_cache)),
                             failure_reported,
                         };
@@ -514,6 +519,7 @@ impl ResolverService {
                             QueryError::Cancelled
                         };
                         return QueryOutcome {
+                            resolver_succeeded: false,
                             result: Err(error.into()),
                             failure_reported,
                         };
@@ -557,11 +563,13 @@ impl ResolverService {
                     query_id(q)
                 );
                 return QueryOutcome {
+                    resolver_succeeded: false,
                     result: Ok(old),
                     failure_reported,
                 };
             }
             return QueryOutcome {
+                resolver_succeeded: false,
                 result: Err(QueryError::AllFailed {
                     count: resolvers.len(),
                     last: Box::new(error),
@@ -573,6 +581,7 @@ impl ResolverService {
 
         let Some(mut rr_cache) = rr_cache else {
             return QueryOutcome {
+                resolver_succeeded: false,
                 result: Err(QueryError::NotFound.into()),
                 failure_reported,
             };
@@ -589,6 +598,7 @@ impl ResolverService {
         }
 
         QueryOutcome {
+            resolver_succeeded: true,
             result: Ok(rr_cache),
             failure_reported,
         }

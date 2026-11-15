@@ -191,6 +191,7 @@ fn record_type_of(record: &NameRecord) -> RecordType {
 /// Writes the Rust-written records so that Go can be asked to read them
 /// (`go run ./tools/rust-fixtures -verify-namerecord <file>`).
 #[test]
+#[ignore = "helper: exports Rust-written records for `rust-fixtures -verify-namerecord` when PM_RESOLVER_EXPORT_DIR is set"]
 fn rust_written_records_for_go_verification() {
     if let Ok(dir) = std::env::var("PM_RESOLVER_EXPORT_DIR") {
         for name in ["a_cname_aaaa", "nxdomain_soa", "empty_sections"] {

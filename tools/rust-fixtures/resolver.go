@@ -161,6 +161,8 @@ func resolverNameRecords() []any {
 		if err != nil {
 			fail(err)
 		}
+		// "expires" is synthesized (Expires + 14 days): Go's PutNew resets the
+		// meta, so Go itself never sets a database expiry on these records.
 		cases = append(cases, map[string]any{
 			"name":    s.name,
 			"key":     "cache:intel/nameRecord/" + record.Domain + record.Question,

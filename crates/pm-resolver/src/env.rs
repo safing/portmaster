@@ -121,34 +121,49 @@ pub fn dedupe_nameservers(list: Vec<Nameserver>) -> Vec<Nameserver> {
     out
 }
 
-/// Reads the on-link IPv4 networks from `/proc/net/route` content.
-pub fn parse_proc_net_route(content: &str) -> Vec<(u32, u32)> {
-    let mut networks = Vec::new();
-    for line in content.lines().skip(1) {
-        let fields: Vec<&str> = line.split_whitespace().collect();
-        if fields.len() < 8 {
-            continue;
-        }
-        // Values are in host byte order; on-link routes have no gateway.
-        let (Ok(dest), Ok(gateway), Ok(mask)) = (
-            u32::from_str_radix(fields[1], 16),
-            u32::from_str_radix(fields[2], 16),
-            u32::from_str_radix(fields[7], 16),
-        ) else {
-            continue;
-        };
-        if gateway == 0 && dest != 0 {
-            networks.push((dest.to_be(), mask.to_be()));
-        }
-    }
+/// Converts interface addresses with their netmasks to networks (address and
+/// prefix length), like Go `refreshMyNetworks`: only networks configured on an
+/// interface count, routes do not (VPNs add on-link routes for public ranges).
+pub fn networks_from_interface_addresses(addrs: &[(IpAddr, IpAddr)]) -> Vec<(IpAddr, u8)> {
+    addrs
+        .iter()
+        .filter_map(|(ip, mask)| {
+            let prefix = match mask {
+                IpAddr::V4(m) => u32::from(*m).count_ones(),
+                IpAddr::V6(m) => u128::from(*m).count_ones(),
+            };
+            (ip.is_ipv4() == mask.is_ipv4()).then_some((*ip, prefix as u8))
+        })
+        .collect()
+}
+
+/// Returns whether the IP is inside one of the networks.
+pub fn ip_in_networks(ip: IpAddr, networks: &[(IpAddr, u8)]) -> bool {
     networks
+        .iter()
+        .any(|(net, prefix)| in_network(ip, *net, *prefix))
+}
+
+fn system_interface_addresses() -> Vec<(IpAddr, IpAddr)> {
+    let Ok(addrs) = nix::ifaddrs::getifaddrs() else {
+        return Vec::new();
+    };
+    let to_ip = |a: &nix::sys::socket::SockaddrStorage| -> Option<IpAddr> {
+        if let Some(v4) = a.as_sockaddr_in() {
+            Some(IpAddr::V4(v4.ip()))
+        } else {
+            a.as_sockaddr_in6().map(|v6| IpAddr::V6(v6.ip()))
+        }
+    };
+    addrs
+        .filter_map(|ifa| Some((to_ip(&ifa.address?)?, to_ip(&ifa.netmask?)?)))
+        .collect()
 }
 
 /// The environment of the running system: `pm-netenv` for the online state,
-/// `/etc/resolv.conf` for nameservers and `/proc/net/route` for local networks.
+/// `/etc/resolv.conf` for nameservers and interface addresses (`getifaddrs`) for local networks.
 ///
-/// Nameservers from D-Bus (NetworkManager) and Windows are not read; local
-/// IPv6 networks are not detected.
+/// Nameservers from D-Bus (NetworkManager) and Windows are not read;
 #[derive(Debug, Default)]
 pub struct SystemEnvironment;
 
@@ -179,16 +194,10 @@ impl Environment for SystemEnvironment {
     }
 
     fn is_local_network(&self, ip: IpAddr) -> bool {
-        let IpAddr::V4(v4) = ip else {
-            return false;
-        };
-        let Ok(content) = std::fs::read_to_string("/proc/net/route") else {
-            return false;
-        };
-        let ip = u32::from(v4);
-        parse_proc_net_route(&content)
-            .into_iter()
-            .any(|(dest, mask)| ip & mask == dest & mask)
+        ip_in_networks(
+            ip,
+            &networks_from_interface_addresses(&system_interface_addresses()),
+        )
     }
 }
 
@@ -323,13 +332,18 @@ mod tests {
     }
 
     #[test]
-    fn route_table_parsing() {
-        let route =
-            "Iface\tDestination\tGateway\tFlags\tRefCnt\tUse\tMetric\tMask\tMTU\tWindow\tIRTT\n\
-            eth0\t00000000\t0101A8C0\t0003\t0\t0\t100\t00000000\t0\t0\t0\n\
-            eth0\t0001A8C0\t00000000\t0001\t0\t0\t100\t00FFFFFF\t0\t0\t0\n";
-        let networks = parse_proc_net_route(route);
-        assert_eq!(networks, vec![(0xC0A8_0100, 0xFFFF_FF00)]);
+    fn vpn_routes_do_not_make_public_ips_local() {
+        // Interface addresses only: a VPN's 128.0.0.0/1 route is not an address.
+        let ip = |s: &str| s.parse::<IpAddr>().unwrap();
+        let networks = networks_from_interface_addresses(&[
+            (ip("192.168.1.5"), ip("255.255.255.0")),
+            (ip("10.8.0.2"), ip("255.255.255.0")),
+            (ip("fe80::1"), ip("ffff:ffff:ffff:ffff::")),
+        ]);
+        assert!(ip_in_networks(ip("192.168.1.1"), &networks));
+        assert!(ip_in_networks(ip("fe80::5"), &networks));
+        assert!(!ip_in_networks(ip("149.112.112.112"), &networks));
+        assert!(!ip_in_networks(ip("208.67.222.222"), &networks));
     }
 
     #[test]

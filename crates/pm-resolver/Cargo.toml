@@ -11,6 +11,7 @@ base64.workspace = true
 getrandom.workspace = true
 hex.workspace = true
 hickory-proto.workspace = true
+nix = { version = "0.31.3", default-features = false, features = ["net"] }
 pm-api = { path = "../pm-api" }
 pm-config = { path = "../pm-config" }
 pm-database = { path = "../pm-database" }
