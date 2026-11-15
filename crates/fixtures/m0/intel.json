@@ -31,6 +31,11 @@
       "hash": 10
     }
   ],
+  "block_reason": {
+    "json": "{\"filterlists\":[{\"Entity\":\"example.com.\",\"ActiveLists\":[\"list-a\",\"list-b\"],\"InactiveLists\":[\"list-c\"]},{\"Entity\":\"192.0.2.10\",\"ActiveLists\":[\"list-b\"],\"InactiveLists\":null}]}",
+    "match_string": "example.com. in activated lists list-a,list-b and in deactivated lists list-c",
+    "string": "example.com. in activated lists list-a,list-b and in deactivated lists list-c and 192.0.2.10 in activated lists list-b"
+  },
   "entity_record": "{\"Value\":\"example.com.\",\"Sources\":[\"list-a\",\"list-b\"],\"Type\":\"domain\",\"UpdatedAt\":1700000000}",
   "entries": [
     {

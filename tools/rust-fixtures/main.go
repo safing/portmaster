@@ -30,6 +30,7 @@ import (
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/database/storage/sqlite"
 	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/proc"
@@ -1652,7 +1653,34 @@ func genIntel() {
 		fail(err)
 	}
 
+	// Block reasons for filter list matches.
+	blockReason := intel.ListBlockReason{
+		{
+			Entity:        "example.com.",
+			ActiveLists:   []string{"list-a", "list-b"},
+			InactiveLists: []string{"list-c"},
+		},
+		{
+			Entity:      "192.0.2.10",
+			ActiveLists: []string{"list-b"},
+		},
+	}
+	blockReasonJSON, err := blockReason.MarshalJSON()
+	if err != nil {
+		fail(err)
+	}
+	singleMatch := intel.ListMatch{
+		Entity:        "example.com.",
+		ActiveLists:   []string{"list-a", "list-b"},
+		InactiveLists: []string{"list-c"},
+	}
+
 	writeObject("intel.json", map[string]any{
+		"block_reason": map[string]any{
+			"json":         string(blockReasonJSON),
+			"string":       blockReason.String(),
+			"match_string": singleMatch.String(),
+		},
 		"rings":          ringTests,
 		"bf_sizes":       sizes,
 		"entries":        entries,

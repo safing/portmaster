@@ -315,3 +315,38 @@ fn cache_version_is_checked() {
         .unwrap();
     assert!(filter_lists.cache_version().unwrap().is_none());
 }
+
+#[test]
+fn block_reasons_match_go() {
+    let fixture = fixture();
+    let expected_json = fixture["block_reason"]["json"].as_str().unwrap();
+
+    let reason = pm_intel::ListBlockReason::new(vec![
+        pm_intel::ListMatch::new(
+            "example.com.",
+            vec!["list-a".to_string(), "list-b".to_string()],
+            vec!["list-c".to_string()],
+        ),
+        pm_intel::ListMatch::new("192.0.2.10", vec!["list-b".to_string()], Vec::new()),
+    ]);
+
+    let json = serde_json::to_string(&reason.to_json()).unwrap();
+    assert_eq!(json, expected_json);
+    assert_eq!(
+        reason.to_string(),
+        fixture["block_reason"]["string"].as_str().unwrap()
+    );
+    assert_eq!(
+        reason.0[0].to_string(),
+        fixture["block_reason"]["match_string"].as_str().unwrap()
+    );
+
+    // Like Go, only the wire form is wrapped: it is unmarshalled from the
+    // `filterlists` field explicitly.
+    let value: serde_json::Value = serde_json::from_str(expected_json).unwrap();
+    let matches: Vec<pm_intel::ListMatch> =
+        serde_json::from_value(value["filterlists"].clone()).unwrap();
+    assert_eq!(pm_intel::ListBlockReason::new(matches), reason);
+    assert!(reason.0[1].inactive_lists.is_empty());
+    assert!(pm_intel::ListBlockReason::default().is_empty());
+}

@@ -20,12 +20,14 @@
 //! * Bloom filters loaded from the cache start with a zero add counter, like in
 //!   Go.
 
+mod block_reason;
 mod bloom;
 mod decode;
 mod record;
 
 use pm_database::Interface;
 
+pub use block_reason::{ListBlockReason, ListMatch};
 pub use bloom::{
     BloomError, Ring, ScopedBloom, ASN_BF_SIZE, BF_FALSE_POSITIVE_RATE, COUNTRY_BF_SIZE,
     DOMAIN_BF_SIZE, IPV4_BF_SIZE, IPV6_BF_SIZE,
