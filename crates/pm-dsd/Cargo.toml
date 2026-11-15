@@ -1,0 +1,20 @@
+[package]
+name = "pm-dsd"
+version = "0.1.0"
+edition.workspace = true
+description = "Compatible implementation of Portmaster dynamic structured data (DSD) and varint encodings"
+license.workspace = true
+
+[dependencies]
+ciborium.workspace = true
+flate2.workspace = true
+rmp-serde.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+hex.workspace = true
+
+[lints]
+workspace = true
