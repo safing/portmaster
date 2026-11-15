@@ -170,5 +170,150 @@
       ]
     }
   ],
+  "split_domains": [
+    {
+      "domain": "www.books.amazon.co.uk.",
+      "parts": [
+        "www.books.amazon.co.uk.",
+        "books.amazon.co.uk.",
+        "amazon.co.uk."
+      ]
+    },
+    {
+      "domain": "amazon.co.uk.",
+      "parts": [
+        "amazon.co.uk."
+      ]
+    },
+    {
+      "domain": "books.amazon.co.uk.",
+      "parts": [
+        "books.amazon.co.uk.",
+        "amazon.co.uk."
+      ]
+    },
+    {
+      "domain": "www.google.com",
+      "parts": [
+        "www.google.com.",
+        "google.com."
+      ]
+    },
+    {
+      "domain": "example.com.",
+      "parts": [
+        "example.com."
+      ]
+    },
+    {
+      "domain": "a.b.ck",
+      "parts": [
+        "a.b.ck."
+      ]
+    },
+    {
+      "domain": "www.ck",
+      "parts": [
+        "www.ck."
+      ]
+    },
+    {
+      "domain": "ck",
+      "parts": [
+        "ck"
+      ]
+    },
+    {
+      "domain": "cromulent",
+      "parts": [
+        "cromulent"
+      ]
+    },
+    {
+      "domain": "foo.appspot.com",
+      "parts": [
+        "foo.appspot.com.",
+        "appspot.com."
+      ]
+    },
+    {
+      "domain": "deep.foo.appspot.com",
+      "parts": [
+        "deep.foo.appspot.com.",
+        "foo.appspot.com.",
+        "appspot.com."
+      ]
+    },
+    {
+      "domain": "192.0.2.1",
+      "parts": [
+        "192.0.2.1"
+      ]
+    },
+    {
+      "domain": "",
+      "parts": [
+        ""
+      ]
+    },
+    {
+      "domain": ".",
+      "parts": [
+        "."
+      ]
+    },
+    {
+      "domain": "localhost",
+      "parts": [
+        "localhost"
+      ]
+    },
+    {
+      "domain": "XN--80AK6AA92E.com",
+      "parts": [
+        "XN--80AK6AA92E.com."
+      ]
+    },
+    {
+      "domain": "test.blogspot.com",
+      "parts": [
+        "test.blogspot.com.",
+        "blogspot.com."
+      ]
+    },
+    {
+      "domain": "a.b.c.d.e.f.co.jp.",
+      "parts": [
+        "a.b.c.d.e.f.co.jp.",
+        "b.c.d.e.f.co.jp.",
+        "c.d.e.f.co.jp.",
+        "d.e.f.co.jp.",
+        "e.f.co.jp.",
+        "f.co.jp."
+      ]
+    },
+    {
+      "domain": "foo.bar.example.unknowntld",
+      "parts": [
+        "foo.bar.example.unknowntld.",
+        "bar.example.unknowntld.",
+        "example.unknowntld.",
+        "unknowntld."
+      ]
+    },
+    {
+      "domain": "www.city.kawasaki.jp",
+      "parts": [
+        "www.city.kawasaki.jp.",
+        "city.kawasaki.jp."
+      ]
+    },
+    {
+      "domain": "city.kawasaki.jp",
+      "parts": [
+        "city.kawasaki.jp."
+      ]
+    }
+  ],
   "version_record": "{\"Version\":\"v0.6.4\",\"Reset\":\"v0.6.0\"}"
 }

@@ -67,6 +67,13 @@ fn scope_v6(ip: Ipv6Addr) -> IpScope {
     }
 }
 
+impl IpScope {
+    /// Returns whether the scope is global, like Go `IPScope.IsGlobal`.
+    pub fn is_global(self) -> bool {
+        matches!(self, IpScope::Global | IpScope::GlobalMulticast)
+    }
+}
+
 /// Returns whether the IP is a local multicast or broadcast address.
 pub fn is_local_multicast(ip: IpAddr) -> bool {
     ip_scope(ip) == IpScope::LocalMulticast

@@ -23,6 +23,7 @@
 mod block_reason;
 mod bloom;
 mod decode;
+mod entity;
 mod record;
 
 use pm_database::Interface;
@@ -33,6 +34,7 @@ pub use bloom::{
     DOMAIN_BF_SIZE, IPV4_BF_SIZE, IPV6_BF_SIZE,
 };
 pub use decode::{decode_file, parse_header, EntryResource, ListEntry};
+pub use entity::{split_domain, Entity, LocationProvider, ReverseResolver, StaticLocations};
 pub use record::{
     bloom_cache_key, list_cache_key, normalize_entry, BloomFilterRecord, CacheVersionRecord,
     EntityRecord, FilterLists, CACHE_DB_PREFIX, CACHE_VERSION_KEY, INDEX_KEY, LIST_KEY_PREFIX,

@@ -42,6 +42,7 @@ import (
 	"github.com/safing/structures/dsd"
 	"github.com/safing/structures/varint"
 	"github.com/tannerryan/ring"
+	"golang.org/x/net/publicsuffix"
 )
 
 type fixtureFile struct {
@@ -1675,7 +1676,45 @@ func genIntel() {
 		InactiveLists: []string{"list-c"},
 	}
 
+	// splitDomain results, using the Go public suffix list. This mirrors
+	// service/intel/entity.go (the function is unexported there).
+	type splitCase struct {
+		Domain string   `json:"domain"`
+		Parts  []string `json:"parts"`
+	}
+	splitDomains := []string{
+		"www.books.amazon.co.uk.", "amazon.co.uk.", "books.amazon.co.uk.",
+		"www.google.com", "example.com.", "a.b.ck", "www.ck", "ck",
+		"cromulent", "foo.appspot.com", "deep.foo.appspot.com",
+		"192.0.2.1", "", ".", "localhost", "XN--80AK6AA92E.com",
+		"test.blogspot.com", "a.b.c.d.e.f.co.jp.",
+		"foo.bar.example.unknowntld", "www.city.kawasaki.jp", "city.kawasaki.jp",
+	}
+	splitDomain := func(domain string) []string {
+		d := strings.TrimSuffix(domain, ".")
+		suffix, icann := publicsuffix.PublicSuffix(d)
+		if suffix == d {
+			return []string{domain}
+		}
+		labels := strings.FieldsFunc(d[:len(d)-len(suffix)], func(r rune) bool {
+			return r == '.'
+		})
+		domains := make([]string, 0, len(labels)+1)
+		for idx := range labels {
+			domains = append(domains, strings.Join(labels[idx:], ".")+"."+suffix+".")
+		}
+		if !icann {
+			domains = append(domains, suffix+".")
+		}
+		return domains
+	}
+	splitCases := make([]splitCase, 0, len(splitDomains))
+	for _, domain := range splitDomains {
+		splitCases = append(splitCases, splitCase{Domain: domain, Parts: splitDomain(domain)})
+	}
+
 	writeObject("intel.json", map[string]any{
+		"split_domains": splitCases,
 		"block_reason": map[string]any{
 			"json":         string(blockReasonJSON),
 			"string":       blockReason.String(),

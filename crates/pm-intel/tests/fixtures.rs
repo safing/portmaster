@@ -350,3 +350,21 @@ fn block_reasons_match_go() {
     assert!(reason.0[1].inactive_lists.is_empty());
     assert!(pm_intel::ListBlockReason::default().is_empty());
 }
+
+#[test]
+fn split_domains_match_go() {
+    let fixture = fixture();
+    let cases = fixture["split_domains"].as_array().unwrap();
+    assert_eq!(cases.len(), 21);
+
+    for case in cases {
+        let domain = case["domain"].as_str().unwrap();
+        let expected: Vec<String> = case["parts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|part| part.as_str().unwrap().to_string())
+            .collect();
+        assert_eq!(pm_intel::split_domain(domain), expected, "{domain:?}");
+    }
+}
