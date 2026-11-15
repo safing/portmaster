@@ -40,17 +40,6 @@ import (
 	"github.com/safing/portmaster/service/sync"
 	"github.com/safing/portmaster/service/ui"
 	"github.com/safing/portmaster/service/updates"
-	"github.com/safing/portmaster/spn/access"
-	"github.com/safing/portmaster/spn/cabin"
-	"github.com/safing/portmaster/spn/captain"
-	"github.com/safing/portmaster/spn/crew"
-	"github.com/safing/portmaster/spn/docks"
-	"github.com/safing/portmaster/spn/hub"
-	"github.com/safing/portmaster/spn/navigator"
-	"github.com/safing/portmaster/spn/patrol"
-	"github.com/safing/portmaster/spn/ships"
-	"github.com/safing/portmaster/spn/sluice"
-	"github.com/safing/portmaster/spn/terminal"
 )
 
 // Instance is an instance of a Portmaster service.
@@ -106,19 +95,7 @@ type Instance struct {
 
 	splittun *splittun.SplitTunModule
 
-	access *access.Access
-
-	// SPN modules
-	SpnGroup  *mgr.ExtendedGroup
-	cabin     *cabin.Cabin
-	navigator *navigator.Navigator
-	captain   *captain.Captain
-	crew      *crew.Crew
-	docks     *docks.Docks
-	patrol    *patrol.Patrol
-	ships     *ships.Ships
-	sluice    *sluice.SluiceModule
-	terminal  *terminal.TerminalModule
+	SpnGroup *mgr.ExtendedGroup
 
 	CommandLineOperation func() error
 	ShouldRestart        bool
@@ -283,52 +260,10 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	if err != nil {
 		return instance, fmt.Errorf("create interop module: %w", err)
 	}
-	instance.access, err = access.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create access module: %w", err)
-	}
 
 	instance.splittun, err = splittun.New(instance)
 	if err != nil {
 		return instance, fmt.Errorf("create splittun module: %w", err)
-	}
-
-	// SPN modules
-	instance.cabin, err = cabin.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create cabin module: %w", err)
-	}
-	instance.navigator, err = navigator.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create navigator module: %w", err)
-	}
-	instance.captain, err = captain.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create captain module: %w", err)
-	}
-	instance.crew, err = crew.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create crew module: %w", err)
-	}
-	instance.docks, err = docks.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create docks module: %w", err)
-	}
-	instance.patrol, err = patrol.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create patrol module: %w", err)
-	}
-	instance.ships, err = ships.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create ships module: %w", err)
-	}
-	instance.sluice, err = sluice.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create sluice module: %w", err)
-	}
-	instance.terminal, err = terminal.New(instance)
-	if err != nil {
-		return instance, fmt.Errorf("create terminal module: %w", err)
 	}
 
 	// Grouped interception modules that can be paused/resumed together.
@@ -380,22 +315,10 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 		instance.sync,
 		instance.ui,
 		instance.control,
-
-		instance.access,
 	)
 
-	// SPN Group
-	instance.SpnGroup = mgr.NewExtendedGroup(
-		instance.cabin,
-		instance.navigator,
-		instance.captain,
-		instance.crew,
-		instance.docks,
-		instance.patrol,
-		instance.ships,
-		instance.sluice,
-		instance.terminal,
-	)
+	// SPN Group (empty when SPN is disabled)
+	instance.SpnGroup = mgr.NewExtendedGroup()
 
 	return instance, nil
 }
@@ -510,56 +433,6 @@ func (i *Instance) NetEnv() *netenv.NetEnv {
 	return i.netenv
 }
 
-// Access returns the access module.
-func (i *Instance) Access() *access.Access {
-	return i.access
-}
-
-// Cabin returns the cabin module.
-func (i *Instance) Cabin() *cabin.Cabin {
-	return i.cabin
-}
-
-// Captain returns the captain module.
-func (i *Instance) Captain() *captain.Captain {
-	return i.captain
-}
-
-// Crew returns the crew module.
-func (i *Instance) Crew() *crew.Crew {
-	return i.crew
-}
-
-// Docks returns the crew module.
-func (i *Instance) Docks() *docks.Docks {
-	return i.docks
-}
-
-// Navigator returns the navigator module.
-func (i *Instance) Navigator() *navigator.Navigator {
-	return i.navigator
-}
-
-// Patrol returns the patrol module.
-func (i *Instance) Patrol() *patrol.Patrol {
-	return i.patrol
-}
-
-// Ships returns the ships module.
-func (i *Instance) Ships() *ships.Ships {
-	return i.ships
-}
-
-// Sluice returns the ships module.
-func (i *Instance) Sluice() *sluice.SluiceModule {
-	return i.sluice
-}
-
-// Terminal returns the terminal module.
-func (i *Instance) Terminal() *terminal.TerminalModule {
-	return i.terminal
-}
-
 // UI returns the ui module.
 func (i *Instance) UI() *ui.UI {
 	return i.ui
@@ -653,17 +526,6 @@ func (i *Instance) Core() *core.Core {
 // SPNGroup returns the group of all SPN modules.
 func (i *Instance) SPNGroup() *mgr.ExtendedGroup {
 	return i.SpnGroup
-}
-
-// Events
-
-// GetEventSPNConnected return the event manager for the SPN connected event.
-func (i *Instance) GetEventSPNConnected() *mgr.EventMgr[struct{}] {
-	return i.captain.EventSPNConnected
-}
-
-func (i *Instance) GetHookSPNConnecting() *mgr.HookMgr[hub.Announcement] {
-	return i.captain.HookSPNConnecting
 }
 
 // Special functions

@@ -10,7 +10,6 @@ import (
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/process"
-	"github.com/safing/portmaster/spn/navigator"
 	"github.com/tevino/abool"
 )
 
@@ -54,14 +53,6 @@ func NewDefaultConnection(localIP net.IP, localPort uint16, remoteIP net.IP, rem
 		993, // IMAP-SSL
 		995: // POP3-SSL
 		connInfo.Encrypted = true
-	}
-
-	var layeredProfile = connInfo.process.Profile()
-	connInfo.TunnelOpts = &navigator.Options{
-		HubPolicies:                   layeredProfile.StackedExitHubPolicies(),
-		CheckHubExitPolicyWith:        connInfo.Entity,
-		RequireTrustedDestinationHubs: !connInfo.Encrypted,
-		RoutingProfile:                layeredProfile.SPNRoutingAlgorithm(),
 	}
 
 	return connInfo

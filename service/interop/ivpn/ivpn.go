@@ -15,7 +15,6 @@ import (
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
-	"github.com/safing/portmaster/spn/hub"
 )
 
 const DNS_LOCKED_DESCRIPTION = "Portmaster controls all DNS resolution on this system, which prevents conflicts with IVPN's DNS settings. To let IVPN manage DNS again, remove all DNS servers from Portmaster's DNS configuration."
@@ -27,7 +26,6 @@ type interopBase interface {
 	DnsListenAddress() string
 	DnsNameServers() []string
 	EvtConfigChange() <-chan struct{}
-	GetHookSPNConnecting() *mgr.HookMgr[hub.Announcement]
 	Interception() *interception.Interception
 	Manager() *mgr.Manager
 }
@@ -80,10 +78,6 @@ func (i *InteropIvpn) setStatus(status *clientStatus) {
 
 func (i *InteropIvpn) Start() error {
 	i.connHandler = i.owner.Manager().NewWorkerMgr("ivpn client interoperability", i.connectIvpnClient, nil)
-
-	// Subscribe to SPN connecting hook to ensure SPN compatibility rules
-	// are applied before SPN connects to the network.
-	i.owner.GetHookSPNConnecting().AddHook("ivpn", i.spnConnectingHook)
 
 	firstTryChan := make(chan struct{})
 	i.firstTryDone.Store(&firstTryChan)

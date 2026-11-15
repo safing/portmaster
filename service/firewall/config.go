@@ -7,7 +7,6 @@ import (
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/core"
-	"github.com/safing/portmaster/spn/captain"
 )
 
 // Configuration Keys.
@@ -146,8 +145,8 @@ func getConfig() {
 	devMode = config.Concurrent.GetAsBool(core.CfgDevModeKey, false)
 	apiListenAddress = config.GetAsString(api.CfgDefaultListenAddressKey, "")
 
-	tunnelEnabled = config.Concurrent.GetAsBool(captain.CfgOptionEnableSPNKey, false)
-	useCommunityNodes = config.Concurrent.GetAsBool(captain.CfgOptionUseCommunityNodesKey, true)
+	tunnelEnabled = func() bool { return false }
+	useCommunityNodes = func() bool { return false }
 
 	configReady.Set()
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/safing/portmaster/service/profile/endpoints"
 	"github.com/safing/portmaster/service/splittun/proxy"
 	"github.com/safing/portmaster/service/status"
-	"github.com/safing/portmaster/spn/access/account"
 )
 
 // Configuration Keys.
@@ -261,10 +260,9 @@ In order to reduce noise optimize performance, internal and device-only (localho
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		DefaultValue:   false,
 		Annotations: config.Annotations{
-			config.SettablePerAppAnnotation:    true,
-			config.DisplayOrderAnnotation:      cfgOptionEnableHistoryOrder,
-			config.CategoryAnnotation:          "General",
-			config.RequiresFeatureIDAnnotation: account.FeatureHistory,
+			config.SettablePerAppAnnotation: true,
+			config.DisplayOrderAnnotation:   cfgOptionEnableHistoryOrder,
+			config.CategoryAnnotation:       "General",
 		},
 	})
 	if err != nil {
@@ -286,11 +284,10 @@ Set to 0 days to keep network history forever. Depending on your device, this mi
 		ExpertiseLevel: config.ExpertiseLevelUser,
 		DefaultValue:   30,
 		Annotations: config.Annotations{
-			config.SettablePerAppAnnotation:    true,
-			config.UnitAnnotation:              "Days",
-			config.DisplayOrderAnnotation:      cfgOptionKeepHistoryOrder,
-			config.CategoryAnnotation:          "General",
-			config.RequiresFeatureIDAnnotation: account.FeatureHistory,
+			config.SettablePerAppAnnotation: true,
+			config.UnitAnnotation:           "Days",
+			config.DisplayOrderAnnotation:   cfgOptionKeepHistoryOrder,
+			config.CategoryAnnotation:       "General",
 		},
 	})
 	if err != nil {

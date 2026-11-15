@@ -27,7 +27,6 @@ import (
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/service/resolver"
-	"github.com/safing/portmaster/spn/access"
 )
 
 type ExtVerdictHandlerFunc func(conn *network.Connection) (verdict network.Verdict, reason string, skipTunnel bool)
@@ -130,9 +129,7 @@ func resetConnectionVerdict(ctx context.Context, conn *network.Connection) (verd
 	}
 
 	// Update feature flags.
-	if err := conn.UpdateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
-		tracer.Warningf("filter: failed to update connection feature flags: %s", err)
-	}
+	_ = conn.UpdateFeatures()
 
 	// Skip internal connections:
 	// - Pre-authenticated connections from Portmaster

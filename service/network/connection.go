@@ -2,7 +2,6 @@ package network
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"runtime"
@@ -23,9 +22,6 @@ import (
 	"github.com/safing/portmaster/service/process"
 	_ "github.com/safing/portmaster/service/process/tags"
 	"github.com/safing/portmaster/service/resolver"
-	"github.com/safing/portmaster/spn/access"
-	"github.com/safing/portmaster/spn/access/account"
-	"github.com/safing/portmaster/spn/navigator"
 )
 
 // FirewallHandler defines the function signature for a firewall
@@ -168,7 +164,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// Encrypted is currently unused and MUST be ignored.
 	Encrypted bool
 	// TunnelOpts holds options for tunneling the connection.
-	TunnelOpts *navigator.Options
+	TunnelOpts any
 	// ProcessContext holds additional information about the process
 	// that initiated the connection. It is set once when the connection
 	// object is created and is considered immutable afterwards.
@@ -370,9 +366,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	if localProfile := proc.Profile().LocalProfile(); localProfile != nil {
 		dnsConn.Internal = localProfile.Internal
 
-		if err := dnsConn.UpdateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
-			log.Tracer(ctx).Warningf("network: failed to check for enabled features: %s", err)
-		}
+		_ = dnsConn.UpdateFeatures()
 	}
 
 	// DNS Requests are saved by the nameserver depending on the result of the
@@ -414,9 +408,7 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 	if localProfile := remoteHost.Profile().LocalProfile(); localProfile != nil {
 		dnsConn.Internal = localProfile.Internal
 
-		if err := dnsConn.UpdateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
-			log.Tracer(ctx).Warningf("network: failed to check for enabled features: %s", err)
-		}
+		_ = dnsConn.UpdateFeatures()
 	}
 
 	// DNS Requests are saved by the nameserver depending on the result of the
@@ -555,9 +547,7 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 		if localProfile := conn.process.Profile().LocalProfile(); localProfile != nil {
 			conn.Internal = localProfile.Internal
 
-			if err := conn.UpdateFeatures(); err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
-				log.Tracer(pkt.Ctx()).Warningf("network: connection %s failed to check for enabled features: %s", conn, err)
-			}
+			_ = conn.UpdateFeatures()
 		}
 	}
 
@@ -670,33 +660,20 @@ func (conn *Connection) SetLocalIP(ip net.IP) {
 // used and sets the flags accordingly.
 // The caller must hold a lock on the connection.
 func (conn *Connection) UpdateFeatures() error {
-	// Get user.
-	user, err := access.GetUser()
-	if err != nil && !errors.Is(err, access.ErrNotLoggedIn) {
-		return err
-	}
-	// Caution: user may be nil!
-
-	// Check if history may be used and if it is enabled for this application.
 	conn.HistoryEnabled = false
 	switch {
 	case conn.Internal:
 		// Do not record internal connections, as they are of low interest in the history.
-		// TODO: Should we create a setting for this?
 	case conn.Entity.IPScope.IsLocalhost():
 		// Do not record localhost-only connections, as they are very low interest in the history.
-		// TODO: Should we create a setting for this?
-	case user.MayUse(account.FeatureHistory):
-		// Check if history may be used and is enabled.
+	default:
 		lProfile := conn.Process().Profile()
 		if lProfile != nil {
 			conn.HistoryEnabled = lProfile.EnableHistory()
 		}
 	}
 
-	// Check if bandwidth visibility may be used.
-	conn.BandwidthEnabled = user.MayUse(account.FeatureBWVis)
-
+	conn.BandwidthEnabled = false
 	return nil
 }
 

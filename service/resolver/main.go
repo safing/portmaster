@@ -91,14 +91,6 @@ func start() error {
 		},
 	)
 
-	// Force resolvers to reconnect when SPN has connected.
-	module.instance.GetEventSPNConnected().AddCallback(
-		"force resolver reconnect",
-		func(ctx *mgr.WorkerCtx, _ struct{}) (bool, error) {
-			ForceResolverReconnect(ctx.Ctx())
-			return false, nil
-		})
-
 	// reload after config change
 	prevNameservers := strings.Join(configuredNameServers(), " ")
 	module.instance.Config().EventConfigChange.AddCallback(
@@ -325,6 +317,5 @@ func New(instance instance) (*ResolverModule, error) {
 type instance interface {
 	NetEnv() *netenv.NetEnv
 	Config() *config.Config
-	GetEventSPNConnected() *mgr.EventMgr[struct{}]
 	ShuttingDown() <-chan struct{}
 }
