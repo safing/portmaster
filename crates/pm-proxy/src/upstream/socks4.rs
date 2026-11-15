@@ -59,7 +59,7 @@ pub async fn socks4_connect(
             0x5b => "request rejected or failed",
             0x5c => "request rejected because SOCKS server cannot connect to identd on client",
             0x5d => "request rejected because client program and identd report different user IDs",
-            other => return Err(io::Error::new(io::ErrorKind::Other, format!("socks4 error code 0x{:02x}", other))),
+            other => return Err(io::Error::other(format!("socks4 error code 0x{:02x}", other))),
         };
         return Err(io::Error::new(io::ErrorKind::ConnectionRefused, msg));
     }

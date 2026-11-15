@@ -105,7 +105,7 @@ pub async fn socks5_connect(
             0x06 => "TTL expired",
             0x07 => "command not supported",
             0x08 => "address type not supported",
-            other => return Err(io::Error::new(io::ErrorKind::Other, format!("socks5 error code 0x{:02x}", other))),
+            other => return Err(io::Error::other(format!("socks5 error code 0x{:02x}", other))),
         };
         return Err(io::Error::new(io::ErrorKind::ConnectionRefused, msg));
     }
