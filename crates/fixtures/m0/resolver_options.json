@@ -1,0 +1,276 @@
+[
+  {
+    "Name": "Block Unofficial TLDs",
+    "Key": "dns/dontResolveSpecialDomains",
+    "Description": "Block .onion, .i2p, .loki, .bit, .eth, .888, .bitcoin, .coin, .crypto, .dao, .nft, .wallet, .x, .zil, .bazar, .coin, .emc, .lib, .bbs, .chan, .dyn, .free, .fur, .geek, .glue, .gopher, .indy, .libre, .neo, .null, .o, .oss, .oz, .parody, .pirate, .ku, .te, .ti, .uu. Unofficial domains may pose a security risk. This setting does not affect .onion domains in the Tor Browser.",
+    "Help": "",
+    "Sensitive": false,
+    "OptType": 4,
+    "ExpertiseLevel": 1,
+    "ReleaseLevel": 0,
+    "RequiresRestart": false,
+    "DefaultValue": true,
+    "ValidationRegex": "",
+    "Annotations": {
+      "safing/portbase:ui:category": "Resolving",
+      "safing/portbase:ui:display-hint": "security level",
+      "safing/portbase:ui:order": 16,
+      "self:detail:specialServiceDomains": [
+        ".onion.",
+        ".i2p.",
+        ".loki.",
+        ".bit.",
+        ".eth.",
+        ".888.",
+        ".bitcoin.",
+        ".coin.",
+        ".crypto.",
+        ".dao.",
+        ".nft.",
+        ".wallet.",
+        ".x.",
+        ".zil.",
+        ".bazar.",
+        ".coin.",
+        ".emc.",
+        ".lib.",
+        ".bbs.",
+        ".chan.",
+        ".dyn.",
+        ".free.",
+        ".fur.",
+        ".geek.",
+        ".glue.",
+        ".gopher.",
+        ".indy.",
+        ".libre.",
+        ".neo.",
+        ".null.",
+        ".o.",
+        ".oss.",
+        ".oz.",
+        ".parody.",
+        ".pirate.",
+        ".ku.",
+        ".te.",
+        ".ti.",
+        ".uu."
+      ]
+    }
+  },
+  {
+    "Name": "Retry Failing DNS Servers",
+    "Key": "dns/nameserverRetryRate",
+    "Description": "Duration in seconds how often failing DNS server should be retried. This is done continuously in the background.",
+    "Help": "",
+    "Sensitive": false,
+    "OptType": 3,
+    "ExpertiseLevel": 2,
+    "ReleaseLevel": 0,
+    "RequiresRestart": false,
+    "DefaultValue": 300,
+    "ValidationRegex": "^[1-9][0-9]{1,5}$",
+    "Annotations": {
+      "safing/portbase:ui:category": "Servers",
+      "safing/portbase:ui:order": 32,
+      "safing/portbase:ui:unit": "seconds"
+    }
+  },
+  {
+    "Name": "DNS Servers",
+    "Key": "dns/nameservers",
+    "Description": "DNS servers to use for resolving DNS requests.",
+    "Help": "DNS servers are used in the order as entered. The first one will be used as the primary DNS Server. Only if it fails, will the other servers be used as a fallback - in their respective order. If all fail, or if no DNS Server is configured here, the Portmaster will use the one configured in your system or network.\n\nAdditionally, if it is more likely that the DNS server of your system or network has a (better) answer to a request, they will be asked first. This will be the case for special local domains and domain spaces announced on the current network.\n\nDNS servers are configured in a URL format. This allows you to specify special settings for a resolver. If you just want to use a resolver at IP 10.2.3.4, please enter: `dns://10.2.3.4`  \nThe format is: `protocol://host:port?parameter=value\u0026parameter=value`  \n\nFor DoH servers, you can also just paste the URL given by the DNS provider.  \nWhen referring to the DNS server using a domain name, as with DoH, it is highly recommended to also specify the IP address using the `ip` parameter, so Portmaster does not have to resolve it.\n\n- Protocol\n\t- `dot`: DNS-over-TLS (or `tls`; recommended)  \n\t- `doh`: DNS-over-HTTPS (or `https`)\n\t- `dns`: plain old DNS  \n\t- `tcp`: plain old DNS over TCP\n- Host: specify the domain or IP of the resolver\n- Port: optionally define a custom port\n- Parameters:\n\t- `name`: give your DNS Server a name that is used for messages and logs\n\t- `verify`: domain name to verify for `dot`, only valid for `dot` and `doh`\n\t- `ip`: IP address (if using a domain), so Portmaster does not need to resolve it using the system resolver - this is highly recommended\n\t- `blockedif`: detect if the name server blocks a query, options:\n\t\t- `empty`: server replies with NXDomain status, but without any other record in any section\n\t\t- `refused`: server replies with Refused status\n\t\t- `zeroip`: server replies with an IP address, but it is zero\n\t- `search`: specify prioritized domains/TLDs for this resolver (delimited by `,`)\n\t- `search-only`: use this resolver for domains in the `search` parameter only (no value)\n",
+    "Sensitive": true,
+    "OptType": 2,
+    "ExpertiseLevel": 0,
+    "ReleaseLevel": 0,
+    "RequiresRestart": false,
+    "DefaultValue": [
+      "dot://cloudflare-dns.com?ip=1.1.1.2\u0026name=Cloudflare\u0026blockedif=zeroip",
+      "dot://cloudflare-dns.com?ip=1.0.0.2\u0026name=Cloudflare\u0026blockedif=zeroip"
+    ],
+    "ValidationRegex": "^(dot|doh|dns|tcp|https|tls)://.*",
+    "Annotations": {
+      "safing/portbase:ui:category": "Servers",
+      "safing/portbase:ui:display-hint": "ordered",
+      "safing/portbase:ui:order": 0,
+      "safing/portbase:ui:quick-setting": [
+        {
+          "Name": "Set Cloudflare (with Malware Filter)",
+          "Value": [
+            "dot://cloudflare-dns.com?ip=1.1.1.2\u0026name=Cloudflare\u0026blockedif=zeroip",
+            "dot://cloudflare-dns.com?ip=1.0.0.2\u0026name=Cloudflare\u0026blockedif=zeroip"
+          ],
+          "Action": "replace"
+        },
+        {
+          "Name": "Set Quad9",
+          "Value": [
+            "dot://dns.quad9.net?ip=9.9.9.9\u0026name=Quad9\u0026blockedif=empty",
+            "dot://dns.quad9.net?ip=149.112.112.112\u0026name=Quad9\u0026blockedif=empty"
+          ],
+          "Action": "replace"
+        },
+        {
+          "Name": "Set AdGuard",
+          "Value": [
+            "dot://dns.adguard.com?ip=94.140.14.14\u0026name=AdGuard\u0026blockedif=zeroip",
+            "dot://dns.adguard.com?ip=94.140.15.15\u0026name=AdGuard\u0026blockedif=zeroip"
+          ],
+          "Action": "replace"
+        },
+        {
+          "Name": "Set Foundation for Applied Privacy",
+          "Value": [
+            "dot://dot1.applied-privacy.net?ip=146.255.56.98\u0026name=AppliedPrivacy"
+          ],
+          "Action": "replace"
+        },
+        {
+          "Name": "Add Cloudflare (as fallback)",
+          "Value": [
+            "dot://cloudflare-dns.com?ip=1.1.1.1\u0026name=Cloudflare\u0026blockedif=zeroip",
+            "dot://cloudflare-dns.com?ip=1.0.0.1\u0026name=Cloudflare\u0026blockedif=zeroip"
+          ],
+          "Action": "merge-bottom"
+        }
+      ],
+      "self:detail:connectivityDomains": [
+        "captiveportal.invalid.",
+        "dns.msftncsi.com.",
+        "msftncsi.com.",
+        "www.msftncsi.com.",
+        "microsoftconnecttest.com.",
+        "www.microsoftconnecttest.com.",
+        "ipv6.microsoftconnecttest.com.",
+        "captive.apple.com.",
+        "connectivity-check.ubuntu.com.",
+        "nmcheck.gnome.org.",
+        "network-test.debian.org.",
+        "204.pop-os.org.",
+        "conncheck.opensuse.org.",
+        "ping.archlinux.org",
+        "connectivitycheck.gstatic.com.",
+        "neverssl.com.",
+        "detectportal.firefox.com."
+      ],
+      "self:detail:internalSpecialUseDomains": [
+        ".portmaster.home.arpa."
+      ]
+    }
+  },
+  {
+    "Name": "Ignore System/Network Servers",
+    "Key": "dns/noAssignedNameservers",
+    "Description": "Ignore DNS servers configured in your system or network. This may break domains from your local network.",
+    "Help": "",
+    "Sensitive": false,
+    "OptType": 4,
+    "ExpertiseLevel": 1,
+    "ReleaseLevel": 0,
+    "RequiresRestart": false,
+    "DefaultValue": false,
+    "ValidationRegex": "",
+    "Annotations": {
+      "safing/portbase:ui:category": "Servers",
+      "safing/portbase:ui:display-hint": "security level",
+      "safing/portbase:ui:order": 1,
+      "self:detail:specialUseDomains": [
+        ".home.arpa.",
+        ".intranet.",
+        ".internal.",
+        ".private.",
+        ".corp.",
+        ".home.",
+        ".lan.",
+        ".10.in-addr.arpa.",
+        ".16.172.in-addr.arpa.",
+        ".17.172.in-addr.arpa.",
+        ".18.172.in-addr.arpa.",
+        ".19.172.in-addr.arpa.",
+        ".20.172.in-addr.arpa.",
+        ".21.172.in-addr.arpa.",
+        ".22.172.in-addr.arpa.",
+        ".23.172.in-addr.arpa.",
+        ".24.172.in-addr.arpa.",
+        ".25.172.in-addr.arpa.",
+        ".26.172.in-addr.arpa.",
+        ".27.172.in-addr.arpa.",
+        ".28.172.in-addr.arpa.",
+        ".29.172.in-addr.arpa.",
+        ".30.172.in-addr.arpa.",
+        ".31.172.in-addr.arpa.",
+        ".168.192.in-addr.arpa.",
+        ".d.f.ip6.arpa.",
+        ".c.f.ip6.arpa.",
+        ".example.",
+        ".example.com.",
+        ".example.net.",
+        ".example.org.",
+        ".test."
+      ]
+    }
+  },
+  {
+    "Name": "Use Secure Protocols Only",
+    "Key": "dns/noInsecureProtocols",
+    "Description": "Never resolve using insecure protocols, ie. plain DNS. This may break certain local DNS services, which always use plain DNS.",
+    "Help": "",
+    "Sensitive": false,
+    "OptType": 4,
+    "ExpertiseLevel": 1,
+    "ReleaseLevel": 0,
+    "RequiresRestart": false,
+    "DefaultValue": false,
+    "ValidationRegex": "",
+    "Annotations": {
+      "safing/portbase:ui:category": "Resolving",
+      "safing/portbase:ui:display-hint": "security level",
+      "safing/portbase:ui:order": 4
+    }
+  },
+  {
+    "Name": "Ignore Multicast DNS",
+    "Key": "dns/noMulticastDNS",
+    "Description": "Do not resolve using Multicast DNS. This may break certain Plug and Play devices and services.",
+    "Help": "",
+    "Sensitive": false,
+    "OptType": 4,
+    "ExpertiseLevel": 1,
+    "ReleaseLevel": 0,
+    "RequiresRestart": false,
+    "DefaultValue": false,
+    "ValidationRegex": "",
+    "Annotations": {
+      "safing/portbase:ui:category": "Resolving",
+      "safing/portbase:ui:display-hint": "security level",
+      "safing/portbase:ui:order": 3,
+      "self:detail:multicastDomains": [
+        ".local.",
+        ".254.169.in-addr.arpa.",
+        ".8.e.f.ip6.arpa.",
+        ".9.e.f.ip6.arpa.",
+        ".a.e.f.ip6.arpa.",
+        ".b.e.f.ip6.arpa."
+      ]
+    }
+  },
+  {
+    "Name": "Always Use DNS Cache",
+    "Key": "dns/useStaleCache",
+    "Description": "Always use the DNS cache, even if entries have expired. Expired entries are refreshed afterwards in the background. This can improve DNS resolving performance a lot, but may lead to occasional connection errors due to outdated DNS records.",
+    "Help": "",
+    "Sensitive": false,
+    "OptType": 4,
+    "ExpertiseLevel": 0,
+    "ReleaseLevel": 0,
+    "RequiresRestart": false,
+    "DefaultValue": false,
+    "ValidationRegex": "",
+    "Annotations": {
+      "safing/portbase:ui:category": "Resolving",
+      "safing/portbase:ui:order": 2
+    }
+  }
+]

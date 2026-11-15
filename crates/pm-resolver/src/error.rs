@@ -83,6 +83,15 @@ pub enum ResolveError {
     #[error("resolve failure: {0}")]
     Failure(String),
 
+    #[error("record could not be found")]
+    NotFound,
+
+    #[error("resolver has no answer")]
+    Continue,
+
+    #[error("query was cancelled")]
+    Cancelled,
+
     #[error("ID mismatch: expected {expected}, got {got}")]
     IdMismatch { expected: u16, got: u16 },
 }

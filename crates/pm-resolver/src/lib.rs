@@ -1,7 +1,18 @@
+pub mod api;
 pub mod block;
 pub mod conn;
+pub mod env;
 pub mod error;
 pub mod model;
+pub mod namerecord;
+mod option_texts;
+pub mod query_error;
+pub mod resolve;
+pub mod rr_text;
+pub mod rrcache;
+pub mod scopes;
+pub mod service;
+pub mod settings;
 pub mod transports;
 pub mod url;
 
@@ -18,6 +29,12 @@ pub use model::{
     SERVER_TYPE_DOT, SERVER_TYPE_ENV, SERVER_TYPE_FIREWALL, SERVER_TYPE_MDNS, SERVER_TYPE_MONITOR,
     SERVER_TYPE_TCP, TLS_PROTOCOL,
 };
+pub use env::{Environment, Nameserver, StaticEnvironment, SystemEnvironment};
+pub use namerecord::{NameRecord, NameRecordStore};
+pub use query_error::{QueryError, ResolveFailure};
+pub use rrcache::RRCache;
+pub use service::ResolverService;
+pub use settings::{ConfigSettings, Settings, StaticSettings};
 pub use transports::{HttpsResolver, PlainResolver, TcpResolver};
 pub use url::{
     check_search_scope, configure_search_domains, create_resolver, create_resolver_with_local_net,

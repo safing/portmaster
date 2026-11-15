@@ -20,6 +20,7 @@ pub const PARAMETER_LINK_LOCAL: &str = "link-local";
 
 pub const MAX_SEARCH_DOMAINS: usize = 100;
 
+/// Special-service domains, verbatim from Go (including the duplicate `.coin.`).
 pub const SPECIAL_SERVICE_DOMAINS: &[&str] = &[
     ".onion.",
     ".i2p.",
@@ -36,6 +37,7 @@ pub const SPECIAL_SERVICE_DOMAINS: &[&str] = &[
     ".x.",
     ".zil.",
     ".bazar.",
+    ".coin.",
     ".emc.",
     ".lib.",
     ".bbs.",

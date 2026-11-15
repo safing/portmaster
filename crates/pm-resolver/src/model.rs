@@ -201,5 +201,5 @@ impl fmt::Display for Resolver {
 #[derive(Debug, Clone)]
 pub struct Scope {
     pub domain: String,
-    pub resolvers: Vec<Resolver>,
+    pub resolvers: Vec<Arc<Resolver>>,
 }

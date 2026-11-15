@@ -1,0 +1,158 @@
+{
+  "name_records": [
+    {
+      "expires": 1701209660,
+      "json": "{\"Domain\":\"example.com.\",\"Question\":\"A\",\"RCode\":0,\"Answer\":[\"example.com.\\t17\\tIN\\tCNAME\\twww.example.net.\",\"www.example.net.\\t17\\tIN\\tA\\t192.0.2.1\",\"www.example.net.\\t17\\tIN\\tAAAA\\t2001:db8::1\"],\"Ns\":[],\"Extra\":[\"example.com.\\t17\\tIN\\tTXT\\t\\\"extra \\\\\\\"quoted\\\\\\\"\\\"\"],\"Expires\":1700000060,\"Resolver\":{\"Name\":\"Cloudflare\",\"Type\":\"dot\",\"Source\":\"config\",\"IP\":\"1.1.1.2\",\"Domain\":\"cloudflare-dns.com\",\"IPScope\":4,\"Port\":853}}",
+      "key": "cache:intel/nameRecord/example.com.A",
+      "name": "a_cname_aaaa"
+    },
+    {
+      "expires": 1701209610,
+      "json": "{\"Domain\":\"nothing.example.com.\",\"Question\":\"AAAA\",\"RCode\":3,\"Answer\":[],\"Ns\":[\"example.com.\\t17\\tIN\\tSOA\\tns1.example.com. hostmaster.example.com. 2024010101 7200 3600 1209600 300\"],\"Extra\":[],\"Expires\":1700000010,\"Resolver\":{\"Name\":\"\",\"Type\":\"dns\",\"Source\":\"system\",\"IP\":\"192.168.1.1\",\"Domain\":\"\",\"IPScope\":3,\"Port\":53}}",
+      "key": "cache:intel/nameRecord/nothing.example.com.AAAA",
+      "name": "nxdomain_soa"
+    },
+    {
+      "expires": 1701209660,
+      "json": "{\"Domain\":\"empty.example.com.\",\"Question\":\"MX\",\"RCode\":0,\"Answer\":[],\"Ns\":[],\"Extra\":[],\"Expires\":1700000060,\"Resolver\":{\"Name\":\"Cloudflare\",\"Type\":\"dot\",\"Source\":\"config\",\"IP\":\"1.1.1.2\",\"Domain\":\"cloudflare-dns.com\",\"IPScope\":4,\"Port\":853}}",
+      "key": "cache:intel/nameRecord/empty.example.com.MX",
+      "name": "empty_sections"
+    }
+  ],
+  "rr_texts": [
+    {
+      "in": "example.com. 300 IN A 192.0.2.1",
+      "out": "example.com.\t300\tIN\tA\t192.0.2.1",
+      "type": "A"
+    },
+    {
+      "in": "example.com. 17 IN AAAA 2001:db8::1",
+      "out": "example.com.\t17\tIN\tAAAA\t2001:db8::1",
+      "type": "AAAA"
+    },
+    {
+      "in": "example.com. 17 IN AAAA ::ffff:192.0.2.1",
+      "out": "example.com.\t17\tIN\tAAAA\t::ffff:192.0.2.1",
+      "type": "AAAA"
+    },
+    {
+      "in": "www.example.com. 17 IN CNAME example.net.",
+      "out": "www.example.com.\t17\tIN\tCNAME\texample.net.",
+      "type": "CNAME"
+    },
+    {
+      "in": "example.com. 17 IN NS ns1.example.com.",
+      "out": "example.com.\t17\tIN\tNS\tns1.example.com.",
+      "type": "NS"
+    },
+    {
+      "in": "1.2.0.192.in-addr.arpa. 17 IN PTR host.example.com.",
+      "out": "1.2.0.192.in-addr.arpa.\t17\tIN\tPTR\thost.example.com.",
+      "type": "PTR"
+    },
+    {
+      "in": "example.com. 17 IN MX 10 mail.example.com.",
+      "out": "example.com.\t17\tIN\tMX\t10 mail.example.com.",
+      "type": "MX"
+    },
+    {
+      "in": "example.com. 17 IN TXT \"v=spf1 -all\"",
+      "out": "example.com.\t17\tIN\tTXT\t\"v=spf1 -all\"",
+      "type": "TXT"
+    },
+    {
+      "in": "example.com. 17 IN TXT \"a\" \"b c\" \"quote\\\"back\\\\slash\"",
+      "out": "example.com.\t17\tIN\tTXT\t\"a\" \"b c\" \"quote\\\"back\\\\slash\"",
+      "type": "TXT"
+    },
+    {
+      "in": "example.com. 17 IN TXT \"semi;colon\" \"tab\\009\" \"nl\\010\" \"del\\127\" \"high\\200\"",
+      "out": "example.com.\t17\tIN\tTXT\t\"semi;colon\" \"tab\\009\" \"nl\\010\" \"del\\127\" \"high\\200\"",
+      "type": "TXT"
+    },
+    {
+      "in": "example.com. 17 IN SOA ns1.example.com. hostmaster.example.com. 2024010101 7200 3600 1209600 300",
+      "out": "example.com.\t17\tIN\tSOA\tns1.example.com. hostmaster.example.com. 2024010101 7200 3600 1209600 300",
+      "type": "SOA"
+    },
+    {
+      "in": "_sip._tcp.example.com. 17 IN SRV 10 60 5060 sip.example.com.",
+      "out": "_sip._tcp.example.com.\t17\tIN\tSRV\t10 60 5060 sip.example.com.",
+      "type": "SRV"
+    },
+    {
+      "in": "example.com. 17 IN CAA 0 issue \"letsencrypt.org\"",
+      "out": "example.com.\t17\tIN\tCAA\t0 issue \"letsencrypt.org\"",
+      "type": "CAA"
+    },
+    {
+      "in": "example.com. 17 IN DNAME example.net.",
+      "out": "example.com.\t17\tIN\tDNAME\texample.net.",
+      "type": "DNAME"
+    },
+    {
+      "in": "example.com. 17 IN HINFO \"cpu\" \"os\"",
+      "out": "example.com.\t17\tIN\tHINFO\t\"cpu\" \"os\"",
+      "type": "HINFO"
+    },
+    {
+      "in": "example.com. 17 IN HTTPS 1 . alpn=h2,h3",
+      "out": "example.com.\t17\tIN\tHTTPS\t1 . alpn=\"h2,h3\"",
+      "type": "HTTPS"
+    },
+    {
+      "in": "example.com. 17 IN HTTPS 0 svc.example.net.",
+      "out": "example.com.\t17\tIN\tHTTPS\t0 svc.example.net.",
+      "type": "HTTPS"
+    },
+    {
+      "in": "example.com. 17 IN SVCB 1 svc.example.net. port=8443 ipv4hint=192.0.2.1,192.0.2.2",
+      "out": "example.com.\t17\tIN\tSVCB\t1 svc.example.net. port=\"8443\" ipv4hint=\"192.0.2.1,192.0.2.2\"",
+      "type": "SVCB"
+    },
+    {
+      "in": "example.com. 17 IN TYPE999 \\# 4 0a000001",
+      "out": "example.com.\t17\tCLASS1\tTYPE999\t\\# 4 0a000001",
+      "type": ""
+    },
+    {
+      "error": "dns: HTTPS.Value: dns: overflow unpacking SVCB: \" \" at line: 1:25",
+      "in": "example.com. 17 IN HTTPS \\# 6 000100000100"
+    },
+    {
+      "in": "example.com. 17 IN NAPTR 100 50 \"s\" \"http\" \"\" _http._tcp.example.com.",
+      "out": "example.com.\t17\tIN\tNAPTR\t100 50 \"s\" \"http\" \"\" _http._tcp.example.com.",
+      "type": "NAPTR"
+    },
+    {
+      "in": "example.com. 17 IN SSHFP 1 1 123456789abcdef67890123456789abcdef67890",
+      "out": "example.com.\t17\tIN\tSSHFP\t1 1 123456789ABCDEF67890123456789ABCDEF67890",
+      "type": "SSHFP"
+    },
+    {
+      "in": "example.com. 17 IN TLSA 3 1 1 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "out": "example.com.\t17\tIN\tTLSA\t3 1 1 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "type": "TLSA"
+    },
+    {
+      "in": "Example.COM. 17 IN A 192.0.2.1",
+      "out": "Example.COM.\t17\tIN\tA\t192.0.2.1",
+      "type": "A"
+    },
+    {
+      "in": "we\\.ird\\032name.example.com. 17 IN A 192.0.2.1",
+      "out": "we\\.ird\\ name.example.com.\t17\tIN\tA\t192.0.2.1",
+      "type": "A"
+    },
+    {
+      "in": ". 17 IN NS a.root-servers.net.",
+      "out": ".\t17\tIN\tNS\ta.root-servers.net.",
+      "type": "NS"
+    },
+    {
+      "in": "example.com. 17 CH TXT \"chaos\"",
+      "out": "example.com.\t17\tCH\tTXT\t\"chaos\"",
+      "type": "TXT"
+    }
+  ]
+}
