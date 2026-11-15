@@ -10,9 +10,11 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 
 	_ "modernc.org/sqlite"
@@ -22,6 +24,8 @@ import (
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/database/storage/sqlite"
+	"github.com/safing/portmaster/service/network/proc"
+	"github.com/safing/portmaster/service/network/socket"
 	"github.com/safing/structures/dsd"
 	"github.com/safing/structures/varint"
 )
@@ -60,6 +64,7 @@ func main() {
 	genQuery()
 	genGoStrconv()
 	genConfig()
+	genNetState()
 	genSQLite()
 }
 
@@ -757,4 +762,302 @@ func writeObject(name string, object any) {
 	if err := os.WriteFile(filepath.Join(outDir, name), append(data, '\n'), 0o644); err != nil {
 		fail(err)
 	}
+}
+
+// genNetState records the kernel socket tables and how the Go parser reads
+// them, plus a verified socket-inode to PID mapping.
+func genNetState() {
+	type connFixture struct {
+		LocalIP    string `json:"local_ip"`
+		LocalPort  uint16 `json:"local_port"`
+		RemoteIP   string `json:"remote_ip"`
+		RemotePort uint16 `json:"remote_port"`
+		UID        int    `json:"uid"`
+		Inode      int    `json:"inode"`
+	}
+	type bindFixture struct {
+		LocalIP   string `json:"local_ip"`
+		LocalPort uint16 `json:"local_port"`
+		UID       int    `json:"uid"`
+		Inode     int    `json:"inode"`
+	}
+	type tableFixture struct {
+		Stack       string        `json:"stack"`
+		Raw         string        `json:"raw"`
+		Error       string        `json:"error,omitempty"`
+		Connections []connFixture `json:"connections"`
+		Binds       []bindFixture `json:"binds"`
+	}
+
+	readRaw := func(path string) string {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return ""
+		}
+		return string(data)
+	}
+	tableCase := func(stack, path string, conns []*socket.ConnectionInfo,
+		binds []*socket.BindInfo, err error) tableFixture {
+		fixture := tableFixture{
+			Stack:       stack,
+			Raw:         readRaw(path),
+			Connections: []connFixture{},
+			Binds:       []bindFixture{},
+		}
+		if err != nil {
+			fixture.Error = err.Error()
+			return fixture
+		}
+		for _, conn := range conns {
+			fixture.Connections = append(fixture.Connections, connFixture{
+				LocalIP: conn.Local.IP.String(), LocalPort: conn.Local.Port,
+				RemoteIP: conn.Remote.IP.String(), RemotePort: conn.Remote.Port,
+				UID: conn.UID, Inode: conn.Inode,
+			})
+		}
+		for _, bind := range binds {
+			fixture.Binds = append(fixture.Binds, bindFixture{
+				LocalIP: bind.Local.IP.String(), LocalPort: bind.Local.Port,
+				UID: bind.UID, Inode: bind.Inode,
+			})
+		}
+		return fixture
+	}
+
+	var tables []tableFixture
+	conns, binds, err := proc.GetTCP4Table()
+	tables = append(tables, tableCase("tcp4", "/proc/net/tcp", conns, binds, err))
+	conns, binds, err = proc.GetTCP6Table()
+	tables = append(tables, tableCase("tcp6", "/proc/net/tcp6", conns, binds, err))
+	binds, err = proc.GetUDP4Table()
+	tables = append(tables, tableCase("udp4", "/proc/net/udp", nil, binds, err))
+	binds, err = proc.GetUDP6Table()
+	tables = append(tables, tableCase("udp6", "/proc/net/udp6", nil, binds, err))
+
+	// Open a listener and let the Go implementation find our own PID for it.
+	var lookup map[string]any
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		fail(err)
+	}
+	port := uint16(listener.Addr().(*net.TCPAddr).Port)
+	if _, listeners, err := proc.GetTCP4Table(); err == nil {
+		for _, bind := range listeners {
+			if bind.Local.Port != port || !bind.Local.IP.Equal(net.IPv4(127, 0, 0, 1)) {
+				continue
+			}
+			info := &socket.BindInfo{
+				Local: bind.Local,
+				UID:   os.Getuid(),
+				Inode: bind.Inode,
+				PID:   socket.UndefinedProcessID,
+			}
+			pid := proc.GetPID(info)
+			if pid != os.Getpid() {
+				fail(errors.New("proc.GetPID did not find the generating process"))
+			}
+			lookup = map[string]any{
+				"uid":   os.Getuid(),
+				"inode": bind.Inode,
+				"pid":   pid,
+			}
+			break
+		}
+	}
+	_ = listener.Close()
+	if lookup == nil {
+		fail(errors.New("could not verify the socket inode to pid lookup"))
+	}
+
+	// The fixture is committed, so no addresses, ports, UIDs, PIDs or inodes of
+	// this machine may end up in the repository. The mapping is applied to the
+	// raw tables and to the parsed expectations alike, which keeps them
+	// consistent: the Rust parser must produce the mapped expectations from the
+	// mapped raw tables.
+	sanitizer := newNetSanitizer()
+	for i := range tables {
+		tables[i].Raw = sanitizer.sanitizeRaw(tables[i].Raw)
+		conns := make([]connFixture, len(tables[i].Connections))
+		for j, conn := range tables[i].Connections {
+			conn.LocalIP = sanitizer.ip(conn.LocalIP)
+			conn.LocalPort = sanitizer.port(conn.LocalPort)
+			conn.RemoteIP = sanitizer.ip(conn.RemoteIP)
+			conn.RemotePort = sanitizer.port(conn.RemotePort)
+			conn.UID = sanitizer.uid(conn.UID)
+			conn.Inode = sanitizer.inode(conn.Inode)
+			conns[j] = conn
+		}
+		tables[i].Connections = conns
+		binds := make([]bindFixture, len(tables[i].Binds))
+		for j, bind := range tables[i].Binds {
+			bind.LocalIP = sanitizer.ip(bind.LocalIP)
+			bind.LocalPort = sanitizer.port(bind.LocalPort)
+			bind.UID = sanitizer.uid(bind.UID)
+			bind.Inode = sanitizer.inode(bind.Inode)
+			binds[j] = bind
+		}
+		tables[i].Binds = binds
+	}
+	lookup["uid"] = sanitizer.uid(lookup["uid"].(int))
+	lookup["inode"] = sanitizer.inode(lookup["inode"].(int))
+	lookup["pid"] = 4242
+
+	writeObject("netstate.json", map[string]any{
+		"tables":     tables,
+		"pid_lookup": lookup,
+	})
+}
+
+// netSanitizer maps machine-specific values to documentation addresses and
+// stable fake numbers.
+type netSanitizer struct {
+	ips      map[string]string
+	ports    map[uint16]uint16
+	inodes   map[int]int
+	nextIP   int
+	nextPort uint16
+	nextInoe int
+}
+
+func newNetSanitizer() *netSanitizer {
+	return &netSanitizer{
+		ips:    make(map[string]string),
+		ports:  make(map[uint16]uint16),
+		inodes: make(map[int]int),
+	}
+}
+
+func (s *netSanitizer) ip(ip string) string {
+	if mapped, ok := s.ips[ip]; ok {
+		return mapped
+	}
+
+	var mapped string
+	if strings.Contains(ip, ":") {
+		mapped = fmt.Sprintf("2001:db8::%x", s.nextIP+1)
+	} else {
+		s.nextIP++
+		index := s.nextIP
+		switch {
+		case index <= 250:
+			mapped = fmt.Sprintf("192.0.2.%d", index)
+		case index <= 500:
+			mapped = fmt.Sprintf("198.51.100.%d", index-250)
+		default:
+			mapped = fmt.Sprintf("203.0.113.%d", (index-500)%250+1)
+		}
+	}
+	s.ips[ip] = mapped
+	return mapped
+}
+
+func (s *netSanitizer) port(port uint16) uint16 {
+	if mapped, ok := s.ports[port]; ok {
+		return mapped
+	}
+	s.nextPort++
+	mapped := 40000 + s.nextPort
+	s.ports[port] = mapped
+	return mapped
+}
+
+func (s *netSanitizer) uid(uid int) int {
+	// One fake user for everything; UIDs are not needed for parsing.
+	_ = uid
+	return 1000
+}
+
+func (s *netSanitizer) inode(inode int) int {
+	if mapped, ok := s.inodes[inode]; ok {
+		return mapped
+	}
+	s.nextInoe++
+	mapped := 200000 + s.nextInoe
+	s.inodes[inode] = mapped
+	return mapped
+}
+
+// sanitizeRaw rewrites the address, port, uid and inode columns of a table.
+func (s *netSanitizer) sanitizeRaw(raw string) string {
+	lines := strings.Split(raw, "\n")
+	var out strings.Builder
+	for i, line := range lines {
+		if i == 0 {
+			// Header row.
+			out.WriteString(line)
+			out.WriteString("\n")
+			continue
+		}
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		tokens := strings.Fields(line)
+		if len(tokens) < 10 {
+			fail(fmt.Errorf("netstate: unsupported table line: %q", line))
+		}
+		tokens[1] = s.sanitizeAddress(tokens[1])
+		tokens[2] = s.sanitizeAddress(tokens[2])
+		uid, err := strconv.Atoi(tokens[7])
+		if err != nil {
+			fail(fmt.Errorf("netstate: invalid uid %q", tokens[7]))
+		}
+		tokens[7] = strconv.Itoa(s.uid(uid))
+		inode, err := strconv.Atoi(tokens[9])
+		if err != nil {
+			fail(fmt.Errorf("netstate: invalid inode %q", tokens[9]))
+		}
+		tokens[9] = strconv.Itoa(s.inode(inode))
+
+		out.WriteString(strings.Join(tokens, " "))
+		out.WriteString("\n")
+	}
+	return out.String()
+}
+
+func (s *netSanitizer) sanitizeAddress(address string) string {
+	ipHex, portHex, ok := strings.Cut(address, ":")
+	if !ok {
+		fail(fmt.Errorf("netstate: invalid address %q", address))
+	}
+	port, err := strconv.ParseUint(portHex, 16, 16)
+	if err != nil {
+		fail(fmt.Errorf("netstate: invalid port %q", portHex))
+	}
+	ip, err := decodeNetStateIP(ipHex)
+	if err != nil {
+		fail(err)
+	}
+	return encodeNetStateIP(s.ip(ip)) + ":" + fmt.Sprintf("%04X", s.port(uint16(port)))
+}
+
+// decodeNetStateIP decodes the kernel's hex address format.
+func decodeNetStateIP(data string) (string, error) {
+	decoded, err := hex.DecodeString(data)
+	if err != nil {
+		return "", err
+	}
+	switch len(decoded) {
+	case 4:
+		return net.IPv4(decoded[3], decoded[2], decoded[1], decoded[0]).String(), nil
+	case 16:
+		for i := 0; i < 16; i += 4 {
+			decoded[i], decoded[i+1], decoded[i+2], decoded[i+3] = decoded[i+3], decoded[i+2], decoded[i+1], decoded[i]
+		}
+		return net.IP(decoded).String(), nil
+	default:
+		return "", fmt.Errorf("netstate: invalid address length %d", len(decoded))
+	}
+}
+
+func encodeNetStateIP(ip string) string {
+	parsed := net.ParseIP(ip)
+	if ip4 := parsed.To4(); ip4 != nil {
+		return hex.EncodeToString([]byte{ip4[3], ip4[2], ip4[1], ip4[0]})
+	}
+	decoded := parsed.To16()
+	for i := 0; i < 16; i += 4 {
+		decoded[i], decoded[i+1], decoded[i+2], decoded[i+3] = decoded[i+3], decoded[i+2], decoded[i+1], decoded[i]
+	}
+	return hex.EncodeToString(decoded)
 }

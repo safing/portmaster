@@ -1,0 +1,16 @@
+[package]
+name = "pm-netstate"
+version = "0.1.0"
+edition.workspace = true
+description = "Socket to process resolution for the Portmaster core (proc tables, state lookups)"
+license.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

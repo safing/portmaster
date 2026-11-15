@@ -10,6 +10,7 @@ members = [
     "crates/pm-config",
     "crates/pm-api",
     "crates/pm-core",
+    "crates/pm-netstate",
 ]
 
 [workspace.package]

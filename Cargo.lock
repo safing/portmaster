@@ -954,6 +954,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pm-netstate"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
 name = "pm-proxy"
 version = "0.1.0"
 dependencies = [
