@@ -7,8 +7,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"github.com/safing/portmaster/base/api"
@@ -21,6 +23,9 @@ import (
 
 type fixtureFile struct {
 	Cases []any `json:"cases"`
+	// Records optionally describes the JSON payloads the cases were evaluated
+	// against, keyed by full record key. Only used by query.json.
+	Records map[string]fixtureRecord `json:"records,omitempty"`
 }
 
 var outDir string
@@ -39,7 +44,81 @@ func main() {
 	genWrapper()
 	genAPIRecord()
 	genQuery()
+	genGoStrconv()
 	genSQLite()
+}
+
+// genGoStrconv records the exact output of the Go strconv/formatting helpers
+// the query package relies on, so the Rust port can match error strings and
+// float formatting byte for byte.
+func genGoStrconv() {
+	var cases []any
+
+	// %g formatting of float64 values, as used by Query.Print.
+	for _, f := range []float64{
+		0, 1, -1, 1.5, -42.5, 0.1, 0.25, 120.413, 121, 100000, 999999.5,
+		1e-04, 1e-05, 1234567, 1e06, 1.2345678901234567, -0.0001234,
+		math.MaxFloat64, math.SmallestNonzeroFloat64,
+		math.Inf(1), math.Inf(-1), math.NaN(),
+	} {
+		cases = append(cases, map[string]any{
+			"kind": "format_g",
+			"bits": fmt.Sprintf("%016x", math.Float64bits(f)),
+			"out":  fmt.Sprintf("%g", f),
+		})
+	}
+
+	// strconv.Quote as used in strconv error messages.
+	for _, q := range []string{
+		"abc", "", "a b", "a\"b", `a\b`, "a\tb", "a\nb", "\x00\x01\x7f",
+		"ключ", "Ünïcode <&>", "a\xd1", "\xff", "🦀",
+	} {
+		cases = append(cases, map[string]any{
+			"kind":   "quote",
+			"in_hex": hx([]byte(q)),
+			"out":    strconv.Quote(q),
+		})
+	}
+
+	// Number parsing errors; "out" is empty when parsing succeeds.
+	intInputs := []string{
+		"1", "-1", "+1", "abc", "", "-", "+", " 1", "1 ", "1.5", "0x10",
+		"1_0", "99999999999999999999", "-99999999999999999999", "ключ",
+		"-9223372036854775808", "9223372036854775807",
+	}
+	for _, in := range intInputs {
+		c := map[string]any{"kind": "parse_int", "in_hex": hx([]byte(in))}
+		if _, err := strconv.ParseInt(in, 10, 64); err != nil {
+			c["out"] = err.Error()
+		}
+		cases = append(cases, c)
+	}
+	floatInputs := []string{
+		"1", "-1.5", "1e5", "abc", "", "1.2.3", "1e400", "NaN", "inf",
+		"-Infinity", "0x10", "ключ",
+	}
+	for _, in := range floatInputs {
+		c := map[string]any{"kind": "parse_float", "in_hex": hx([]byte(in))}
+		if _, err := strconv.ParseFloat(in, 64); err != nil {
+			c["out"] = err.Error()
+		}
+		cases = append(cases, c)
+	}
+	boolInputs := []string{
+		"1", "t", "T", "TRUE", "true", "True", "0", "f", "F", "FALSE",
+		"false", "False", "great", "", " true", "2",
+	}
+	for _, in := range boolInputs {
+		c := map[string]any{"kind": "parse_bool", "in_hex": hx([]byte(in))}
+		if _, err := strconv.ParseBool(in); err != nil {
+			c["out"] = err.Error()
+		} else {
+			c["out"] = "ok"
+		}
+		cases = append(cases, c)
+	}
+
+	write("gostrconv.json", cases)
 }
 
 func fail(err error) {
@@ -49,6 +128,16 @@ func fail(err error) {
 
 func write(name string, cases []any) {
 	data, err := json.MarshalIndent(fixtureFile{Cases: cases}, "", "  ")
+	if err != nil {
+		fail(err)
+	}
+	if err := os.WriteFile(filepath.Join(outDir, name), append(data, '\n'), 0o644); err != nil {
+		fail(err)
+	}
+}
+
+func writeRecords(name string, cases []any, records map[string]fixtureRecord) {
+	data, err := json.MarshalIndent(fixtureFile{Cases: cases, Records: records}, "", "  ")
 	if err != nil {
 		fail(err)
 	}
@@ -310,8 +399,69 @@ var queries = []string{
 	`query core:test/ where Name == "quoted value"`,
 }
 
+// fixtureRecord is a record payload as loaded from storage.
+type fixtureRecord struct {
+	Format uint8  `json:"format"`
+	Data   string `json:"data"`
+}
+
+// sampleJSONRecords mirrors sampleRecords, but wraps the payloads as JSON
+// records — the shape the database hands to queries after loading them from
+// storage. The CBOR record keeps its format, which has no JSON accessor.
+func sampleJSONRecords() ([]record.Record, map[string]fixtureRecord) {
+	var out []record.Record
+	records := map[string]fixtureRecord{}
+
+	add := func(key string, meta *record.Meta, mutate func(*sample)) {
+		s := newSample()
+		if mutate != nil {
+			mutate(s)
+		}
+		dumped, err := dsd.Dump(s, dsd.JSON)
+		if err != nil {
+			fail(err)
+		}
+		payload := dumped[1:]
+		w, err := record.NewWrapper(key, meta, dsd.JSON, payload)
+		if err != nil {
+			fail(err)
+		}
+		out = append(out, w)
+		records[key] = fixtureRecord{Format: dsd.JSON, Data: hx(payload)}
+	}
+
+	add("core:test/sample/1", &record.Meta{Created: 1700000000, Modified: 1700000500}, nil)
+	add("core:test/unicode/ключ 🦀|x", &record.Meta{Created: 1, Modified: 2, Expires: 1900000000},
+		func(s *sample) { s.Name = "ключ" })
+
+	// A CBOR record has no JSON accessor. Its content is irrelevant for the
+	// match matrix, and Go's CBOR dump is not deterministic (map ordering), so
+	// use a fixed empty CBOR map to keep the fixture reproducible.
+	cborPayload := []byte{0xa0}
+	w, err := record.NewWrapper("core:test/cbor/1", &record.Meta{Created: 10, Modified: 11}, dsd.CBOR, cborPayload)
+	if err != nil {
+		fail(err)
+	}
+	out = append(out, w)
+	records["core:test/cbor/1"] = fixtureRecord{Format: dsd.CBOR, Data: hx(cborPayload)}
+
+	deletedMeta := &record.Meta{Created: 1, Modified: 5}
+	deletedMeta.Delete()
+	deletedMeta.Deleted = 6
+	add("core:test/deleted/1", deletedMeta, nil)
+
+	secretMeta := &record.Meta{Created: 3, Modified: 3}
+	secretMeta.MakeSecret()
+	secretMeta.MakeCrownJewel()
+	add("core:test/secret/1", secretMeta, nil)
+
+	add("core:test/expired/1", &record.Meta{Created: 1, Modified: 1, Expires: 2}, nil)
+
+	return out, records
+}
+
 func genQuery() {
-	recs := sampleRecords()
+	recs, records := sampleJSONRecords()
 	var cases []any
 	for _, qs := range queries {
 		c := map[string]any{"query": qs}
@@ -331,7 +481,7 @@ func genQuery() {
 		c["matches"] = matches
 		cases = append(cases, c)
 	}
-	write("query.json", cases)
+	writeRecords("query.json", cases, records)
 }
 
 func genSQLite() {

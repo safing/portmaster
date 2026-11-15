@@ -306,11 +306,11 @@
       "db": "core",
       "matches": {
         "core:test/cbor/1": false,
-        "core:test/deleted/1": false,
-        "core:test/expired/1": false,
-        "core:test/sample/1": false,
-        "core:test/secret/1": false,
-        "core:test/unicode/ключ 🦀|x": false
+        "core:test/deleted/1": true,
+        "core:test/expired/1": true,
+        "core:test/sample/1": true,
+        "core:test/secret/1": true,
+        "core:test/unicode/ключ 🦀|x": true
       },
       "prefix": "test/",
       "print": "query core:test/ where Nested.a exists",
@@ -474,5 +474,31 @@
       "error": "could not parse quoted value to int64: strconv.ParseInt: parsing \"quoted value\": invalid syntax (hint: use \"sameas\" to compare strings)",
       "query": "query core:test/ where Name == \"quoted value\""
     }
-  ]
+  ],
+  "records": {
+    "core:test/cbor/1": {
+      "format": 67,
+      "data": "a0"
+    },
+    "core:test/deleted/1": {
+      "format": 74,
+      "data": "7b224e616d65223a22c39c6ec3af636f6465205c75303033635c75303032365c7530303365222c22436f756e74223a2d34322c22526174696f223a302e32352c2254616773223a5b2261222c22627c63225d2c224e6573746564223a7b2261223a2232222c227a223a2231227d2c22466c6167223a747275657d"
+    },
+    "core:test/expired/1": {
+      "format": 74,
+      "data": "7b224e616d65223a22c39c6ec3af636f6465205c75303033635c75303032365c7530303365222c22436f756e74223a2d34322c22526174696f223a302e32352c2254616773223a5b2261222c22627c63225d2c224e6573746564223a7b2261223a2232222c227a223a2231227d2c22466c6167223a747275657d"
+    },
+    "core:test/sample/1": {
+      "format": 74,
+      "data": "7b224e616d65223a22c39c6ec3af636f6465205c75303033635c75303032365c7530303365222c22436f756e74223a2d34322c22526174696f223a302e32352c2254616773223a5b2261222c22627c63225d2c224e6573746564223a7b2261223a2232222c227a223a2231227d2c22466c6167223a747275657d"
+    },
+    "core:test/secret/1": {
+      "format": 74,
+      "data": "7b224e616d65223a22c39c6ec3af636f6465205c75303033635c75303032365c7530303365222c22436f756e74223a2d34322c22526174696f223a302e32352c2254616773223a5b2261222c22627c63225d2c224e6573746564223a7b2261223a2232222c227a223a2231227d2c22466c6167223a747275657d"
+    },
+    "core:test/unicode/ключ 🦀|x": {
+      "format": 74,
+      "data": "7b224e616d65223a22d0bad0bbd18ed187222c22436f756e74223a2d34322c22526174696f223a302e32352c2254616773223a5b2261222c22627c63225d2c224e6573746564223a7b2261223a2232222c227a223a2231227d2c22466c6167223a747275657d"
+    }
+  }
 }

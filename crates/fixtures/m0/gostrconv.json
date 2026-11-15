@@ -1,0 +1,393 @@
+{
+  "cases": [
+    {
+      "bits": "0000000000000000",
+      "kind": "format_g",
+      "out": "0"
+    },
+    {
+      "bits": "3ff0000000000000",
+      "kind": "format_g",
+      "out": "1"
+    },
+    {
+      "bits": "bff0000000000000",
+      "kind": "format_g",
+      "out": "-1"
+    },
+    {
+      "bits": "3ff8000000000000",
+      "kind": "format_g",
+      "out": "1.5"
+    },
+    {
+      "bits": "c045400000000000",
+      "kind": "format_g",
+      "out": "-42.5"
+    },
+    {
+      "bits": "3fb999999999999a",
+      "kind": "format_g",
+      "out": "0.1"
+    },
+    {
+      "bits": "3fd0000000000000",
+      "kind": "format_g",
+      "out": "0.25"
+    },
+    {
+      "bits": "405e1a6e978d4fdf",
+      "kind": "format_g",
+      "out": "120.413"
+    },
+    {
+      "bits": "405e400000000000",
+      "kind": "format_g",
+      "out": "121"
+    },
+    {
+      "bits": "40f86a0000000000",
+      "kind": "format_g",
+      "out": "100000"
+    },
+    {
+      "bits": "412e847f00000000",
+      "kind": "format_g",
+      "out": "999999.5"
+    },
+    {
+      "bits": "3f1a36e2eb1c432d",
+      "kind": "format_g",
+      "out": "0.0001"
+    },
+    {
+      "bits": "3ee4f8b588e368f1",
+      "kind": "format_g",
+      "out": "1e-05"
+    },
+    {
+      "bits": "4132d68700000000",
+      "kind": "format_g",
+      "out": "1.234567e+06"
+    },
+    {
+      "bits": "412e848000000000",
+      "kind": "format_g",
+      "out": "1e+06"
+    },
+    {
+      "bits": "3ff3c0ca428c59fb",
+      "kind": "format_g",
+      "out": "1.2345678901234567"
+    },
+    {
+      "bits": "bf202c9dedbc309d",
+      "kind": "format_g",
+      "out": "-0.0001234"
+    },
+    {
+      "bits": "7fefffffffffffff",
+      "kind": "format_g",
+      "out": "1.7976931348623157e+308"
+    },
+    {
+      "bits": "0000000000000001",
+      "kind": "format_g",
+      "out": "5e-324"
+    },
+    {
+      "bits": "7ff0000000000000",
+      "kind": "format_g",
+      "out": "+Inf"
+    },
+    {
+      "bits": "fff0000000000000",
+      "kind": "format_g",
+      "out": "-Inf"
+    },
+    {
+      "bits": "7ff8000000000001",
+      "kind": "format_g",
+      "out": "NaN"
+    },
+    {
+      "in_hex": "616263",
+      "kind": "quote",
+      "out": "\"abc\""
+    },
+    {
+      "in_hex": "",
+      "kind": "quote",
+      "out": "\"\""
+    },
+    {
+      "in_hex": "612062",
+      "kind": "quote",
+      "out": "\"a b\""
+    },
+    {
+      "in_hex": "612262",
+      "kind": "quote",
+      "out": "\"a\\\"b\""
+    },
+    {
+      "in_hex": "615c62",
+      "kind": "quote",
+      "out": "\"a\\\\b\""
+    },
+    {
+      "in_hex": "610962",
+      "kind": "quote",
+      "out": "\"a\\tb\""
+    },
+    {
+      "in_hex": "610a62",
+      "kind": "quote",
+      "out": "\"a\\nb\""
+    },
+    {
+      "in_hex": "00017f",
+      "kind": "quote",
+      "out": "\"\\x00\\x01\\x7f\""
+    },
+    {
+      "in_hex": "d0bad0bbd18ed187",
+      "kind": "quote",
+      "out": "\"ключ\""
+    },
+    {
+      "in_hex": "c39c6ec3af636f6465203c263e",
+      "kind": "quote",
+      "out": "\"Ünïcode \u003c\u0026\u003e\""
+    },
+    {
+      "in_hex": "61d1",
+      "kind": "quote",
+      "out": "\"a\\xd1\""
+    },
+    {
+      "in_hex": "ff",
+      "kind": "quote",
+      "out": "\"\\xff\""
+    },
+    {
+      "in_hex": "f09fa680",
+      "kind": "quote",
+      "out": "\"🦀\""
+    },
+    {
+      "in_hex": "31",
+      "kind": "parse_int"
+    },
+    {
+      "in_hex": "2d31",
+      "kind": "parse_int"
+    },
+    {
+      "in_hex": "2b31",
+      "kind": "parse_int"
+    },
+    {
+      "in_hex": "616263",
+      "kind": "parse_int",
+      "out": "strconv.ParseInt: parsing \"abc\": invalid syntax"
+    },
+    {
+      "in_hex": "",
+      "kind": "parse_int",
+      "out": "strconv.ParseInt: parsing \"\": invalid syntax"
+    },
+    {
+      "in_hex": "2d",
+      "kind": "parse_int",
+      "out": "strconv.ParseInt: parsing \"-\": invalid syntax"
+    },
+    {
+      "in_hex": "2b",
+      "kind": "parse_int",
+      "out": "strconv.ParseInt: parsing \"+\": invalid syntax"
+    },
+    {
+      "in_hex": "2031",
+      "kind": "parse_int",
+      "out": "strconv.ParseInt: parsing \" 1\": invalid syntax"
+    },
+    {
+      "in_hex": "3120",
+      "kind": "parse_int",
+      "out": "strconv.ParseInt: parsing \"1 \": invalid syntax"
+    },
+    {
+      "in_hex": "312e35",
+      "kind": "parse_int",
+      "out": "strconv.ParseInt: parsing \"1.5\": invalid syntax"
+    },
+    {
+      "in_hex": "30783130",
+      "kind": "parse_int",
+      "out": "strconv.ParseInt: parsing \"0x10\": invalid syntax"
+    },
+    {
+      "in_hex": "315f30",
+      "kind": "parse_int",
+      "out": "strconv.ParseInt: parsing \"1_0\": invalid syntax"
+    },
+    {
+      "in_hex": "3939393939393939393939393939393939393939",
+      "kind": "parse_int",
+      "out": "strconv.ParseInt: parsing \"99999999999999999999\": value out of range"
+    },
+    {
+      "in_hex": "2d3939393939393939393939393939393939393939",
+      "kind": "parse_int",
+      "out": "strconv.ParseInt: parsing \"-99999999999999999999\": value out of range"
+    },
+    {
+      "in_hex": "d0bad0bbd18ed187",
+      "kind": "parse_int",
+      "out": "strconv.ParseInt: parsing \"ключ\": invalid syntax"
+    },
+    {
+      "in_hex": "2d39323233333732303336383534373735383038",
+      "kind": "parse_int"
+    },
+    {
+      "in_hex": "39323233333732303336383534373735383037",
+      "kind": "parse_int"
+    },
+    {
+      "in_hex": "31",
+      "kind": "parse_float"
+    },
+    {
+      "in_hex": "2d312e35",
+      "kind": "parse_float"
+    },
+    {
+      "in_hex": "316535",
+      "kind": "parse_float"
+    },
+    {
+      "in_hex": "616263",
+      "kind": "parse_float",
+      "out": "strconv.ParseFloat: parsing \"abc\": invalid syntax"
+    },
+    {
+      "in_hex": "",
+      "kind": "parse_float",
+      "out": "strconv.ParseFloat: parsing \"\": invalid syntax"
+    },
+    {
+      "in_hex": "312e322e33",
+      "kind": "parse_float",
+      "out": "strconv.ParseFloat: parsing \"1.2.3\": invalid syntax"
+    },
+    {
+      "in_hex": "3165343030",
+      "kind": "parse_float",
+      "out": "strconv.ParseFloat: parsing \"1e400\": value out of range"
+    },
+    {
+      "in_hex": "4e614e",
+      "kind": "parse_float"
+    },
+    {
+      "in_hex": "696e66",
+      "kind": "parse_float"
+    },
+    {
+      "in_hex": "2d496e66696e697479",
+      "kind": "parse_float"
+    },
+    {
+      "in_hex": "30783130",
+      "kind": "parse_float",
+      "out": "strconv.ParseFloat: parsing \"0x10\": invalid syntax"
+    },
+    {
+      "in_hex": "d0bad0bbd18ed187",
+      "kind": "parse_float",
+      "out": "strconv.ParseFloat: parsing \"ключ\": invalid syntax"
+    },
+    {
+      "in_hex": "31",
+      "kind": "parse_bool",
+      "out": "ok"
+    },
+    {
+      "in_hex": "74",
+      "kind": "parse_bool",
+      "out": "ok"
+    },
+    {
+      "in_hex": "54",
+      "kind": "parse_bool",
+      "out": "ok"
+    },
+    {
+      "in_hex": "54525545",
+      "kind": "parse_bool",
+      "out": "ok"
+    },
+    {
+      "in_hex": "74727565",
+      "kind": "parse_bool",
+      "out": "ok"
+    },
+    {
+      "in_hex": "54727565",
+      "kind": "parse_bool",
+      "out": "ok"
+    },
+    {
+      "in_hex": "30",
+      "kind": "parse_bool",
+      "out": "ok"
+    },
+    {
+      "in_hex": "66",
+      "kind": "parse_bool",
+      "out": "ok"
+    },
+    {
+      "in_hex": "46",
+      "kind": "parse_bool",
+      "out": "ok"
+    },
+    {
+      "in_hex": "46414c5345",
+      "kind": "parse_bool",
+      "out": "ok"
+    },
+    {
+      "in_hex": "66616c7365",
+      "kind": "parse_bool",
+      "out": "ok"
+    },
+    {
+      "in_hex": "46616c7365",
+      "kind": "parse_bool",
+      "out": "ok"
+    },
+    {
+      "in_hex": "6772656174",
+      "kind": "parse_bool",
+      "out": "strconv.ParseBool: parsing \"great\": invalid syntax"
+    },
+    {
+      "in_hex": "",
+      "kind": "parse_bool",
+      "out": "strconv.ParseBool: parsing \"\": invalid syntax"
+    },
+    {
+      "in_hex": "2074727565",
+      "kind": "parse_bool",
+      "out": "strconv.ParseBool: parsing \" true\": invalid syntax"
+    },
+    {
+      "in_hex": "32",
+      "kind": "parse_bool",
+      "out": "strconv.ParseBool: parsing \"2\": invalid syntax"
+    }
+  ]
+}

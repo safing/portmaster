@@ -1,0 +1,18 @@
+[package]
+name = "pm-query"
+version = "0.1.0"
+edition.workspace = true
+description = "Compatible implementation of the Portmaster database query language"
+license.workspace = true
+
+[dependencies]
+pm-record = { path = "../pm-record" }
+regex.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+hex.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
