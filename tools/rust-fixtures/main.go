@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/safing/portmaster/service/network/socket"
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/profile"
+	"github.com/safing/portmaster/service/profile/binmeta"
 	"github.com/safing/structures/dsd"
 	"github.com/safing/structures/varint"
 )
@@ -68,6 +70,7 @@ func main() {
 	genConfig()
 	genNetState()
 	genProcess()
+	genProfile()
 	genSQLite()
 }
 
@@ -1108,5 +1111,214 @@ func genProcess() {
 
 	writeObject("process.json", map[string]any{
 		"process": string(dumped[1:]),
+	})
+}
+
+// profileMatchingData implements profile.MatchingData for the fixtures.
+type profileMatchingData struct {
+	TagList          []profile.Tag
+	EnvMap           map[string]string
+	ProcessPath      string
+	ProcessMatchPath string
+	ProcessCmdline   string
+}
+
+func (md *profileMatchingData) Tags() []profile.Tag    { return md.TagList }
+func (md *profileMatchingData) Env() map[string]string { return md.EnvMap }
+func (md *profileMatchingData) Path() string           { return md.ProcessPath }
+func (md *profileMatchingData) MatchingPath() string   { return md.ProcessMatchPath }
+func (md *profileMatchingData) Cmdline() string        { return md.ProcessCmdline }
+
+// genProfile records the profile JSON, fingerprint matching scores and derived
+// profile IDs of the Go implementation.
+func genProfile() {
+	// Profile JSON, including icons, fingerprints and a nested config.
+	prof := &profile.Profile{
+		ID:                 "test-profile-id",
+		Source:             profile.SourceLocal,
+		Name:               "Test Profile",
+		Description:        "A profile for fixtures.",
+		Warning:            "Be careful.",
+		WarningLastUpdated: time.Unix(1_700_000_200, 0).UTC(),
+		Homepage:           "https://example.com",
+		Icon:               "/tmp/icon.png",
+		IconType:           binmeta.IconTypeFile,
+		Icons: []binmeta.Icon{
+			{Type: binmeta.IconTypeAPI, Value: "/api/v1/icons/1", Source: binmeta.IconSourceCore},
+			{Type: binmeta.IconTypeFile, Value: "/tmp/icon.png", Source: binmeta.IconSourceUser},
+		},
+		LinkedPath:          "/usr/bin/test",
+		PresentationPath:    "/usr/bin/test",
+		UsePresentationPath: true,
+		Fingerprints: []profile.Fingerprint{
+			{Type: profile.FingerprintTypePathID, Operation: profile.FingerprintOperationEqualsID, Value: "/usr/bin/test"},
+			{Type: profile.FingerprintTypeTagID, Key: "app-image-path", Operation: profile.FingerprintOperationPrefixID, Value: "/tmp/.mount_", MergedFrom: "local/other"},
+		},
+		Config: map[string]interface{}{
+			"filter": map[string]interface{}{
+				"defaultAction": "block",
+				"endpoints":     []interface{}{"+ 1.1.1.1:443", "- 10.0.0.0/8"},
+				"lists":         []interface{}{"list-a"},
+			},
+		},
+		LastEdited: 1_700_000_100,
+		Created:    1_700_000_000,
+		Internal:   false,
+	}
+	dumped, err := dsd.Dump(prof, dsd.JSON)
+	if err != nil {
+		fail(err)
+	}
+
+	// Fingerprint matching cases.
+	type matchCase struct {
+		Name         string                `json:"name"`
+		Fingerprints []profile.Fingerprint `json:"fingerprints"`
+		LinkedPath   string                `json:"linked_path,omitempty"`
+		Tags         []profile.Tag         `json:"tags,omitempty"`
+		Env          map[string]string     `json:"env,omitempty"`
+		Path         string                `json:"path,omitempty"`
+		MatchingPath string                `json:"matching_path,omitempty"`
+		Cmdline      string                `json:"cmdline,omitempty"`
+		Score        int                   `json:"score"`
+		Error        string                `json:"error,omitempty"`
+	}
+	fp := func(typ, key, op, value string) profile.Fingerprint {
+		return profile.Fingerprint{Type: typ, Key: key, Operation: op, Value: value}
+	}
+	matchCases := []matchCase{
+		{
+			Name:         "tag-equals",
+			Fingerprints: []profile.Fingerprint{fp("tag", "tag-a", "equals", "value")},
+			Tags:         []profile.Tag{{Key: "tag-a", Value: "value"}},
+		},
+		{
+			Name:         "tag-prefix",
+			Fingerprints: []profile.Fingerprint{fp("tag", "key", "prefix", "pre")},
+			Tags:         []profile.Tag{{Key: "key", Value: "prefix-123"}},
+		},
+		{
+			Name:         "tag-regex",
+			Fingerprints: []profile.Fingerprint{fp("tag", "k", "regex", "[0-9]+")},
+			Tags:         []profile.Tag{{Key: "k", Value: "abc12345"}},
+		},
+		{
+			Name:         "tag-key-mismatch",
+			Fingerprints: []profile.Fingerprint{fp("tag", "other", "equals", "value")},
+			Tags:         []profile.Tag{{Key: "tag-a", Value: "value"}},
+			Path:         "/usr/bin/no-match",
+		},
+		{
+			Name:         "cmdline-prefix",
+			Fingerprints: []profile.Fingerprint{fp("cmdline", "", "prefix", "/usr/bin/python")},
+			Cmdline:      "/usr/bin/python script.py",
+		},
+		{
+			Name:         "cmdline-regex",
+			Fingerprints: []profile.Fingerprint{fp("cmdline", "", "regex", "script\\.py")},
+			Cmdline:      "/usr/bin/python script.py",
+		},
+		{
+			Name:         "env-equals",
+			Fingerprints: []profile.Fingerprint{fp("env", "APP_ID", "equals", "test")},
+			Env:          map[string]string{"APP_ID": "test"},
+		},
+		{
+			Name:         "matching-path-equals",
+			Fingerprints: []profile.Fingerprint{fp("path", "", "equals", "/opt/app/bin/app")},
+			Path:         "/opt/app/bin/python3",
+			MatchingPath: "/opt/app/bin/app",
+		},
+		{
+			Name:         "path-prefix",
+			Fingerprints: []profile.Fingerprint{fp("path", "", "prefix", "/usr/bin/")},
+			Path:         "/usr/bin/curl",
+		},
+		{
+			Name:         "no-match",
+			Fingerprints: []profile.Fingerprint{fp("path", "", "equals", "/nope")},
+			Path:         "/usr/bin/curl",
+		},
+		{
+			Name:         "regex-empty-match",
+			Fingerprints: []profile.Fingerprint{fp("path", "", "regex", "a*")},
+			Path:         "bcd",
+		},
+		{
+			Name:       "linked-path-fallback",
+			LinkedPath: "/usr/bin/legacy",
+			Path:       "/usr/bin/legacy",
+		},
+		{
+			Name:         "invalid-regex",
+			Fingerprints: []profile.Fingerprint{fp("path", "", "regex", "[")},
+			Path:         "/usr/bin/curl",
+		},
+	}
+	for i := range matchCases {
+		mc := &matchCases[i]
+		parsed, parseErr := profile.ParseFingerprints(mc.Fingerprints, mc.LinkedPath)
+		if parseErr != nil {
+			mc.Error = parseErr.Error()
+		}
+		if parsed != nil {
+			mc.Score = profile.MatchFingerprints(parsed, &profileMatchingData{
+				TagList:          mc.Tags,
+				EnvMap:           mc.Env,
+				ProcessPath:      mc.Path,
+				ProcessMatchPath: mc.MatchingPath,
+				ProcessCmdline:   mc.Cmdline,
+			})
+		}
+	}
+
+	// Derived profile IDs, including duplicates and unsorted input.
+	type idCase struct {
+		Name         string                `json:"name"`
+		Fingerprints []profile.Fingerprint `json:"fingerprints"`
+		ID           string                `json:"id"`
+	}
+	idCases := []idCase{
+		{
+			Name: "single",
+			Fingerprints: []profile.Fingerprint{
+				fp("path", "", "equals", "/usr/bin/test"),
+			},
+		},
+		{
+			Name: "unsorted",
+			Fingerprints: []profile.Fingerprint{
+				fp("tag", "k", "prefix", "val"),
+				fp("path", "", "equals", "/usr/bin/test"),
+			},
+		},
+		{
+			Name: "duplicates",
+			Fingerprints: []profile.Fingerprint{
+				fp("path", "", "equals", "/usr/bin/test"),
+				fp("path", "", "equals", "/usr/bin/test"),
+				fp("tag", "k", "equals", "v"),
+			},
+		},
+		{
+			Name: "merged-from",
+			Fingerprints: []profile.Fingerprint{
+				{Type: "path", Operation: "equals", Value: "/usr/bin/a", MergedFrom: "local/a"},
+				{Type: "path", Operation: "equals", Value: "/usr/bin/a", MergedFrom: "local/b"},
+			},
+		},
+	}
+	for i := range idCases {
+		// DeriveProfileID sorts the given slice in place (and compacts with a
+		// zeroed tail); keep the original input for the fixture.
+		original := append([]profile.Fingerprint(nil), idCases[i].Fingerprints...)
+		idCases[i].ID = profile.DeriveProfileID(idCases[i].Fingerprints)
+		idCases[i].Fingerprints = original
+	}
+
+	writeObject("profile.json", map[string]any{
+		"profile":     string(dumped[1:]),
+		"match_cases": matchCases,
+		"id_cases":    idCases,
 	})
 }

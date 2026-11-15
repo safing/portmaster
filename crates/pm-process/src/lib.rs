@@ -48,13 +48,10 @@ pub const UNSOLICITED_PROFILE_NAME: &str = "Network Noise";
 pub const SYSTEM_PROFILE_NAME: &str = "Operating System";
 
 /// A simple key/value tag used in process metadata.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Tag {
-    #[serde(rename = "Key")]
-    pub key: String,
-    #[serde(rename = "Value")]
-    pub value: String,
-}
+///
+/// This is the same type as [`pm_profile::Tag`], so profiles can match the tags
+/// of a process directly.
+pub use pm_profile::Tag;
 
 /// A process running on the operating system.
 ///
@@ -145,6 +142,14 @@ impl Process {
         MatchingData { process: self }
     }
 
+    /// Finds the best matching profile for this process.
+    pub fn find_profile<'a>(
+        &self,
+        profiles: &'a [pm_profile::Profile],
+    ) -> Option<pm_profile::ProfileMatch<'a>> {
+        pm_profile::find_matching_profile(profiles, &self.matching_data())
+    }
+
     /// Returns the database key of the process record.
     pub fn scoped_key(&self) -> String {
         format!("tree/{}", self.process_key)
@@ -189,6 +194,28 @@ impl std::fmt::Display for Process {
 /// An interface-compatible view on the process for profile matching.
 pub struct MatchingData<'a> {
     process: &'a Process,
+}
+
+impl pm_profile::MatchingData for MatchingData<'_> {
+    fn tags(&self) -> &[Tag] {
+        &self.process.tags
+    }
+
+    fn env(&self) -> &std::collections::BTreeMap<String, String> {
+        &self.process.env
+    }
+
+    fn path(&self) -> &str {
+        &self.process.path
+    }
+
+    fn matching_path(&self) -> &str {
+        &self.process.matching_path
+    }
+
+    fn cmdline(&self) -> &str {
+        &self.process.cmd_line
+    }
 }
 
 impl MatchingData<'_> {

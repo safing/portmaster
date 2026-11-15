@@ -246,3 +246,38 @@ fn configuration_option_is_registered() {
         "Process Detection"
     );
 }
+
+#[test]
+fn finds_matching_profiles() {
+    use pm_profile::{Fingerprint, Profile, SOURCE_LOCAL};
+
+    let (root, cache) = setup("match");
+    let process = cache.get_or_find(2000).unwrap();
+
+    let exact = Profile::new(Profile {
+        source: SOURCE_LOCAL.to_string(),
+        name: "exact".to_string(),
+        fingerprints: vec![Fingerprint::new("path", "", "equals", "/usr/bin/child")],
+        ..Profile::default()
+    });
+    let prefix = Profile::new(Profile {
+        source: SOURCE_LOCAL.to_string(),
+        name: "prefix".to_string(),
+        fingerprints: vec![Fingerprint::new("path", "", "prefix", "/usr/bin/")],
+        ..Profile::default()
+    });
+    let other = Profile::new(Profile {
+        source: SOURCE_LOCAL.to_string(),
+        name: "other".to_string(),
+        fingerprints: vec![Fingerprint::new("path", "", "equals", "/opt/other")],
+        ..Profile::default()
+    });
+
+    let profiles = vec![prefix, other, exact];
+    let matched = process.find_profile(&profiles).expect("a profile");
+    assert_eq!(matched.profile.name, "exact");
+    assert_eq!(process.matching_data().path(), "/usr/bin/child");
+
+    assert!(process.find_profile(&[]).is_none());
+    let _ = root;
+}

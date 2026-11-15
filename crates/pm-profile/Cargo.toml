@@ -1,0 +1,25 @@
+[package]
+name = "pm-profile"
+version = "0.1.0"
+edition.workspace = true
+description = "Application profiles and fingerprint matching for the Portmaster core"
+license.workspace = true
+
+[dependencies]
+bs58 = "0.5.1"
+getrandom.workspace = true
+hex.workspace = true
+pm-config = { path = "../pm-config" }
+pm-database = { path = "../pm-database" }
+pm-dsd = { path = "../pm-dsd" }
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha3 = "0.12.0"
+thiserror.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints]
+workspace = true

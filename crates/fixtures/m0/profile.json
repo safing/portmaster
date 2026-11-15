@@ -1,0 +1,287 @@
+{
+  "id_cases": [
+    {
+      "name": "single",
+      "fingerprints": [
+        {
+          "Type": "path",
+          "Key": "",
+          "Operation": "equals",
+          "Value": "/usr/bin/test",
+          "MergedFrom": ""
+        }
+      ],
+      "id": "PTPapgUQr26mGY89vSMtZFoXkhAjFtqp9nyA2Cpn1xhcx2"
+    },
+    {
+      "name": "unsorted",
+      "fingerprints": [
+        {
+          "Type": "tag",
+          "Key": "k",
+          "Operation": "prefix",
+          "Value": "val",
+          "MergedFrom": ""
+        },
+        {
+          "Type": "path",
+          "Key": "",
+          "Operation": "equals",
+          "Value": "/usr/bin/test",
+          "MergedFrom": ""
+        }
+      ],
+      "id": "PTQ8RKbAFps764uV4Jjk7fxY5bDuc8Lp7WK3HiQyANi6pP"
+    },
+    {
+      "name": "duplicates",
+      "fingerprints": [
+        {
+          "Type": "path",
+          "Key": "",
+          "Operation": "equals",
+          "Value": "/usr/bin/test",
+          "MergedFrom": ""
+        },
+        {
+          "Type": "path",
+          "Key": "",
+          "Operation": "equals",
+          "Value": "/usr/bin/test",
+          "MergedFrom": ""
+        },
+        {
+          "Type": "tag",
+          "Key": "k",
+          "Operation": "equals",
+          "Value": "v",
+          "MergedFrom": ""
+        }
+      ],
+      "id": "PTYPiUwkyVXaBgY1TFpjHogcdXXYaLqRPA5qFhuziEJRT3"
+    },
+    {
+      "name": "merged-from",
+      "fingerprints": [
+        {
+          "Type": "path",
+          "Key": "",
+          "Operation": "equals",
+          "Value": "/usr/bin/a",
+          "MergedFrom": "local/a"
+        },
+        {
+          "Type": "path",
+          "Key": "",
+          "Operation": "equals",
+          "Value": "/usr/bin/a",
+          "MergedFrom": "local/b"
+        }
+      ],
+      "id": "PTLS8oWQ82ppdoUBChD42XR7tysHEWYGKdeBVD882xJM7i"
+    }
+  ],
+  "match_cases": [
+    {
+      "name": "tag-equals",
+      "fingerprints": [
+        {
+          "Type": "tag",
+          "Key": "tag-a",
+          "Operation": "equals",
+          "Value": "value",
+          "MergedFrom": ""
+        }
+      ],
+      "tags": [
+        {
+          "Key": "tag-a",
+          "Value": "value"
+        }
+      ],
+      "score": 53005
+    },
+    {
+      "name": "tag-prefix",
+      "fingerprints": [
+        {
+          "Type": "tag",
+          "Key": "key",
+          "Operation": "prefix",
+          "Value": "pre",
+          "MergedFrom": ""
+        }
+      ],
+      "tags": [
+        {
+          "Key": "key",
+          "Value": "prefix-123"
+        }
+      ],
+      "score": 52003
+    },
+    {
+      "name": "tag-regex",
+      "fingerprints": [
+        {
+          "Type": "tag",
+          "Key": "k",
+          "Operation": "regex",
+          "Value": "[0-9]+",
+          "MergedFrom": ""
+        }
+      ],
+      "tags": [
+        {
+          "Key": "k",
+          "Value": "abc12345"
+        }
+      ],
+      "score": 51005
+    },
+    {
+      "name": "tag-key-mismatch",
+      "fingerprints": [
+        {
+          "Type": "tag",
+          "Key": "other",
+          "Operation": "equals",
+          "Value": "value",
+          "MergedFrom": ""
+        }
+      ],
+      "tags": [
+        {
+          "Key": "tag-a",
+          "Value": "value"
+        }
+      ],
+      "path": "/usr/bin/no-match",
+      "score": 0
+    },
+    {
+      "name": "cmdline-prefix",
+      "fingerprints": [
+        {
+          "Type": "cmdline",
+          "Key": "",
+          "Operation": "prefix",
+          "Value": "/usr/bin/python",
+          "MergedFrom": ""
+        }
+      ],
+      "cmdline": "/usr/bin/python script.py",
+      "score": 42015
+    },
+    {
+      "name": "cmdline-regex",
+      "fingerprints": [
+        {
+          "Type": "cmdline",
+          "Key": "",
+          "Operation": "regex",
+          "Value": "script\\.py",
+          "MergedFrom": ""
+        }
+      ],
+      "cmdline": "/usr/bin/python script.py",
+      "score": 41009
+    },
+    {
+      "name": "env-equals",
+      "fingerprints": [
+        {
+          "Type": "env",
+          "Key": "APP_ID",
+          "Operation": "equals",
+          "Value": "test",
+          "MergedFrom": ""
+        }
+      ],
+      "env": {
+        "APP_ID": "test"
+      },
+      "score": 33004
+    },
+    {
+      "name": "matching-path-equals",
+      "fingerprints": [
+        {
+          "Type": "path",
+          "Key": "",
+          "Operation": "equals",
+          "Value": "/opt/app/bin/app",
+          "MergedFrom": ""
+        }
+      ],
+      "path": "/opt/app/bin/python3",
+      "matching_path": "/opt/app/bin/app",
+      "score": 23016
+    },
+    {
+      "name": "path-prefix",
+      "fingerprints": [
+        {
+          "Type": "path",
+          "Key": "",
+          "Operation": "prefix",
+          "Value": "/usr/bin/",
+          "MergedFrom": ""
+        }
+      ],
+      "path": "/usr/bin/curl",
+      "score": 12009
+    },
+    {
+      "name": "no-match",
+      "fingerprints": [
+        {
+          "Type": "path",
+          "Key": "",
+          "Operation": "equals",
+          "Value": "/nope",
+          "MergedFrom": ""
+        }
+      ],
+      "path": "/usr/bin/curl",
+      "score": 0
+    },
+    {
+      "name": "regex-empty-match",
+      "fingerprints": [
+        {
+          "Type": "path",
+          "Key": "",
+          "Operation": "regex",
+          "Value": "a*",
+          "MergedFrom": ""
+        }
+      ],
+      "path": "bcd",
+      "score": 0
+    },
+    {
+      "name": "linked-path-fallback",
+      "fingerprints": null,
+      "linked_path": "/usr/bin/legacy",
+      "path": "/usr/bin/legacy",
+      "score": 13015
+    },
+    {
+      "name": "invalid-regex",
+      "fingerprints": [
+        {
+          "Type": "path",
+          "Key": "",
+          "Operation": "regex",
+          "Value": "[",
+          "MergedFrom": ""
+        }
+      ],
+      "path": "/usr/bin/curl",
+      "score": 0,
+      "error": "failed to compile regex fingerprint: ["
+    }
+  ],
+  "profile": "{\"ID\":\"test-profile-id\",\"Source\":\"local\",\"Name\":\"Test Profile\",\"Description\":\"A profile for fixtures.\",\"Warning\":\"Be careful.\",\"WarningLastUpdated\":\"2023-11-14T22:16:40Z\",\"Homepage\":\"https://example.com\",\"Icon\":\"/tmp/icon.png\",\"IconType\":\"path\",\"Icons\":[{\"Type\":\"api\",\"Value\":\"/api/v1/icons/1\",\"Source\":\"core\"},{\"Type\":\"path\",\"Value\":\"/tmp/icon.png\",\"Source\":\"user\"}],\"LinkedPath\":\"/usr/bin/test\",\"PresentationPath\":\"/usr/bin/test\",\"UsePresentationPath\":true,\"Fingerprints\":[{\"Type\":\"path\",\"Key\":\"\",\"Operation\":\"equals\",\"Value\":\"/usr/bin/test\",\"MergedFrom\":\"\"},{\"Type\":\"tag\",\"Key\":\"app-image-path\",\"Operation\":\"prefix\",\"Value\":\"/tmp/.mount_\",\"MergedFrom\":\"local/other\"}],\"Config\":{\"filter\":{\"defaultAction\":\"block\",\"endpoints\":[\"+ 1.1.1.1:443\",\"- 10.0.0.0/8\"],\"lists\":[\"list-a\"]}},\"LastEdited\":1700000100,\"Created\":1700000000,\"Internal\":false}"
+}
