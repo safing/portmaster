@@ -94,15 +94,15 @@ async fn test_start_order() {
     let group = Group::new(vec![mod_a, mod_b, mod_c]);
     assert_eq!(group.state(), ModuleState::Off);
 
-    group.start().await.expect("group should start successfully");
+    group
+        .start()
+        .await
+        .expect("group should start successfully");
     assert_eq!(group.state(), ModuleState::Running);
     assert!(group.is_running());
 
     let recorded = events.lock().unwrap().clone();
-    assert_eq!(
-        recorded,
-        vec!["start:mod_a", "start:mod_b", "start:mod_c"]
-    );
+    assert_eq!(recorded, vec!["start:mod_a", "start:mod_b", "start:mod_c"]);
 }
 
 #[tokio::test]
@@ -122,10 +122,7 @@ async fn test_reverse_stop() {
     assert!(group.is_stopped().unwrap());
 
     let recorded = events.lock().unwrap().clone();
-    assert_eq!(
-        recorded,
-        vec!["stop:mod_c", "stop:mod_b", "stop:mod_a"]
-    );
+    assert_eq!(recorded, vec!["stop:mod_c", "stop:mod_b", "stop:mod_a"]);
 }
 
 #[tokio::test]
@@ -145,12 +142,7 @@ async fn test_rollback_on_failure() {
     let recorded = events.lock().unwrap().clone();
     assert_eq!(
         recorded,
-        vec![
-            "start:mod_a",
-            "start:mod_b",
-            "stop:mod_b",
-            "stop:mod_a",
-        ]
+        vec!["start:mod_a", "start:mod_b", "stop:mod_b", "stop:mod_a",]
     );
 }
 
@@ -159,8 +151,7 @@ async fn test_worker_cancellation_on_stop() {
     let events = Arc::new(Mutex::new(Vec::new()));
     let worker_stopped = Arc::new(AtomicBool::new(false));
     let mod_a = Arc::new(
-        TestModule::new("worker_mod", Arc::clone(&events))
-            .with_worker(Arc::clone(&worker_stopped)),
+        TestModule::new("worker_mod", Arc::clone(&events)).with_worker(Arc::clone(&worker_stopped)),
     );
 
     let group = Group::new(vec![mod_a]);
@@ -209,16 +200,12 @@ async fn test_repeat_runs_multiple_times_then_stops_on_cancel() {
     let count = Arc::new(AtomicUsize::new(0));
 
     let count_clone = Arc::clone(&count);
-    let repeat_handle = mgr.repeat(
-        "counter_worker",
-        Duration::from_millis(15),
-        move || {
-            let c = Arc::clone(&count_clone);
-            async move {
-                c.fetch_add(1, Ordering::SeqCst);
-            }
-        },
-    );
+    let repeat_handle = mgr.repeat("counter_worker", Duration::from_millis(15), move || {
+        let c = Arc::clone(&count_clone);
+        async move {
+            c.fetch_add(1, Ordering::SeqCst);
+        }
+    });
 
     // Allow it to run several times
     tokio::time::sleep(Duration::from_millis(70)).await;
@@ -354,15 +341,17 @@ async fn test_group_invalid_state_and_double_calls() {
     group.start().await.expect("start ok");
 
     // Double start when running is Ok
-    group.start().await.expect("start when running should be ok");
+    group
+        .start()
+        .await
+        .expect("start when running should be ok");
 
     // Stop group
     group.stop().await.expect("stop ok");
 
     // Failure on stop makes state Invalid
-    let mod_failing = Arc::new(
-        TestModule::new("mod_fail", Arc::clone(&events)).with_stop_err(true),
-    );
+    let mod_failing =
+        Arc::new(TestModule::new("mod_fail", Arc::clone(&events)).with_stop_err(true));
     let group_fail = Group::new(vec![mod_failing]);
     group_fail.start().await.expect("start succeeds");
     let stop_res = group_fail.stop().await;

@@ -68,7 +68,10 @@ impl Group {
 
     /// Returns copies of the module references in the group.
     pub fn modules(&self) -> Vec<Arc<dyn Module>> {
-        self.modules.iter().map(|item| Arc::clone(&item.module)).collect()
+        self.modules
+            .iter()
+            .map(|item| Arc::clone(&item.module))
+            .collect()
     }
 
     /// Returns the manager associated with a module by name, if found.

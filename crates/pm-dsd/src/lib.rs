@@ -3,6 +3,7 @@
 pub mod error;
 pub mod format;
 pub mod gojson;
+pub mod gotime;
 pub mod list;
 pub mod varint;
 

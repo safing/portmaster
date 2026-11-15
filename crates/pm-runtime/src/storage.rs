@@ -33,6 +33,7 @@ fn to_database_error(error: Error) -> DbError {
 
 impl Storage for RegistryStorage {
     fn get(&self, key: &str) -> DbResult<Record> {
+        tracing::trace!(key, "runtime: storage get");
         self.registry.get(key).map_err(to_database_error)
     }
 

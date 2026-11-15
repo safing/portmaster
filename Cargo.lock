@@ -924,9 +924,12 @@ dependencies = [
  "pm-database",
  "pm-dsd",
  "pm-mgr",
+ "pm-netenv",
+ "pm-notifications",
  "pm-query",
  "pm-record",
  "pm-runtime",
+ "pm-status",
  "serde_json",
  "tokio",
  "tokio-tungstenite 0.30.0",
@@ -968,9 +971,22 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "pm-dsd",
+ "serde",
+ "serde_json",
  "thiserror",
  "tokio",
  "tokio-util",
+ "tracing",
+]
+
+[[package]]
+name = "pm-netenv"
+version = "0.1.0"
+dependencies = [
+ "pm-mgr",
+ "serde",
+ "thiserror",
  "tracing",
 ]
 
@@ -1078,6 +1094,22 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "pm-status"
+version = "0.1.0"
+dependencies = [
+ "pm-config",
+ "pm-database",
+ "pm-dsd",
+ "pm-mgr",
+ "pm-netenv",
+ "pm-notifications",
+ "pm-record",
+ "pm-runtime",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

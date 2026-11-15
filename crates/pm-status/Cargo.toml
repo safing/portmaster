@@ -1,0 +1,23 @@
+[package]
+name = "pm-status"
+version = "0.1.0"
+edition.workspace = true
+description = "System status and module state notifications for the Portmaster core"
+license.workspace = true
+
+[dependencies]
+pm-config = { path = "../pm-config" }
+pm-dsd = { path = "../pm-dsd" }
+pm-mgr = { path = "../pm-mgr" }
+pm-netenv = { path = "../pm-netenv" }
+pm-notifications = { path = "../pm-notifications" }
+pm-record = { path = "../pm-record" }
+pm-runtime = { path = "../pm-runtime" }
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+pm-database = { path = "../pm-database" }
+
+[lints]
+workspace = true

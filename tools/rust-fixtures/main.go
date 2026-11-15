@@ -26,11 +26,14 @@ import (
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/database/storage/sqlite"
 	"github.com/safing/portmaster/base/notifications"
+	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network/proc"
 	"github.com/safing/portmaster/service/network/socket"
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/service/profile/binmeta"
+	"github.com/safing/portmaster/service/status"
 	"github.com/safing/structures/dsd"
 	"github.com/safing/structures/varint"
 )
@@ -73,6 +76,7 @@ func main() {
 	genProcess()
 	genProfile()
 	genNotifications()
+	genStatus()
 	genSQLite()
 }
 
@@ -1381,5 +1385,67 @@ func genNotifications() {
 
 	writeObject("notifications.json", map[string]any{
 		"notification": string(dumped[1:]),
+	})
+}
+
+// genStatus records the JSON forms of a module state update and of the system
+// status record that is published via the runtime database.
+func genStatus() {
+	stateA := mgr.State{
+		ID:      "module-a:error-1",
+		Name:    "Module A Error",
+		Message: "Something went wrong.",
+		Type:    mgr.StateTypeError,
+		Time:    time.Unix(1_700_000_000, 0).UTC(),
+		Data:    map[string]interface{}{"code": 42},
+	}
+	stateB := mgr.State{
+		ID:      "module-b:hint-1",
+		Name:    "Module B Hint",
+		Message: "Just so you know.",
+		Type:    mgr.StateTypeHint,
+		Time:    time.Unix(1_700_000_100, 0).UTC(),
+	}
+	update := mgr.StateUpdate{
+		Module: "module-a",
+		States: []mgr.State{stateA},
+	}
+	updateDump, err := dsd.Dump(update, dsd.JSON)
+	if err != nil {
+		fail(err)
+	}
+
+	record := &status.SystemStatusRecord{
+		OnlineStatus: netenv.StatusSemiOnline,
+		CaptivePortal: &netenv.CaptivePortal{
+			URL:    "http://portal.example.com/login",
+			Domain: "portal.example.com",
+			IP:     net.ParseIP("192.0.2.10"),
+		},
+		Modules: []mgr.StateUpdate{
+			{Module: "module-b", States: []mgr.State{stateB}},
+			{Module: "module-a", States: []mgr.State{stateA}},
+		},
+	}
+	record.WorstState.Module = "module-a"
+	record.WorstState.State = stateA
+	record.CreateMeta()
+	record.SetKey("runtime:system/status")
+	recordDump, err := dsd.Dump(record, dsd.JSON)
+	if err != nil {
+		fail(err)
+	}
+
+	writeObject("status.json", map[string]any{
+		"state_update":  string(updateDump[1:]),
+		"system_status": string(recordDump[1:]),
+		"online_statuses": []any{
+			map[string]any{"value": int(netenv.StatusUnknown), "name": netenv.StatusUnknown.String()},
+			map[string]any{"value": int(netenv.StatusOffline), "name": netenv.StatusOffline.String()},
+			map[string]any{"value": int(netenv.StatusLimited), "name": netenv.StatusLimited.String()},
+			map[string]any{"value": int(netenv.StatusPortal), "name": netenv.StatusPortal.String()},
+			map[string]any{"value": int(netenv.StatusSemiOnline), "name": netenv.StatusSemiOnline.String()},
+			map[string]any{"value": int(netenv.StatusOnline), "name": netenv.StatusOnline.String()},
+		},
 	})
 }

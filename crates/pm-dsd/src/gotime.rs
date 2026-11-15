@@ -1,4 +1,4 @@
-//! Minimal RFC3339 formatting for profile timestamps.
+//! RFC3339 formatting of Go `time.Time` values, as used in JSON records.
 
 /// Formats Unix seconds as RFC3339 in UTC, like Go's `time.Time` JSON form.
 ///

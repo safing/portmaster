@@ -103,6 +103,46 @@ async fn core_serves_api_and_database() {
     assert_eq!(service.runtime.database_name(), "runtime");
     assert!(service.runtime.controller().is_some());
 
+    // Notifications live in their own injected database.
+    assert!(service
+        .databases
+        .databases()
+        .iter()
+        .any(|info| info.name == "notifications"));
+
+    // The system status is published through the runtime database.
+    let record = service
+        .databases
+        .internal_interface()
+        .get("runtime:system/status")
+        .unwrap();
+    assert_eq!(record.key.key, "system/status");
+    let status: serde_json::Value = serde_json::from_slice(&record.data).unwrap();
+    assert_eq!(status["OnlineStatus"], 0);
+    assert_eq!(status["Modules"], json!([]));
+    assert_eq!(status["WorstState"]["Module"], "");
+
+    // Module states flow into the published status and into notifications.
+    service
+        .status
+        .handle_module_status_update(pm_mgr::StateUpdate::new(
+            "test-module",
+            vec![pm_mgr::State::new(
+                "test-module:warning",
+                "Test Warning",
+                pm_mgr::STATE_TYPE_WARNING,
+            )],
+        ));
+    let record = service
+        .databases
+        .internal_interface()
+        .get("runtime:system/status")
+        .unwrap();
+    let status: serde_json::Value = serde_json::from_slice(&record.data).unwrap();
+    assert_eq!(status["WorstState"]["Module"], "test-module");
+    assert_eq!(status["WorstState"]["Type"], "warning");
+    assert!(service.notifications.get("test-module:warning").is_some());
+
     // The database WebSocket API works end to end (dev mode grants admin).
     service
         .databases

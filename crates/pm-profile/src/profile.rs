@@ -5,8 +5,8 @@ use serde_json::{Map, Value};
 
 use crate::fingerprint::{derive_profile_id, Fingerprint};
 use crate::icon::Icon;
-use crate::time::{format_rfc3339, parse_rfc3339};
 use crate::{make_profile_key, make_scoped_id};
+use pm_dsd::gotime::{format_rfc3339, parse_rfc3339};
 
 /// Default action is not set.
 pub const DEFAULT_ACTION_NOT_SET: u8 = 0;

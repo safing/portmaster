@@ -137,9 +137,7 @@ impl Manager {
             notify: Arc::clone(&self.notify),
         };
 
-        let worker_task = tokio::spawn(async move {
-            fut.await.into_result()
-        });
+        let worker_task = tokio::spawn(async move { fut.await.into_result() });
 
         let worker_abort = worker_task.abort_handle();
 
@@ -273,12 +271,7 @@ impl Manager {
     /// Schedules `f` to run once after `delay` has elapsed.
     ///
     /// If the manager is cancelled before the delay elapses, `f` is not executed.
-    pub fn delay<F, Fut, R>(
-        &self,
-        name: impl Into<String>,
-        delay: Duration,
-        f: F,
-    ) -> JoinHandle<()>
+    pub fn delay<F, Fut, R>(&self, name: impl Into<String>, delay: Duration, f: F) -> JoinHandle<()>
     where
         F: FnOnce() -> Fut + Send + 'static,
         Fut: Future<Output = R> + Send + 'static,

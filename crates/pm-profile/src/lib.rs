@@ -25,7 +25,6 @@ mod matching;
 mod merge;
 mod profile;
 mod store;
-mod time;
 
 pub use fingerprint::{
     derive_profile_id, key_and_value_in_tags, key_in_tags, match_fingerprints, parse_fingerprints,

@@ -135,8 +135,9 @@ impl<T> EventMgr<T> {
             let event_name = inner.name.clone();
 
             // Deliver to subscriptions, pruning closed channels
-            inner.subs.retain(|sub| {
-                match sub.sender.try_send(event.clone()) {
+            inner
+                .subs
+                .retain(|sub| match sub.sender.try_send(event.clone()) {
                     Ok(()) => true,
                     Err(mpsc::error::TrySendError::Full(_)) => {
                         tracing::warn!(
@@ -147,8 +148,7 @@ impl<T> EventMgr<T> {
                         true
                     }
                     Err(mpsc::error::TrySendError::Closed(_)) => false,
-                }
-            });
+                });
 
             inner.callbacks.clone()
         };
@@ -197,7 +197,9 @@ impl<T> EventMgr<T> {
 
         if any_canceled {
             let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-            inner.callbacks.retain(|cb| !cb.canceled.load(Ordering::Relaxed));
+            inner
+                .callbacks
+                .retain(|cb| !cb.canceled.load(Ordering::Relaxed));
         }
     }
 

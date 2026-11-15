@@ -1,0 +1,30 @@
+{
+  "online_statuses": [
+    {
+      "name": "Unknown",
+      "value": 0
+    },
+    {
+      "name": "Offline",
+      "value": 1
+    },
+    {
+      "name": "Limited",
+      "value": 2
+    },
+    {
+      "name": "Portal",
+      "value": 3
+    },
+    {
+      "name": "SemiOnline",
+      "value": 4
+    },
+    {
+      "name": "Online",
+      "value": 5
+    }
+  ],
+  "state_update": "{\"Module\":\"module-a\",\"States\":[{\"ID\":\"module-a:error-1\",\"Name\":\"Module A Error\",\"Message\":\"Something went wrong.\",\"Type\":\"error\",\"Time\":\"2023-11-14T22:13:20Z\",\"Data\":{\"code\":42}}]}",
+  "system_status": "{\"OnlineStatus\":4,\"CaptivePortal\":{\"URL\":\"http://portal.example.com/login\",\"Domain\":\"portal.example.com\",\"IP\":\"192.0.2.10\"},\"Modules\":[{\"Module\":\"module-b\",\"States\":[{\"ID\":\"module-b:hint-1\",\"Name\":\"Module B Hint\",\"Message\":\"Just so you know.\",\"Type\":\"hint\",\"Time\":\"2023-11-14T22:15:00Z\",\"Data\":null}]},{\"Module\":\"module-a\",\"States\":[{\"ID\":\"module-a:error-1\",\"Name\":\"Module A Error\",\"Message\":\"Something went wrong.\",\"Type\":\"error\",\"Time\":\"2023-11-14T22:13:20Z\",\"Data\":{\"code\":42}}]}],\"WorstState\":{\"Module\":\"module-a\",\"ID\":\"module-a:error-1\",\"Name\":\"Module A Error\",\"Message\":\"Something went wrong.\",\"Type\":\"error\",\"Time\":\"2023-11-14T22:13:20Z\",\"Data\":{\"code\":42}}}"
+}

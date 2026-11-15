@@ -25,6 +25,10 @@ pub struct Service {
     pub api: Arc<Api>,
     /// Runtime value registry, injected as the `runtime` database.
     pub runtime: pm_runtime::Runtime,
+    /// Notification registry, injected as the `notifications` database.
+    pub notifications: Arc<pm_notifications::Notifications>,
+    /// System status: module states and `runtime:system/status`.
+    pub status: Arc<pm_status::Status>,
     listener: Mutex<Option<TcpListener>>,
     local_addr: std::net::SocketAddr,
     data_dir: PathBuf,
@@ -57,6 +61,24 @@ impl Service {
         // Runtime values: modules expose computed records through `runtime`.
         let mut runtime = pm_runtime::Runtime::new();
         runtime.start(&databases)?;
+
+        // Notifications: an injected database backed by the registry.
+        let notifications = Arc::new(pm_notifications::Notifications::new());
+        databases.register_injected("notifications", "Notifications")?;
+        let notifications_controller = databases.inject(
+            "notifications",
+            Box::new(pm_notifications::NotificationsStorage::new(Arc::clone(
+                &notifications,
+            ))),
+        )?;
+        notifications.set_db_controller(notifications_controller);
+
+        // System status publishes itself through the runtime registry.
+        let status = Arc::new(pm_status::Status::new(
+            pm_netenv::shared(),
+            Arc::clone(&notifications),
+        ));
+        status.register(runtime.registry())?;
 
         // Configuration.
         let config = Config::new();
@@ -97,6 +119,8 @@ impl Service {
             databases,
             api,
             runtime,
+            notifications,
+            status,
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
             data_dir,

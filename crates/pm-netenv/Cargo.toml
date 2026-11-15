@@ -1,0 +1,15 @@
+[package]
+name = "pm-netenv"
+version = "0.1.0"
+edition.workspace = true
+description = "Network environment status (online status, captive portal) for the Portmaster core"
+license.workspace = true
+
+[dependencies]
+pm-mgr = { path = "../pm-mgr" }
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

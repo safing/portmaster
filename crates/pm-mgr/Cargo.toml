@@ -8,6 +8,9 @@ description = "Module lifecycle manager and event subsystem for Portmaster"
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
+pm-dsd = { path = "../pm-dsd" }
+serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
