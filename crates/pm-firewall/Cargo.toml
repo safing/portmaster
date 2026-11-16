@@ -1,0 +1,27 @@
+[package]
+name = "pm-firewall"
+version = "0.1.0"
+edition.workspace = true
+description = "Connection verdict deciders of the Portmaster firewall"
+license.workspace = true
+
+[dependencies]
+pm-endpoints = { path = "../pm-endpoints" }
+pm-intel = { path = "../pm-intel" }
+pm-netenv = { path = "../pm-netenv" }
+pm-netstate = { path = "../pm-netstate" }
+pm-network = { path = "../pm-network" }
+pm-process = { path = "../pm-process" }
+pm-profile = { path = "../pm-profile" }
+psl.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+pm-config = { path = "../pm-config" }
+pm-database = { path = "../pm-database" }
+pm-resolver = { path = "../pm-resolver" }
+
+[lints]
+workspace = true
