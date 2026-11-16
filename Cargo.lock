@@ -1399,6 +1399,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "pm-apprise"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "pm-config"
 version = "0.1.0"
 dependencies = [
@@ -1420,17 +1432,21 @@ dependencies = [
  "anyhow",
  "async-trait",
  "futures-util",
+ "nix 0.31.3",
  "pm-api",
  "pm-config",
  "pm-database",
  "pm-dsd",
+ "pm-endpoints",
  "pm-firewall",
  "pm-geoip",
  "pm-intel",
+ "pm-interception",
  "pm-jess",
  "pm-mgr",
  "pm-nameserver",
  "pm-netenv",
+ "pm-netquery",
  "pm-netstate",
  "pm-network",
  "pm-notifications",

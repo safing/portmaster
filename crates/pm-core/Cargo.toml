@@ -16,9 +16,12 @@ pm-api = { path = "../pm-api" }
 pm-config = { path = "../pm-config" }
 pm-database = { path = "../pm-database" }
 pm-dsd = { path = "../pm-dsd" }
+pm-endpoints = { path = "../pm-endpoints" }
+pm-interception = { path = "../pm-interception" }
 pm-mgr = { path = "../pm-mgr" }
 pm-runtime = { path = "../pm-runtime" }
 pm-netenv = { path = "../pm-netenv" }
+pm-netquery = { path = "../pm-netquery" }
 pm-netstate = { path = "../pm-netstate" }
 pm-process = { path = "../pm-process" }
 pm-profile = { path = "../pm-profile" }
@@ -31,6 +34,7 @@ pm-status = { path = "../pm-status" }
 pm-updates = { path = "../pm-updates" }
 pm-intel = { path = "../pm-intel" }
 pm-jess = { path = "../pm-jess" }
+nix = { version = "0.31.3", default-features = false, features = ["user"] }
 pm-firewall = { path = "../pm-firewall" }
 pm-geoip = { path = "../pm-geoip" }
 pm-query = { path = "../pm-query" }

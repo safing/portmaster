@@ -176,6 +176,31 @@ async fn core_serves_api_and_database() {
         .get_interface("definitely-not-an-interface")
         .is_err());
 
+    // Firewall components are constructed even without root privileges.
+    let firewall = &service.firewall;
+    assert!(firewall.network.get_connection("does-not-exist").is_none());
+    assert!(firewall.profiles.layered_for(&pm_process::Process::empty("1-0")).is_none());
+    assert!(data_dir.join("databases/history.db").exists());
+    assert!(service
+        .databases
+        .databases()
+        .iter()
+        .any(|info| info.name == "network"));
+
+    // The synchronous prompt hook returns the Go timeout verdict.
+    use pm_firewall::FirewallEnv;
+    let mut conn = pm_network::Connection::default();
+    firewall.env.prompt(&mut conn);
+    assert_eq!(conn.verdict, pm_network::Verdict::Block);
+    assert_eq!(
+        conn.reason.msg,
+        "prompting in progress, please respond to prompt"
+    );
+    assert!(firewall
+        .env
+        .is_my_ip("127.0.0.1".parse().unwrap())
+        .expect("loopback is mine"));
+
     // GeoIP starts empty; the intel worker fills it from the index.
     assert!(!service.geoip.is_initialized(false));
     assert!(!service.geoip.is_initialized(true));

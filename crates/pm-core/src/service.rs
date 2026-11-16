@@ -57,6 +57,8 @@ pub struct Service {
     pub system_interfaces: Arc<pm_splittun::SystemInterfaceEnv>,
     /// Network change monitor.
     pub network_monitor: Arc<pm_netenv::NetworkChangeMonitor>,
+    /// Firewall environment and packet pipeline.
+    pub firewall: Arc<crate::firewall::Firewall>,
     /// Subscribed in `new` so changes before `run` are not missed.
     profile_changes: Mutex<Option<tokio::sync::broadcast::Receiver<()>>>,
     listener: Mutex<Option<TcpListener>>,
@@ -328,6 +330,55 @@ impl Service {
             .await?,
         );
 
+        // Profiles from the `core` database and the IP-info store.
+        let profile_store = pm_profile::ProfileStore::new(
+            databases.interface(pm_database::Options {
+                local: true,
+                internal: true,
+                ..pm_database::Options::default()
+            }),
+        );
+        let profiles = Arc::new(crate::firewall::CoreProfiles::new(
+            Arc::clone(&config),
+            Arc::clone(&profile_config),
+            profile_store,
+        )
+        .map_err(|error| anyhow::anyhow!("load local profiles: {error}"))?);
+        let ip_info = Arc::new(pm_resolver::IpInfoStore::new(
+            databases.interface(pm_resolver::ipinfo::ip_info_interface_options()),
+        ));
+
+        // Split tunnel request queue and proxies. The proxies are only started
+        // when the split tunnel module is enabled.
+        let split_queue = Arc::new(pm_splittun::RequestQueue::new());
+        let split_proxies = Arc::new(pm_splittun::Proxies::new());
+        let split_env = Arc::new(pm_splittun::SplitTunnelEnvAdapter::new(
+            std::process::id() as i32,
+            Arc::clone(&split_queue),
+            Arc::clone(&split_proxies),
+            Arc::clone(&system_interfaces) as Arc<dyn pm_splittun::InterfaceEnv>,
+            Arc::clone(&profiles) as Arc<dyn pm_splittun::SplitTunnelProfiles>,
+        ));
+
+        let firewall = Arc::new(crate::firewall::Firewall::new(
+            crate::firewall::FirewallDeps {
+                config: Arc::clone(&config),
+                databases: Arc::clone(&databases),
+                runtime: &runtime,
+                data_dir: data_dir.clone(),
+                local_addr: listener.local_addr()?,
+                custom_lists: Arc::clone(&custom_lists),
+                filter_lists: Arc::clone(&filter_lists),
+                geoip: Arc::clone(&geoip),
+                resolver: Arc::new(dns.resolver().clone()),
+                profiles,
+                split_tunnel: split_env,
+                ip_info,
+            },
+        )?);
+
+
+
         api.set_ready(true);
 
         Ok(Service {
@@ -348,6 +399,7 @@ impl Service {
             online_monitor,
             system_interfaces,
             network_monitor,
+            firewall,
             profile_changes: Mutex::new(Some(profile_changes)),
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
@@ -390,6 +442,8 @@ impl Service {
         let binary_updater = Arc::clone(&self.binary_updater);
         let intel_updater = Arc::clone(&self.intel_updater);
         let config = Arc::clone(&self.config);
+        let firewall_env = Arc::clone(&self.firewall.env);
+        let firewall_profiles = Arc::clone(&self.firewall.profiles);
         let mut changes = self
             .profile_changes
             .lock()
@@ -402,6 +456,10 @@ impl Service {
             {
                 if let Err(error) = profile_config.refresh() {
                     tracing::warn!(%error, "profile: some global settings are invalid");
+                }
+                firewall_env.refresh_options(&config);
+                if let Err(error) = firewall_profiles.refresh() {
+                    tracing::warn!(%error, "profile: failed to reload local profiles");
                 }
                 custom_lists.set_file_path(
                     &config.get_as_string(
@@ -542,6 +600,12 @@ impl Service {
             })
         };
 
+        // Install iptables and start the packet readers when enabled and
+        // privileged. This is a no-op otherwise.
+        if let Err(error) = self.firewall.start() {
+            tracing::error!(%error, "filter: failed to start interception");
+        }
+
         let outcome: anyhow::Result<()> = tokio::select! {
             result = server => result.map_err(anyhow::Error::from),
             _ = shutdown_signal() => {
@@ -558,6 +622,9 @@ impl Service {
         binary_worker.abort();
         intel_worker.abort();
         list_watcher.abort();
+        if let Err(error) = self.firewall.stop().await {
+            tracing::warn!(%error, "filter: failed to stop interception");
+        }
         self.dns.shutdown().await;
         databases.shutdown()?;
         outcome
