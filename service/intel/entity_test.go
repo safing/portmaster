@@ -1,6 +1,8 @@
 package intel
 
 import (
+	"context"
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,5 +31,21 @@ func TestSplitDomain(t *testing.T) {
 	for _, testCase := range splitDomainTestCases {
 		splitted := splitDomain(testCase[0])
 		assert.Equal(t, testCase, splitted, "result must match")
+	}
+}
+
+func TestGetCountryInfoWithoutLocation(t *testing.T) {
+	t.Parallel()
+
+	// Neither an entity without IP nor one with a non-global IP gets a location
+	// or a location error, so no geoip database is involved.
+	for name, e := range map[string]*Entity{
+		"no IP":         {},
+		"non-global IP": {IP: net.ParseIP("192.168.1.1")},
+	} {
+		e.Init(0)
+		assert.NotPanics(t, func() {
+			assert.Nil(t, e.GetCountryInfo(context.Background()), name)
+		}, name)
 	}
 }

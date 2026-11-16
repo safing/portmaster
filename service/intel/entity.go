@@ -318,7 +318,8 @@ func (e *Entity) GetCountry(ctx context.Context) (string, bool) {
 func (e *Entity) GetCountryInfo(ctx context.Context) *geoip.CountryInfo {
 	e.getLocation(ctx)
 
-	if e.LocationError != "" {
+	// The location is also unset without an error, eg. for non-global IPs.
+	if e.LocationError != "" || e.location == nil {
 		return nil
 	}
 	return &e.location.Country
