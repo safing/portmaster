@@ -186,6 +186,7 @@ pub fn register_options(config: &Config) -> Result<(), pm_config::Error> {
         .with_expertise_level(EXPERTISE_LEVEL_EXPERT)
         .with_release_level(RELEASE_LEVEL_STABLE)
         .with_annotation(DISPLAY_HINT_ANNOTATION, json!(DISPLAY_HINT_SECURITY_LEVEL))
+        .with_migration(pm_config::migrate_security_level_to_boolean)
         .with_annotation("self:detail:specialUseDomains", strings(SPECIAL_USE_DOMAINS)),
     )?;
 
@@ -220,6 +221,7 @@ pub fn register_options(config: &Config) -> Result<(), pm_config::Error> {
         .with_expertise_level(EXPERTISE_LEVEL_EXPERT)
         .with_release_level(RELEASE_LEVEL_STABLE)
         .with_annotation(DISPLAY_HINT_ANNOTATION, json!(DISPLAY_HINT_SECURITY_LEVEL))
+        .with_migration(pm_config::migrate_security_level_to_boolean)
         .with_annotation("self:detail:multicastDomains", strings(MULTICAST_DOMAINS)),
     )?;
 
@@ -237,7 +239,8 @@ pub fn register_options(config: &Config) -> Result<(), pm_config::Error> {
         )
         .with_expertise_level(EXPERTISE_LEVEL_EXPERT)
         .with_release_level(RELEASE_LEVEL_STABLE)
-        .with_annotation(DISPLAY_HINT_ANNOTATION, json!(DISPLAY_HINT_SECURITY_LEVEL)),
+        .with_annotation(DISPLAY_HINT_ANNOTATION, json!(DISPLAY_HINT_SECURITY_LEVEL))
+        .with_migration(pm_config::migrate_security_level_to_boolean),
     )?;
 
     config.register(
@@ -258,6 +261,7 @@ pub fn register_options(config: &Config) -> Result<(), pm_config::Error> {
         .with_expertise_level(EXPERTISE_LEVEL_EXPERT)
         .with_release_level(RELEASE_LEVEL_STABLE)
         .with_annotation(DISPLAY_HINT_ANNOTATION, json!(DISPLAY_HINT_SECURITY_LEVEL))
+        .with_migration(pm_config::migrate_security_level_to_boolean)
         .with_annotation(
             "self:detail:specialServiceDomains",
             strings(SPECIAL_SERVICE_DOMAINS),

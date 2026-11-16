@@ -365,3 +365,20 @@ fn test_operating_system_source_skips_localhost() {
     assert!(!skip);
     assert!(res.is_some());
 }
+
+#[test]
+fn security_level_options_migrate_like_go() {
+    let config = pm_config::Config::new();
+    pm_resolver::settings::register_options(&config).unwrap();
+    for key in [
+        "dns/noAssignedNameservers",
+        "dns/noMulticastDNS",
+        "dns/noInsecureProtocols",
+        "dns/dontResolveSpecialDomains",
+    ] {
+        config.set_config_option(key, serde_json::json!(7)).unwrap();
+        assert!(config.get_as_bool(key, false)(), "{key}");
+        config.set_config_option(key, serde_json::json!(4)).unwrap();
+        assert!(!config.get_as_bool(key, true)(), "{key}");
+    }
+}
