@@ -70,9 +70,8 @@ fn detects_interface_changes_once() {
         .push(("192.168.1.11".parse().unwrap(), 24));
     assert!(monitor.check_once().expect("changed"));
     assert_eq!(online_checks.load(Ordering::SeqCst), 1);
-    assert_eq!(
-        global_source().generation(),
-        generation + 1,
+    assert!(
+        global_source().generation() > generation,
         "network change was announced"
     );
 

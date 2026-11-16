@@ -523,3 +523,50 @@ async fn restart_endpoint_requests_a_restart() {
     assert!(service.restart_token.is_cancelled());
     let _ = std::fs::remove_dir_all(&data_dir);
 }
+
+#[tokio::test]
+async fn app_profile_returns_the_callers_profile() {
+    let data_dir = temp_dir("app-profile");
+    let exe = std::env::current_exe().expect("current exe");
+    let mut options = test_options(&data_dir);
+    options.dev_mode = false;
+    options.allowed_clients = vec![exe.clone()];
+
+    let service = Arc::new(Service::start(&options).await.unwrap());
+
+    // Add a local profile matching the calling test binary.
+    let store = pm_profile::ProfileStore::new(service.databases.interface(
+        pm_database::Options {
+            local: true,
+            internal: true,
+            ..pm_database::Options::default()
+        },
+    ));
+    let profile = pm_profile::Profile::new(pm_profile::Profile {
+        id: "test-profile".to_string(),
+        source: "local".to_string(),
+        name: "Test Profile".to_string(),
+        fingerprints: vec![pm_profile::Fingerprint::new(
+            pm_profile::FINGERPRINT_TYPE_PATH,
+            "",
+            pm_profile::FINGERPRINT_OPERATION_EQUALS,
+            exe.to_string_lossy().as_ref(),
+        )],
+        ..pm_profile::Profile::default()
+    });
+    store.save(&profile).expect("save profile");
+    service.firewall.profiles.refresh().expect("refresh profiles");
+
+    let address = service.local_addr();
+    let server = tokio::spawn(Arc::clone(&service).run());
+    let response = http_get(address, "/api/v1/app/profile", "").await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    let body = response.split("\r\n\r\n").nth(1).unwrap();
+    let profile: serde_json::Value = serde_json::from_str(body).unwrap();
+    assert_eq!(profile["profile"], "test-profile");
+    assert_eq!(profile["source"], "local");
+    assert_eq!(profile["name"], "Test Profile");
+
+    server.abort();
+    let _ = std::fs::remove_dir_all(&data_dir);
+}
