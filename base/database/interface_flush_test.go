@@ -9,7 +9,7 @@ func TestFlushCache(t *testing.T) {
 	_, err := Register(&Database{
 		Name:        dbName,
 		Description: "Unit Test Database for FlushCache",
-		StorageType: "hashmap",
+		StorageType: "hashmap", //nolint:goconst // Storage type name.
 	})
 	if err != nil {
 		t.Fatal(err)

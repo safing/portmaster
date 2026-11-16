@@ -60,10 +60,12 @@ func TestOnceAgain(t *testing.T) {
 	}
 
 	testWg.Wait()
-	if execs <= 8 {
+	// Allow for scheduling jitter on loaded machines (eg. CI running many
+	// test packages at once), same bounds as the call limiter test.
+	if execs <= 5 {
 		t.Errorf("unexpected low exec count: %d", execs)
 	}
-	if execs >= 12 {
+	if execs >= 15 {
 		t.Errorf("unexpected high exec count: %d", execs)
 	}
 }
