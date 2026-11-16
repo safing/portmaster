@@ -26,6 +26,7 @@ members = [
     "crates/pm-resolver",
     "crates/pm-network",
     "crates/pm-nameserver",
+    "crates/pm-netquery",
     "crates/pm-jess",
 ]
 

@@ -90,6 +90,7 @@ func main() {
 	genProfileOptions()
 	genResolver()
 	genNameserver()
+	genNetquery()
 	genNetState()
 	genProcess()
 	genNetwork()

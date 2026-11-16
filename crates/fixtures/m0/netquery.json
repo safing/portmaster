@@ -1,0 +1,324 @@
+{
+  "cases": [
+    {
+      "params": {},
+      "request": "{}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections  )    LIMIT 100"
+    },
+    {
+      "params": {},
+      "request": "{\"select\":\"profile\"}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections  )    LIMIT 100"
+    },
+    {
+      "params": {
+        ":profile0eq0": {
+          "type": "string",
+          "value": "local/abc"
+        }
+      },
+      "request": "{\"select\":[\"profile\",\"domain\"],\"query\":{\"profile\":\"local/abc\"}}",
+      "sql": "SELECT profile, domain FROM ( SELECT * FROM main.connections WHERE ( profile = :profile0eq0 ) )    LIMIT 100"
+    },
+    {
+      "params": {
+        ":verdict0eq0": {
+          "type": "float64",
+          "value": 2
+        },
+        ":verdict1eq0": {
+          "type": "float64",
+          "value": 5
+        },
+        ":verdict2eq0": {
+          "type": "float64",
+          "value": 6
+        }
+      },
+      "request": "{\"query\":{\"verdict\":[2,5,6]},\"pageSize\":25,\"page\":2}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections WHERE ( verdict = :verdict0eq0 OR verdict = :verdict1eq0 OR verdict = :verdict2eq0 ) )    LIMIT 25 OFFSET 50"
+    },
+    {
+      "params": {
+        ":domain0like0": {
+          "type": "string",
+          "value": "%.example.com."
+        },
+        ":verdict0in0": {
+          "type": "float64",
+          "value": 2
+        },
+        ":verdict0in1": {
+          "type": "float64",
+          "value": 5
+        },
+        ":verdict0in2": {
+          "type": "float64",
+          "value": 6
+        }
+      },
+      "request": "{\"query\":{\"verdict\":{\"$in\":[2,5,6]},\"domain\":{\"$like\":\"%.example.com.\"}}}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections WHERE ( domain LIKE :domain0like0 ) AND ( verdict IN ( :verdict0in0, :verdict0in1, :verdict0in2 ) ) )    LIMIT 100"
+    },
+    {
+      "params": {
+        ":remote_port0gt0": {
+          "type": "float64",
+          "value": 1000
+        },
+        ":remote_port0le0": {
+          "type": "float64",
+          "value": 2000
+        }
+      },
+      "request": "{\"query\":{\"remote_port\":{\"$gt\":1000,\"$le\":2000}},\"orderBy\":\"started\"}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections WHERE ( ( remote_port \u003e :remote_port0gt0 AND remote_port \u003c= :remote_port0le0 ) ) )   ORDER BY started ASC LIMIT 100"
+    },
+    {
+      "params": {
+        ":active0eq0": {
+          "type": "bool",
+          "value": false
+        },
+        ":allowed0eq0": {
+          "type": "bool",
+          "value": true
+        }
+      },
+      "request": "{\"query\":{\"allowed\":{\"$eq\":true},\"active\":false},\"orderBy\":[{\"field\":\"started\",\"desc\":true},\"domain\"]}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections WHERE ( active = :active0eq0 ) AND ( allowed = :allowed0eq0 ) )   ORDER BY started DESC, domain ASC LIMIT 100"
+    },
+    {
+      "request": "{\"query\":{\"started\":{\"$ge\":\"2024-01-02T03:04:05Z\"}},\"databases\":[\"main\",\"history\"]}",
+      "unmarshal_error": "json: cannot unmarshal string into Go struct field Matcher.$ge of type float64"
+    },
+    {
+      "params": {
+        ":ended0lt0": {
+          "type": "float64",
+          "value": 1700000600
+        },
+        ":started0ge0": {
+          "type": "float64",
+          "value": 1700000000
+        }
+      },
+      "request": "{\"query\":{\"started\":{\"$ge\":1700000000},\"ended\":{\"$lt\":1700000600}}}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections WHERE ( strftime('%s', ended)+0 \u003c :ended0lt0 ) AND ( strftime('%s', started)+0 \u003e= :started0ge0 ) )    LIMIT 100"
+    },
+    {
+      "params": {
+        ":country0notin0": {
+          "type": "string",
+          "value": "DE"
+        },
+        ":country0notin1": {
+          "type": "string",
+          "value": "US"
+        },
+        ":profile0ne0": {
+          "type": "string",
+          "value": "special/system"
+        }
+      },
+      "request": "{\"query\":{\"country\":{\"$notIn\":[\"DE\",\"US\"]},\"profile\":{\"$ne\":\"special/system\"}}}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections WHERE ( country NOT IN ( :country0notin0, :country0notin1 ) ) AND ( profile != :profile0ne0 ) )    LIMIT 100"
+    },
+    {
+      "params": {},
+      "request": "{\"select\":[{\"$count\":{\"field\":\"*\",\"as\":\"totalCount\"}},\"profile\"],\"groupBy\":[\"profile\"],\"orderBy\":[{\"field\":\"totalCount\",\"desc\":true}]}",
+      "sql": "SELECT COUNT(*) AS totalCount, profile FROM ( SELECT * FROM main.connections  )  GROUP BY profile ORDER BY totalCount DESC LIMIT 100"
+    },
+    {
+      "params": {},
+      "request": "{\"select\":[{\"$count\":{\"field\":\"domain\",\"distinct\":true}}],\"groupBy\":[\"country\"]}",
+      "sql": "SELECT COUNT(DISTINCT domain) AS domain_count FROM ( SELECT * FROM main.connections  )  GROUP BY country  LIMIT 100"
+    },
+    {
+      "params": {
+        ":verdictsel00in0": {
+          "type": "float64",
+          "value": 2
+        },
+        ":verdictsel00in1": {
+          "type": "float64",
+          "value": 5
+        },
+        ":verdictsel00in2": {
+          "type": "float64",
+          "value": 6
+        }
+      },
+      "request": "{\"select\":[{\"$sum\":{\"condition\":{\"verdict\":{\"$in\":[2,5,6]}},\"as\":\"allowed\"}},{\"$sum\":{\"field\":\"bytes_sent\",\"as\":\"sent\"}},\"profile\"],\"groupBy\":[\"profile\"]}",
+      "sql": "SELECT SUM(( verdict IN ( :verdictsel00in0, :verdictsel00in1, :verdictsel00in2 ) )) AS allowed, SUM(bytes_sent) AS sent, profile FROM ( SELECT * FROM main.connections  )  GROUP BY profile  LIMIT 100"
+    },
+    {
+      "error": "perparing selected fields: column name \"*\" not allowed",
+      "request": "{\"select\":[{\"$min\":{\"condition\":{\"verdict\":3},\"as\":\"blocked\"}},{\"$min\":{\"field\":\"started\",\"as\":\"first\"}}],\"groupBy\":[\"domain\"]}"
+    },
+    {
+      "params": {},
+      "request": "{\"select\":[{\"$distinct\":\"profile\"}]}",
+      "sql": "SELECT DISTINCT profile FROM ( SELECT * FROM main.connections  )    LIMIT 100"
+    },
+    {
+      "params": {
+        ":remote_ip0like0": {
+          "type": "string",
+          "value": "10.%"
+        }
+      },
+      "request": "{\"select\":[{\"$field\":{\"field\":\"remote_ip\",\"as\":\"ip\"}}],\"query\":{\"remote_ip\":{\"$like\":\"10.%\"}}}",
+      "sql": "SELECT remote_ip AS ip FROM ( SELECT * FROM main.connections WHERE ( remote_ip LIKE :remote_ip0like0 ) )    LIMIT 100"
+    },
+    {
+      "params": {
+        ":profile0eq0": {
+          "type": "string",
+          "value": "x"
+        },
+        ":t": {
+          "type": "string",
+          "value": "%goo%"
+        }
+      },
+      "request": "{\"textSearch\":{\"fields\":[\"domain\",\"as_owner\",\"path\"],\"value\":\"goo\"},\"query\":{\"profile\":\"x\"}}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections WHERE ( profile = :profile0eq0 ) AND ( domain LIKE :t OR as_owner LIKE :t OR path LIKE :t ) )    LIMIT 100"
+    },
+    {
+      "params": {},
+      "request": "{\"textSearch\":{\"fields\":[],\"value\":\"x\"}}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections  )    LIMIT 100"
+    },
+    {
+      "params": {},
+      "request": "{\"groupBy\":[\"profile\",\"domain\"]}",
+      "sql": "SELECT profile, domain FROM ( SELECT * FROM main.connections  )  GROUP BY profile, domain  LIMIT 100"
+    },
+    {
+      "params": {
+        ":ip_protocol0in0": {
+          "type": "float64",
+          "value": 6
+        },
+        ":ip_protocol0in1": {
+          "type": "float64",
+          "value": 17
+        },
+        ":ip_version0eq0": {
+          "type": "float64",
+          "value": 4
+        },
+        ":scope0in0": {
+          "type": "float64",
+          "value": 1
+        },
+        ":scope0in1": {
+          "type": "float64",
+          "value": 2
+        }
+      },
+      "request": "{\"query\":{\"scope\":{\"$in\":[1,2]},\"ip_version\":4,\"ip_protocol\":{\"$in\":[6,17]}}}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections WHERE ( ip_protocol IN ( :ip_protocol0in0, :ip_protocol0in1 ) ) AND ( ip_version = :ip_version0eq0 ) AND ( scope IN ( :scope0in0, :scope0in1 ) ) )    LIMIT 100"
+    },
+    {
+      "params": {
+        ":ended0in0": {
+          "type": "string",
+          "value": "2024-01-02 03:04:05"
+        },
+        ":started0eq0": {
+          "type": "string",
+          "value": "2024-01-02 01:04:05"
+        }
+      },
+      "request": "{\"query\":{\"started\":\"2024-01-02T03:04:05+02:00\",\"ended\":{\"$in\":[\"2024-01-02T03:04:05Z\"]}}}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections WHERE ( ended IN ( :ended0in0 ) ) AND ( started = :started0eq0 ) )    LIMIT 100"
+    },
+    {
+      "params": {
+        ":domain0eq0": {
+          "type": "string",
+          "value": "a"
+        },
+        ":domain0like0": {
+          "type": "string",
+          "value": "%c"
+        },
+        ":domain0ne0": {
+          "type": "string",
+          "value": "b"
+        }
+      },
+      "request": "{\"query\":{\"domain\":{\"$eq\":\"a\",\"$ne\":\"b\",\"$like\":\"%c\"}}}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections WHERE ( ( domain = :domain0eq0 AND domain != :domain0ne0 AND domain LIKE :domain0like0 ) ) )    LIMIT 100"
+    },
+    {
+      "params": {},
+      "request": "{\"select\":[\"domain\",{\"$count\":{\"field\":\"domain\",\"as\":\"cnt\"}}],\"groupBy\":[\"domain\"],\"orderBy\":\"cnt\"}",
+      "sql": "SELECT domain, COUNT(domain) AS cnt FROM ( SELECT * FROM main.connections  )  GROUP BY domain ORDER BY cnt ASC LIMIT 100"
+    },
+    {
+      "params": {
+        ":domain1eq0": {
+          "type": "string",
+          "value": "x"
+        }
+      },
+      "request": "{\"query\":{\"exit_node\":null,\"domain\":[null,\"x\"]}}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections WHERE ( ( 1 = 1 ) OR domain = :domain1eq0 ) AND ( ( 1 = 1 ) ) )    LIMIT 100"
+    },
+    {
+      "error": "generating where clause: 1 error occurred:\n\t* invalid matcher at index 0 for column domain: 1 error occurred:\n\t* failed to encode [1] for column domain: failed to run encode hooks: cannot convert value of kind slice for use in SQLite\n\n\n\n",
+      "request": "{\"query\":{\"domain\":{\"$eq\":[1]}}}"
+    },
+    {
+      "error": "generating where clause: 1 error occurred:\n\t* invalid matcher at index 0 for column started: 1 error occurred:\n\t* failed to encode yesterday for column started: failed to run encode hooks: failed to parse time as RFC3339: parsing time \"yesterday\" as \"2006-01-02T15:04:05Z07:00\": cannot parse \"yesterday\" as \"2006\"\n\n\n\n",
+      "request": "{\"query\":{\"started\":\"yesterday\"}}"
+    },
+    {
+      "error": "generating where clause: 1 error occurred:\n\t* column nope is not allowed\n\n",
+      "request": "{\"query\":{\"nope\":\"x\"}}"
+    },
+    {
+      "params": {},
+      "request": "{\"select\":\"nope\"}",
+      "sql": "SELECT * FROM ( SELECT * FROM main.connections  )    LIMIT 100"
+    },
+    {
+      "error": "generating order-by clause: column name \"nope\" not allowed",
+      "request": "{\"orderBy\":\"nope\"}"
+    },
+    {
+      "error": "generating group-by clause: column name \"nope\" not allowed",
+      "request": "{\"groupBy\":[\"nope\"]}"
+    },
+    {
+      "request": "{\"query\":{\"domain\":{}}}",
+      "unmarshal_error": "invalid query matcher: no conditions specified"
+    },
+    {
+      "error": "perparing selected fields: missing 'as' for $sum",
+      "request": "{\"select\":[{\"$sum\":{\"field\":\"bytes_sent\"}}]}"
+    },
+    {
+      "params": {},
+      "request": "{\"select\":[{\"$count\":{\"field\":\"domain\",\"as\":\"a b\"}}]}",
+      "sql": "SELECT COUNT(domain) AS a b FROM ( SELECT * FROM main.connections  )    LIMIT 100"
+    },
+    {
+      "error": "generating text-search clause: type of column remote_port cannot be used in text-search",
+      "request": "{\"textSearch\":{\"fields\":[\"remote_port\"],\"value\":\"1\"}}"
+    },
+    {
+      "request": "{\"query\":{\"domain\":[[\"x\"]]}}",
+      "unmarshal_error": "invalid token [ in query for column domain"
+    },
+    {
+      "request": "{\"query\":{\"started\":{\"$ge\":\"not-a-time\"}}}",
+      "unmarshal_error": "json: cannot unmarshal string into Go struct field Matcher.$ge of type float64"
+    }
+  ],
+  "create_history": "CREATE TABLE history.connections ( id TEXT PRIMARY KEY NOT NULL, profile TEXT NOT NULL, path TEXT NOT NULL, type VARCHAR(8) NOT NULL, external  NOT NULL, ip_version INTEGER NOT NULL, ip_protocol INTEGER NOT NULL, local_ip TEXT NOT NULL, local_port INTEGER NOT NULL, remote_ip TEXT NOT NULL, remote_port INTEGER NOT NULL, domain TEXT NOT NULL, country VARCHAR(2) NOT NULL, asn INTEGER NOT NULL, as_owner TEXT NOT NULL, latitude REAL NOT NULL, longitude REAL NOT NULL, scope INTEGER NOT NULL, worst_verdict INTEGER NOT NULL, verdict INTEGER NOT NULL, firewall_verdict INTEGER NOT NULL, started TEXT NOT NULL, ended TEXT, tunneled  NOT NULL, encrypted  NOT NULL, internal  NOT NULL, direction TEXT NOT NULL, extra_data BLOB NOT NULL, allowed , profile_revision INTEGER NOT NULL, exit_node TEXT, bytes_received INTEGER DEFAULT 0  NOT NULL, bytes_sent INTEGER DEFAULT 0  NOT NULL, active  NOT NULL, profile_name TEXT NOT NULL );",
+  "create_main": "CREATE TABLE IF NOT EXISTS main.connections ( id TEXT PRIMARY KEY NOT NULL, profile TEXT NOT NULL, path TEXT NOT NULL, type VARCHAR(8) NOT NULL, external  NOT NULL, ip_version INTEGER NOT NULL, ip_protocol INTEGER NOT NULL, local_ip TEXT NOT NULL, local_port INTEGER NOT NULL, remote_ip TEXT NOT NULL, remote_port INTEGER NOT NULL, domain TEXT NOT NULL, country VARCHAR(2) NOT NULL, asn INTEGER NOT NULL, as_owner TEXT NOT NULL, latitude REAL NOT NULL, longitude REAL NOT NULL, scope INTEGER NOT NULL, worst_verdict INTEGER NOT NULL, verdict INTEGER NOT NULL, firewall_verdict INTEGER NOT NULL, started TEXT NOT NULL, ended TEXT, tunneled  NOT NULL, encrypted  NOT NULL, internal  NOT NULL, direction TEXT NOT NULL, extra_data BLOB NOT NULL, allowed , profile_revision INTEGER NOT NULL, exit_node TEXT, bytes_received INTEGER DEFAULT 0  NOT NULL, bytes_sent INTEGER DEFAULT 0  NOT NULL, active  NOT NULL, profile_name TEXT NOT NULL );"
+}
