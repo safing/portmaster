@@ -19,12 +19,14 @@
 //! * The "is from the future" error message formats the remaining time with the
 //!   same Go duration layout, but the exact seconds depend on the clock.
 
+mod config;
 mod downloader;
 mod glob;
 mod index;
 mod index_scan;
 mod version;
 
+pub use config::{ConfigError, UpdateCommandConfig, UpdaterConfig};
 pub use glob::{Glob, GlobError};
 pub use index_scan::{generate_index_from_dir, sha256_of_file, IndexScanConfig, ScanError};
 pub use downloader::{

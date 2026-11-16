@@ -9,6 +9,7 @@ license.workspace = true
 flate2.workspace = true
 hex.workspace = true
 pm-dsd = { path = "../pm-dsd" }
+pm-jess = { path = "../pm-jess" }
 regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
