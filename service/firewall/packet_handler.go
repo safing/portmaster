@@ -159,10 +159,6 @@ func resetConnectionVerdict(ctx context.Context, conn *network.Connection) (verd
 
 	// Save if verdict changed.
 	if conn.Verdict != previousVerdict {
-		err := interception.UpdateVerdictOfConnection(conn)
-		if err != nil {
-			log.Debugf("filter: failed to update connection verdict: %s", err)
-		}
 		conn.Save()
 		tracer.Infof("filter: verdict of connection %s changed from %s to %s", conn, previousVerdict.Verb(), conn.VerdictVerb())
 
