@@ -1,4 +1,4 @@
-//! JSON output that is byte-identical to Go `encoding/json` (with HTML escaping).
+//! JSON output that is byte-identical to Go `encoding/json` (HTML escaping by default).
 //!
 //! `serde_json::Value` keeps insertion order (preserve_order), so values parsed
 //! from Go JSON round-trip in Go's order. Go maps sort keys: model them as
@@ -33,8 +33,25 @@ pub fn to_vec_indent<T: Serialize + ?Sized>(
     Ok(out)
 }
 
+/// Serializes like a Go `json.Encoder` with `SetEscapeHTML(false)` and
+/// `SetIndent(prefix, indent)`, including the trailing newline.
+pub fn to_vec_indent_unescaped<T: Serialize + ?Sized>(
+    value: &T,
+    prefix: &str,
+    indent: &str,
+) -> Result<Vec<u8>> {
+    let mut out = Vec::new();
+    let mut fmt = GoFormatter::pretty(prefix, indent);
+    fmt.escape_html = false;
+    let mut ser = serde_json::Serializer::with_formatter(&mut out, fmt);
+    value.serialize(&mut ser)?;
+    out.push(b'\n');
+    Ok(out)
+}
+
 struct GoFormatter<'a> {
     pretty: Option<(&'a str, &'a str)>,
+    escape_html: bool,
     depth: usize,
     has_value: bool,
 }
@@ -43,6 +60,7 @@ impl<'a> GoFormatter<'a> {
     fn compact() -> Self {
         Self {
             pretty: None,
+            escape_html: true,
             depth: 0,
             has_value: false,
         }
@@ -51,6 +69,7 @@ impl<'a> GoFormatter<'a> {
     fn pretty(prefix: &'a str, indent: &'a str) -> Self {
         Self {
             pretty: Some((prefix, indent)),
+            escape_html: true,
             depth: 0,
             has_value: false,
         }
@@ -124,9 +143,9 @@ impl Formatter for GoFormatter<'_> {
         let mut start = 0;
         for (i, c) in s.char_indices() {
             let esc: &[u8] = match c {
-                '<' => b"\\u003c",
-                '>' => b"\\u003e",
-                '&' => b"\\u0026",
+                '<' if self.escape_html => b"\\u003c",
+                '>' if self.escape_html => b"\\u003e",
+                '&' if self.escape_html => b"\\u0026",
                 '\u{2028}' => b"\\u2028",
                 '\u{2029}' => b"\\u2029",
                 _ => continue,

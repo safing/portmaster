@@ -320,5 +320,314 @@
     }
   ],
   "create_history": "CREATE TABLE history.connections ( id TEXT PRIMARY KEY NOT NULL, profile TEXT NOT NULL, path TEXT NOT NULL, type VARCHAR(8) NOT NULL, external  NOT NULL, ip_version INTEGER NOT NULL, ip_protocol INTEGER NOT NULL, local_ip TEXT NOT NULL, local_port INTEGER NOT NULL, remote_ip TEXT NOT NULL, remote_port INTEGER NOT NULL, domain TEXT NOT NULL, country VARCHAR(2) NOT NULL, asn INTEGER NOT NULL, as_owner TEXT NOT NULL, latitude REAL NOT NULL, longitude REAL NOT NULL, scope INTEGER NOT NULL, worst_verdict INTEGER NOT NULL, verdict INTEGER NOT NULL, firewall_verdict INTEGER NOT NULL, started TEXT NOT NULL, ended TEXT, tunneled  NOT NULL, encrypted  NOT NULL, internal  NOT NULL, direction TEXT NOT NULL, extra_data BLOB NOT NULL, allowed , profile_revision INTEGER NOT NULL, exit_node TEXT, bytes_received INTEGER DEFAULT 0  NOT NULL, bytes_sent INTEGER DEFAULT 0  NOT NULL, active  NOT NULL, profile_name TEXT NOT NULL );",
-  "create_main": "CREATE TABLE IF NOT EXISTS main.connections ( id TEXT PRIMARY KEY NOT NULL, profile TEXT NOT NULL, path TEXT NOT NULL, type VARCHAR(8) NOT NULL, external  NOT NULL, ip_version INTEGER NOT NULL, ip_protocol INTEGER NOT NULL, local_ip TEXT NOT NULL, local_port INTEGER NOT NULL, remote_ip TEXT NOT NULL, remote_port INTEGER NOT NULL, domain TEXT NOT NULL, country VARCHAR(2) NOT NULL, asn INTEGER NOT NULL, as_owner TEXT NOT NULL, latitude REAL NOT NULL, longitude REAL NOT NULL, scope INTEGER NOT NULL, worst_verdict INTEGER NOT NULL, verdict INTEGER NOT NULL, firewall_verdict INTEGER NOT NULL, started TEXT NOT NULL, ended TEXT, tunneled  NOT NULL, encrypted  NOT NULL, internal  NOT NULL, direction TEXT NOT NULL, extra_data BLOB NOT NULL, allowed , profile_revision INTEGER NOT NULL, exit_node TEXT, bytes_received INTEGER DEFAULT 0  NOT NULL, bytes_sent INTEGER DEFAULT 0  NOT NULL, active  NOT NULL, profile_name TEXT NOT NULL );"
+  "create_main": "CREATE TABLE IF NOT EXISTS main.connections ( id TEXT PRIMARY KEY NOT NULL, profile TEXT NOT NULL, path TEXT NOT NULL, type VARCHAR(8) NOT NULL, external  NOT NULL, ip_version INTEGER NOT NULL, ip_protocol INTEGER NOT NULL, local_ip TEXT NOT NULL, local_port INTEGER NOT NULL, remote_ip TEXT NOT NULL, remote_port INTEGER NOT NULL, domain TEXT NOT NULL, country VARCHAR(2) NOT NULL, asn INTEGER NOT NULL, as_owner TEXT NOT NULL, latitude REAL NOT NULL, longitude REAL NOT NULL, scope INTEGER NOT NULL, worst_verdict INTEGER NOT NULL, verdict INTEGER NOT NULL, firewall_verdict INTEGER NOT NULL, started TEXT NOT NULL, ended TEXT, tunneled  NOT NULL, encrypted  NOT NULL, internal  NOT NULL, direction TEXT NOT NULL, extra_data BLOB NOT NULL, allowed , profile_revision INTEGER NOT NULL, exit_node TEXT, bytes_received INTEGER DEFAULT 0  NOT NULL, bytes_sent INTEGER DEFAULT 0  NOT NULL, active  NOT NULL, profile_name TEXT NOT NULL );",
+  "rows": {
+    "encoded": [
+      {
+        "active": {
+          "type": "bool",
+          "value": true
+        },
+        "allowed": {
+          "type": "bool",
+          "value": true
+        },
+        "as_owner": {
+          "type": "string",
+          "value": "Edgecast \u003cInc\u003e"
+        },
+        "asn": {
+          "type": "uint",
+          "value": 15133
+        },
+        "country": {
+          "type": "string",
+          "value": "US"
+        },
+        "direction": {
+          "type": "string",
+          "value": "outbound"
+        },
+        "domain": {
+          "type": "string",
+          "value": "example.com."
+        },
+        "encrypted": {
+          "type": "bool",
+          "value": true
+        },
+        "ended": {
+          "type": "\u003cnil\u003e",
+          "value": null
+        },
+        "exit_node": {
+          "type": "\u003cnil\u003e",
+          "value": null
+        },
+        "external": {
+          "type": "bool",
+          "value": true
+        },
+        "extra_data": {
+          "type": "jsontext.Value",
+          "value": {
+            "pid": 12,
+            "reason": {
+              "Msg": "allowed"
+            }
+          }
+        },
+        "firewall_verdict": {
+          "type": "network.Verdict",
+          "value": 2
+        },
+        "id": {
+          "type": "string",
+          "value": "proc-1-conn-a"
+        },
+        "internal": {
+          "type": "bool",
+          "value": false
+        },
+        "ip_protocol": {
+          "type": "packet.IPProtocol",
+          "value": 6
+        },
+        "ip_version": {
+          "type": "packet.IPVersion",
+          "value": 4
+        },
+        "latitude": {
+          "type": "float64",
+          "value": 37.751
+        },
+        "local_ip": {
+          "type": "string",
+          "value": "10.0.0.2"
+        },
+        "local_port": {
+          "type": "uint16",
+          "value": 40000
+        },
+        "longitude": {
+          "type": "float64",
+          "value": -97.822
+        },
+        "path": {
+          "type": "string",
+          "value": "/usr/bin/curl"
+        },
+        "profile": {
+          "type": "string",
+          "value": "local/abc"
+        },
+        "profile_name": {
+          "type": "string",
+          "value": "curl"
+        },
+        "profile_revision": {
+          "type": "int",
+          "value": 3
+        },
+        "remote_ip": {
+          "type": "string",
+          "value": "93.184.216.34"
+        },
+        "remote_port": {
+          "type": "uint16",
+          "value": 443
+        },
+        "scope": {
+          "type": "netutils.IPScope",
+          "value": 4
+        },
+        "started": {
+          "type": "string",
+          "value": "2024-01-02 03:04:05"
+        },
+        "tunneled": {
+          "type": "bool",
+          "value": false
+        },
+        "type": {
+          "type": "string",
+          "value": "ip"
+        },
+        "verdict": {
+          "type": "network.Verdict",
+          "value": 2
+        },
+        "worst_verdict": {
+          "type": "network.Verdict",
+          "value": 2
+        }
+      },
+      {
+        "active": {
+          "type": "bool",
+          "value": false
+        },
+        "allowed": {
+          "type": "bool",
+          "value": false
+        },
+        "as_owner": {
+          "type": "string",
+          "value": ""
+        },
+        "asn": {
+          "type": "uint",
+          "value": 0
+        },
+        "country": {
+          "type": "string",
+          "value": ""
+        },
+        "direction": {
+          "type": "string",
+          "value": "inbound"
+        },
+        "domain": {
+          "type": "string",
+          "value": "blocked.test."
+        },
+        "encrypted": {
+          "type": "bool",
+          "value": false
+        },
+        "ended": {
+          "type": "string",
+          "value": "2024-01-02 03:05:35"
+        },
+        "exit_node": {
+          "type": "string",
+          "value": "exit-node-1"
+        },
+        "external": {
+          "type": "bool",
+          "value": false
+        },
+        "extra_data": {
+          "type": "jsontext.Value",
+          "value": {}
+        },
+        "firewall_verdict": {
+          "type": "network.Verdict",
+          "value": 3
+        },
+        "id": {
+          "type": "string",
+          "value": "proc-2-conn-b"
+        },
+        "internal": {
+          "type": "bool",
+          "value": true
+        },
+        "ip_protocol": {
+          "type": "packet.IPProtocol",
+          "value": 17
+        },
+        "ip_version": {
+          "type": "packet.IPVersion",
+          "value": 6
+        },
+        "latitude": {
+          "type": "float64",
+          "value": 0
+        },
+        "local_ip": {
+          "type": "string",
+          "value": "::1"
+        },
+        "local_port": {
+          "type": "uint16",
+          "value": 0
+        },
+        "longitude": {
+          "type": "float64",
+          "value": 0
+        },
+        "path": {
+          "type": "string",
+          "value": ""
+        },
+        "profile": {
+          "type": "string",
+          "value": "special/system"
+        },
+        "profile_name": {
+          "type": "string",
+          "value": "System"
+        },
+        "profile_revision": {
+          "type": "int",
+          "value": 0
+        },
+        "remote_ip": {
+          "type": "string",
+          "value": "2001:db8::1"
+        },
+        "remote_port": {
+          "type": "uint16",
+          "value": 53
+        },
+        "scope": {
+          "type": "netutils.IPScope",
+          "value": 0
+        },
+        "started": {
+          "type": "string",
+          "value": "2024-01-02 03:04:06"
+        },
+        "tunneled": {
+          "type": "bool",
+          "value": true
+        },
+        "type": {
+          "type": "string",
+          "value": "dns"
+        },
+        "verdict": {
+          "type": "network.Verdict",
+          "value": 3
+        },
+        "worst_verdict": {
+          "type": "network.Verdict",
+          "value": 3
+        }
+      }
+    ],
+    "results": [
+      {
+        "batch": "[\n  {\n    \"active\": 1,\n    \"allowed\": 1,\n    \"as_owner\": \"Edgecast \u003cInc\u003e\",\n    \"asn\": 15133,\n    \"bytes_received\": 0,\n    \"bytes_sent\": 0,\n    \"country\": \"US\",\n    \"direction\": \"outbound\",\n    \"domain\": \"example.com.\",\n    \"encrypted\": 1,\n    \"ended\": null,\n    \"exit_node\": null,\n    \"external\": 1,\n    \"extra_data\": \"eyJwaWQiOjEyLCJyZWFzb24iOnsiTXNnIjoiYWxsb3dlZCJ9fQ==\",\n    \"firewall_verdict\": 2,\n    \"id\": \"proc-1-conn-a\",\n    \"internal\": 0,\n    \"ip_protocol\": 6,\n    \"ip_version\": 4,\n    \"latitude\": 37.751,\n    \"local_ip\": \"10.0.0.2\",\n    \"local_port\": 40000,\n    \"longitude\": -97.822,\n    \"path\": \"/usr/bin/curl\",\n    \"profile\": \"local/abc\",\n    \"profile_name\": \"curl\",\n    \"profile_revision\": 3,\n    \"remote_ip\": \"93.184.216.34\",\n    \"remote_port\": 443,\n    \"scope\": 4,\n    \"started\": \"2024-01-02 03:04:05\",\n    \"tunneled\": 0,\n    \"type\": \"ip\",\n    \"verdict\": 2,\n    \"worst_verdict\": 2\n  },\n  {\n    \"active\": 0,\n    \"allowed\": 0,\n    \"as_owner\": \"\",\n    \"asn\": 0,\n    \"bytes_received\": 99,\n    \"bytes_sent\": 77,\n    \"country\": \"\",\n    \"direction\": \"inbound\",\n    \"domain\": \"blocked.test.\",\n    \"encrypted\": 0,\n    \"ended\": \"2024-01-02 03:05:35\",\n    \"exit_node\": \"exit-node-1\",\n    \"external\": 0,\n    \"extra_data\": \"e30=\",\n    \"firewall_verdict\": 3,\n    \"id\": \"proc-2-conn-b\",\n    \"internal\": 1,\n    \"ip_protocol\": 17,\n    \"ip_version\": 6,\n    \"latitude\": 0,\n    \"local_ip\": \"::1\",\n    \"local_port\": 0,\n    \"longitude\": 0,\n    \"path\": \"\",\n    \"profile\": \"special/system\",\n    \"profile_name\": \"System\",\n    \"profile_revision\": 0,\n    \"remote_ip\": \"2001:db8::1\",\n    \"remote_port\": 53,\n    \"scope\": 0,\n    \"started\": \"2024-01-02 03:04:06\",\n    \"tunneled\": 1,\n    \"type\": \"dns\",\n    \"verdict\": 3,\n    \"worst_verdict\": 3\n  }\n]\n",
+        "request": "{}",
+        "schema": "[\n  {\n    \"active\": true,\n    \"allowed\": true,\n    \"as_owner\": \"Edgecast \u003cInc\u003e\",\n    \"asn\": 15133,\n    \"bytes_received\": 0,\n    \"bytes_sent\": 0,\n    \"country\": \"US\",\n    \"direction\": \"outbound\",\n    \"domain\": \"example.com.\",\n    \"encrypted\": true,\n    \"ended\": null,\n    \"exit_node\": null,\n    \"external\": true,\n    \"extra_data\": {\n      \"pid\": 12,\n      \"reason\": {\n        \"Msg\": \"allowed\"\n      }\n    },\n    \"firewall_verdict\": 2,\n    \"id\": \"proc-1-conn-a\",\n    \"internal\": false,\n    \"ip_protocol\": 6,\n    \"ip_version\": 4,\n    \"latitude\": 37.751,\n    \"local_ip\": \"10.0.0.2\",\n    \"local_port\": 40000,\n    \"longitude\": -97.822,\n    \"path\": \"/usr/bin/curl\",\n    \"profile\": \"local/abc\",\n    \"profile_name\": \"curl\",\n    \"profile_revision\": 3,\n    \"remote_ip\": \"93.184.216.34\",\n    \"remote_port\": 443,\n    \"scope\": 4,\n    \"started\": \"2024-01-02T03:04:05Z\",\n    \"tunneled\": false,\n    \"type\": \"ip\",\n    \"verdict\": 2,\n    \"worst_verdict\": 2\n  },\n  {\n    \"active\": false,\n    \"allowed\": false,\n    \"as_owner\": \"\",\n    \"asn\": 0,\n    \"bytes_received\": 99,\n    \"bytes_sent\": 77,\n    \"country\": \"\",\n    \"direction\": \"inbound\",\n    \"domain\": \"blocked.test.\",\n    \"encrypted\": false,\n    \"ended\": \"2024-01-02T03:05:35Z\",\n    \"exit_node\": \"exit-node-1\",\n    \"external\": false,\n    \"extra_data\": {},\n    \"firewall_verdict\": 3,\n    \"id\": \"proc-2-conn-b\",\n    \"internal\": true,\n    \"ip_protocol\": 17,\n    \"ip_version\": 6,\n    \"latitude\": 0,\n    \"local_ip\": \"::1\",\n    \"local_port\": 0,\n    \"longitude\": 0,\n    \"path\": \"\",\n    \"profile\": \"special/system\",\n    \"profile_name\": \"System\",\n    \"profile_revision\": 0,\n    \"remote_ip\": \"2001:db8::1\",\n    \"remote_port\": 53,\n    \"scope\": 0,\n    \"started\": \"2024-01-02T03:04:06Z\",\n    \"tunneled\": true,\n    \"type\": \"dns\",\n    \"verdict\": 3,\n    \"worst_verdict\": 3\n  }\n]\n"
+      },
+      {
+        "batch": "[\n  {\n    \"profile\": \"local/abc\",\n    \"sent\": 0,\n    \"totalCount\": 1\n  },\n  {\n    \"profile\": \"special/system\",\n    \"sent\": 77,\n    \"totalCount\": 1\n  }\n]\n",
+        "request": "{\"select\":[\"profile\",{\"$count\":{\"field\":\"*\",\"as\":\"totalCount\"}},{\"$sum\":{\"field\":\"bytes_sent\",\"as\":\"sent\"}}],\"groupBy\":[\"profile\"],\"orderBy\":[\"profile\"]}",
+        "schema": "[\n  {\n    \"profile\": \"local/abc\",\n    \"sent\": 0,\n    \"totalCount\": 1\n  },\n  {\n    \"profile\": \"special/system\",\n    \"sent\": 77,\n    \"totalCount\": 1\n  }\n]\n"
+      },
+      {
+        "batch": "[\n  {\n    \"allowed\": 0,\n    \"first\": \"2024-01-02 03:04:06\"\n  },\n  {\n    \"allowed\": 1,\n    \"first\": \"2024-01-02 03:04:05\"\n  }\n]\n",
+        "request": "{\"select\":[\"allowed\",{\"$min\":{\"field\":\"started\",\"as\":\"first\"}}],\"groupBy\":[\"allowed\"],\"orderBy\":[\"allowed\"]}",
+        "schema": "[\n  {\n    \"allowed\": false,\n    \"first\": \"2024-01-02 03:04:06\"\n  },\n  {\n    \"allowed\": true,\n    \"first\": \"2024-01-02 03:04:05\"\n  }\n]\n"
+      },
+      {
+        "batch": "[\n  {\n    \"profile\": \"local/abc\"\n  },\n  {\n    \"profile\": \"special/system\"\n  }\n]\n",
+        "request": "{\"select\":[{\"$distinct\":\"profile\"}],\"orderBy\":[\"profile\"]}",
+        "schema": "[\n  {\n    \"profile\": \"local/abc\"\n  },\n  {\n    \"profile\": \"special/system\"\n  }\n]\n"
+      },
+      {
+        "batch": "[\n  {\n    \"allowed\": 0,\n    \"ended\": \"2024-01-02 03:05:35\",\n    \"exit_node\": \"exit-node-1\",\n    \"extra_data\": \"e30=\",\n    \"id\": \"proc-2-conn-b\"\n  }\n]\n",
+        "request": "{\"query\":{\"active\":false},\"select\":[\"id\",\"ended\",\"exit_node\",\"allowed\",\"extra_data\"]}",
+        "schema": "[\n  {\n    \"allowed\": false,\n    \"ended\": \"2024-01-02T03:05:35Z\",\n    \"exit_node\": \"exit-node-1\",\n    \"extra_data\": {},\n    \"id\": \"proc-2-conn-b\"\n  }\n]\n"
+      },
+      {
+        "batch": "[\n  {\n    \"as_owner\": \"Edgecast \u003cInc\u003e\",\n    \"latitude\": 37.751\n  }\n]\n",
+        "request": "{\"textSearch\":{\"fields\":[\"as_owner\"],\"value\":\"\u003cinc\"},\"select\":[\"as_owner\",\"latitude\"]}",
+        "schema": "[\n  {\n    \"as_owner\": \"Edgecast \u003cInc\u003e\",\n    \"latitude\": 37.751\n  }\n]\n"
+      }
+    ]
+  }
 }

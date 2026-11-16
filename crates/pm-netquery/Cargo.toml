@@ -6,10 +6,16 @@ description = "Connection history database and JSON query API for the Portmaster
 license.workspace = true
 
 [dependencies]
+base64.workspace = true
+pm-dsd = { path = "../pm-dsd" }
 regex.workspace = true
+rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+rusqlite.workspace = true
 
 [lints]
 workspace = true

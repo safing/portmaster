@@ -68,6 +68,20 @@ pub fn format_sqlite(unix: i64) -> String {
     )
 }
 
+/// Parses Go `SqliteTimeFormat` ("2006-01-02 15:04:05") as UTC.
+pub fn parse_sqlite(s: &str) -> Option<i64> {
+    if s.len() != 19 || s.as_bytes().get(10) != Some(&b' ') {
+        return None;
+    }
+    parse_rfc3339(&format!("{}T{}Z", &s[..10], &s[11..]))
+}
+
+/// Formats unix seconds like Go `time.Time` JSON in UTC (RFC 3339, `Z`).
+pub fn format_rfc3339(unix: i64) -> String {
+    let s = format_sqlite(unix);
+    format!("{}T{}Z", &s[..10], &s[11..])
+}
+
 fn is_leap(y: i64) -> bool {
     (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
 }
@@ -116,6 +130,9 @@ mod tests {
         assert_eq!(format_sqlite(parse_rfc3339("2024-02-29T23:59:59.123Z").unwrap()), "2024-02-29 23:59:59");
         assert_eq!(parse_rfc3339("1970-01-01T00:00:00Z"), Some(0));
         assert_eq!(format_sqlite(-1), "1969-12-31 23:59:59");
+        assert_eq!(parse_sqlite("2024-01-02 03:04:05"), parse_rfc3339("2024-01-02T03:04:05Z"));
+        assert_eq!(format_rfc3339(0), "1970-01-01T00:00:00Z");
+        assert!(parse_sqlite("2024-01-02T03:04:05").is_none());
         for bad in ["yesterday", "2024-02-30T00:00:00Z", "2024-01-02 03:04:05Z", "2024-01-02T03:04:05", "2024-01-02T03:04:05.Z"] {
             assert!(parse_rfc3339(bad).is_none(), "{bad}");
         }
