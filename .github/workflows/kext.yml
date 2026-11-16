@@ -37,4 +37,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build Kernel Extension
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +kext-ci
+      run: earthly --ci ${{ github.repository_owner == 'safing' && '--remote-cache=ghcr.io/safing/build-cache --push' || '' }} +kext-ci

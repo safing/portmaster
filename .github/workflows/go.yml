@@ -68,4 +68,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Run Go Tests & Build
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +go-ci
+      run: earthly --ci ${{ github.repository_owner == 'safing' && '--remote-cache=ghcr.io/safing/build-cache --push' || '' }} +go-ci

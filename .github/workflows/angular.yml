@@ -60,4 +60,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build angular projects
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +angular-ci
+      run: earthly --ci ${{ github.repository_owner == 'safing' && '--remote-cache=ghcr.io/safing/build-cache --push' || '' }} +angular-ci
