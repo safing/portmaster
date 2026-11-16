@@ -1,12 +1,11 @@
 //! Rust port of the Go `cmds/updatemgr` tool.
 //!
-//! Ported: `scan`, `convert`, `download` and `mirror`.
-//! `sign` is registered but reports that jess signing is not available: the
-//! Rust `pm-jess` crate only verifies signatures.
+//! Ported: `scan`, `convert`, `download`, `mirror` and `sign`.
 
 mod convert;
 mod download;
 mod mirror;
+mod sign;
 
 use std::path::PathBuf;
 
@@ -26,7 +25,9 @@ Commands:
            <index URL> <download dir>
   mirror   [--check] [--sigs]                    Mirror artifacts of an index
            <index URL> <mirror dir>
-  sign     [--envelope NAME] <index file>        Not available (jess signer not ported)
+  sign     --envelope NAME [--tsdir DIR]         Sign an index with a jess envelope
+           [--tskeyring NS] [--verbose]
+           <index file>
 ";
 
 /// Builds the scan config shared by `scan` and `convert`, like Go's
@@ -159,7 +160,16 @@ fn run(args: Vec<String>) -> Result<(), String> {
             )?;
         }
         "sign" => {
-            return Err("sign is not available: the Rust pm-jess crate only verifies signatures (jess signer not ported)".to_string());
+            if args
+                .as_slice()
+                .iter()
+                .any(|arg| arg == "--help" || arg == "-h")
+            {
+                print!("{}", sign::SIGN_HELP);
+                return Ok(());
+            }
+            let options = sign::parse_sign_args(&mut args)?;
+            sign::sign(&options)?;
         }
         "help" | "--help" | "-h" => {
             print!("{HELP}");
@@ -192,9 +202,9 @@ mod tests {
     }
 
     #[test]
-    fn sign_reports_the_missing_signer() {
+    fn sign_requires_an_envelope() {
         let error = run(vec!["sign".to_string(), "index.json".to_string()]).unwrap_err();
-        assert!(error.contains("pm-jess"), "{error}");
+        assert!(error.contains("envelope"), "{error}");
     }
 
     #[test]

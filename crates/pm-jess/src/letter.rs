@@ -126,6 +126,45 @@ impl Letter {
         })
     }
 
+    /// Port of `Letter.ToDSD(dsd.CBOR)`. Like Go's CBOR encoder, fields that
+    /// are empty (and carry `omitempty`) are left out of the map.
+    pub(crate) fn to_dsd(&self) -> Result<Vec<u8>, Error> {
+        let mut map = Vec::new();
+        if self.version != 0 {
+            map.push((
+                Value::Text("Version".into()),
+                Value::Integer(i64::from(self.version).into()),
+            ));
+        }
+        if !self.suite_id.is_empty() {
+            map.push((
+                Value::Text("SuiteID".into()),
+                Value::Text(self.suite_id.clone()),
+            ));
+        }
+        if !self.nonce.is_empty() {
+            map.push((Value::Text("Nonce".into()), Value::Bytes(self.nonce.clone())));
+        }
+        if !self.keys.is_empty() {
+            map.push((
+                Value::Text("Keys".into()),
+                Value::Array(self.keys.iter().map(seal_to_value).collect()),
+            ));
+        }
+        if !self.mac.is_empty() {
+            map.push((Value::Text("Mac".into()), Value::Bytes(self.mac.clone())));
+        }
+        if !self.signatures.is_empty() {
+            map.push((
+                Value::Text("Signatures".into()),
+                Value::Array(self.signatures.iter().map(seal_to_value).collect()),
+            ));
+        }
+        let mut out = vec![pm_dsd::format::CBOR];
+        ciborium::into_writer(&Value::Map(map), &mut out).map_err(cbor_err)?;
+        Ok(out)
+    }
+
     fn compile_associated_data(&self) -> Vec<u8> {
         use pm_dsd::varint::{pack64, prepend_length};
         let mut c = Vec::new();
@@ -163,7 +202,7 @@ impl Letter {
         c
     }
 
-    fn compile_associated_signing_data(&self) -> Vec<u8> {
+    pub(crate) fn compile_associated_signing_data(&self) -> Vec<u8> {
         use pm_dsd::varint::{pack64, prepend_length};
         let mut c = self.compile_associated_data();
         if !self.mac.is_empty() {
@@ -250,8 +289,25 @@ impl Letter {
     }
 }
 
+fn seal_to_value(seal: &Seal) -> Value {
+    let mut map = Vec::new();
+    if !seal.scheme.is_empty() {
+        map.push((
+            Value::Text("Scheme".into()),
+            Value::Text(seal.scheme.clone()),
+        ));
+    }
+    if !seal.id.is_empty() {
+        map.push((Value::Text("ID".into()), Value::Text(seal.id.clone())));
+    }
+    if !seal.value.is_empty() {
+        map.push((Value::Text("Value".into()), Value::Bytes(seal.value.clone())));
+    }
+    Value::Map(map)
+}
+
 /// Hash of the managed hasher of a signing suite.
-fn suite_hash(suite_id: &str) -> Result<Algorithm, Error> {
+pub(crate) fn suite_hash(suite_id: &str) -> Result<Algorithm, Error> {
     match suite_id {
         "sign_v1" => Ok(Algorithm::Blake2b256),
         "signfile_v1" => Ok(Algorithm::Sha2_256),

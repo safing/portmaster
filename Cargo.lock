@@ -1624,6 +1624,7 @@ dependencies = [
  "bs58",
  "ciborium",
  "ed25519-dalek",
+ "getrandom 0.4.3",
  "pm-dsd",
  "serde_json",
  "sha2",
@@ -1948,6 +1949,7 @@ version = "0.1.0"
 dependencies = [
  "hex",
  "pm-dsd",
+ "pm-jess",
  "pm-updates",
  "serde",
  "serde_json",

@@ -8,6 +8,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -16,6 +18,7 @@ import (
 
 	"github.com/safing/jess"
 	"github.com/safing/jess/filesig"
+	"github.com/safing/structures/dsd"
 )
 
 // jessSplit mirrors the unexported filesig.jsonSplit.
@@ -272,6 +275,57 @@ func genJess() {
 		"pretty_cases": prettyCases,
 		"valid_cases":  validCases,
 	})
+}
+
+// verifyJESS checks an index written by the Rust port with the real Go
+// filesig implementation. It is a manual cross-check, not part of the normal
+// fixture generation: run it with
+//
+//	go run ./tools/rust-fixtures -verify-jess <index> -verify-jess-tsdir <dir>
+func verifyJESS(indexPath, tsDir string) {
+	index, err := os.ReadFile(indexPath)
+	if err != nil {
+		fail(err)
+	}
+	entries, err := os.ReadDir(tsDir)
+	if err != nil {
+		fail(err)
+	}
+	ts := jess.NewMemTrustStore()
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), ".recipient") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(tsDir, entry.Name()))
+		if err != nil {
+			fail(err)
+		}
+		var signet *jess.Signet
+		if data[0] == '{' || data[0] == dsd.JSON {
+			signet = &jess.Signet{}
+			if _, err := dsd.Load(data, signet); err != nil {
+				fail(err)
+			}
+			if err := signet.LoadKey(); err != nil {
+				fail(err)
+			}
+		} else {
+			signet, err = jess.RecipientFromTextFormat(strings.TrimSpace(string(data)))
+			if err != nil {
+				fail(err)
+			}
+		}
+		// DirTrustStore looks signets up by filename; keep that ID even if
+		// the text format embedded a different one.
+		signet.ID = strings.TrimSuffix(entry.Name(), ".recipient")
+		if err := ts.StoreSignet(signet); err != nil {
+			fail(err)
+		}
+	}
+	if err := filesig.VerifyJSONSignature(index, ts); err != nil {
+		fail(err)
+	}
+	fmt.Println("VERIFY OK")
 }
 
 func replaceOnce(s, old, repl string) string {
