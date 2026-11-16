@@ -17,6 +17,8 @@ pub struct Options {
     pub log_to_stdout: bool,
     pub log_level: String,
     pub api_address: String,
+    /// Default of `dns/listenAddress`; configuration is stronger.
+    pub nameserver_address: String,
     pub dev_mode: bool,
     /// Binaries that may use the API without a key (`--allowed-clients`, repeatable).
     pub allowed_clients: Vec<PathBuf>,
@@ -33,6 +35,7 @@ impl Default for Options {
             log_to_stdout: false,
             log_level: "info".to_string(),
             api_address: DEFAULT_API_ADDRESS.to_string(),
+            nameserver_address: pm_nameserver::default_nameserver_address().to_string(),
             dev_mode: false,
             allowed_clients: Vec::new(),
             print_version: false,
@@ -66,6 +69,7 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Options, String> 
             "--log-dir" => options.log_dir = PathBuf::from(value(&name)?),
             "--log" => options.log_level = value(&name)?,
             "--api-address" => options.api_address = value(&name)?,
+            "--nameserver-address" => options.nameserver_address = value(&name)?,
             "--log-stdout" => options.log_to_stdout = true,
             "--devmode" => options.dev_mode = true,
             "--allowed-clients" => options
@@ -91,6 +95,7 @@ Flags:
       --log-dir string       set directory for logs
       --log string           set log level to [trace|debug|info|warning|error|critical]
       --api-address string   set api listen address; configuration is stronger
+      --nameserver-address string   set nameserver listen address; configuration is stronger
       --devmode              enable development mode
       --allowed-clients      binary allowed to use the API (repeatable)
       --version              print version and exit

@@ -36,6 +36,8 @@ pub struct Service {
     pub geoip: Arc<pm_geoip::GeoIp>,
     /// Global profile settings (filter rules and switches).
     pub profile_config: Arc<pm_profile::GlobalProfileConfig>,
+    /// Resolver and nameserver.
+    pub dns: Arc<crate::dns::Dns>,
     /// Subscribed in `new` so changes before `run` are not missed.
     profile_changes: Mutex<Option<tokio::sync::broadcast::Receiver<()>>>,
     listener: Mutex<Option<TcpListener>>,
@@ -101,6 +103,7 @@ impl Service {
         let config = Config::new();
         register_options(&config, options)?;
         pm_profile::options::register_options(&config)?;
+        crate::dns::register_options(&config, &options.nameserver_address)?;
         config.register_database(&databases)?;
         let config_file = data_dir.join("config.json");
         match config.start(&config_file) {
@@ -145,6 +148,18 @@ impl Service {
             listener.local_addr()?,
         )));
 
+        // A nameserver that cannot listen is reported by a notification only.
+        let dns = Arc::new(
+            crate::dns::Dns::start(
+                &config,
+                &databases,
+                &notifications,
+                &api,
+                &options.nameserver_address,
+            )
+            .await?,
+        );
+
         api.set_ready(true);
 
         Ok(Service {
@@ -157,6 +172,7 @@ impl Service {
             filter_lists,
             geoip,
             profile_config,
+            dns,
             profile_changes: Mutex::new(Some(profile_changes)),
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
@@ -167,6 +183,11 @@ impl Service {
     /// Returns the bound API address.
     pub fn local_addr(&self) -> std::net::SocketAddr {
         self.local_addr
+    }
+
+    /// Returns the addresses the nameserver listens on.
+    pub async fn nameserver_addrs(&self) -> Vec<std::net::SocketAddr> {
+        self.dns.listen_addrs().await
     }
 
     /// Returns the data directory.
@@ -214,6 +235,7 @@ impl Service {
         }
 
         refresher.abort();
+        self.dns.shutdown().await;
         databases.shutdown()?;
         Ok(())
     }

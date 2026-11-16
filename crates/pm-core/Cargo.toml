@@ -11,6 +11,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
+async-trait.workspace = true
 pm-api = { path = "../pm-api" }
 pm-config = { path = "../pm-config" }
 pm-database = { path = "../pm-database" }
@@ -21,6 +22,9 @@ pm-netenv = { path = "../pm-netenv" }
 pm-netstate = { path = "../pm-netstate" }
 pm-process = { path = "../pm-process" }
 pm-profile = { path = "../pm-profile" }
+pm-nameserver = { path = "../pm-nameserver" }
+pm-network = { path = "../pm-network" }
+pm-resolver = { path = "../pm-resolver" }
 pm-notifications = { path = "../pm-notifications" }
 pm-status = { path = "../pm-status" }
 pm-intel = { path = "../pm-intel" }
@@ -29,6 +33,7 @@ pm-query = { path = "../pm-query" }
 pm-record = { path = "../pm-record" }
 serde_json.workspace = true
 tokio.workspace = true
+tokio-util.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
