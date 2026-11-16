@@ -8,7 +8,7 @@
         <fa-icon far icon="dot-circle"></fa-icon>
       </span>
       <span class="hop-title text-tertiary">
-        Your Device
+        {{ 'spn.route.yourDevice' | t }}
       </span>
     </li>
 
@@ -18,22 +18,22 @@
         <!-- TODO: use hop icon instead if unknown -->
         <span class="country unknown"></span>
       </ng-template>
-      <span>{{ node.entity.Country || 'No Location' }}</span>
+      <span>{{ node.entity.Country || ('spn.route.noLocation' | t) }}</span>
       <span class="ip text-tertiary">{{ node.entity.IP || ''
         }}</span>
-      <span class="node-tag" *ngIf="first">Home</span>
-      <span class="node-tag" *ngIf="last">Exit</span>
+      <span class="node-tag" *ngIf="first">{{ 'spn.route.home' | t }}</span>
+      <span class="node-tag" *ngIf="last">{{ 'spn.route.exit' | t }}</span>
       <span *appExpertiseLevel="'expert'" class="text-tertiary"><br />{{ node.pin.Name }}
 
         <span class="ml-2">
-          by
+          {{ 'spn.route.by' | t }}
           <spn-node-icon [bySafing]="node.pin.VerifiedOwner === 'Safing'" isActive="true" isExit="last"></spn-node-icon>
-          {{ node.pin.VerifiedOwner || 'Community' }}
+          {{ node.pin.VerifiedOwner || ('common.community' | t) }}
         </span>
       </span>
 
       <span *appExpertiseLevel="'expert'" class="text-tertiary"><br />AS{{ node.entity.ASN }} - {{ node.entity.ASOrg ||
-          'AS Organization not in DB'
+          'spn.route.asOrgNotInDb' | t
           }}</span>
 
       <span *appExpertiseLevel="'developer'" class="text-tertiary"><br />{{ node.pin.ID }}</span>
@@ -45,7 +45,7 @@
         <!-- TODO: use destination country flag instead if known -->
       </span>
       <span class="hop-title text-tertiary">
-        Destination
+        {{ 'spn.route.destination' | t }}
       </span>
       <!-- TODO: add destination details? (Would be duplicate information from above.) -->
     </li>

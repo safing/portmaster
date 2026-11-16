@@ -9,7 +9,7 @@
         <span class="inline-block ml-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-primary"
           style="direction: rtl" [ngStyle]="{maxWidth: maxTagWidth}">
           <span style="direction: ltr; unicode-bidi: bidi-override;">
-            {{ val.Name || (val.Value === '' ? 'N/A' : val) }}
+            {{ val.Name || (val.Value === '' ? ('common.na' | t) : val) }}
           </span>
         </span>
       </span>

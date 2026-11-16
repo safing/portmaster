@@ -18,6 +18,7 @@ import { Parser } from "./textql";
 import { connectionFieldTranslation, mergeConditions } from "./utils";
 import { DefaultBandwidthChartConfig } from "./line-chart/line-chart";
 import { INTEGRATION_SERVICE } from "src/app/integration";
+import { I18nService } from 'src/i18n';
 
 interface Suggestion<T = any> extends PossilbeValue<T> {
   count: number;
@@ -143,13 +144,15 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
 
   private integration = inject(INTEGRATION_SERVICE);
 
+  private readonly i18n = inject(I18nService);
+
   /** @private the date format for the nz-range-picker */
   dateFormat = getLocaleDateFormat(getLocaleId(this.localeId), FormatWidth.Medium)
 
   /** @private A list of quick-date settings for the nz-range-picker */
   quickDateSettings: QuickDateSetting[] = [
     {
-      name: 'Today',
+      name: this.i18n.t('nq.today'),
       apply: () => {
         const now = new Date();
         return [
@@ -159,7 +162,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
       }
     },
     {
-      name: 'Last 24 Hours',
+      name: this.i18n.t('nq.last24h'),
       apply: () => {
         const now = new Date();
         return [
@@ -169,7 +172,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
       }
     },
     {
-      name: 'Last 7 Days',
+      name: this.i18n.t('nq.last7d'),
       apply: () => {
         const now = new Date();
         return [
@@ -179,7 +182,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
       }
     },
     {
-      name: 'Last Month',
+      name: this.i18n.t('nq.lastMonth'),
       apply: () => {
         const now = new Date();
         return [
@@ -494,7 +497,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     encrypted: {},
     scope: {
       visible: 'combinedMenu',
-      menuTitle: 'Network Scope',
+      menuTitle: this.i18n.t('nq.filterNetworkScope'),
       suggestions: objKeys(IPScopeNames)
         .sort()
         .filter(key => key !== IPScope.Undefined)
@@ -518,16 +521,16 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     ip_protocol: {},
     direction: {
       visible: 'combinedMenu',
-      menuTitle: 'Direction',
+      menuTitle: this.i18n.t('nq.filterDirection'),
       suggestions: [
         {
-          Name: 'Inbound',
+          Name: this.i18n.t('nq.inbound'),
           Value: 'inbound',
           Description: '',
           count: 0,
         },
         {
-          Name: 'Outbound',
+          Name: this.i18n.t('nq.outbound'),
           Value: 'outbound',
           Description: '',
           count: 0,
@@ -538,7 +541,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     asn: {},
     active: {
       visible: 'combinedMenu',
-      menuTitle: 'Active',
+      menuTitle: this.i18n.t('nq.filterActive'),
       suggestions: booleanSuggestionValues(),
     },
     tunneled: {
@@ -672,8 +675,8 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
                 .pipe(
                   catchError(err => {
                     this.actionIndicator.error(
-                      'Internal Error',
-                      'Failed to load chart: ' + this.actionIndicator.getErrorMessgae(err)
+                      this.i18n.t('nq.internalError'),
+                      this.i18n.t('nq.loadChartFailed') + ' ' + this.actionIndicator.getErrorMessgae(err)
                     );
 
                     return of([] as ChartResult[]);
@@ -683,8 +686,8 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
                 .pipe(
                   catchError(err => {
                     this.actionIndicator.error(
-                      'Internal Error',
-                      'Failed to load bandwidth chart: ' + this.actionIndicator.getErrorMessgae(err)
+                      this.i18n.t('nq.internalError'),
+                      this.i18n.t('nq.loadBwChartFailed') + ' ' + this.actionIndicator.getErrorMessgae(err)
                     );
 
                     return of([] as BandwidthChartResult<any>[]);
@@ -1034,7 +1037,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
             }
 
             if (!allowedKeys.has(val as any)) {
-              this.actionIndicator.error("Invalid search query", "Column " + val + " is not allowed for groupby")
+              this.actionIndicator.error(this.i18n.t('nq.invalidQuery'), this.i18n.t('nq.groupbyNotAllowed', { col: val }))
               return false;
             }
             return true;
@@ -1047,7 +1050,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
         this.orderByKeys = (fields.orderBy || this.orderByKeys)
           .filter(val => {
             if (!allowedKeys.has(val as any)) {
-              this.actionIndicator.error("Invalid search query", "Column " + val + " is not allowed for orderby")
+              this.actionIndicator.error(this.i18n.t('nq.invalidQuery'), this.i18n.t('nq.orderbyNotAllowed', { col: val }))
               return false;
             }
             return true;
@@ -1057,7 +1060,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
       }
 
       if (!allowedKeys.has(key)) {
-        this.actionIndicator.error("Invalid search query", "Column " + key + " is not allowed for filtering");
+        this.actionIndicator.error(this.i18n.t('nq.invalidQuery'), this.i18n.t('nq.filterNotAllowed', { col: key }));
         return;
       }
 
@@ -1071,7 +1074,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
           }
 
           if (typeof val === 'object' && '$ne' in val) {
-            this.actionIndicator.error("NOT conditions are not yet supported")
+            this.actionIndicator.error(this.i18n.t('nq.notConditions'))
             return;
           }
 
@@ -1143,10 +1146,10 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
   copyQuery() {
     this.integration.writeToClipboard(this.getQueryString())
       .then(() => {
-        this.actionIndicator.success("Query copied to clipboard", 'Go ahead and share your query!')
+        this.actionIndicator.success(this.i18n.t('nq.queryCopied'), this.i18n.t('nq.queryCopiedHint'))
       })
       .catch((err) => {
-        this.actionIndicator.error('Failed to copy to clipboard', this.actionIndicator.getErrorMessgae(err))
+        this.actionIndicator.error(this.i18n.t('nq.copyFailed'), this.actionIndicator.getErrorMessgae(err))
       })
   }
 
