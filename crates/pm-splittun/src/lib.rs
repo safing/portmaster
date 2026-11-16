@@ -18,7 +18,7 @@ mod config;
 mod proxies;
 mod requests;
 
-pub use adapter::{SplitTunnelEnvAdapter, SplitTunnelProfiles};
+pub use adapter::{SplitTunnelEnvAdapter, SplitTunnelProfiles, SystemInterfaceEnv};
 pub use config::{register_options, CFG_OPTION_SPLIT_TUN_ENABLE_KEY};
 pub use proxies::Proxies;
 pub use requests::{

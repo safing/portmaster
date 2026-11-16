@@ -12,7 +12,9 @@ use pm_intel::Entity;
 use pm_network::{Connection, SplitTunContext};
 use pm_process::Process;
 
-use crate::{InterfaceEnv, Proxies, RequestQueue};
+use crate::{
+    BestPhysicalDefaultInterfaces, InterfaceEnv, InterfaceInfo, Proxies, RequestQueue,
+};
 
 /// Per-process profile settings the split tunnel decision needs.
 pub trait SplitTunnelProfiles: Send + Sync {
@@ -127,5 +129,59 @@ impl SplitTunnelEnv for SplitTunnelEnvAdapter {
     ) -> Result<SplitTunContext, String> {
         self.queue
             .await_request(conn, interface, upstream_proxy, self.interfaces.as_ref())
+    }
+}
+
+/// [`InterfaceEnv`] backed by the `pm-netenv` interface and address caches.
+pub struct SystemInterfaceEnv {
+    interfaces: Arc<pm_netenv::InterfaceCache>,
+    addresses: Arc<pm_netenv::AddressCache>,
+}
+
+impl SystemInterfaceEnv {
+    /// Creates the environment from the network caches.
+    pub fn new(
+        interfaces: Arc<pm_netenv::InterfaceCache>,
+        addresses: Arc<pm_netenv::AddressCache>,
+    ) -> SystemInterfaceEnv {
+        SystemInterfaceEnv {
+            interfaces,
+            addresses,
+        }
+    }
+}
+
+impl InterfaceEnv for SystemInterfaceEnv {
+    fn ipv6_enabled(&self) -> bool {
+        self.addresses
+            .get_assigned_addresses()
+            .map(|(_ipv4, ipv6)| !ipv6.is_empty())
+            .unwrap_or(false)
+    }
+
+    fn get_interface(&self, identifier: &str) -> Result<InterfaceInfo, String> {
+        self.interfaces
+            .get_interface(identifier)
+            .map(|info| InterfaceInfo {
+                name: info.interface.name,
+                ipv4: info.ipv4,
+                ipv6: info.ipv6,
+            })
+    }
+
+    fn best_physical_default_interfaces(&self) -> Result<BestPhysicalDefaultInterfaces, String> {
+        let best = self.interfaces.best_physical_default_interfaces()?;
+        Ok(BestPhysicalDefaultInterfaces {
+            for_ipv4: best.for_ipv4.map(|info| InterfaceInfo {
+                name: info.interface.name,
+                ipv4: info.ipv4,
+                ipv6: info.ipv6,
+            }),
+            for_ipv6: best.for_ipv6.map(|info| InterfaceInfo {
+                name: info.interface.name,
+                ipv4: info.ipv4,
+                ipv6: info.ipv6,
+            }),
+        })
     }
 }

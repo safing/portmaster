@@ -165,6 +165,17 @@ async fn core_serves_api_and_database() {
         .is_some());
     assert!(service.api.endpoint("updates/apply").is_some());
 
+    // The split tunnel interface environment is backed by netenv.
+    use pm_splittun::InterfaceEnv;
+    assert!(service
+        .system_interfaces
+        .best_physical_default_interfaces()
+        .is_ok());
+    assert!(service
+        .system_interfaces
+        .get_interface("definitely-not-an-interface")
+        .is_err());
+
     // The intel updater and filter lists module are wired.
     assert_eq!(service.intel_updater.config().name, "Portmaster Intel");
     assert!(service.intel_updater.config().verify.is_some());

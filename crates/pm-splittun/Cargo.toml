@@ -10,6 +10,7 @@ pm-config = { path = "../pm-config" }
 pm-endpoints = { path = "../pm-endpoints" }
 pm-firewall = { path = "../pm-firewall" }
 pm-intel = { path = "../pm-intel" }
+pm-netenv = { path = "../pm-netenv" }
 pm-network = { path = "../pm-network" }
 pm-process = { path = "../pm-process" }
 pm-profile = { path = "../pm-profile" }

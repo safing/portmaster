@@ -53,6 +53,8 @@ pub struct Service {
     pub filter_lists_module: Arc<pm_intel::FilterListsModule>,
     /// Online status monitor.
     pub online_monitor: Arc<pm_netenv::OnlineMonitor>,
+    /// Split tunnel interface environment backed by netenv.
+    pub system_interfaces: Arc<pm_splittun::SystemInterfaceEnv>,
     /// Subscribed in `new` so changes before `run` are not missed.
     profile_changes: Mutex<Option<tokio::sync::broadcast::Receiver<()>>>,
     listener: Mutex<Option<TcpListener>>,
@@ -208,6 +210,12 @@ impl Service {
             None,
         ));
 
+        // Split tunnel interface lookups use the netenv caches.
+        let system_interfaces = Arc::new(pm_splittun::SystemInterfaceEnv::new(
+            Arc::clone(&pm_netenv::network().interfaces),
+            Arc::clone(&pm_netenv::network().addresses),
+        ));
+
         // Configuration.
         let config = Config::new();
         register_options(&config, options)?;
@@ -326,6 +334,7 @@ impl Service {
             intel_updater,
             filter_lists_module,
             online_monitor,
+            system_interfaces,
             profile_changes: Mutex::new(Some(profile_changes)),
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
