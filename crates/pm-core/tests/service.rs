@@ -102,6 +102,13 @@ async fn core_serves_api_and_database() {
     assert!(keys.contains(&"core/listenAddress"), "{keys:?}");
     assert!(keys.contains(&"core/apiKeys"), "{keys:?}");
     assert!(keys.contains(&"core/expertiseLevel"), "{keys:?}");
+    let history_option = options_json
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|option| option["Key"] == "history/enable")
+        .expect("history option");
+    assert_eq!(history_option["DefaultValue"], true);
     // Firewall, split tunnel and custom list options are registered.
     for key in [
         "core/releaseChannel",
@@ -180,6 +187,38 @@ async fn core_serves_api_and_database() {
     // app/profile reports that the auth token has no process identity yet.
     let response = http_get(address, "/api/v1/app/profile", "").await;
     assert!(response.contains("failed to identify requesting process"), "{response}");
+
+    // Local/free account features are exposed to the UI.
+    let response = http_get(address, "/api/v1/spn/account/user/profile", "").await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    let body = response.split("\r\n\r\n").nth(1).unwrap();
+    let profile: serde_json::Value = serde_json::from_str(body).unwrap();
+    assert_eq!(profile["username"], "local");
+    assert_eq!(profile["state"], "approved");
+    for feature in ["history", "bw-vis"] {
+        assert!(profile["current_plan"]["feature_ids"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|id| id == feature), "{feature} is missing");
+    }
+
+    let response = http_get(address, "/api/v1/account/features", "").await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    let body = response.split("\r\n\r\n").nth(1).unwrap();
+    let features: serde_json::Value = serde_json::from_str(body).unwrap();
+    let ids: Vec<&str> = features["Features"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|feature| feature["ID"].as_str().unwrap())
+        .collect();
+    assert!(ids.contains(&"history"), "{ids:?}");
+    assert!(ids.contains(&"bw-vis"), "{ids:?}");
+
+    let response = http_get(address, "/api/v1/account/features/history/icon", "").await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    assert!(response.contains("<svg"), "{response}");
 
     // Invalid permissions are rejected before any prompt is shown.
     let response = http_get(address, "/api/v1/app/auth?app-name=test&read=bad&write=user", "").await;

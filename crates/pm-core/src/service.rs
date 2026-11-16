@@ -463,6 +463,9 @@ impl Service {
             }
             retention_config.get_as_int("history/keep", 30)()
         });
+        crate::account_api::register_api(&api)
+            .map_err(|error| anyhow::anyhow!("register account api: {error}"))?;
+
         crate::core_api::register_api(
             &api,
             Arc::clone(&config),

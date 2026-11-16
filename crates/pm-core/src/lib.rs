@@ -13,3 +13,5 @@ pub mod netenv_sink;
 pub mod location;
 
 pub mod core_api;
+
+pub mod account_api;

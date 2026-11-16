@@ -162,7 +162,9 @@ pub fn register_options(config: &Config) -> Result<(), pm_config::Error> {
             CFG_OPTION_ENABLE_HISTORY_KEY,
             DESC_ENABLE_HISTORY,
             OPT_TYPE_BOOL,
-            json!(false),
+            // Deviate from upstream Go: this fork exposes network history in the
+            // local/free mode, so connections must be recorded by default.
+            json!(true),
             96,
             "General",
         )

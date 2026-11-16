@@ -41,6 +41,7 @@ pm-firewall = { path = "../pm-firewall" }
 pm-geoip = { path = "../pm-geoip" }
 pm-query = { path = "../pm-query" }
 pm-record = { path = "../pm-record" }
+serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true

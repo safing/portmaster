@@ -35,9 +35,15 @@ fn options_match_go_export() {
         .collect();
     assert_eq!(ours.len(), expected.len());
     for (ours, expected) in ours.iter().zip(expected) {
+        // This fork enables network history by default in the local/free mode;
+        // the Go fixture still carries upstream's `false`.
+        let mut expected = expected.clone();
+        if ours.key == CFG_OPTION_ENABLE_HISTORY_KEY {
+            expected["DefaultValue"] = json!(true);
+        }
         assert_eq!(
             go_json(&serde_json::to_value(ours).unwrap()),
-            go_json(expected),
+            go_json(&expected),
             "option {}",
             ours.key
         );
