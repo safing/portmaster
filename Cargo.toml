@@ -39,6 +39,7 @@ members = [
     "crates/pm-compat",
     "crates/pm-interop",
     "crates/pm-sync",
+    "crates/pm-utils",
 ]
 
 [workspace.package]
@@ -85,5 +86,6 @@ tokio-util = "0.7.20"
 tracing = "0.1.44"
 tracing-subscriber = "0.3.23"
 url = "2.5.8"
+uuid = { version = "1.29.2", features = ["v4", "v5"] }
 webpki-roots = "1.0.12"
 zip = { version = "9.6.0", default-features = false, features = ["deflate"] }

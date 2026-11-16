@@ -697,23 +697,20 @@ fn go_value_string(value: &Value) -> String {
     }
 }
 
-#[cfg(unix)]
+/// Writes the config file atomically.
+///
+/// Uses the ported `base/utils/atomic.go` helper so a crash during a save can
+/// never leave a zero-length `config.json`. The file bytes and the `0600`
+/// mode are unchanged; only the write mechanism is now atomic.
 fn write_file(path: &Path, data: &[u8]) -> std::io::Result<()> {
-    use std::io::Write;
-    use std::os::unix::fs::OpenOptionsExt;
-
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
-        .open(path)?;
-    file.write_all(data)
-}
-
-#[cfg(not(unix))]
-fn write_file(path: &Path, data: &[u8]) -> std::io::Result<()> {
-    std::fs::write(path, data)
+    pm_utils::atomic::create_atomic(
+        path,
+        data,
+        Some(&pm_utils::atomic::AtomicFileOptions {
+            mode: Some(0o600),
+            temp_dir: None,
+        }),
+    )
 }
 
 fn expertise_level_option() -> ConfigOption {
