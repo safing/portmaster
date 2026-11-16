@@ -199,9 +199,11 @@ fn tokenize(text: &str) -> Result<Vec<Token>, TextError> {
                             if j + 1 >= bytes.len() {
                                 return err("unterminated escape");
                             }
+                            // The backslash is ASCII, so j + 1 is a char boundary.
+                            let ch = text[j + 1..].chars().next().unwrap_or(' ');
                             body.push('\\');
-                            body.push(bytes[j + 1] as char);
-                            j += 2;
+                            body.push(ch);
+                            j += 1 + ch.len_utf8();
                         }
                         _ => {
                             // Keep multi-byte UTF-8 intact.
@@ -225,9 +227,10 @@ fn tokenize(text: &str) -> Result<Vec<Token>, TextError> {
                         if j + 1 >= bytes.len() {
                             return err("unterminated escape");
                         }
+                        let ch = text[j + 1..].chars().next().unwrap_or(' ');
                         body.push('\\');
-                        body.push(bytes[j + 1] as char);
-                        j += 2;
+                        body.push(ch);
+                        j += 1 + ch.len_utf8();
                     } else {
                         let ch = text[j..].chars().next().unwrap_or(' ');
                         body.push(ch);
@@ -526,6 +529,17 @@ mod tests {
             format_rr(&record).unwrap(),
             "example.com.\t17\tIN\tTYPE65\t\\# 13 00010000010006026832026833"
         );
+    }
+
+    #[test]
+    fn escaped_non_ascii_does_not_panic() {
+        for text in [
+            "a. 17 IN TXT \"\\é\"",
+            "a\\é. 17 IN A 1.2.3.4",
+            "a. 17 IN TXT \\é",
+        ] {
+            let _ = parse_rr(text);
+        }
     }
 
     #[test]

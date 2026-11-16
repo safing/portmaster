@@ -109,8 +109,8 @@ impl ResolverConn for PlainResolver {
         self.execute_query(&q).await
     }
 
-    fn report_failure(&self) {
-        self.basic.report_failure();
+    fn report_failure(&self) -> bool {
+        self.basic.report_failure()
     }
 
     fn is_failing(&self) -> bool {

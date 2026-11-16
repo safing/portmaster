@@ -1,3 +1,11 @@
+//! DNS resolver: model, URL parsing, transports and the orchestration (scopes,
+//! cache, failover).
+//!
+//! Persisted name records get a database expiry of `Expires + 14 days`, as the
+//! Go code intends. Go's `PutNew` resets the meta afterwards, so Go records
+//! never expire in the database; the `expires` values in the `resolver.json`
+//! fixture are synthesized for that reason.
+
 pub mod api;
 pub mod block;
 pub mod conn;

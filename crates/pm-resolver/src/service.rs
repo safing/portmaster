@@ -68,7 +68,9 @@ impl ResolverConn for UnsupportedConn {
     async fn query(&self, _q: Query) -> Result<hickory_proto::op::Message, ResolveError> {
         Err(ResolveError::NotFound)
     }
-    fn report_failure(&self) {}
+    fn report_failure(&self) -> bool {
+        false
+    }
     fn is_failing(&self) -> bool {
         false
     }
@@ -263,18 +265,6 @@ impl ResolverService {
     pub fn load_resolvers(&self) {
         let new_config = self.inner.settings.nameservers();
 
-        // Check if settings were changed and clear the name cache when they did.
-        let config_changed = {
-            let state = self.inner.state.read().expect("lock poisoned");
-            !state.current_config.is_empty() && state.current_config != new_config
-        };
-        if config_changed {
-            tracing::info!("resolver: clearing dns cache due to changed resolver config");
-            if let Err(err) = self.inner.store.clear() {
-                tracing::warn!("resolver: failed to clear dns cache: {err}");
-            }
-        }
-
         self.inner
             .disabled
             .store(new_config.is_empty(), Ordering::SeqCst);
@@ -322,8 +312,11 @@ impl ResolverService {
             tracing::error!("resolver: no resolvers loaded!");
         }
 
-        let all_failing = {
+        let (config_changed, all_failing) = {
             let mut state = self.inner.state.write().expect("lock poisoned");
+            // Compare and update under one lock, so concurrent loads cannot both see a change.
+            let config_changed =
+                !state.current_config.is_empty() && state.current_config != new_config;
             state.global = global;
             state.local = local;
             state.system = system;
@@ -331,8 +324,15 @@ impl ResolverService {
             state.active = active;
             state.current_config = new_config;
             state.init_domains = init_domains;
-            all_configured_failing(&state)
+            (config_changed, all_configured_failing(&state))
         };
+        // Clear the name cache when the settings changed.
+        if config_changed {
+            tracing::info!("resolver: clearing dns cache due to changed resolver config");
+            if let Err(err) = self.inner.store.clear() {
+                tracing::warn!("resolver: failed to clear dns cache: {err}");
+            }
+        }
         if !all_failing {
             self.inner.env.failing_resolvers_changed(false);
         }

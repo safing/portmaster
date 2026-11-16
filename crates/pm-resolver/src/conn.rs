@@ -69,8 +69,9 @@ pub trait ResolverConn: Send + Sync {
     /// Executes the given query against the upstream resolver.
     async fn query(&self, q: Query) -> Result<Message, ResolveError>;
 
-    /// Reports that an error occurred with this resolver.
-    fn report_failure(&self);
+    /// Reports that an error occurred with this resolver. Returns whether the
+    /// failure was counted (Go reaches its "failed" report only then).
+    fn report_failure(&self) -> bool;
 
     /// Reports if this resolver is currently failing.
     fn is_failing(&self) -> bool;
@@ -110,9 +111,9 @@ impl BasicResolverConn {
         self.failing.load(Ordering::Relaxed)
     }
 
-    pub fn report_failure(&self) {
+    pub fn report_failure(&self) -> bool {
         if self.is_failing() {
-            return;
+            return false;
         }
 
         let mut state = self.fail_state.lock().unwrap();
@@ -122,18 +123,19 @@ impl BasicResolverConn {
             if now.duration_since(started) > Self::FAIL_OBSERVE_DURATION {
                 state.fails = 1;
                 state.failing_started = Some(now);
-                return;
+                return false;
             }
         } else {
             state.fails = 1;
             state.failing_started = Some(now);
-            return;
+            return false;
         }
 
         state.fails += 1;
         if state.fails > Self::FAIL_THRESHOLD {
             self.failing.store(true, Ordering::Relaxed);
         }
+        true
     }
 
     pub fn reset_failure(&self) {
