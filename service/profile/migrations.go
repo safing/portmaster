@@ -40,7 +40,7 @@ func migrateLinkedPath(ctx context.Context, _, to *version.Version, db *database
 	it, err := db.Query(query.New(ProfilesDBPath))
 	if err != nil {
 		log.Tracer(ctx).Errorf("profile: failed to migrate from linked path: failed to start query: %s", err)
-		return nil
+		return fmt.Errorf("failed to start profile query for linked path migration: %w", err)
 	}
 
 	// Migrate all profiles.
@@ -82,7 +82,7 @@ func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Inte
 	it, err := db.Query(query.New(ProfilesDBPath))
 	if err != nil {
 		log.Tracer(ctx).Errorf("profile: failed to migrate from icon fields: failed to start query: %s", err)
-		return nil
+		return fmt.Errorf("failed to start profile query for icon fields migration: %w", err)
 	}
 
 	// Migrate all profiles.
@@ -152,7 +152,7 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 	it, err := db.Query(query.New(ProfilesDBPath))
 	if err != nil {
 		log.Tracer(ctx).Errorf("profile: failed to migrate to derived profile IDs: failed to start query: %s", err)
-		return nil
+		return fmt.Errorf("failed to start profile query for derived profile IDs migration: %w", err)
 	}
 
 	// Migrate all profiles.
