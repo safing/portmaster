@@ -8,15 +8,17 @@
 //!
 //! * Interface lookups and the IPv6 availability check are injected through
 //!   [`InterfaceEnv`]; the netenv module fills this in.
-//! * The proxy lifecycle ([`proxies`]) is driven by the caller instead of a
+//! * The proxy lifecycle ([`Proxies`]) is driven by the caller instead of a
 //!   module manager worker.
 //! * Egress tracking of the Go proxy session cache is not ported yet;
 //!   [`RequestQueue`] only covers the pending-request side.
 
 mod config;
+mod proxies;
 mod requests;
 
 pub use config::{register_options, CFG_OPTION_SPLIT_TUN_ENABLE_KEY};
+pub use proxies::Proxies;
 pub use requests::{
     BestPhysicalDefaultInterfaces, InterfaceEnv, InterfaceInfo, PendingRequest, RequestQueue,
     PENDING_REQUEST_TTL, SPLIT_TUN_PORT,
