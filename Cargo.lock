@@ -1461,6 +1461,7 @@ dependencies = [
  "pm-geoip",
  "pm-intel",
  "pm-interception",
+ "pm-interop",
  "pm-jess",
  "pm-mgr",
  "pm-migration",
@@ -1611,6 +1612,26 @@ dependencies = [
  "rustix",
  "thiserror",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "pm-interop"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "pm-api",
+ "pm-database",
+ "pm-intel",
+ "pm-netstate",
+ "pm-network",
+ "pm-notifications",
+ "pm-record",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-util",
  "tracing",
 ]
 

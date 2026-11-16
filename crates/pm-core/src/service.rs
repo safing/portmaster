@@ -66,6 +66,10 @@ pub struct Service {
     pub firewall: Arc<crate::firewall::Firewall>,
     /// Pause/resume control module.
     pub control: Arc<pm_control::Control<crate::control::CoreControlEnv>>,
+    /// Interoperability with third-party VPN clients (IVPN).
+    pub interop: Arc<pm_interop::Interop>,
+    /// Core-side environment of the interoperability module.
+    pub interop_env: Arc<crate::interop::CoreInteropEnv>,
     /// Triggered by a restart request (updater or API).
     pub restart_token: CancellationToken,
     /// Split tunnel proxies.
@@ -290,6 +294,23 @@ impl Service {
             Err(error) => return Err(error.into()),
         }
 
+        // Interoperability with third-party VPN clients. The shared flag lets
+        // the interop module register its external verdict handler lazily,
+        // like the Go owner's `EnsureVerdictHandlerRegistered`.
+        let verdict_enabled = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let interop_env = Arc::new(crate::interop::CoreInteropEnv::new(
+            Arc::clone(&config),
+            &databases,
+            Arc::clone(&notifications),
+            Arc::clone(&device_locations),
+            Arc::clone(&verdict_enabled),
+            env!("CARGO_PKG_VERSION").to_string(),
+        )?);
+        let interop: Arc<pm_interop::Interop> = Arc::new(pm_interop::Interop::new(
+            interop_env.clone() as Arc<dyn pm_interop::InteropEnv>,
+            Arc::new(pm_interop::TcpIvpnClientFactory::system()),
+        ));
+
         // Optional Apprise notifications.
         let apprise = crate::apprise::from_config(&config);
 
@@ -459,6 +480,8 @@ impl Service {
                 profiles,
                 split_tunnel: split_env,
                 ip_info,
+                interop: Arc::clone(&interop),
+                verdict_enabled: Arc::clone(&verdict_enabled),
                 packet_metrics_file: options.packet_metrics_file.clone(),
             },
         )?);
@@ -501,6 +524,13 @@ impl Service {
         )
         .map_err(|error| anyhow::anyhow!("register core api: {error}"))?;
 
+        // Interoperability ping endpoint and IVPN client connection. Starting
+        // waits for the first (fast, file-based) detection attempt, like Go.
+        interop
+            .register_api(&api)
+            .map_err(|error| anyhow::anyhow!("register interop api: {error}"))?;
+        interop.start().await;
+
         pm_netquery::api::register_api(
             &api,
             Arc::clone(&firewall.netquery_db),
@@ -532,6 +562,8 @@ impl Service {
             device_locations,
             firewall,
             control,
+            interop,
+            interop_env,
             restart_token,
             split_proxies: Arc::clone(&split_proxies),
             split_queue: Arc::clone(&split_queue),
@@ -753,6 +785,8 @@ impl Service {
         if let Err(error) = self.firewall.start() {
             tracing::error!(%error, "filter: failed to start interception");
         }
+        self.interop_env
+            .set_interception_started(self.firewall.is_running());
 
         let outcome: anyhow::Result<()> = tokio::select! {
             result = server => result.map_err(anyhow::Error::from),
@@ -779,6 +813,7 @@ impl Service {
         if let Err(error) = self.firewall.stop().await {
             tracing::warn!(%error, "filter: failed to stop interception");
         }
+        self.interop_env.set_interception_started(false);
         self.dns.shutdown().await;
         databases.shutdown()?;
         outcome
