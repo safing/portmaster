@@ -103,6 +103,9 @@ async fn core_serves_api_and_database() {
     assert!(keys.contains(&"core/expertiseLevel"), "{keys:?}");
     // Firewall, split tunnel and custom list options are registered.
     for key in [
+        "core/releaseChannel",
+        "core/automaticUpdates",
+        "core/automaticIntelUpdates",
         "filter/enable",
         "filter/askTimeout",
         "filter/customListFile",
@@ -130,6 +133,37 @@ async fn core_serves_api_and_database() {
         "{response}"
     );
     assert!(service.custom_lists.lists().is_loaded());
+
+    // Update channels and automatic update switches are registered.
+    let release_channel = options_json
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|option| option["Key"] == "core/releaseChannel")
+        .expect("release channel option");
+    assert_eq!(release_channel["DefaultValue"], "stable");
+    assert_eq!(
+        release_channel["PossibleValues"].as_array().unwrap().len(),
+        4
+    );
+
+    // Both updaters exist; the binary updater checks the stable channel.
+    assert_eq!(
+        service.binary_updater.config().name,
+        "Portmaster Binaries"
+    );
+    assert!(service.binary_updater.config().auto_check);
+    assert!(!service.binary_updater.config().auto_download);
+    assert!(service.binary_updater.config().needs_restart);
+    assert_eq!(
+        service.binary_updater.config().index_urls,
+        vec!["https://updates.safing.io/stable.v3.json".to_string()]
+    );
+    assert!(service
+        .api
+        .endpoint("updates/check")
+        .is_some());
+    assert!(service.api.endpoint("updates/apply").is_some());
 
     // The intel updater and filter lists module are wired.
     assert_eq!(service.intel_updater.config().name, "Portmaster Intel");

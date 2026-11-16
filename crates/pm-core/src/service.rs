@@ -14,6 +14,11 @@ use crate::api_auth::{ApiAuthenticator, SystemLookup};
 use crate::cli::Options;
 
 /// Configuration keys of the core.
+pub const CFG_RELEASE_CHANNEL: &str = "core/releaseChannel";
+/// Whether automatic software updates are enabled.
+pub const CFG_AUTOMATIC_UPDATES: &str = "core/automaticUpdates";
+/// Whether automatic intel data updates are enabled.
+pub const CFG_AUTOMATIC_INTEL_UPDATES: &str = "core/automaticIntelUpdates";
 pub const CFG_DEV_MODE: &str = "core/devMode";
 pub const CFG_LOG_LEVEL: &str = "core/log/level";
 pub const CFG_LISTEN_ADDRESS: &str = "core/listenAddress";
@@ -40,6 +45,8 @@ pub struct Service {
     pub dns: Arc<crate::dns::Dns>,
     /// Custom filter list and its file watcher.
     pub custom_lists: Arc<pm_intel::customlists::CustomListService>,
+    /// Binary updater (`index.json` in the bin dir).
+    pub binary_updater: Arc<pm_updates::Updater>,
     /// Intel resource updater (`index.json` in the intel dir).
     pub intel_updater: Arc<pm_updates::Updater>,
     /// Filter lists module glue: cache loading, states and event handling.
@@ -105,6 +112,51 @@ impl Service {
             &databases,
         )));
 
+        // Binary updater: checks the release channel, downloads and applies on
+        // user action only, needs a restart.
+        let mut binary_config = pm_updates::UpdaterConfig {
+            name: pm_updates::DEFAULT_BINARY_INDEX_NAME.to_string(),
+            directory: options.bin_dir.to_string_lossy().into_owned(),
+            download_directory: data_dir
+                .join("download_binaries")
+                .to_string_lossy()
+                .into_owned(),
+            purge_directory: data_dir
+                .join("upgrade_obsolete_binaries")
+                .to_string_lossy()
+                .into_owned(),
+            index_urls: pm_updates::binary_update_url_list("stable"),
+            index_file: "index.json".to_string(),
+            verify: Some(pm_jess::binary_trust_store()),
+            auto_check: true,
+            auto_download: false,
+            auto_apply: false,
+            needs_restart: true,
+            notify: true,
+            ..pm_updates::UpdaterConfig::default()
+        };
+        #[cfg(target_os = "linux")]
+        if let Ok(exe) = std::env::current_exe() {
+            let exe = exe.to_string_lossy().into_owned();
+            // Restore the SELinux context of the new core binary, like Go.
+            binary_config.post_upgrade_commands.push(pm_updates::UpdateCommandConfig {
+                command: "restorecon".to_string(),
+                args: vec![exe.clone()],
+                trigger_artifact_fname: exe,
+                fail_on_error: false,
+            });
+        }
+        let binary_updater = Arc::new(
+            pm_updates::Updater::new(
+                binary_config,
+                Arc::new(pm_updates::HttpsClient::new()),
+                env!("CARGO_PKG_VERSION"),
+                Some(Arc::clone(&notifications)),
+                None,
+            )
+            .map_err(|error| anyhow::anyhow!("create binary updater: {error}"))?,
+        );
+
         // Intel resource updater and the filter lists module.
         let intel_updater = Arc::new(
             pm_updates::Updater::new(
@@ -144,6 +196,7 @@ impl Service {
             tracing::warn!(%error, "intel/filterlists: module start failed");
         }
 
+
         // Configuration.
         let config = Config::new();
         register_options(&config, options)?;
@@ -163,6 +216,16 @@ impl Service {
             Err(pm_config::Error::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(error) => return Err(error.into()),
         }
+
+        // Apply the update settings from the config.
+        let release_channel = config.get_as_string(CFG_RELEASE_CHANNEL, "stable")();
+        let auto_software = config.get_as_bool(CFG_AUTOMATIC_UPDATES, true)();
+        let auto_intel = config.get_as_bool(CFG_AUTOMATIC_INTEL_UPDATES, true)();
+        binary_updater.configure(
+            auto_software,
+            pm_updates::binary_update_url_list(&release_channel),
+        );
+        intel_updater.configure(auto_intel, pm_updates::intel_update_urls());
 
         let profile_changes = config.subscribe_changes();
         let profile_config = Arc::new(pm_profile::GlobalProfileConfig::new(&config));
@@ -199,6 +262,14 @@ impl Service {
         );
         pm_intel::customlists::register_api(&api, Arc::clone(&custom_lists))
             .map_err(|error| anyhow::anyhow!("register customlists api: {error}"))?;
+
+        register_update_endpoints(
+            &api,
+            Arc::clone(&binary_updater),
+            Arc::clone(&intel_updater),
+            Arc::clone(&filter_lists),
+            Arc::clone(&filter_lists_module),
+        )?;
 
         let listener = TcpListener::bind(&listen_address)
             .await
@@ -240,6 +311,7 @@ impl Service {
             profile_config,
             dns,
             custom_lists,
+            binary_updater,
             intel_updater,
             filter_lists_module,
             profile_changes: Mutex::new(Some(profile_changes)),
@@ -281,6 +353,8 @@ impl Service {
         // config changes.
         let profile_config = Arc::clone(&self.profile_config);
         let custom_lists = Arc::clone(&self.custom_lists);
+        let binary_updater = Arc::clone(&self.binary_updater);
+        let intel_updater = Arc::clone(&self.intel_updater);
         let config = Arc::clone(&self.config);
         let mut changes = self
             .profile_changes
@@ -301,8 +375,42 @@ impl Service {
                         "",
                     )(),
                 );
+                // Update settings may have changed.
+                let release_channel = config.get_as_string(CFG_RELEASE_CHANNEL, "stable")();
+                let auto_software = config.get_as_bool(CFG_AUTOMATIC_UPDATES, true)();
+                let auto_intel = config.get_as_bool(CFG_AUTOMATIC_INTEL_UPDATES, true)();
+                binary_updater.configure(
+                    auto_software,
+                    pm_updates::binary_update_url_list(&release_channel),
+                );
+                intel_updater.configure(auto_intel, pm_updates::intel_update_urls());
             }
         });
+
+        // Binary updates: check every hour (first after 15 seconds, like Go).
+        let binary_worker = {
+            let updater = Arc::clone(&self.binary_updater);
+            tokio::spawn(async move {
+                let start = tokio::time::Instant::now() + Duration::from_secs(15);
+                let mut interval = tokio::time::interval_at(
+                    start,
+                    pm_updates::UPDATE_TASK_REPEAT_DURATION,
+                );
+                loop {
+                    interval.tick().await;
+                    if !updater.config().auto_check {
+                        continue;
+                    }
+                    let updater = Arc::clone(&updater);
+                    let _ = tokio::task::spawn_blocking(move || {
+                        if let Err(error) = updater.update_check() {
+                            tracing::warn!(%error, "updates/binaries: update check failed");
+                        }
+                    })
+                    .await;
+                }
+            })
+        };
 
         // Intel updates: check every hour (first after 15 seconds, like Go),
         // then apply the filter list files of the new index.
@@ -318,6 +426,9 @@ impl Service {
                 );
                 loop {
                     interval.tick().await;
+                    if !updater.config().auto_check {
+                        continue;
+                    }
                     let updater = Arc::clone(&updater);
                     let module = Arc::clone(&module);
                     let lists = Arc::clone(&lists);
@@ -379,6 +490,7 @@ impl Service {
         };
 
         refresher.abort();
+        binary_worker.abort();
         intel_worker.abort();
         list_watcher.abort();
         self.dns.shutdown().await;
@@ -395,6 +507,73 @@ impl Service {
 }
 
 fn register_options(config: &Config, options: &Options) -> anyhow::Result<()> {
+    config.register(
+        ConfigOption::new(
+            "Release Channel",
+            CFG_RELEASE_CHANNEL,
+            r#"Use "Stable" for the best experience. The "Beta" channel will have the newest features and fixes, but may also break and cause interruption. Use others only temporarily and when instructed."#,
+            pm_config::OPT_TYPE_STRING,
+            Value::String("stable".to_string()),
+        )
+        .with_expertise_level(pm_config::EXPERTISE_LEVEL_EXPERT)
+        .with_release_level(pm_config::RELEASE_LEVEL_STABLE)
+        .with_requires_restart(true)
+        .with_annotation(pm_config::DISPLAY_ORDER_ANNOTATION, json!(-4))
+        .with_annotation(
+            pm_config::DISPLAY_HINT_ANNOTATION,
+            json!(pm_config::DISPLAY_HINT_ONE_OF),
+        )
+        .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("Updates"))
+        .with_possible_values(vec![
+            PossibleValue {
+                name: "Stable".to_string(),
+                description: "Production releases.".to_string(),
+                value: Value::String("stable".to_string()),
+            },
+            PossibleValue {
+                name: "Beta".to_string(),
+                description: "Production releases for testing new features that may break and cause interruption.".to_string(),
+                value: Value::String("beta".to_string()),
+            },
+            PossibleValue {
+                name: "Support".to_string(),
+                description: "Support releases or version changes for troubleshooting. Only use temporarily and when instructed.".to_string(),
+                value: Value::String("support".to_string()),
+            },
+            PossibleValue {
+                name: "Staging".to_string(),
+                description: "Dangerous development releases for testing random things and experimenting. Only use temporarily and when instructed.".to_string(),
+                value: Value::String("staging".to_string()),
+            },
+        ]),
+    )?;
+
+    config.register(
+        ConfigOption::new(
+            "Automatic Software Updates",
+            CFG_AUTOMATIC_UPDATES,
+            "Automatically check for and download software updates. This does not include intelligence data updates.",
+            pm_config::OPT_TYPE_BOOL,
+            Value::Bool(true),
+        )
+        .with_expertise_level(pm_config::EXPERTISE_LEVEL_EXPERT)
+        .with_annotation(pm_config::DISPLAY_ORDER_ANNOTATION, json!(-12))
+        .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("Updates")),
+    )?;
+
+    config.register(
+        ConfigOption::new(
+            "Automatic Intelligence Data Updates",
+            CFG_AUTOMATIC_INTEL_UPDATES,
+            "Automatically check for and download intelligence data updates. This includes filter lists, geo-ip data, and more. Does not include software updates.",
+            pm_config::OPT_TYPE_BOOL,
+            Value::Bool(true),
+        )
+        .with_expertise_level(pm_config::EXPERTISE_LEVEL_EXPERT)
+        .with_annotation(pm_config::DISPLAY_ORDER_ANNOTATION, json!(-11))
+        .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("Updates")),
+    )?;
+
     config.register(
         ConfigOption::new(
             "Development Mode",
@@ -464,6 +643,75 @@ fn register_options(config: &Config, options: &Options) -> anyhow::Result<()> {
         .with_annotation(pm_config::DISPLAY_ORDER_ANNOTATION, json!(514))
         .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("Development")),
     )?;
+
+    Ok(())
+}
+
+/// Registers the update trigger endpoints.
+fn register_update_endpoints(
+    api: &Api,
+    binary_updater: Arc<pm_updates::Updater>,
+    intel_updater: Arc<pm_updates::Updater>,
+    lists: Arc<pm_intel::FilterLists>,
+    module: Arc<pm_intel::FilterListsModule>,
+) -> anyhow::Result<()> {
+    let check_binary = Arc::clone(&binary_updater);
+    let check_intel = Arc::clone(&intel_updater);
+    let check_lists = Arc::clone(&lists);
+    let check_module = Arc::clone(&module);
+    api.register_endpoint(
+        pm_api::Endpoint::new(
+            "updates/check",
+            "Trigger updates check event",
+            "",
+        )
+        .with_write(pm_api::PERMIT_USER)
+        .with_write_method("POST")
+        .with_action(move |_| {
+            let binary_updater = Arc::clone(&check_binary);
+            let intel_updater = Arc::clone(&check_intel);
+            let lists = Arc::clone(&check_lists);
+            let module = Arc::clone(&check_module);
+            tokio::task::spawn_blocking(move || {
+                if let Err(error) = binary_updater.update_check() {
+                    tracing::warn!(%error, "updates/binaries: update check failed");
+                }
+                let _ = module.handle_resources_updated(|| {
+                    intel_updater
+                        .update_check()
+                        .map_err(|error| error.to_string())?;
+                    apply_intel_update(&intel_updater, &lists)
+                });
+            });
+            Ok("update check triggered".to_string())
+        }),
+    )
+    .map_err(|error| anyhow::anyhow!("register updates/check: {error}"))?;
+
+    api.register_endpoint(
+        pm_api::Endpoint::new("updates/apply", "Trigger updates apply event", "")
+            .with_write(pm_api::PERMIT_USER)
+            .with_write_method("POST")
+            .with_action(move |_| {
+                let binary_updater = Arc::clone(&binary_updater);
+                let intel_updater = Arc::clone(&intel_updater);
+                let lists = Arc::clone(&lists);
+                let module = Arc::clone(&module);
+                tokio::task::spawn_blocking(move || {
+                    if let Err(error) = binary_updater.upgrade() {
+                        tracing::warn!(%error, "updates/binaries: upgrade failed");
+                    }
+                    let _ = module.handle_resources_updated(|| {
+                        intel_updater
+                            .upgrade()
+                            .map_err(|error| error.to_string())?;
+                        apply_intel_update(&intel_updater, &lists)
+                    });
+                });
+                Ok("upgrade triggered".to_string())
+            }),
+    )
+    .map_err(|error| anyhow::anyhow!("register updates/apply: {error}"))?;
 
     Ok(())
 }
