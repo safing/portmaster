@@ -1411,6 +1411,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pm-compat"
+version = "0.1.0"
+dependencies = [
+ "getrandom 0.4.3",
+ "hex",
+ "pm-debug",
+ "pm-interception",
+ "pm-mgr",
+ "pm-netenv",
+ "pm-notifications",
+ "serde_json",
+ "socket2",
+ "tracing",
+]
+
+[[package]]
 name = "pm-config"
 version = "0.1.0"
 dependencies = [
@@ -1451,6 +1467,7 @@ dependencies = [
  "nix 0.31.3",
  "pm-api",
  "pm-apprise",
+ "pm-compat",
  "pm-config",
  "pm-control",
  "pm-database",

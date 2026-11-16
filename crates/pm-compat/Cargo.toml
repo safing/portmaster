@@ -1,0 +1,21 @@
+[package]
+name = "pm-compat"
+version = "0.1.0"
+edition.workspace = true
+description = "Linux system-integration and compatibility self-checks for Portmaster, port of Go service/compat"
+license.workspace = true
+
+[dependencies]
+getrandom.workspace = true
+hex.workspace = true
+pm-debug = { path = "../pm-debug" }
+pm-interception = { path = "../pm-interception" }
+pm-mgr = { path = "../pm-mgr" }
+pm-netenv = { path = "../pm-netenv" }
+pm-notifications = { path = "../pm-notifications" }
+serde_json.workspace = true
+socket2 = "0.6.5"
+tracing.workspace = true
+
+[lints]
+workspace = true

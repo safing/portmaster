@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use pm_config::Config;
 use pm_firewall::packet::{
     BandwidthSink, ConntrackControl, LayeredProfileLookup, NfqPacket, PacketEnv, PacketHandler,
-    SystemConntrack,
+    QueuedPacket, SystemConntrack,
 };
 use pm_firewall::{
     CustomLists, FirewallEnv, LocalNetwork, MulticastRequest, ServiceCustomLists, SplitTunnelEnv,
@@ -25,7 +25,10 @@ use pm_network::{
     SystemProcessResolver,
 };
 use pm_process::{ProcReader, Process, ProcessCache};
-use pm_profile::{GlobalProfileConfig, LayeredProfile, Profile, ProfileStore, SOURCE_LOCAL};
+use pm_profile::{
+    GlobalProfileConfig, LayeredProfile, Profile, ProfileStore, SOURCE_LOCAL,
+    UNIDENTIFIED_PROFILE_ID,
+};
 use pm_resolver::ipinfo::IpInfoStore;
 use pm_resolver::ResolverService;
 use tokio::sync::mpsc;
@@ -199,6 +202,7 @@ pub struct CoreFirewallEnv {
     unbreak_lists: Arc<pm_intel::FilterLists>,
     ip_info: Arc<IpInfoStore>,
     split_tunnel: Arc<SplitTunnelEnvAdapter>,
+    compat: Arc<pm_compat::Compat>,
     api_endpoint: Option<(IpAddr, u16)>,
     filter_enabled: AtomicBool,
     permanent_verdicts: AtomicBool,
@@ -218,6 +222,7 @@ impl CoreFirewallEnv {
         profiles: Arc<CoreProfiles>,
         split_tunnel: Arc<SplitTunnelEnvAdapter>,
         ip_info: Arc<IpInfoStore>,
+        compat: Arc<pm_compat::Compat>,
     ) -> CoreFirewallEnv {
         let api_endpoint = local_addr.ip().is_loopback().then(|| (local_addr.ip(), local_addr.port()));
 
@@ -230,6 +235,7 @@ impl CoreFirewallEnv {
             unbreak_lists,
             ip_info,
             split_tunnel,
+            compat,
             api_endpoint,
             filter_enabled: AtomicBool::new(config.get_as_bool("filter/enable", true)()),
             permanent_verdicts: AtomicBool::new(
@@ -315,6 +321,21 @@ impl FirewallEnv for CoreFirewallEnv {
         self.resolver.is_disabled()
     }
 
+    fn report_secure_dns_bypass(&self, process: Option<&Process>) {
+        let Some(process) = process else {
+            return;
+        };
+        let Some(layered) = self.profiles.layered_for(process) else {
+            return;
+        };
+        let profile = layered.local_profile();
+        if profile.id == UNIDENTIFIED_PROFILE_ID {
+            return;
+        }
+        self.compat
+            .report_secure_dns_bypass(&profile.id, &profile.name, &process.path);
+    }
+
     fn unbreak_filter_list_ids(&self) -> Vec<String> {
         pm_intel::unbreak_filter_list_ids(self.unbreak_lists.cache())
             .ok()
@@ -351,6 +372,14 @@ impl PacketEnv for CoreFirewallEnv {
 
     fn dns_query_interception(&self) -> bool {
         self.dns_interception.load(Ordering::SeqCst)
+    }
+
+    fn submit_system_integration_check(&self, _pkt: &dyn QueuedPacket) {
+        self.compat.submit_system_integration_check_packet();
+    }
+
+    fn submit_dns_check_domain(&self, subdomain: &str) {
+        self.compat.submit_dns_check_domain(subdomain);
     }
 
     fn api_endpoint(&self) -> Option<(IpAddr, u16)> {
@@ -453,6 +482,8 @@ pub struct FirewallDeps<'a> {
     pub profiles: Arc<CoreProfiles>,
     pub split_tunnel: Arc<SplitTunnelEnvAdapter>,
     pub ip_info: Arc<IpInfoStore>,
+    /// Compatibility module, wired to the self-check hooks.
+    pub compat: Arc<pm_compat::Compat>,
     /// Optional file for packet verdict metrics.
     pub packet_metrics_file: Option<std::path::PathBuf>,
 }
@@ -490,6 +521,7 @@ impl Firewall {
             profiles,
             split_tunnel,
             ip_info,
+            compat,
             packet_metrics_file,
         } = deps;
 
@@ -503,6 +535,7 @@ impl Firewall {
             Arc::clone(&profiles),
             split_tunnel,
             Arc::clone(&ip_info),
+            compat,
         ));
 
         let processes: Arc<dyn ProcessResolver> = Arc::new(SystemProcessResolver::new(
