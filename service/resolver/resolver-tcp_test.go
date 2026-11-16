@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"errors"
+	"io"
 	"net"
 	"slices"
 	"strconv"
@@ -224,6 +225,51 @@ func freeTCPPort(t *testing.T) uint16 {
 	listener, port := listenTCP(t)
 	_ = listener.Close()
 	return port
+}
+
+// TestTCPResolverConnUnansweredQuery checks that a query the server never
+// answers does not stay in the in-flight registry forever, which would keep
+// an abandoned connection (and its handler and reader) alive indefinitely.
+func TestTCPResolverConnUnansweredQuery(t *testing.T) {
+	t.Parallel()
+
+	clientSide, serverSide := net.Pipe()
+	defer func() {
+		_ = serverSide.Close()
+	}()
+	trc := &tcpResolverConn{
+		conn:            &dns.Conn{Conn: clientSide},
+		resolverInfo:    &ResolverInfo{Name: "PipeTest", Type: ServerTypeTCP},
+		queries:         make(chan *tcpQuery, 10),
+		responses:       make(chan *dns.Msg, 10),
+		inFlightQueries: make(map[uint16]*tcpQuery, 10),
+		inFlightTimeout: 100 * time.Millisecond,
+		heartbeat:       make(chan struct{}),
+		abandoned:       abool.New(),
+	}
+	module.mgr.Go("test dns client", trc.handler)
+
+	// Submit a query and receive it on the server side, but never answer it.
+	trc.queries <- &tcpQuery{
+		Query:    &Query{FQDN: "unanswered.example.", QType: dns.Type(dns.TypeA), NoCaching: true},
+		Response: make(chan *dns.Msg),
+	}
+	server := &dns.Conn{Conn: serverSide}
+	_ = serverSide.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, err := server.ReadMsg()
+	if err != nil {
+		t.Fatalf("server failed to read query: %s", err)
+	}
+
+	// Abandon the connection, like ForceReconnect does.
+	trc.abandoned.Set()
+
+	// The handler must close the connection once the query expired.
+	_ = serverSide.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, err = server.ReadMsg()
+	if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrClosedPipe) {
+		t.Fatalf("abandoned connection with unanswered query was not closed: %v", err)
+	}
 }
 
 // TestTCPAssignUniqueIDExhausted checks that assigning a message ID terminates

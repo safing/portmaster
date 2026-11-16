@@ -60,6 +60,9 @@ type tcpResolverConn struct {
 	responses chan *dns.Msg
 	// inFlightQueries holds all in-flight queries of this connection.
 	inFlightQueries map[uint16]*tcpQuery
+	// inFlightTimeout defines after which time unanswered in-flight queries
+	// are removed from inFlightQueries.
+	inFlightTimeout time.Duration
 	// heartbeat is a alive-checking channel from which the resolver conn must
 	// always read asap.
 	heartbeat chan struct{}
@@ -71,6 +74,8 @@ type tcpResolverConn struct {
 type tcpQuery struct {
 	Query    *Query
 	Response chan *dns.Msg
+	// expires is set when the query is sent and is only used by the handler.
+	expires time.Time
 }
 
 // MakeCacheRecord creates an RRCache record from a reply.
@@ -206,6 +211,9 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		queries:         make(chan *tcpQuery, 10),
 		responses:       make(chan *dns.Msg, 10),
 		inFlightQueries: make(map[uint16]*tcpQuery, 10),
+		// Query() gives up waiting for a reply after defaultRequestTimeout.
+		// Keep unanswered queries a bit longer in order to still cache late replies.
+		inFlightTimeout: 2 * defaultRequestTimeout,
 		heartbeat:       make(chan struct{}),
 		abandoned:       abool.New(),
 	}
@@ -379,6 +387,8 @@ func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 	// Set up variables.
 	var readyToRecycle bool
 	ttlTimer := time.After(defaultClientTTL)
+	cleanupTicker := time.NewTicker(trc.inFlightTimeout)
+	defer cleanupTicker.Stop()
 
 	// Start connection reader.
 	module.mgr.Go("dns client reader", trc.reader)
@@ -424,6 +434,7 @@ func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 			}
 
 			// Add query to in flight registry.
+			tq.expires = time.Now().Add(trc.inFlightTimeout)
 			trc.inFlightQueries[msg.Id] = tq
 
 			// Write query to connected DNS server.
@@ -448,6 +459,17 @@ func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 				}
 			}
 
+		case <-cleanupTicker.C:
+			// Remove queries that were never answered. The waiting Query() call
+			// has given up already.
+			trc.pruneInFlightQueries()
+
+			if readyToRecycle || trc.abandoned.IsSet() {
+				if len(trc.inFlightQueries) == 0 {
+					log.Debugf("resolver: recycling connection to %s", trc.resolverInfo.DescriptiveName())
+					return nil
+				}
+			}
 		}
 	}
 }
@@ -472,6 +494,16 @@ func (trc *tcpResolverConn) assignUniqueID(msg *dns.Msg) bool {
 		}
 	}
 	return false
+}
+
+// pruneInFlightQueries removes expired queries from the in-flight registry.
+func (trc *tcpResolverConn) pruneInFlightQueries() {
+	now := time.Now()
+	for id, tq := range trc.inFlightQueries {
+		if now.After(tq.expires) {
+			delete(trc.inFlightQueries, id)
+		}
+	}
 }
 
 func (trc *tcpResolverConn) handleQueryResponse(msg *dns.Msg) {
