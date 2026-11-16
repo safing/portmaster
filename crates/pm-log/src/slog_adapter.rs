@@ -155,9 +155,18 @@ mod tests {
             SlogRecord::new(Severity::Warning, "slow query", "db.go", 8).attr("duration", "1s"),
         );
 
+        // Other tests in this binary may change the global level and emit
+        // banner lines into the same sink; wait for our own record only.
         let mut output = String::new();
         for _ in 0..100 {
-            output = lines.lock().unwrap().join("\n");
+            output = lines
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|line| line.contains("slow query"))
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("\n");
             if !output.is_empty() {
                 break;
             }
