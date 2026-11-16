@@ -71,6 +71,7 @@ func migrateLinkedPath(ctx context.Context, _, to *version.Version, db *database
 	// Check if there was an error while iterating.
 	if err := it.Err(); err != nil {
 		log.Tracer(ctx).Errorf("profile: failed to migrate from linked path: failed to iterate over profiles for migration: %s", err)
+		return fmt.Errorf("failed to iterate over profiles for linked path migration: %w", err)
 	}
 
 	return nil
