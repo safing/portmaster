@@ -27,18 +27,21 @@ func TestFlushCache(t *testing.T) {
 	})
 
 	key := dbName + ":flushed"
-	if err := cachingDB.Put(NewExample(key, "A", 1)); err != nil {
+	err = cachingDB.Put(NewExample(key, "A", 1))
+	if err != nil {
 		t.Fatal(err)
 	}
 
 	// The write must still be pending in the write cache.
-	if _, err := plainDB.Get(key); err == nil {
+	_, err = plainDB.Get(key)
+	if err == nil {
 		t.Fatal("record was written to storage before flush")
 	}
 
 	cachingDB.FlushCache()
 
-	if _, err := plainDB.Get(key); err != nil {
+	_, err = plainDB.Get(key)
+	if err != nil {
 		t.Fatalf("record not in storage after FlushCache: %s", err)
 	}
 	cachingDB.writeCacheLock.Lock()

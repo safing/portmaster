@@ -25,7 +25,7 @@ func countPIDHints() int {
 	return len(pidHints.cur) + len(pidHints.prev)
 }
 
-func testPacketInfo(srcPort, dstPort uint16, pid int, inbound bool) packet.Info {
+func testPacketInfo(srcPort uint16, pid int, inbound bool) packet.Info {
 	return packet.Info{
 		Inbound:  inbound,
 		Version:  packet.IPv4,
@@ -33,7 +33,7 @@ func testPacketInfo(srcPort, dstPort uint16, pid int, inbound bool) packet.Info 
 		Src:      net.IPv4(10, 0, 0, 1),
 		SrcPort:  srcPort,
 		Dst:      net.IPv4(93, 184, 216, 34),
-		DstPort:  dstPort,
+		DstPort:  443,
 		PID:      pid,
 		SeenAt:   time.Now(),
 	}
@@ -55,7 +55,7 @@ func newTestRealPacket(info packet.Info) *testRealPacket {
 func TestPIDHintStoreAndTake(t *testing.T) { //nolint:paralleltest // Mutates package state.
 	resetPIDHints()
 
-	pkt := packet.NewInfoPacket(testPacketInfo(10000, 443, 4242, false))
+	pkt := packet.NewInfoPacket(testPacketInfo(10000, 4242, false))
 	SavePIDHint(pkt)
 
 	pid, ok := takePIDHint(pkt.GetConnectionID())
@@ -75,7 +75,7 @@ func TestPIDHintStoreAndTake(t *testing.T) { //nolint:paralleltest // Mutates pa
 func TestPIDHintRotation(t *testing.T) { //nolint:paralleltest // Mutates package state.
 	resetPIDHints()
 
-	pkt := packet.NewInfoPacket(testPacketInfo(10001, 443, 4243, false))
+	pkt := packet.NewInfoPacket(testPacketInfo(10001, 4243, false))
 	SavePIDHint(pkt)
 
 	// One rotation moves the hint to the previous generation, where it is still found.
@@ -104,8 +104,8 @@ func TestPIDHintTakeRemovesBothGenerations(t *testing.T) { //nolint:paralleltest
 
 	// The same connection reports a hint before and after a rotation, so both
 	// generations hold an entry for it.
-	oldPkt := packet.NewInfoPacket(testPacketInfo(10002, 443, 4243, false))
-	newPkt := packet.NewInfoPacket(testPacketInfo(10002, 443, 4244, false))
+	oldPkt := packet.NewInfoPacket(testPacketInfo(10002, 4243, false))
+	newPkt := packet.NewInfoPacket(testPacketInfo(10002, 4244, false))
 	SavePIDHint(oldPkt)
 	pidHints.lock.Lock()
 	rotatePIDHints()
@@ -134,7 +134,7 @@ func TestPIDHintMaxEntries(t *testing.T) { //nolint:paralleltest // Mutates pack
 	resetPIDHints()
 
 	for i := range pidHintMaxEntries + 10 {
-		SavePIDHint(packet.NewInfoPacket(testPacketInfo(uint16(10000+i), 443, 1000+i, false))) //nolint:gosec // Test data.
+		SavePIDHint(packet.NewInfoPacket(testPacketInfo(uint16(10000+i), 1000+i, false))) //nolint:gosec // Test data.
 	}
 
 	if cnt := countPIDHints(); cnt > 2*pidHintMaxEntries {
@@ -146,14 +146,14 @@ func TestPIDHintIgnoresUnusablePackets(t *testing.T) { //nolint:paralleltest // 
 	resetPIDHints()
 
 	// Real packets must not create hints.
-	realPkt := newTestRealPacket(testPacketInfo(10100, 443, 4244, false))
+	realPkt := newTestRealPacket(testPacketInfo(10100, 4244, false))
 	SavePIDHint(realPkt)
 	if _, ok := takePIDHint(realPkt.GetConnectionID()); ok {
 		t.Error("expected no pid hint for a real packet")
 	}
 
 	// Info-only packets without a pid have nothing to offer.
-	noPID := packet.NewInfoPacket(testPacketInfo(10101, 443, process.UndefinedProcessID, false))
+	noPID := packet.NewInfoPacket(testPacketInfo(10101, process.UndefinedProcessID, false))
 	SavePIDHint(noPID)
 	if _, ok := takePIDHint(noPID.GetConnectionID()); ok {
 		t.Error("expected no pid hint for an info-only packet without a pid")
@@ -164,7 +164,7 @@ func TestPIDHintSetsInfoOnlyPacketsActive(t *testing.T) { //nolint:paralleltest 
 	resetPIDHints()
 	infoOnlyPacketsActive.UnSet()
 
-	SavePIDHint(packet.NewInfoPacket(testPacketInfo(10200, 443, 4245, false)))
+	SavePIDHint(packet.NewInfoPacket(testPacketInfo(10200, 4245, false)))
 
 	if !infoOnlyPacketsActive.IsSet() {
 		t.Error("expected info-only packets to be marked as active")
@@ -173,7 +173,7 @@ func TestPIDHintSetsInfoOnlyPacketsActive(t *testing.T) { //nolint:paralleltest 
 	// The flag describes the transport, not the payload, so it is also set for
 	// info-only packets that carry no usable pid.
 	infoOnlyPacketsActive.UnSet()
-	SavePIDHint(packet.NewInfoPacket(testPacketInfo(10201, 443, process.UndefinedProcessID, false)))
+	SavePIDHint(packet.NewInfoPacket(testPacketInfo(10201, process.UndefinedProcessID, false)))
 
 	if !infoOnlyPacketsActive.IsSet() {
 		t.Error("expected info-only packets without a pid to be marked as active")
@@ -190,26 +190,22 @@ func TestPIDHintConcurrency(t *testing.T) { //nolint:paralleltest // Mutates pac
 
 	var wg sync.WaitGroup
 	for worker := range 8 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for i := range 500 {
-				pkt := packet.NewInfoPacket(testPacketInfo(uint16(20000+worker*500+i), 443, 5000+i, false)) //nolint:gosec // Test data.
+				pkt := packet.NewInfoPacket(testPacketInfo(uint16(20000+worker*500+i), 5000+i, false)) //nolint:gosec // Test data.
 				SavePIDHint(pkt)
 				_, _ = takePIDHint(pkt.GetConnectionID())
 			}
-		}()
+		})
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for range 100 {
 			pidHints.lock.Lock()
 			rotatePIDHints()
 			pidHints.lock.Unlock()
 		}
-	}()
+	})
 
 	wg.Wait()
 }
@@ -217,7 +213,7 @@ func TestPIDHintConcurrency(t *testing.T) { //nolint:paralleltest // Mutates pac
 func TestIncompleteConnectionAdoptsPIDHint(t *testing.T) { //nolint:paralleltest // Mutates package state.
 	resetPIDHints()
 
-	info := testPacketInfo(10300, 443, 4246, false)
+	info := testPacketInfo(10300, 4246, false)
 	SavePIDHint(packet.NewInfoPacket(info))
 
 	// The real packet does not know the pid.
@@ -236,7 +232,7 @@ func TestIncompleteConnectionAdoptsPIDHint(t *testing.T) { //nolint:paralleltest
 func TestIncompleteConnectionKeepsPacketPID(t *testing.T) { //nolint:paralleltest // Mutates package state.
 	resetPIDHints()
 
-	info := testPacketInfo(10400, 443, 4247, false)
+	info := testPacketInfo(10400, 4247, false)
 	SavePIDHint(packet.NewInfoPacket(info))
 
 	// The real packet knows the pid itself and must not be overridden.
@@ -256,7 +252,7 @@ func TestIncompleteConnectionKeepsPacketDirection(t *testing.T) { //nolint:paral
 	resetPIDHints()
 
 	// The eBPF listener only ever reports outbound connections.
-	outbound := testPacketInfo(10500, 443, 4249, false)
+	outbound := testPacketInfo(10500, 4249, false)
 	SavePIDHint(packet.NewInfoPacket(outbound))
 
 	// The same connection, but intercepted on the inbound hook. The connection ID
@@ -290,7 +286,7 @@ func TestInfoAndRealPacketShareConnectionID(t *testing.T) {
 
 	for _, inbound := range []bool{false, true} {
 		for _, protocol := range []packet.IPProtocol{packet.TCP, packet.UDP} {
-			info := testPacketInfo(10500, 443, 4248, inbound)
+			info := testPacketInfo(10500, 4248, inbound)
 			info.Protocol = protocol
 
 			infoPkt := packet.NewInfoPacket(info)

@@ -283,12 +283,14 @@ func stop() error {
 	defer cancel()
 
 	if stopListener1 != nil {
-		if err := stopListener1(ctx); err != nil {
+		err := stopListener1(ctx)
+		if err != nil {
 			log.Warningf("nameserver: failed to stop listener1: %s", err)
 		}
 	}
 	if stopListener2 != nil {
-		if err := stopListener2(ctx); err != nil {
+		err := stopListener2(ctx)
+		if err != nil {
 			log.Warningf("nameserver: failed to stop listener2: %s", err)
 		}
 	}

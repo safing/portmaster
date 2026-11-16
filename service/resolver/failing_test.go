@@ -67,7 +67,7 @@ func TestOrderResolvers(t *testing.T) {
 func TestResolveAndCacheAsksFailingResolvers(t *testing.T) { //nolint:paralleltest // Replaces the global resolvers.
 	// Runs first: it needs the online status, and the resolvers of the other
 	// subtests do not answer the online check of the running module.
-	t.Run("failing resolver is not asked after a not found answer", func(t *testing.T) {
+	t.Run("failing resolver is not asked after a not found answer", func(t *testing.T) { //nolint:paralleltest // Replaces the global resolvers.
 		// Special-use domains are tried on all local resolvers, and a "not
 		// found" answer continues with the next one.
 		healthyAddr, healthyQueries := startTestDNSServer(t, dns.RcodeNameError)
@@ -96,7 +96,7 @@ func TestResolveAndCacheAsksFailingResolvers(t *testing.T) { //nolint:parallelte
 		}
 	})
 
-	t.Run("failing resolver is not asked while a healthy one answers", func(t *testing.T) {
+	t.Run("failing resolver is not asked while a healthy one answers", func(t *testing.T) { //nolint:paralleltest // Replaces the global resolvers.
 		healthyAddr, healthyQueries := startTestDNSServer(t, dns.RcodeSuccess)
 		healthy := newTestResolver(healthyAddr)
 		failingAddr, failingQueries := startTestDNSServer(t, dns.RcodeSuccess)
@@ -123,7 +123,7 @@ func TestResolveAndCacheAsksFailingResolvers(t *testing.T) { //nolint:parallelte
 		}
 	})
 
-	t.Run("failing resolver is asked after the healthy one does not answer", func(t *testing.T) {
+	t.Run("failing resolver is asked after the healthy one does not answer", func(t *testing.T) { //nolint:paralleltest // Replaces the global resolvers.
 		healthyAddr, _ := startTestDNSServer(t, noReply)
 		healthy := newTestResolver(healthyAddr)
 		failingAddr, failingQueries := startTestDNSServer(t, dns.RcodeSuccess)
@@ -146,7 +146,7 @@ func TestResolveAndCacheAsksFailingResolvers(t *testing.T) { //nolint:parallelte
 		}
 	})
 
-	t.Run("only resolver is failing and answers", func(t *testing.T) {
+	t.Run("only resolver is failing and answers", func(t *testing.T) { //nolint:paralleltest // Replaces the global resolvers.
 		addr, queries := startTestDNSServer(t, dns.RcodeSuccess)
 		failing := newTestResolver(addr)
 		markFailing(t, failing)
@@ -167,7 +167,7 @@ func TestResolveAndCacheAsksFailingResolvers(t *testing.T) { //nolint:parallelte
 		}
 	})
 
-	t.Run("only resolver is failing and does not answer", func(t *testing.T) {
+	t.Run("only resolver is failing and does not answer", func(t *testing.T) { //nolint:paralleltest // Replaces the global resolvers.
 		addr, _ := startTestDNSServer(t, noReply)
 		failing := newTestResolver(addr)
 		markFailing(t, failing)
@@ -200,14 +200,15 @@ func TestCheckFailingResolvers(t *testing.T) { //nolint:paralleltest // Replaces
 		{"answers with SERVFAIL", dns.RcodeServerFailure, false},
 		{"does not answer", noReply, true},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tt := range tests { //nolint:paralleltest // Subtests replace the global resolvers.
+		t.Run(tt.name, func(t *testing.T) { //nolint:paralleltest // Replaces the global resolvers.
 			addr, _ := startTestDNSServer(t, tt.rcode)
 			resolver := newTestResolver(addr)
 			markFailing(t, resolver)
 			useTestResolvers(t, resolver)
 
-			if err := module.mgr.Do("check failing resolvers", checkFailingResolvers); err != nil {
+			err := module.mgr.Do("check failing resolvers", checkFailingResolvers)
+			if err != nil {
 				t.Fatalf("check failed: %s", err)
 			}
 			if got := resolver.Conn.IsFailing(); got != tt.wantFailing {
@@ -337,7 +338,8 @@ func startTestDNSServer(t *testing.T, rcode int) (*net.UDPAddr, *atomic.Int32) {
 
 	queries := new(atomic.Int32)
 	if rcode == noReply {
-		if err := pc.Close(); err != nil {
+		err := pc.Close()
+		if err != nil {
 			t.Fatalf("failed to close listener: %s", err)
 		}
 		return addr, queries
@@ -365,7 +367,8 @@ func startTestDNSServer(t *testing.T, rcode int) (*net.UDPAddr, *atomic.Int32) {
 					A: net.IPv4(127, 0, 0, 1),
 				})
 			}
-			if err := w.WriteMsg(reply); err != nil {
+			err := w.WriteMsg(reply)
+			if err != nil {
 				t.Errorf("failed to send reply: %s", err)
 			}
 		}),
@@ -379,7 +382,8 @@ func startTestDNSServer(t *testing.T, rcode int) (*net.UDPAddr, *atomic.Int32) {
 		t.Fatalf("failed to start test DNS server: %s", err)
 	}
 	t.Cleanup(func() {
-		if err := server.Shutdown(); err != nil {
+		err := server.Shutdown()
+		if err != nil {
 			t.Errorf("failed to stop test DNS server: %s", err)
 		}
 	})

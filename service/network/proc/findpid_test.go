@@ -30,7 +30,8 @@ func TestFindPIDSharedSocket(t *testing.T) { //nolint:paralleltest // Uses the p
 	defer func() { _ = file.Close() }()
 
 	var stat syscall.Stat_t
-	if err := syscall.Fstat(int(file.Fd()), &stat); err != nil {
+	err = syscall.Fstat(int(file.Fd()), &stat)
+	if err != nil {
 		t.Fatalf("failed to stat socket: %s", err)
 	}
 	uid := os.Getuid()
@@ -43,11 +44,9 @@ func TestFindPIDSharedSocket(t *testing.T) { //nolint:paralleltest // Uses the p
 	results := make([]int, lookups)
 	var wg sync.WaitGroup
 	for i := range lookups {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			results[i] = findPID(uid, inode)
-		}()
+		})
 	}
 	wg.Wait()
 

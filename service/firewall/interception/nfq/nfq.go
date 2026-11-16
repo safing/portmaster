@@ -214,6 +214,26 @@ var (
 	verdictTimeoutHandler = (*packet).handleVerdictTimeout
 )
 
+// Destroy destroys the queue. Any error encountered is logged.
+func (q *Queue) Destroy() {
+	if q == nil {
+		return
+	}
+
+	q.cancelSocketCallback()
+
+	if nf := q.getNfq(); nf != nil {
+		if err := nf.Close(); err != nil {
+			log.Errorf("nfqueue: failed to close queue %d: %s", q.id, err)
+		}
+	}
+}
+
+// PacketChannel returns the packet channel.
+func (q *Queue) PacketChannel() <-chan pmpacket.Packet {
+	return q.packets
+}
+
 // queuePacket hands the packet to the handler queue and arms the watchdog
 // that drops the packet if no verdict is set in time.
 func (q *Queue) queuePacket(ctx context.Context, pkt *packet) {
@@ -239,28 +259,9 @@ func (q *Queue) queuePacket(ctx context.Context, pkt *packet) {
 		// will ever see it and set a verdict. Drop it now instead of letting
 		// it wait in the kernel queue until the verdict timeout.
 		log.Warningf("nfqueue: failed to queue packet %s (%s since it was handed over by the kernel), dropping", pkt.ID(), time.Since(pkt.Info().SeenAt))
-		if err := pkt.Drop(); err != nil {
+		err := pkt.Drop()
+		if err != nil {
 			log.Warningf("nfqueue: failed to drop unqueued packet %s: %s", pkt.ID(), err)
 		}
 	}
-}
-
-// Destroy destroys the queue. Any error encountered is logged.
-func (q *Queue) Destroy() {
-	if q == nil {
-		return
-	}
-
-	q.cancelSocketCallback()
-
-	if nf := q.getNfq(); nf != nil {
-		if err := nf.Close(); err != nil {
-			log.Errorf("nfqueue: failed to close queue %d: %s", q.id, err)
-		}
-	}
-}
-
-// PacketChannel returns the packet channel.
-func (q *Queue) PacketChannel() <-chan pmpacket.Packet {
-	return q.packets
 }

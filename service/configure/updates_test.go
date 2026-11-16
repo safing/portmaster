@@ -19,7 +19,8 @@ func TestIntelSigningKeysAreSeparate(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := IntelSigningTrustStore.GetSignet(rcpt.ID, true); err != nil {
+		_, err = IntelSigningTrustStore.GetSignet(rcpt.ID, true)
+		if err != nil {
 			t.Errorf("intel key %s missing from the intel trust store: %s", rcpt.ID, err)
 		}
 	}
@@ -28,7 +29,8 @@ func TestIntelSigningKeysAreSeparate(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := IntelSigningTrustStore.GetSignet(rcpt.ID, true); err == nil {
+		_, err = IntelSigningTrustStore.GetSignet(rcpt.ID, true)
+		if err == nil {
 			t.Errorf("code signing key %s must not be in the intel trust store", rcpt.ID)
 		}
 	}

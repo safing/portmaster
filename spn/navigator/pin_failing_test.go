@@ -38,9 +38,7 @@ func TestPinFailingStateLocking(t *testing.T) {
 
 	// Mark and reset the failing state like spn/crew and spn/captain do:
 	// without holding the map lock.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		defer close(done)
 
 		for range rounds {
@@ -49,14 +47,11 @@ func TestPinFailingStateLocking(t *testing.T) {
 			_ = pin.GetState()
 			_ = pin.IsFailing()
 		}
-	}()
+	})
 
 	// Concurrently run map-locked state updates and readers.
 	var changedWhileLocked int
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
+	wg.Go(func() {
 		matcher := m.DefaultOptions().Matcher(TransitHub, nil)
 		for {
 			select {
@@ -84,7 +79,7 @@ func TestPinFailingStateLocking(t *testing.T) {
 			_ = matcher(pin)
 			m.RUnlock()
 		}
-	}()
+	})
 
 	wg.Wait()
 

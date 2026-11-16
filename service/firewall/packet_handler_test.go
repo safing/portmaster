@@ -75,9 +75,9 @@ func TestFastTrackedLocalDNSKeepsKnownPID(t *testing.T) { //nolint:paralleltest 
 		},
 	}
 
-	for i, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			pkt := newDNSPacket(uint16(41000+i), tc.pktPID)
+	for i, tc := range tests { //nolint:paralleltest // Subtests share the global state modified by the parent test.
+		t.Run(tc.name, func(t *testing.T) { //nolint:paralleltest // Subtests share the global state modified by the parent test.
+			pkt := newDNSPacket(uint16(41000+i), tc.pktPID) //nolint:gosec // i is a small test index.
 			conn := &network.Connection{PID: tc.connPID}
 
 			verdict, permanent := fastTrackedPermit(conn, pkt)

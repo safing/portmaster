@@ -13,7 +13,7 @@ import (
 
 // TestProcessQueryCancel checks that a query that is canceled by the consumer
 // (eg. because the UI disconnected) does not block the query worker forever.
-func TestProcessQueryCancel(t *testing.T) {
+func TestProcessQueryCancel(t *testing.T) { //nolint:paralleltest // Modifies the global connection store.
 	// Not parallel: Modifies the global connection store.
 
 	// Add more connections than fit into the iterator buffer.

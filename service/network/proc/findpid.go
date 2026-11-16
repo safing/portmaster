@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"slices"
 	"strconv"
 
 	"github.com/safing/portmaster/base/log"
@@ -37,7 +38,7 @@ func GetPID(socketInfo socket.Info) (pid int) {
 func findPID(uid, inode int) (pid int) {
 	// Inodes are unsigned 32-bit values, but stored in an int. On 32-bit
 	// platforms, values above MaxInt32 wrap to negative, so format via uint32.
-	socketName := "socket:[" + strconv.FormatUint(uint64(uint32(inode)), 10) + "]"
+	socketName := "socket:[" + strconv.FormatUint(uint64(uint32(inode)), 10) + "]" //nolint:gosec // Intentional truncation to the unsigned 32-bit inode, see comment above.
 
 	// Always update pid table (it has a call limiter anyway)
 	updatePids()
@@ -67,10 +68,10 @@ func findPID(uid, inode int) (pid int) {
 	result, _, _ := socketScans.Do(socketName, func() (any, error) {
 		// Look through the PIDs in reverse order, because higher/newer PIDs will be more likely to
 		// be searched for.
-		for j := len(pids) - 1; j >= 0; j-- {
-			if pidHasSocket(pids[j], socketName) {
-				cacheSocketOwner(uid, inode, pids[j])
-				return pids[j], nil
+		for _, candidate := range slices.Backward(pids) {
+			if pidHasSocket(candidate, socketName) {
+				cacheSocketOwner(uid, inode, candidate)
+				return candidate, nil
 			}
 		}
 		return socket.UndefinedProcessID, nil

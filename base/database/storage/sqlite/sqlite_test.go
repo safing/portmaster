@@ -330,13 +330,15 @@ func TestQueryConsumerUsesSameDB(t *testing.T) {
 		seen[r.DatabaseKey()] = struct{}{}
 
 		opStart := time.Now()
-		if _, err := db.Get(r.DatabaseKey()); err != nil {
+		_, err := db.Get(r.DatabaseKey())
+		if err != nil {
 			nestedErrs++
 		}
 		updated := &TestRecord{S: "updated"}
 		updated.SetKey(r.Key())
 		updated.UpdateMeta()
-		if _, err := db.Put(updated); err != nil {
+		_, err = db.Put(updated)
+		if err != nil {
 			nestedErrs++
 		}
 		slowestOp = max(slowestOp, time.Since(opStart))

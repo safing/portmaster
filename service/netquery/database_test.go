@@ -149,7 +149,8 @@ func BenchmarkHistoryWrite(b *testing.B) {
 	require.NoError(b, db.ExecuteWrite(ctx, "INSERT INTO history.bench (id, n) VALUES (1, 0)"))
 
 	for b.Loop() {
-		if err := db.ExecuteWrite(ctx, "UPDATE history.bench SET n = n + 1 WHERE id = 1"); err != nil {
+		err := db.ExecuteWrite(ctx, "UPDATE history.bench SET n = n + 1 WHERE id = 1")
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -174,7 +175,8 @@ func BenchmarkUpdateBandwidthWithHistory(b *testing.B) {
 	}, true))
 
 	for b.Loop() {
-		if err := db.UpdateBandwidth(ctx, true, profileKey, processKey, connID, 100, 50); err != nil {
+		err := db.UpdateBandwidth(ctx, true, profileKey, processKey, connID, 100, 50)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}

@@ -19,10 +19,12 @@ func TestFileReplaced(t *testing.T) {
 	downloaded := filepath.Join(dir, "downloaded.mmdb")
 
 	content := []byte("mapped database")
-	if err := os.WriteFile(active, content, 0o600); err != nil {
+	err := os.WriteFile(active, content, 0o600)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(downloaded, content, 0o600); err != nil {
+	err = os.WriteFile(downloaded, content, 0o600)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -33,15 +35,18 @@ func TestFileReplaced(t *testing.T) {
 	}
 
 	// Give the replacement the same timestamp as the mapped file.
-	if err := os.Chtimes(downloaded, mapped.ModTime(), mapped.ModTime()); err != nil {
+	err = os.Chtimes(downloaded, mapped.ModTime(), mapped.ModTime())
+	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Updater: move the mapped file away, rename the replacement into place.
-	if err := os.Rename(active, purged); err != nil {
+	err = os.Rename(active, purged)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Rename(downloaded, active); err != nil {
+	err = os.Rename(downloaded, active)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -77,7 +82,8 @@ func TestFileReplaced(t *testing.T) {
 	}
 
 	// Missing file: an error, not a verdict.
-	if _, err := fileReplaced(mapped, filepath.Join(dir, "missing.mmdb")); err == nil {
+	_, err = fileReplaced(mapped, filepath.Join(dir, "missing.mmdb"))
+	if err == nil {
 		t.Error("missing file did not return an error")
 	}
 }

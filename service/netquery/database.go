@@ -157,7 +157,8 @@ func New(dbPath string) (*Database, error) {
 		// cache). Attaching applies the default synchronous=FULL to that shared
 		// pager again, which silently undoes the setting of the write connection
 		// and makes every history write wait for an fsync.
-		if err := sqlitex.ExecuteTransient(c, "PRAGMA history.synchronous=NORMAL;", nil); err != nil {
+		err = sqlitex.ExecuteTransient(c, "PRAGMA history.synchronous=NORMAL;", nil)
+		if err != nil {
 			_ = c.Close()
 			return nil, fmt.Errorf("failed to configure history database: %w", err)
 		}
@@ -289,7 +290,8 @@ func (db *Database) ApplyMigrations() error {
 		"PRAGMA history.journal_mode=WAL;",
 		"PRAGMA history.synchronous=NORMAL;",
 	} {
-		if err := sqlitex.ExecuteTransient(db.writeConn, pragma, nil); err != nil {
+		err := sqlitex.ExecuteTransient(db.writeConn, pragma, nil)
+		if err != nil {
 			return fmt.Errorf("failed to configure history database (%s): %w", pragma, err)
 		}
 	}
@@ -340,7 +342,8 @@ func (db *Database) ApplyMigrations() error {
 
 	// The bandwidth chart joins on conn_id, and Cleanup deletes through it.
 	bwIndex := `CREATE INDEX IF NOT EXISTS main.bandwidth_conn_id_index ON bandwidth (conn_id)`
-	if err := sqlitex.ExecuteTransient(db.writeConn, bwIndex, nil); err != nil {
+	err := sqlitex.ExecuteTransient(db.writeConn, bwIndex, nil)
+	if err != nil {
 		return fmt.Errorf("failed to create index on main.bandwidth: %w", err)
 	}
 
@@ -462,11 +465,12 @@ func (db *Database) Cleanup(ctx context.Context, threshold time.Time) (int, erro
 	// of main.bandwidth never runs. Remove the bandwidth data of the connections
 	// about to be deleted, otherwise the in-memory table grows without bound.
 	// This must run before the connections are deleted, as it selects by them.
-	if err := db.ExecuteWrite(ctx, "DELETE FROM main.bandwidth WHERE conn_id IN (SELECT id FROM main.connections "+where+");", args); err != nil {
+	err := db.ExecuteWrite(ctx, "DELETE FROM main.bandwidth WHERE conn_id IN (SELECT id FROM main.connections "+where+");", args)
+	if err != nil {
 		return 0, fmt.Errorf("failed to remove bandwidth data of deleted connections: %w", err)
 	}
 
-	err := db.ExecuteWrite(ctx, sql, args)
+	err = db.ExecuteWrite(ctx, sql, args)
 	if err != nil {
 		return 0, err
 	}

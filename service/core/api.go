@@ -104,22 +104,24 @@ func registerAPIEndpoints() error {
 		return err
 	}
 
-	if err := api.RegisterEndpoint(api.Endpoint{
+	err := api.RegisterEndpoint(api.Endpoint{
 		Path:       "app/profile",
 		Read:       api.PermitUser,
 		StructFunc: getMyProfile,
 		Name:       "Get the ID of the calling profile",
-	}); err != nil {
+	})
+	if err != nil {
 		return err
 	}
 
-	if err := api.RegisterEndpoint(api.Endpoint{
+	err = api.RegisterEndpoint(api.Endpoint{
 		Path:        "core/paths",
 		Read:        api.PermitUser,
 		StructFunc:  getPaths,
 		Name:        "Get Directories",
 		Description: "Returns the directories used by Portmaster: binaries (bin), variable data (data) and log files (logs).",
-	}); err != nil {
+	})
+	if err != nil {
 		return err
 	}
 
@@ -340,7 +342,7 @@ func getSavePermission(p string) api.Permission {
 	}
 }
 
-func getPaths(_ *api.Request) (interface{}, error) {
+func getPaths(_ *api.Request) (any, error) {
 	return map[string]string{
 		"bin":  module.instance.BinDir(),
 		"data": module.instance.DataDir(),

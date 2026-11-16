@@ -20,7 +20,8 @@ func TestGetTableFromSourceLargeInodeAndUID(t *testing.T) {
 		"   1: 00000000:0050 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 4294967295 1 0000000000000000 100 0 0 10 0\n"
 
 	path := filepath.Join(t.TempDir(), "tcp")
-	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+	err := os.WriteFile(path, []byte(content), 0o600)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -31,11 +32,11 @@ func TestGetTableFromSourceLargeInodeAndUID(t *testing.T) {
 	if len(connections) != 1 || len(listeners) != 1 {
 		t.Fatalf("expected 1 connection and 1 listener, got %d and %d", len(connections), len(listeners))
 	}
-	if uid, inode := connections[0].GetUIDandInode(); uint32(uid) != 4294967294 || uint32(inode) != 3000000000 {
-		t.Errorf("connection: got uid=%d inode=%d", uint32(uid), uint32(inode))
+	if uid, inode := connections[0].GetUIDandInode(); uint32(uid) != 4294967294 || uint32(inode) != 3000000000 { //nolint:gosec // Intentionally checking the unsigned 32-bit values.
+		t.Errorf("connection: got uid=%d inode=%d", uint32(uid), uint32(inode)) //nolint:gosec // Intentionally printing the unsigned 32-bit values.
 	}
-	if _, inode := listeners[0].GetUIDandInode(); uint32(inode) != 4294967295 {
-		t.Errorf("listener: got inode=%d", uint32(inode))
+	if _, inode := listeners[0].GetUIDandInode(); uint32(inode) != 4294967295 { //nolint:gosec // Intentionally checking the unsigned 32-bit value.
+		t.Errorf("listener: got inode=%d", uint32(inode)) //nolint:gosec // Intentionally printing the unsigned 32-bit value.
 	}
 }
 

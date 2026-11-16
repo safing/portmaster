@@ -25,7 +25,7 @@ func setWatchdogForTest(t *testing.T, timeout time.Duration) <-chan *packet {
 	return fired
 }
 
-func TestVerdictWatchdogStoppedByVerdict(t *testing.T) {
+func TestVerdictWatchdogStoppedByVerdict(t *testing.T) { //nolint:paralleltest // Modifies the package-level verdict timeout and handler.
 	fired := setWatchdogForTest(t, 50*time.Millisecond)
 
 	q := newTestQueue()
@@ -51,7 +51,7 @@ func TestVerdictWatchdogStoppedByVerdict(t *testing.T) {
 	}
 }
 
-func TestVerdictWatchdogVerdictBeforeArming(t *testing.T) {
+func TestVerdictWatchdogVerdictBeforeArming(t *testing.T) { //nolint:paralleltest // Modifies the package-level verdict timeout and handler.
 	fired := setWatchdogForTest(t, 50*time.Millisecond)
 
 	// The verdict is set by a handler before the receive goroutine armed the
@@ -70,7 +70,7 @@ func TestVerdictWatchdogVerdictBeforeArming(t *testing.T) {
 	}
 }
 
-func TestVerdictWatchdogFiresWithoutVerdict(t *testing.T) {
+func TestVerdictWatchdogFiresWithoutVerdict(t *testing.T) { //nolint:paralleltest // Modifies the package-level verdict timeout and handler.
 	const timeout = 100 * time.Millisecond
 	fired := setWatchdogForTest(t, timeout)
 
@@ -99,6 +99,8 @@ func TestVerdictWatchdogFiresWithoutVerdict(t *testing.T) {
 }
 
 func TestHandleVerdictTimeoutAfterVerdict(t *testing.T) {
+	t.Parallel()
+
 	// If the verdict was set by the time the watchdog fires, the timeout
 	// handler must neither log nor try to drop (which would need a live queue
 	// and panic without one).
@@ -107,7 +109,7 @@ func TestHandleVerdictTimeoutAfterVerdict(t *testing.T) {
 	pkt.handleVerdictTimeout()
 }
 
-func TestQueuePacketCanceled(t *testing.T) {
+func TestQueuePacketCanceled(t *testing.T) { //nolint:paralleltest // Modifies the package-level verdict timeout and handler.
 	fired := setWatchdogForTest(t, 50*time.Millisecond)
 
 	// Full handler queue and canceled context: the packet is not queued and

@@ -76,7 +76,8 @@ func TestMyNetworksRefreshIsShared(t *testing.T) { //nolint:paralleltest // Repl
 	}
 
 	// The result of the shared call is used.
-	if mine, err := IsMyIP(newNet.IP); err != nil || !mine {
+	mine, err := IsMyIP(newNet.IP)
+	if err != nil || !mine {
 		t.Fatalf("IP of the refreshed network: mine=%v err=%v", mine, err)
 	}
 }
@@ -91,10 +92,12 @@ func TestMyNetworksRefreshIsThrottledFromEnd(t *testing.T) { //nolint:parallelte
 
 	// A call that takes longer than the throttle time is not followed by the
 	// next one at once.
-	if err := refreshMyNetworks(); err != nil {
+	err := refreshMyNetworks()
+	if err != nil {
 		t.Fatalf("refresh failed: %s", err)
 	}
-	if err := refreshMyNetworks(); err != nil {
+	err = refreshMyNetworks()
+	if err != nil {
 		t.Fatalf("refresh failed: %s", err)
 	}
 	if n := calls.Load(); n != 1 {
@@ -109,13 +112,15 @@ func TestMyNetworksRefreshErrorIsRetried(t *testing.T) { //nolint:paralleltest /
 		return nil, errTestRefresh
 	})
 
-	if err := refreshMyNetworks(); !errors.Is(err, errTestRefresh) {
+	err := refreshMyNetworks()
+	if !errors.Is(err, errTestRefresh) {
 		t.Fatalf("got error %v, want %v", err, errTestRefresh)
 	}
 
 	// Within the throttle time, the previous error is returned without a new
 	// OS call.
-	if err := refreshMyNetworks(); !errors.Is(err, errTestRefresh) {
+	err = refreshMyNetworks()
+	if !errors.Is(err, errTestRefresh) {
 		t.Fatalf("got error %v, want %v", err, errTestRefresh)
 	}
 	if n := calls.Load(); n != 1 {
@@ -144,7 +149,8 @@ func TestMyNetworksChangeDuringRefreshIsKept(t *testing.T) { //nolint:parallelte
 	<-entered
 	networkChangedBroadcastFlag.NotifyAndReset()
 	close(unblock)
-	if err := <-done; err != nil {
+	err := <-done
+	if err != nil {
 		t.Fatalf("refresh failed: %s", err)
 	}
 
@@ -189,7 +195,8 @@ func TestMyNetworksCallersWaitForRefreshAfterChange(t *testing.T) { //nolint:par
 	if localNet := <-result; localNet == nil {
 		t.Fatal("caller did not get the new networks")
 	}
-	if err := <-done; err != nil {
+	err := <-done
+	if err != nil {
 		t.Fatalf("refresh failed: %s", err)
 	}
 }

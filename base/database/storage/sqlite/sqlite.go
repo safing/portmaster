@@ -238,7 +238,7 @@ func (db *SQLite) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error
 
 	// Check if we should use prepared statement optimized inserting.
 	if UsePreparedStatements {
-		return db.putManyWithPreparedStmts(shadowDelete)
+		return db.putManyWithPreparedStmts()
 	}
 
 	batch := make(chan record.Record, 100)
@@ -354,62 +354,6 @@ pagesLoop:
 	}
 
 	queryIter.Finish(err)
-}
-
-// feedQueryPage sends the matching records of the given page to the query
-// iterator. It returns whether the consumer is done or an error.
-func (db *SQLite) feedQueryPage(queryIter *iterator.Iterator, q *query.Query, page models.RecordSlice, local, internal bool) (done bool, err error) {
-	for _, r := range page {
-		// Check if key matches.
-		if !q.MatchesKey(r.Key) {
-			continue
-		}
-
-		// Check Meta.
-		m := getMeta(r)
-		if !m.CheckValidity() ||
-			!m.CheckPermission(local, internal) {
-			continue
-		}
-
-		// Check Data.
-		if q.HasWhereCondition() {
-			if r.Format.IsNull() || r.Value.IsNull() {
-				continue
-			}
-
-			jsonData := string(r.Value.GetOrZero())
-			jsonAccess := accessor.NewJSONAccessor(&jsonData)
-			if !q.MatchesAccessor(jsonAccess) {
-				continue
-			}
-		}
-
-		// Build database record.
-		matched, _ := record.NewWrapperFromDatabase(
-			db.name,
-			r.Key,
-			m,
-			uint8(r.Format.GetOrZero()), //nolint:gosec // Values are within uint8.
-			r.Value.GetOrZero(),
-		)
-
-		select {
-		case <-queryIter.Done:
-			return true, nil
-		case queryIter.Next <- matched:
-		default:
-			select {
-			case <-queryIter.Done:
-				return true, nil
-			case queryIter.Next <- matched:
-			case <-time.After(1 * time.Second):
-				return true, ErrQueryTimeout
-			}
-		}
-	}
-
-	return false, nil
 }
 
 // Purge deletes all records that match the given query. It returns the number of successful deletes and an error.
@@ -605,6 +549,62 @@ func (db *SQLite) Shutdown() error {
 	db.cancelCtx()
 
 	return db.bob.Close()
+}
+
+// feedQueryPage sends the matching records of the given page to the query
+// iterator. It returns whether the consumer is done or an error.
+func (db *SQLite) feedQueryPage(queryIter *iterator.Iterator, q *query.Query, page models.RecordSlice, local, internal bool) (done bool, err error) {
+	for _, r := range page {
+		// Check if key matches.
+		if !q.MatchesKey(r.Key) {
+			continue
+		}
+
+		// Check Meta.
+		m := getMeta(r)
+		if !m.CheckValidity() ||
+			!m.CheckPermission(local, internal) {
+			continue
+		}
+
+		// Check Data.
+		if q.HasWhereCondition() {
+			if r.Format.IsNull() || r.Value.IsNull() {
+				continue
+			}
+
+			jsonData := string(r.Value.GetOrZero())
+			jsonAccess := accessor.NewJSONAccessor(&jsonData)
+			if !q.MatchesAccessor(jsonAccess) {
+				continue
+			}
+		}
+
+		// Build database record.
+		matched, _ := record.NewWrapperFromDatabase(
+			db.name,
+			r.Key,
+			m,
+			uint8(r.Format.GetOrZero()), //nolint:gosec // Values are within uint8.
+			r.Value.GetOrZero(),
+		)
+
+		select {
+		case <-queryIter.Done:
+			return true, nil
+		case queryIter.Next <- matched:
+		default:
+			select {
+			case <-queryIter.Done:
+				return true, nil
+			case queryIter.Next <- matched:
+			case <-time.After(1 * time.Second):
+				return true, ErrQueryTimeout
+			}
+		}
+	}
+
+	return false, nil
 }
 
 type statementLogger struct{}

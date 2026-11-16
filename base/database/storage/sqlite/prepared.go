@@ -51,7 +51,7 @@ func (db *SQLite) buildUpsert(rows int) (string, error) {
 }
 
 // PutMany stores many records in the database.
-func (db *SQLite) putManyWithPreparedStmts(shadowDelete bool) (chan<- record.Record, <-chan error) {
+func (db *SQLite) putManyWithPreparedStmts() (chan<- record.Record, <-chan error) {
 	batch := make(chan record.Record, 100)
 	errs := make(chan error, 1)
 

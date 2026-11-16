@@ -121,32 +121,6 @@ func (pin *Pin) String() string {
 	return "<Pin " + pin.Hub.Name() + ">"
 }
 
-// lockState locks the State and FailingUntil fields of the Pin for writing and
-// returns the function to unlock them again.
-// These fields are guarded by the lock of the owning Map, as all state
-// updates within the navigator are done while holding the Map lock.
-// No other lock may be acquired while holding the returned lock.
-// Pins without an owning Map fall back to the Pin lock.
-func (pin *Pin) lockState() (unlock func()) {
-	if pin.owner != nil {
-		pin.owner.Lock()
-		return pin.owner.Unlock
-	}
-	pin.Lock()
-	return pin.Unlock
-}
-
-// rLockState locks the State and FailingUntil fields of the Pin for reading
-// and returns the function to unlock them again. See lockState.
-func (pin *Pin) rLockState() (unlock func()) {
-	if pin.owner != nil {
-		pin.owner.RLock()
-		return pin.owner.RUnlock
-	}
-	pin.Lock()
-	return pin.Unlock
-}
-
 // GetState returns the state of the pin.
 // The owning Map is read locked for this, so the Map must not be locked by
 // the caller.
@@ -270,12 +244,6 @@ func (pin *Pin) IsFailing() bool {
 	return pin.isFailing()
 }
 
-// isFailing returns whether the pin should be treated as failing.
-// The owning Map must be locked by the caller.
-func (pin *Pin) isFailing() bool {
-	return time.Now().Before(pin.FailingUntil)
-}
-
 // MarkAsFailingFor marks the pin as failing.
 // The owning Map is locked for this, so the Map must not be locked by the
 // caller.
@@ -286,6 +254,48 @@ func (pin *Pin) MarkAsFailingFor(duration time.Duration) {
 	unlock()
 
 	pin.pushChange()
+}
+
+// ResetFailingState resets the failing state.
+// The owning Map is locked for this, so the Map must not be locked by the
+// caller.
+// Changes are not pushed, but Pins are marked.
+func (pin *Pin) ResetFailingState() {
+	defer pin.lockState()()
+
+	pin.resetFailingState()
+}
+
+// lockState locks the State and FailingUntil fields of the Pin for writing and
+// returns the function to unlock them again.
+// These fields are guarded by the lock of the owning Map, as all state
+// updates within the navigator are done while holding the Map lock.
+// No other lock may be acquired while holding the returned lock.
+// Pins without an owning Map fall back to the Pin lock.
+func (pin *Pin) lockState() (unlock func()) {
+	if pin.owner != nil {
+		pin.owner.Lock()
+		return pin.owner.Unlock
+	}
+	pin.Lock()
+	return pin.Unlock
+}
+
+// rLockState locks the State and FailingUntil fields of the Pin for reading
+// and returns the function to unlock them again. See lockState.
+func (pin *Pin) rLockState() (unlock func()) {
+	if pin.owner != nil {
+		pin.owner.RLock()
+		return pin.owner.RUnlock
+	}
+	pin.Lock()
+	return pin.Unlock
+}
+
+// isFailing returns whether the pin should be treated as failing.
+// The owning Map must be locked by the caller.
+func (pin *Pin) isFailing() bool {
+	return time.Now().Before(pin.FailingUntil)
 }
 
 // markAsFailingFor marks the pin as failing.
@@ -301,16 +311,6 @@ func (pin *Pin) markAsFailingFor(duration time.Duration) {
 	pin.addStates(StateFailing)
 
 	pin.pushChanges.Set()
-}
-
-// ResetFailingState resets the failing state.
-// The owning Map is locked for this, so the Map must not be locked by the
-// caller.
-// Changes are not pushed, but Pins are marked.
-func (pin *Pin) ResetFailingState() {
-	defer pin.lockState()()
-
-	pin.resetFailingState()
 }
 
 // resetFailingState resets the failing state.
