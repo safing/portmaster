@@ -85,7 +85,8 @@ pub fn register_api(
         .with_read(PERMIT_ANYONE)
         .with_data(move |request| {
             let style = request.query_param("style").unwrap_or_default();
-            Ok(debug_info(&netquery_db, style).into_bytes())
+            let chains = pm_compat::iptables::SystemChainLister::new();
+            Ok(debug_info(&netquery_db, style, &chains).into_bytes())
         }),
     )?;
 
@@ -205,7 +206,11 @@ fn now() -> i64 {
 /// Sections use Go's `base/utils/debug` layout via `pm_debug`. Go-specific
 /// data that has no Rust equivalent (goroutine stacks, worker info, module
 /// states) is represented by the sections that are available here.
-fn debug_info(db: &pm_netquery::Database, style: &str) -> String {
+fn debug_info(
+    db: &pm_netquery::Database,
+    style: &str,
+    chains: &dyn pm_compat::iptables::ChainLister,
+) -> String {
     use pm_debug::{ADD_CONTENT_LINE_BREAKS, USE_CODE_SECTION};
 
     let mut di = pm_debug::Info::new().with_style(style);
@@ -271,6 +276,11 @@ fn debug_info(db: &pm_netquery::Database, style: &str) -> String {
         ),
         Err(_) => di.add_section("Network Addresses", USE_CODE_SECTION, &[&connections]),
     }
+
+    // Go compat.AddToDebugInfo: the current iptables chains. Listing is a
+    // no-op failure when the core is not privileged, which is reported as a
+    // "(failed)" section instead of panicking.
+    pm_compat::debug::add_to_debug_info(&mut di, chains);
 
     di.into_string()
 }

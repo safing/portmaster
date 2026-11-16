@@ -12,6 +12,7 @@ path = "src/main.rs"
 [dependencies]
 pm-apprise = { path = "../pm-apprise" }
 pm-broadcasts = { path = "../pm-broadcasts" }
+pm-compat = { path = "../pm-compat" }
 anyhow.workspace = true
 async-trait.workspace = true
 getrandom.workspace = true

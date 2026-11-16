@@ -64,6 +64,8 @@ pub struct Service {
     pub device_locations: Arc<crate::location::CoreDeviceLocations>,
     /// Firewall environment and packet pipeline.
     pub firewall: Arc<crate::firewall::Firewall>,
+    /// Compatibility module: self-check, conflict notifications and hooks.
+    pub compat: Arc<pm_compat::Compat>,
     /// Pause/resume control module.
     pub control: Arc<pm_control::Control<crate::control::CoreControlEnv>>,
     /// YAML-driven broadcast notifications module.
@@ -435,6 +437,34 @@ impl Service {
             databases.interface(pm_resolver::ipinfo::ip_info_interface_options()),
         ));
 
+        // Compatibility module (Go service/compat). Wired into the firewall
+        // hooks, the periodic self-check worker and the debug output below.
+        let warning_profiles = Arc::clone(&profiles);
+        let set_app_warning: pm_compat::module::SetAppWarning = Arc::new(move |id, message| {
+            let Ok(mut profile) = warning_profiles.store().get(id) else {
+                return;
+            };
+            let now = pm_database::now();
+            if profile.warning == message && now - profile.warning_last_updated < 3600 {
+                return;
+            }
+            profile.warning = message.to_string();
+            profile.warning_last_updated = now;
+            if let Err(error) = warning_profiles.store().save(&profile) {
+                tracing::warn!(%error, "compat: failed to save profile warning");
+            }
+        });
+        let compat = pm_compat::Compat::new(pm_compat::CompatDeps {
+            notifications: Arc::clone(&notifications),
+            probe: Arc::new(pm_compat::RealProbe::new()),
+            states: Arc::new(pm_mgr::StateMgr::new("Compat")),
+            net_changed: pm_netenv::network_changed_flag(),
+            dns_query_interception: config.get_as_bool("filter/dnsQueryInterception", true)(),
+            nameserver_listen_ip: "127.0.0.1".to_string(),
+            resolver_disabled: dns.resolver().is_disabled(),
+            set_app_warning: Some(set_app_warning),
+        });
+
         // Split tunnel request queue and proxies. The proxies are only started
         // when the split tunnel module is enabled.
         let split_queue = Arc::new(pm_splittun::RequestQueue::new());
@@ -461,6 +491,7 @@ impl Service {
                 profiles,
                 split_tunnel: split_env,
                 ip_info,
+                compat: Arc::clone(&compat),
                 packet_metrics_file: options.packet_metrics_file.clone(),
             },
         )?);
@@ -507,6 +538,22 @@ impl Service {
         if let Err(error) = broadcasts.ensure_install_info() {
             tracing::warn!(%error, "broadcasts: failed to ensure install info");
         }
+
+        // Compatibility self-check endpoint (Go compat/self-check).
+        let compat_api = Arc::clone(&compat);
+        api.register_endpoint(
+            pm_api::Endpoint::new(
+                "compat/self-check",
+                "Run Integration Self-Check",
+                "Runs a couple integration self-checks in order to see if the system integration works.",
+            )
+            .with_read(pm_api::PERMIT_USER)
+            .with_action(move |_| match compat_api.run_selfcheck() {
+                Ok(()) => Ok("self-check successful".to_string()),
+                Err(error) => Err(pm_api::ApiError::Message(error.message)),
+            }),
+        )
+        .map_err(|error| anyhow::anyhow!("register compat api: {error}"))?;
 
         // Netquery API on top of the live connection database.
         let retention_profiles = Arc::clone(&firewall.profiles);
@@ -561,6 +608,7 @@ impl Service {
             apprise,
             device_locations,
             firewall,
+            compat,
             control,
             broadcasts,
             restart_token,
@@ -610,6 +658,8 @@ impl Service {
         let config = Arc::clone(&self.config);
         let firewall_env = Arc::clone(&self.firewall.env);
         let firewall_profiles = Arc::clone(&self.firewall.profiles);
+        let compat_refresh = Arc::clone(&self.compat);
+        let resolver_for_compat = self.dns.resolver().clone();
         let mut changes = self
             .profile_changes
             .lock()
@@ -642,6 +692,10 @@ impl Service {
                     pm_updates::binary_update_url_list(&release_channel),
                 );
                 intel_updater.configure(auto_intel, pm_updates::intel_update_urls());
+                compat_refresh.refresh_options(
+                    config.get_as_bool("filter/dnsQueryInterception", true)(),
+                    resolver_for_compat.is_disabled(),
+                );
             }
         });
 
@@ -672,6 +726,67 @@ impl Service {
                 .run(tokio_util::sync::CancellationToken::new())
                 .await;
         });
+
+        // Compatibility self-check: first run after 15 seconds, then every
+        // five minutes (Go selfcheckWorkerMgr). The check blocks on channel
+        // waits, so it runs on a blocking worker.
+        let compat_check = Arc::clone(&self.compat);
+        let compat_worker = tokio::spawn(async move {
+            let start = tokio::time::Instant::now()
+                + pm_compat::SELF_CHECK_RETRY_AFTER;
+            let mut interval =
+                tokio::time::interval_at(start, pm_compat::SELF_CHECK_REPEAT);
+            loop {
+                interval.tick().await;
+                let compat = Arc::clone(&compat_check);
+                let _ = tokio::task::spawn_blocking(move || compat.periodic_selfcheck()).await;
+            }
+        });
+
+        // A network change triggers an immediate self-check, like the Go
+        // EventNetworkChange callback. The module ignores the resulting issue
+        // when the network-changed flag is still set.
+        let compat_net = Arc::clone(&self.compat);
+        let compat_net_worker = tokio::spawn(async move {
+            let mut events = pm_netenv::shared()
+                .online_status_events()
+                .subscribe("compat-selfcheck", 8);
+            while events.recv().await.is_some() {
+                if compat_net.net_changed_flag().is_set() {
+                    let compat = Arc::clone(&compat_net);
+                    tokio::spawn(async move {
+                        let _ = tokio::task::spawn_blocking(move || compat.periodic_selfcheck())
+                            .await;
+                    });
+                }
+            }
+        });
+
+        // Forward Compat module states into the system status (Go SyncWithState).
+        let status_states = Arc::clone(&self.status);
+        let mut compat_states = self.compat.states().events().subscribe("compat-status", 16);
+        let compat_state_worker = tokio::spawn(async move {
+            while let Some(update) = compat_states.recv().await {
+                status_states.handle_module_status_update(update);
+            }
+        });
+
+        // Clean expired notification thresholds once an hour, like Go.
+        let compat_clean = Arc::clone(&self.compat);
+        let compat_clean_worker = tokio::spawn(async move {
+            let mut interval =
+                tokio::time::interval(pm_compat::CLEAN_NOTIFY_THRESHOLD_REPEAT);
+            loop {
+                interval.tick().await;
+                compat_clean.clean_notify_thresholds();
+            }
+        });
+
+        // Publish the nameserver address used in the manual-DNS notification.
+        if let Some(address) = self.dns.listen_addrs().await.first() {
+            self.compat
+                .set_nameserver_listen_ip(address.ip().to_string());
+        }
 
         // Binary updates: check every hour (first after 15 seconds, like Go).
         let binary_worker = {
@@ -820,11 +935,16 @@ impl Service {
         network_worker.abort();
         online_feedback.abort();
         online_worker.abort();
+        compat_worker.abort();
+        compat_net_worker.abort();
+        compat_state_worker.abort();
+        compat_clean_worker.abort();
         binary_worker.abort();
         intel_worker.abort();
         list_watcher.abort();
         broadcasts_worker.abort();
         self.split_proxies.stop();
+        self.compat.stop();
         self.control.shutdown().await;
         if let Err(error) = self.firewall.stop().await {
             tracing::warn!(%error, "filter: failed to stop interception");
