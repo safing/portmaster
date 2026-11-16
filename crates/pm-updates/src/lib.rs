@@ -22,6 +22,7 @@
 //!   same Go duration layout, but the exact seconds depend on the clock.
 
 mod config;
+mod configure;
 mod downloader;
 mod glob;
 mod index;
@@ -31,6 +32,12 @@ mod updater;
 mod version;
 
 pub use config::{ConfigError, UpdateCommandConfig, UpdaterConfig};
+pub use configure::{
+    binary_update_url_list, binary_update_urls, intel_update_urls, DEFAULT_BETA_BINARY_INDEX_URLS,
+    DEFAULT_BINARY_INDEX_NAME, DEFAULT_INTEL_INDEX_NAME, DEFAULT_INTEL_INDEX_URLS,
+    DEFAULT_STABLE_BINARY_INDEX_URLS, DEFAULT_STAGING_BINARY_INDEX_URLS,
+    DEFAULT_SUPPORT_BINARY_INDEX_URLS,
+};
 pub use glob::{Glob, GlobError};
 pub use index_scan::{generate_index_from_dir, sha256_of_file, IndexScanConfig, ScanError};
 pub use upgrade::{UpgradeError, Upgrader};
