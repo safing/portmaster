@@ -68,7 +68,15 @@ type tcpResolverConn struct {
 	heartbeat chan struct{}
 	// abandoned signifies if the resolver conn has been abandoned.
 	abandoned *abool.AtomicBool
+	// stopped is closed when the handler has stopped. Queries are not taken
+	// anymore then, and the response channels of all in-flight queries are
+	// already closed.
+	stopped chan struct{}
 }
+
+// errTCPConnStopped is returned when the connection stopped before it took
+// the query. The query was not sent and may be retried on a new connection.
+var errTCPConnStopped = fmt.Errorf("%w: connection stopped before sending the query", ErrFailure)
 
 // tcpQuery holds the query information for a tcpResolverConn.
 type tcpQuery struct {
@@ -135,6 +143,8 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		select {
 		case existingConn.heartbeat <- struct{}{}:
 			return existingConn, nil
+		case <-existingConn.stopped:
+			// The connection stopped after it was checked above. Create a new one.
 		case <-time.After(heartbeatTimeout):
 			log.Warningf("resolver: heartbeat for dns client %s failed", tr.resolver.Info.DescriptiveName())
 		case <-ctx.Done():
@@ -216,6 +226,7 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		inFlightTimeout: 2 * defaultRequestTimeout,
 		heartbeat:       make(chan struct{}),
 		abandoned:       abool.New(),
+		stopped:         make(chan struct{}),
 	}
 
 	// Start worker.
@@ -231,46 +242,22 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 	queryStarted := time.Now()
 
-	// Get resolver connection.
-	resolverConn, err := tr.getOrCreateResolverConn(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create query request.
+	// The connection may stop right after it was handed out to this query,
+	// e.g. when it is recycled. Send the query on a new connection then.
 	tq := &tcpQuery{
 		Query:    q,
 		Response: make(chan *dns.Msg),
 	}
-
-	// Submit query request to live connection.
-	select {
-	case resolverConn.queries <- tq:
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-module.mgr.Done():
-		return nil, ErrShuttingDown
-	case <-time.After(defaultRequestTimeout):
-		return nil, ErrTimeout
+	reply, err := tr.query(ctx, tq)
+	if errors.Is(err, errTCPConnStopped) {
+		tq = &tcpQuery{
+			Query:    q,
+			Response: make(chan *dns.Msg),
+		}
+		reply, err = tr.query(ctx, tq)
 	}
-
-	// Wait for reply.
-	var reply *dns.Msg
-	select {
-	case reply = <-tq.Response:
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-module.mgr.Done():
-		return nil, ErrShuttingDown
-	case <-time.After(defaultRequestTimeout):
-		return nil, ErrTimeout
-	}
-
-	// Check if we have a reply.
-	if reply == nil {
-		// Resolver is shutting down. The Portmaster may be shutting down, or
-		// there is a connection error.
-		return nil, ErrFailure
+	if err != nil {
+		return nil, err
 	}
 
 	// Check if the reply was blocked upstream.
@@ -300,6 +287,58 @@ func (tr *TCPResolver) ForceReconnect(ctx context.Context) {
 	tr.resolverConn.abandoned.Set()
 
 	log.Tracer(ctx).Tracef("resolver: marked %s for reconnecting", tr.resolver)
+}
+
+// query sends the query on a connection and waits for the reply. It returns
+// errTCPConnStopped if the connection stopped before it took the query.
+func (tr *TCPResolver) query(ctx context.Context, tq *tcpQuery) (*dns.Msg, error) {
+	// Get resolver connection.
+	resolverConn, err := tr.getOrCreateResolverConn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Submit query request to live connection.
+	select {
+	case resolverConn.queries <- tq:
+	case <-resolverConn.stopped:
+		return nil, errTCPConnStopped
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-module.mgr.Done():
+		return nil, ErrShuttingDown
+	case <-time.After(defaultRequestTimeout):
+		return nil, ErrTimeout
+	}
+
+	// Wait for reply.
+	var reply *dns.Msg
+	select {
+	case reply = <-tq.Response:
+	case <-resolverConn.stopped:
+		// The handler closed the response channels of all queries it took
+		// before it stopped. Any other query is still in the queue and was
+		// never sent.
+		select {
+		case reply = <-tq.Response:
+		default:
+			return nil, errTCPConnStopped
+		}
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-module.mgr.Done():
+		return nil, ErrShuttingDown
+	case <-time.After(defaultRequestTimeout):
+		return nil, ErrTimeout
+	}
+
+	// Check if we have a reply.
+	if reply == nil {
+		// Resolver is shutting down. The Portmaster may be shutting down, or
+		// there is a connection error.
+		return nil, ErrFailure
+	}
+	return reply, nil
 }
 
 // dial connects to the resolver from a pre-authenticated local port, so that
@@ -370,16 +409,9 @@ func (trc *tcpResolverConn) shutdown() {
 		close(tq.Response)
 	}
 
-	// Respond to any incoming queries for some time in order to not leave them
-	// hanging longer than necessary.
-	for {
-		select {
-		case tq := <-trc.queries:
-			close(tq.Response)
-		case <-time.After(100 * time.Millisecond):
-			return
-		}
-	}
+	// Signal that no queries are taken anymore. Queries submitted before or
+	// after are never sent and are retried by Query on a new connection.
+	close(trc.stopped)
 }
 
 func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {

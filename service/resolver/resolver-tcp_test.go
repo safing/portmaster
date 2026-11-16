@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -248,6 +249,7 @@ func TestTCPResolverConnUnansweredQuery(t *testing.T) {
 		inFlightTimeout: 100 * time.Millisecond,
 		heartbeat:       make(chan struct{}),
 		abandoned:       abool.New(),
+		stopped:         make(chan struct{}),
 	}
 	module.mgr.Go("test dns client", trc.handler)
 
@@ -328,6 +330,7 @@ func TestTCPResolverConnReaderExitsWithFullResponseQueue(t *testing.T) {
 		inFlightTimeout: time.Minute,
 		heartbeat:       make(chan struct{}),
 		abandoned:       abool.New(),
+		stopped:         make(chan struct{}),
 	}
 	// Readers blocked on a response queue that do not belong to this test.
 	foreignReaders := blockedTCPReaders()
@@ -436,4 +439,134 @@ func allGoroutineStacks() string {
 		}
 		buf = make([]byte, 2*len(buf))
 	}
+}
+
+// TestTCPResolverQueryOnStoppedConn checks that a query handed to a
+// connection whose handler stopped after the query obtained the connection
+// does not wait for a response that can never arrive, but is sent on a new
+// connection.
+func TestTCPResolverQueryOnStoppedConn(t *testing.T) {
+	t.Parallel()
+
+	server := newTCPTestServer(t)
+	tr := NewTCPResolver(server.resolver())
+
+	// Establish a connection with a first query.
+	_, err := tr.Query(t.Context(), &Query{FQDN: "first.example.", QType: dns.Type(dns.TypeA), NoCaching: true})
+	if err != nil {
+		t.Fatalf("first query failed: %s", err)
+	}
+	tr.Lock()
+	staleConn := tr.resolverConn
+	tr.Unlock()
+
+	// Close the connection on the server side: the handler stops.
+	server.closeConns()
+	deadline := time.Now().Add(5 * time.Second)
+	for staleConn.abandoned.IsNotSet() {
+		if time.Now().After(deadline) {
+			t.Fatal("connection was not abandoned after the server closed it")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	// Let the shutdown of the handler complete.
+	time.Sleep(300 * time.Millisecond)
+
+	// Recreate the state of a query that obtained the connection right before
+	// it stopped: the connection is not abandoned yet and the heartbeat
+	// succeeds. Abandon it afterwards, as the shutdown does.
+	staleConn.abandoned.UnSet()
+	go func() {
+		select {
+		case <-staleConn.heartbeat:
+			staleConn.abandoned.Set()
+		case <-time.After(5 * time.Second):
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	started := time.Now()
+	rrCache, err := tr.Query(ctx, &Query{FQDN: "second.example.", QType: dns.Type(dns.TypeA), NoCaching: true})
+	took := time.Since(started)
+	if err != nil {
+		t.Fatalf("query on stopped connection failed after %s: %s", took, err)
+	}
+	if len(rrCache.Answer) != 1 {
+		t.Errorf("expected one answer, got %v", rrCache.Answer)
+	}
+	if took > time.Second {
+		t.Errorf("query on stopped connection took %s", took)
+	}
+}
+
+// tcpTestServer is a DNS server on a loopback TCP port that answers every A
+// query with 127.0.0.1.
+type tcpTestServer struct {
+	port uint16
+
+	lock  sync.Mutex
+	conns []net.Conn
+}
+
+func newTCPTestServer(t *testing.T) *tcpTestServer {
+	t.Helper()
+
+	listener, port := listenTCP(t)
+	s := &tcpTestServer{port: port}
+	t.Cleanup(s.closeConns)
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			s.lock.Lock()
+			s.conns = append(s.conns, conn)
+			s.lock.Unlock()
+			go s.serve(&dns.Conn{Conn: conn})
+		}
+	}()
+	return s
+}
+
+func (s *tcpTestServer) resolver() *Resolver {
+	return &Resolver{
+		ServerAddress: net.JoinHostPort("127.0.0.1", strconv.Itoa(int(s.port))),
+		Info: &ResolverInfo{
+			Name:   "test-tcp-server",
+			Type:   ServerTypeTCP,
+			Source: ServerSourceConfigured,
+			IP:     net.IPv4(127, 0, 0, 1),
+			Port:   s.port,
+		},
+	}
+}
+
+func (s *tcpTestServer) serve(conn *dns.Conn) {
+	for {
+		query, err := conn.ReadMsg()
+		if err != nil {
+			return
+		}
+		reply := &dns.Msg{}
+		reply.SetReply(query)
+		reply.Answer = append(reply.Answer, &dns.A{
+			Hdr: dns.RR_Header{Name: query.Question[0].Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60},
+			A:   net.IPv4(127, 0, 0, 1),
+		})
+		if conn.WriteMsg(reply) != nil {
+			return
+		}
+	}
+}
+
+// closeConns closes all connections accepted so far.
+func (s *tcpTestServer) closeConns() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	for _, conn := range s.conns {
+		_ = conn.Close()
+	}
+	s.conns = nil
 }
