@@ -10,6 +10,12 @@ import (
 const (
 	// UDPConnectionTTL defines the duration after which unseen UDP connections are regarded as ended.
 	UDPConnectionTTL = 10 * time.Minute
+
+	// existsMaxTCPTableAge defines the maximum age of the TCP tables used by
+	// Exists(). The connection cleaner checks all connections with the same
+	// now, so the first check of a cleaner run updates the tables and the
+	// other checks of the run reuse them.
+	existsMaxTCPTableAge = 1 * time.Second
 )
 
 // Exists checks if the given connection is present in the system state tables.
@@ -18,10 +24,10 @@ func Exists(pktInfo *packet.Info, now time.Time) (exists bool) {
 
 	switch {
 	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.TCP:
-		return tcp4Table.exists(pktInfo)
+		return tcp4Table.exists(pktInfo, now)
 
 	case pktInfo.Version == packet.IPv6 && pktInfo.Protocol == packet.TCP:
-		return tcp6Table.exists(pktInfo)
+		return tcp6Table.exists(pktInfo, now)
 
 	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.UDP:
 		return udp4Table.exists(pktInfo, now)
@@ -34,23 +40,32 @@ func Exists(pktInfo *packet.Info, now time.Time) (exists bool) {
 	}
 }
 
-func (table *tcpTable) exists(pktInfo *packet.Info) (exists bool) {
-	if table.existsInTable(pktInfo) {
+func (table *tcpTable) exists(pktInfo *packet.Info, now time.Time) (exists bool) {
+	// Update the tables if they are older than the connection that is checked
+	// or older than the maximum age. Only lookups of new connections update
+	// the tables otherwise, so closed connections would never be noticed on a
+	// quiet system.
+	updateIfOlderThan := max(
+		pktInfo.SeenAt.UnixNano(),
+		now.Add(-existsMaxTCPTableAge).UnixNano(),
+	)
+
+	if table.existsInTable(pktInfo, updateIfOlderThan) {
 		return true
 	}
 
 	// Lookups also check the dual-stack table, as IPv4 connections of
 	// dual-stack sockets are only listed there (with IPv4-mapped addresses).
 	if table.dualStack != nil {
-		return table.dualStack.existsInTable(pktInfo)
+		return table.dualStack.existsInTable(pktInfo, updateIfOlderThan)
 	}
 
 	return false
 }
 
-func (table *tcpTable) existsInTable(pktInfo *packet.Info) (exists bool) {
-	// Update tables if older than the connection that is checked.
-	if table.lastUpdateAt.Load() < pktInfo.SeenAt.UnixNano() {
+func (table *tcpTable) existsInTable(pktInfo *packet.Info, updateIfOlderThan int64) (exists bool) {
+	// Update tables if older than the given time (unix nanoseconds).
+	if table.lastUpdateAt.Load() < updateIfOlderThan {
 		table.updateTables()
 	}
 

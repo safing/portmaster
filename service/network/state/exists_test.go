@@ -138,7 +138,7 @@ func TestTCPExists(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		if got := tc.table.exists(tc.pkt); got != tc.want {
+		if got := tc.table.exists(tc.pkt, time.Now()); got != tc.want {
 			t.Errorf("%s: exists() = %v, want %v", tc.name, got, tc.want)
 		}
 	}
@@ -275,10 +275,11 @@ func BenchmarkTCPExistsDualStack(b *testing.B) {
 	tcp4 := newTestTCPTable(4, nil)
 	tcp4.dualStack = newTestTCPTable(6, connections)
 	pkt := cleanerPacket(packet.IPv4, packet.TCP, testLocal4, 40099, testRemote4, 443)
+	now := time.Now()
 
 	b.ReportAllocs()
 	for b.Loop() {
-		if !tcp4.exists(pkt) {
+		if !tcp4.exists(pkt, now) {
 			b.Fatal("not found")
 		}
 	}
