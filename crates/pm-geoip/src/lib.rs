@@ -18,9 +18,14 @@
 //!   is the entry point a future worker will call.
 //! * `AutonomousSystemNumber` is an `u32` (as stored in MMDB) instead of Go's
 //!   `uint`.
+//! * The device location model from Go `service/netenv/location.go` lives in
+//!   [`device_location`] rather than a netenv crate. Its machine-dependent
+//!   inputs are injected via [`LocationEnvironment`]; see the module docs for
+//!   the full list of deviations.
 
 mod api;
 mod database;
+pub mod device_location;
 
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -30,6 +35,11 @@ use serde::{Deserialize, Serialize};
 
 pub use api::{register_api, COUNTRIES_ENDPOINT_PATH};
 pub use database::{Error, GeoIp, V4_RESOURCE, V6_RESOURCE};
+pub use device_location::{
+    location_from_timezone, lookup_with, DeviceLocation, DeviceLocationService,
+    DeviceLocationSource, DeviceLocations, IpVersion, LocationEnvironment,
+    TIMEZONE_LOCATION_ACCURACY, TIMEZONE_LOCATION_LATITUDE,
+};
 
 /// Earth circumference in kilometers.
 pub const EARTH_CIRCUMFERENCE_IN_KM: f64 = 40100.0;
@@ -239,6 +249,29 @@ pub fn regions() -> &'static HashMap<String, Region> {
     &data().regions
 }
 
+/// Derives a continent code from a continental region, like the Go country
+/// table's `init` (`strings.Cut(region, "-")`).
+///
+/// A region without a dash, such as `SA`, is returned unchanged.
+pub fn continent_code_from_region(region: &str) -> &str {
+    region.split_once('-').map_or(region, |(code, _)| code)
+}
+
+/// Returns the continent name for a code, like the Go country table's `init`.
+/// Unknown codes produce an empty name, just as in Go.
+pub fn continent_name(code: &str) -> &'static str {
+    match code {
+        "AF" => "Africa",
+        "AN" => "Antarctica",
+        "AS" => "Asia",
+        "EU" => "Europe",
+        "NA" => "North America",
+        "OC" => "Oceania",
+        "SA" => "South America",
+        _ => "",
+    }
+}
+
 #[derive(Deserialize)]
 struct GeoData {
     countries: HashMap<String, CountryInfo>,
@@ -343,6 +376,25 @@ mod tests {
 
         // Unknown codes return the zero value, like Go.
         assert_eq!(get_country_info("ZZ"), CountryInfo::default());
+    }
+
+    #[test]
+    fn continent_helpers_match_generated_data() {
+        for (code, country) in countries() {
+            assert_eq!(
+                continent_code_from_region(&country.continent.region),
+                country.continent.code,
+                "{code}"
+            );
+            assert_eq!(
+                continent_name(&country.continent.code),
+                country.continent.name,
+                "{code}"
+            );
+        }
+        assert_eq!(continent_code_from_region("EU-W"), "EU");
+        assert_eq!(continent_code_from_region("SA"), "SA");
+        assert_eq!(continent_name("ZZ"), "");
     }
 
     #[test]

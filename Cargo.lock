@@ -1545,6 +1545,7 @@ version = "0.1.0"
 dependencies = [
  "maxminddb",
  "pm-api",
+ "pm-netstate",
  "serde",
  "serde_json",
  "thiserror",

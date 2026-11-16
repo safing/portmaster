@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 maxminddb = "0.33.0"
 pm-api = { path = "../pm-api" }
+pm-netstate = { path = "../pm-netstate" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
