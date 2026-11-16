@@ -1547,6 +1547,7 @@ dependencies = [
  "pm-interception",
  "pm-interop",
  "pm-jess",
+ "pm-log",
  "pm-metrics",
  "pm-mgr",
  "pm-migration",
@@ -1753,6 +1754,14 @@ dependencies = [
  "sha2",
  "sha3 0.10.9",
  "thiserror",
+]
+
+[[package]]
+name = "pm-log"
+version = "0.1.0"
+dependencies = [
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

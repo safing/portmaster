@@ -1,0 +1,13 @@
+[package]
+name = "pm-log"
+version = "0.1.0"
+edition.workspace = true
+description = "Port of Go base/log: severity levels, writers, context tracers and adapters"
+license.workspace = true
+
+[dependencies]
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

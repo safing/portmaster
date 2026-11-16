@@ -1,70 +1,47 @@
 //! Logging setup.
+//!
+//! The Rust core keeps using `tracing` at call sites, but `pm-log` now owns the
+//! writer, rotation, level filtering and the unexpected-log ring. A `tracing`
+//! layer forwards every existing `tracing` event into pm-log.
 
-use std::path::PathBuf;
-
-use tracing_subscriber::fmt::writer::MakeWriter;
+use pm_log::{Severity, StartConfig};
 
 use crate::cli::Options;
 
-/// Initializes tracing, either to stdout or to a log file.
+/// Initializes logging, either to stdout or to a rotating log file, and routes
+/// existing `tracing` events into it.
 pub fn init(options: &Options) {
-    let level = level_from_str(&options.log_level);
-
-    if options.log_to_stdout {
-        tracing_subscriber::fmt()
-            .with_max_level(level)
-            .with_target(false)
-            .init();
-        return;
-    }
-
-    let file = Appender {
-        path: options.log_dir.join("portmaster-core-rs.log"),
+    let level = severity_from_str(&options.log_level);
+    let config = StartConfig {
+        level,
+        to_stdout: options.log_to_stdout,
+        log_dir: options.log_dir.clone(),
+        version: crate::cli::version(),
     };
-    if tracing_subscriber::fmt()
-        .with_max_level(level)
-        .with_target(false)
-        .with_ansi(false)
-        .with_writer(file)
-        .try_init()
-        .is_err()
-    {
-        // Fall back to stdout if the file cannot be opened.
-        tracing_subscriber::fmt()
-            .with_max_level(level)
-            .with_target(false)
-            .init();
+
+    let fallback = StartConfig {
+        to_stdout: true,
+        ..config.clone()
+    };
+    if let Err(error) = pm_log::start(config) {
+        eprintln!("failed to initialize log file: {error}");
+        let _ = pm_log::start(fallback);
     }
+
+    pm_log::install_tracing();
 }
 
-fn level_from_str(level: &str) -> tracing::Level {
-    match level.to_lowercase().as_str() {
-        "trace" => tracing::Level::TRACE,
-        "debug" => tracing::Level::DEBUG,
-        "warning" | "warn" => tracing::Level::WARN,
-        "error" | "critical" => tracing::Level::ERROR,
-        _ => tracing::Level::INFO,
-    }
-}
-
-/// Appends to a log file; a new handle is opened per event, which keeps logging
-/// independent of the process lifetime and needs no background task.
-struct Appender {
-    path: PathBuf,
-}
-
-impl<'a> MakeWriter<'a> for Appender {
-    type Writer = Box<dyn std::io::Write + 'a>;
-
-    fn make_writer(&'a self) -> Self::Writer {
-        match std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&self.path)
-        {
-            Ok(file) => Box::new(file),
-            Err(_) => Box::new(std::io::stdout()),
-        }
+/// Parses a CLI level into a pm-log severity, warning on invalid input like Go
+/// `log.Start`.
+fn severity_from_str(level: &str) -> Severity {
+    let parsed = Severity::parse_level(level);
+    if parsed == Severity::None {
+        eprintln!(
+            "log warning: invalid log level {level:?}, falling back to level info"
+        );
+        Severity::Info
+    } else {
+        parsed
     }
 }
 
@@ -74,9 +51,18 @@ mod tests {
 
     #[test]
     fn levels_map_to_tracing_levels() {
-        assert_eq!(level_from_str("trace"), tracing::Level::TRACE);
-        assert_eq!(level_from_str("warning"), tracing::Level::WARN);
-        assert_eq!(level_from_str("critical"), tracing::Level::ERROR);
-        assert_eq!(level_from_str("nonsense"), tracing::Level::INFO);
+        assert_eq!(Severity::Trace.to_tracing_level(), tracing::Level::TRACE);
+        assert_eq!(Severity::Warning.to_tracing_level(), tracing::Level::WARN);
+        assert_eq!(Severity::Critical.to_tracing_level(), tracing::Level::ERROR);
+        assert_eq!(Severity::Info.to_tracing_level(), tracing::Level::INFO);
+    }
+
+    #[test]
+    fn levels_map_to_pm_log_severities() {
+        assert_eq!(severity_from_str("trace"), Severity::Trace);
+        assert_eq!(severity_from_str("debug"), Severity::Debug);
+        assert_eq!(severity_from_str("warning"), Severity::Warning);
+        assert_eq!(severity_from_str("critical"), Severity::Critical);
+        assert_eq!(severity_from_str("nonsense"), Severity::Info);
     }
 }
