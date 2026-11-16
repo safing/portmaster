@@ -6,7 +6,7 @@
 
 use std::net::IpAddr;
 
-use pm_endpoints::{parse_endpoints, Endpoints, EpResult};
+use pm_endpoints::EpResult;
 use pm_netenv::OnlineStatus;
 use pm_netstate::IpScope;
 use pm_network::{Connection, ConnectionType, Verdict};
@@ -14,7 +14,8 @@ use pm_profile::options::*;
 use pm_profile::{LayeredProfile, DEFAULT_ACTION_PERMIT};
 use serde_json::Value;
 
-use crate::bypass::{prevent_bypassing, BypassResponder};
+use crate::bypass::prevent_bypassing;
+use crate::master::Decision;
 use crate::env::FirewallEnv;
 use crate::{dga, is_system_resolver, levenshtein};
 
@@ -24,7 +25,7 @@ pub const CFG_OPTION_CUSTOM_LIST_FILE_KEY: &str = "filter/customListFile";
 const P2P_FILTER_LISTS: [&str; 1] = ["17-P2P"];
 
 /// A decider; returns whether it came to a conclusion.
-pub type Decider = fn(&mut Connection, &LayeredProfile, &dyn FirewallEnv) -> bool;
+pub type Decider = fn(&mut Connection, &LayeredProfile, &dyn FirewallEnv, &mut Decision) -> bool;
 
 /// The deciders in the order they run.
 pub const DEFAULT_DECIDERS: [Decider; 13] = [
@@ -52,6 +53,7 @@ pub fn check_portmaster_connection(
     conn: &mut Connection,
     _p: &LayeredProfile,
     env: &dyn FirewallEnv,
+    _decision: &mut Decision,
 ) -> bool {
     let Some(process) = &conn.process else {
         return false;
@@ -113,6 +115,7 @@ pub fn check_if_broadcast_reply(
     conn: &mut Connection,
     _p: &LayeredProfile,
     env: &dyn FirewallEnv,
+    _decision: &mut Decision,
 ) -> bool {
     // Only check inbound connections.
     if !conn.inbound {
@@ -154,6 +157,7 @@ pub fn check_connection_type(
     conn: &mut Connection,
     p: &LayeredProfile,
     _env: &dyn FirewallEnv,
+    _decision: &mut Decision,
 ) -> bool {
     let inbound = conn.inbound;
     let conn_type = conn.conn_type;
@@ -205,6 +209,7 @@ pub fn check_connectivity_domain(
     conn: &mut Connection,
     p: &LayeredProfile,
     env: &dyn FirewallEnv,
+    _decision: &mut Decision,
 ) -> bool {
     let Some(entity) = &conn.entity else {
         return false;
@@ -232,6 +237,7 @@ pub fn check_connection_scope(
     conn: &mut Connection,
     p: &LayeredProfile,
     _env: &dyn FirewallEnv,
+    _decision: &mut Decision,
 ) -> bool {
     // If we are handling a DNS request, check if we can immediately block it.
     if conn.conn_type == ConnectionType::Dns {
@@ -276,27 +282,6 @@ pub fn check_connection_scope(
     false
 }
 
-/// Parses the endpoint rules a local profile sets for an option key.
-///
-/// The config of a profile is a nested map; a flat key is accepted too.
-fn local_endpoints(p: &LayeredProfile, key: &str) -> Endpoints {
-    let profile = p.local_profile();
-    let config = &profile.config;
-    let mut value: Option<&Value> = config.get(key);
-    if value.is_none() {
-        let mut parts = key.split('/');
-        value = parts.next().and_then(|first| config.get(first));
-        for part in parts {
-            value = value.and_then(|v| v.get(part));
-        }
-    }
-    let Some(Value::Array(items)) = value else {
-        return Endpoints::default();
-    };
-    let list: Vec<&str> = items.iter().filter_map(Value::as_str).collect();
-    parse_endpoints(&list).0
-}
-
 /// Special version of the endpoint check for DNS queries by the system
 /// resolver: only the endpoint list of the local profile is used, the
 /// resulting connection is blocked later when the original requesting process
@@ -310,7 +295,11 @@ fn check_endpoint_lists_for_system_resolver_dns(
     } else {
         CFG_OPTION_ENDPOINTS_KEY
     };
-    let endpoints = local_endpoints(p, option_key);
+    let endpoints = if conn.inbound {
+        p.local_service_endpoints()
+    } else {
+        p.local_endpoints()
+    };
     if !endpoints.is_set() {
         return false;
     }
@@ -351,6 +340,7 @@ pub fn check_endpoint_lists(
     conn: &mut Connection,
     p: &LayeredProfile,
     _env: &dyn FirewallEnv,
+    _decision: &mut Decision,
 ) -> bool {
     // DNS requests from the system resolver require a special decision process,
     // because the original requesting process is not known.
@@ -377,6 +367,7 @@ pub fn check_invalid_ip(
     conn: &mut Connection,
     _p: &LayeredProfile,
     _env: &dyn FirewallEnv,
+    _decision: &mut Decision,
 ) -> bool {
     // Only applies to IP connections.
     if conn.conn_type != ConnectionType::Ip {
@@ -397,6 +388,7 @@ pub fn check_resolver_scope(
     conn: &mut Connection,
     p: &LayeredProfile,
     _env: &dyn FirewallEnv,
+    _decision: &mut Decision,
 ) -> bool {
     // Only applies to IP connections whose IP address was resolved.
     if conn.conn_type != ConnectionType::Ip || !p.remove_out_of_scope_dns() {
@@ -431,21 +423,23 @@ pub fn check_bypass_prevention(
     conn: &mut Connection,
     p: &LayeredProfile,
     env: &dyn FirewallEnv,
+    decision: &mut Decision,
 ) -> bool {
     if !p.prevent_bypassing() {
         return false;
     }
-    let (result, reason, _responder): (_, _, Option<BypassResponder>) =
-        prevent_bypassing(conn, env);
+    let (result, reason, responder) = prevent_bypassing(conn, env);
     let text = format!("bypass prevention: {reason}");
     match result {
         // Also block on MatchError to be on the safe side.
         EpResult::Denied | EpResult::MatchError => {
             conn.block(&text, CFG_OPTION_PREVENT_BYPASSING_KEY);
+            decision.responder = responder;
             true
         }
         EpResult::Permitted => {
             conn.accept(&text, CFG_OPTION_PREVENT_BYPASSING_KEY);
+            decision.responder = responder;
             true
         }
         EpResult::NoMatch => false,
@@ -456,6 +450,7 @@ pub fn check_filter_lists(
     conn: &mut Connection,
     p: &LayeredProfile,
     env: &dyn FirewallEnv,
+    _decision: &mut Decision,
 ) -> bool {
     let Some(entity) = conn.entity.as_mut() else {
         return false;
@@ -474,15 +469,9 @@ pub fn check_filter_lists(
                 tracing::debug!("filter: unbreak filter matched, ignoring other filter list matches");
                 return false;
             }
-            let Some(reason) = reason else {
-                return false;
-            };
-            let text = reason
-                .0
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(" and ");
+            // A denial always carries a reason; deny even if it were missing.
+            let reason = reason.unwrap_or_default();
+            let text = reason.to_string();
             conn.set_verdict(
                 if conn.inbound {
                     Verdict::Drop
@@ -507,6 +496,7 @@ pub fn check_custom_filter_list(
     conn: &mut Connection,
     p: &LayeredProfile,
     env: &dyn FirewallEnv,
+    _decision: &mut Decision,
 ) -> bool {
     let custom = env.custom_lists();
     if !custom.is_loaded() {
@@ -564,6 +554,7 @@ pub fn check_domain_heuristics(
     conn: &mut Connection,
     p: &LayeredProfile,
     _env: &dyn FirewallEnv,
+    _decision: &mut Decision,
 ) -> bool {
     let Some(entity) = &conn.entity else {
         return false;
@@ -621,6 +612,7 @@ pub fn check_auto_permit_related(
     conn: &mut Connection,
     p: &LayeredProfile,
     _env: &dyn FirewallEnv,
+    _decision: &mut Decision,
 ) -> bool {
     // Auto permit is disabled for default action permit or by option.
     if p.default_action() == DEFAULT_ACTION_PERMIT || p.disable_auto_permit() {

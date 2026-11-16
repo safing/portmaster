@@ -1,6 +1,9 @@
 //! Port of Go `service/firewall/bypassing.go`.
 
+use std::sync::Arc;
+
 use pm_endpoints::EpResult;
+use pm_nameserver::{Responder, StaticResponder};
 use pm_network::{protocol, Connection, ConnectionType};
 
 use crate::env::FirewallEnv;
@@ -8,16 +11,24 @@ use crate::is_system_resolver;
 
 const RESOLVER_FILTER_LISTS: [&str; 1] = ["17-DNS"];
 
-/// The DNS reply that belongs to a denied connection (Go `nsutil.Responder`).
-///
-/// Go keeps it in the reason context, where it serializes to `null`; the
-/// connection model here cannot hold it, so it is returned separately.
+/// The DNS reply that belongs to a denied connection (Go `nsutil.Responder`
+/// in the reason context).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BypassResponder {
+pub enum DnsResponder {
     /// `nsutil.NxDomain()`
     NxDomain,
     /// `nsutil.BlockIP()`
     BlockIp,
+}
+
+impl DnsResponder {
+    /// The matching responder of the nameserver.
+    pub fn to_responder(self) -> Arc<dyn Responder> {
+        match self {
+            DnsResponder::NxDomain => Arc::new(StaticResponder::nx_domain::<&str>(&[])),
+            DnsResponder::BlockIp => Arc::new(StaticResponder::block_ip::<&str>(&[])),
+        }
+    }
 }
 
 /// Checks if the connection should be denied or permitted based on some
@@ -25,7 +36,7 @@ pub enum BypassResponder {
 pub fn prevent_bypassing(
     conn: &mut Connection,
     env: &dyn FirewallEnv,
-) -> (EpResult, String, Option<BypassResponder>) {
+) -> (EpResult, String, Option<DnsResponder>) {
     let no_match = (EpResult::NoMatch, String::new(), None);
 
     // Exclude incoming connections.
@@ -46,7 +57,7 @@ pub fn prevent_bypassing(
         return (
             EpResult::Denied,
             "blocked canary domain to prevent enabling of DNS-over-HTTPs".to_string(),
-            Some(BypassResponder::NxDomain),
+            Some(DnsResponder::NxDomain),
         );
     }
 
@@ -85,7 +96,7 @@ pub fn prevent_bypassing(
         return (
             EpResult::Denied,
             "blocked DNS query, manual dns setup required".to_string(),
-            Some(BypassResponder::BlockIp),
+            Some(DnsResponder::BlockIp),
         );
     }
     // Port 853 is DNS over TLS; the other case is the secure DNS filter list.
@@ -94,7 +105,7 @@ pub fn prevent_bypassing(
         return (
             EpResult::Denied,
             "blocked rogue connection to DNS resolver".to_string(),
-            Some(BypassResponder::BlockIp),
+            Some(DnsResponder::BlockIp),
         );
     }
 

@@ -258,7 +258,7 @@ fn run(
     p: &LayeredProfile,
     env: &TestEnv,
 ) -> (bool, Verdict, String, String) {
-    let done = decider(conn, p, env);
+    let done = decider(conn, p, env, &mut Decision::default());
     let (v, m, k) = state(conn);
     (done, v, m, k)
 }
@@ -275,13 +275,13 @@ fn portmaster_connection() {
 
     // Other processes are ignored.
     let mut c = fx.conn("", Some("1.1.1.1"), 443);
-    assert!(!check_portmaster_connection(&mut c, &p, &env));
+    assert!(!check_portmaster_connection(&mut c, &p, &env, &mut Decision::default()));
     assert_eq!(c.verdict, Verdict::Undecided);
 
     // Own outgoing connection.
     let mut c = fx.conn("", Some("1.1.1.1"), 443);
     c.process = Some(Arc::new(process(env.own_pid)));
-    assert!(check_portmaster_connection(&mut c, &p, &env));
+    assert!(check_portmaster_connection(&mut c, &p, &env, &mut Decision::default()));
     assert_eq!(
         state(&c),
         (Verdict::Accept, "connection by Portmaster".into(), "".into())
@@ -292,16 +292,16 @@ fn portmaster_connection() {
     let mut c = fx.conn("", Some("1.1.1.1"), 443);
     c.process = Some(Arc::new(process(env.own_pid)));
     c.inbound = true;
-    assert!(!check_portmaster_connection(&mut c, &p, &env));
+    assert!(!check_portmaster_connection(&mut c, &p, &env, &mut Decision::default()));
     env.my_ips.push("1.1.1.1".parse().unwrap());
-    assert!(check_portmaster_connection(&mut c, &p, &env));
+    assert!(check_portmaster_connection(&mut c, &p, &env, &mut Decision::default()));
 
     // A failing own-IP check does not grant.
     env.my_ip_error = true;
     let mut c = fx.conn("", Some("1.1.1.1"), 443);
     c.process = Some(Arc::new(process(env.own_pid)));
     c.inbound = true;
-    assert!(!check_portmaster_connection(&mut c, &p, &env));
+    assert!(!check_portmaster_connection(&mut c, &p, &env, &mut Decision::default()));
 }
 
 #[test]
@@ -321,28 +321,28 @@ fn broadcast_reply() {
 
     // Outbound is ignored.
     let mut c = fx.conn("", Some("192.168.1.5"), 5353);
-    assert!(!check_if_broadcast_reply(&mut c, &p, &env));
+    assert!(!check_if_broadcast_reply(&mut c, &p, &env, &mut Decision::default()));
 
     // Unidentified process is ignored.
     let mut c = fx.conn("", Some("192.168.1.5"), 5353);
     c.inbound = true;
     c.process = Some(Arc::new(process(-1)));
-    assert!(!check_if_broadcast_reply(&mut c, &p, &env));
+    assert!(!check_if_broadcast_reply(&mut c, &p, &env, &mut Decision::default()));
 
     // Not in a local network.
     let mut c = fx.conn("", Some("192.168.1.5"), 5353);
     c.inbound = true;
     let mut no_net = TestEnv::default();
     no_net.multicast = env.multicast;
-    assert!(!check_if_broadcast_reply(&mut c, &p, &no_net));
+    assert!(!check_if_broadcast_reply(&mut c, &p, &no_net, &mut Decision::default()));
 
     // No requesting connection.
     let mut none = TestEnv::default();
     none.local_net = env.local_net;
-    assert!(!check_if_broadcast_reply(&mut c, &p, &none));
+    assert!(!check_if_broadcast_reply(&mut c, &p, &none, &mut Decision::default()));
 
     // Matching request.
-    assert!(check_if_broadcast_reply(&mut c, &p, &env));
+    assert!(check_if_broadcast_reply(&mut c, &p, &env, &mut Decision::default()));
     assert_eq!(
         state(&c),
         (
@@ -358,7 +358,7 @@ fn broadcast_reply() {
         ip: "ff02::fb".parse().unwrap(),
         port: 5353,
     });
-    assert!(check_if_broadcast_reply(&mut c, &p, &env));
+    assert!(check_if_broadcast_reply(&mut c, &p, &env, &mut Decision::default()));
     assert_eq!(c.reason.msg, "response to multi/broadcast query to UDP/[ff02::fb]:5353");
 }
 
@@ -383,7 +383,7 @@ fn connection_type() {
     );
     let mut c = fx.conn("", Some("127.0.0.1"), 443);
     c.inbound = true;
-    assert!(!check_connection_type(&mut c, &p, &env));
+    assert!(!check_connection_type(&mut c, &p, &env, &mut Decision::default()));
 
     let p = fx.profile(json!({"filter": {"blockP2P": true, "blockInbound": false}}));
 
@@ -402,7 +402,7 @@ fn connection_type() {
 
     // DNS requests only get the list check.
     let mut c = dns_conn(&fx, "ok.example.");
-    assert!(!check_connection_type(&mut c, &p, &env));
+    assert!(!check_connection_type(&mut c, &p, &env, &mut Decision::default()));
 
     // Well known ports.
     for port in [3478, 5349] {
@@ -422,17 +422,17 @@ fn connection_type() {
 
     // With a domain, or to the LAN, nothing happens; inbound is not checked.
     let mut c = fx.conn("ok.example.", Some("8.8.8.8"), 443);
-    assert!(!check_connection_type(&mut c, &p, &env));
+    assert!(!check_connection_type(&mut c, &p, &env, &mut Decision::default()));
     let mut c = fx.conn("", Some("192.168.1.2"), 443);
-    assert!(!check_connection_type(&mut c, &p, &env));
+    assert!(!check_connection_type(&mut c, &p, &env, &mut Decision::default()));
     let mut c = fx.conn("", Some("8.8.8.8"), 443);
     c.inbound = true;
-    assert!(!check_connection_type(&mut c, &p, &env));
+    assert!(!check_connection_type(&mut c, &p, &env, &mut Decision::default()));
 
     // Disabled options do nothing.
     let p = fx.profile(json!({}));
     let mut c = fx.conn("", Some("8.8.8.8"), 3478);
-    assert!(!check_connection_type(&mut c, &p, &env));
+    assert!(!check_connection_type(&mut c, &p, &env, &mut Decision::default()));
 }
 
 #[test]
@@ -443,7 +443,7 @@ fn connection_scope() {
     // DNS: only blocked if both Internet and LAN are blocked.
     let p = fx.profile(json!({"filter": {"blockInternet": true}}));
     let mut c = dns_conn(&fx, "a.example.");
-    assert!(!check_connection_scope(&mut c, &p, &env));
+    assert!(!check_connection_scope(&mut c, &p, &env, &mut Decision::default()));
     let p = fx.profile(json!({"filter": {"blockInternet": true, "blockLAN": true}}));
     assert_eq!(
         run(check_connection_scope, &mut c, &p, &env),
@@ -479,9 +479,9 @@ fn connection_scope() {
     // Allowed scopes and undefined IPs are left to later deciders.
     let p = fx.profile(json!({}));
     let mut c = fx.conn("", Some("8.8.8.8"), 443);
-    assert!(!check_connection_scope(&mut c, &p, &env));
+    assert!(!check_connection_scope(&mut c, &p, &env, &mut Decision::default()));
     let mut c = fx.conn("", None, 443);
-    assert!(!check_connection_scope(&mut c, &fx.profile(json!({"filter": {"blockInternet": true}})), &env));
+    assert!(!check_connection_scope(&mut c, &fx.profile(json!({"filter": {"blockInternet": true}})), &env, &mut Decision::default()));
 }
 
 #[test]
@@ -494,7 +494,7 @@ fn endpoint_lists() {
     let (done, verdict, msg, key) = run(check_endpoint_lists, &mut c, &p, &env);
     assert!(done);
     assert_eq!(verdict, Verdict::Block);
-    assert!(msg.starts_with("denied by rule: "), "{msg}");
+    assert_eq!(msg, "denied by rule: domain matches example.com");
     assert_eq!(key, CFG_OPTION_ENDPOINTS_KEY);
     assert_eq!(c.reason.context.as_ref().unwrap()["Filter"], "- example.com");
 
@@ -502,10 +502,10 @@ fn endpoint_lists() {
     let (done, verdict, msg, _) = run(check_endpoint_lists, &mut c, &p, &env);
     assert!(done);
     assert_eq!(verdict, Verdict::Accept);
-    assert!(msg.starts_with("allowed by rule: "), "{msg}");
+    assert_eq!(msg, "allowed by rule: domain matches good.org");
 
     let mut c = fx.conn("other.net.", Some("8.8.8.8"), 443);
-    assert!(!check_endpoint_lists(&mut c, &p, &env));
+    assert!(!check_endpoint_lists(&mut c, &p, &env, &mut Decision::default()));
     assert_eq!(c.verdict, Verdict::Undecided);
 
     // Inbound uses the service endpoints and drops.
@@ -534,7 +534,7 @@ fn endpoint_lists_for_system_resolver_dns() {
     let p = fx.profile(json!({}));
     let mut c = dns_conn(&fx, "example.com.");
     c.process = Some(Arc::clone(&resolver));
-    assert!(!check_endpoint_lists(&mut c, &p, &env));
+    assert!(!check_endpoint_lists(&mut c, &p, &env, &mut Decision::default()));
 
     // The local profile's rules decide.
     let p = fx.profile(json!({"filter": {"endpoints": ["- example.com"]}}));
@@ -548,7 +548,7 @@ fn endpoint_lists_for_system_resolver_dns() {
     let p = fx.profile(json!({"filter": {"endpoints": ["+ example.com"]}}));
     let mut c = dns_conn(&fx, "example.com.");
     c.process = Some(resolver);
-    assert!(check_endpoint_lists(&mut c, &p, &env));
+    assert!(check_endpoint_lists(&mut c, &p, &env, &mut Decision::default()));
     assert_eq!(c.verdict, Verdict::Accept);
 }
 
@@ -569,9 +569,9 @@ fn invalid_ip() {
 
     // Only IP connections are checked, valid IPs pass.
     let mut c = dns_conn(&fx, "a.example.");
-    assert!(!check_invalid_ip(&mut c, &p, &env));
+    assert!(!check_invalid_ip(&mut c, &p, &env, &mut Decision::default()));
     let mut c = fx.conn("", Some("8.8.8.8"), 443);
-    assert!(!check_invalid_ip(&mut c, &p, &env));
+    assert!(!check_invalid_ip(&mut c, &p, &env, &mut Decision::default()));
 }
 
 #[test]
@@ -594,7 +594,7 @@ fn resolver_scope() {
     );
     let mut c = fx.conn("", Some("127.0.0.1"), 443);
     c.resolver = Some(resolver("8.8.8.8"));
-    assert!(check_resolver_scope(&mut c, &p, &env));
+    assert!(check_resolver_scope(&mut c, &p, &env, &mut Decision::default()));
     let mut c = fx.conn("", Some("127.0.0.1"), 443);
     c.resolver = Some(resolver("192.168.1.1"));
     assert_eq!(
@@ -605,16 +605,16 @@ fn resolver_scope() {
     // Not applicable: LAN resolver with LAN IP, no resolver, DNS type, option off.
     let mut c = fx.conn("", Some("192.168.1.2"), 443);
     c.resolver = Some(resolver("192.168.1.1"));
-    assert!(!check_resolver_scope(&mut c, &p, &env));
+    assert!(!check_resolver_scope(&mut c, &p, &env, &mut Decision::default()));
     let mut c = fx.conn("", Some("127.0.0.1"), 443);
-    assert!(!check_resolver_scope(&mut c, &p, &env));
+    assert!(!check_resolver_scope(&mut c, &p, &env, &mut Decision::default()));
     let mut c = dns_conn(&fx, "a.");
     c.resolver = Some(resolver("8.8.8.8"));
-    assert!(!check_resolver_scope(&mut c, &p, &env));
+    assert!(!check_resolver_scope(&mut c, &p, &env, &mut Decision::default()));
     let off = fx.profile(json!({"filter": {"removeOutOfScopeDNS": false}}));
     let mut c = fx.conn("", Some("127.0.0.1"), 443);
     c.resolver = Some(resolver("8.8.8.8"));
-    assert!(!check_resolver_scope(&mut c, &off, &env));
+    assert!(!check_resolver_scope(&mut c, &off, &env, &mut Decision::default()));
 }
 
 fn pm_resolver_info(ip: &str) -> pm_resolver::ResolverInfo {
@@ -650,22 +650,22 @@ fn connectivity_domain() {
     );
 
     let mut c = fx.conn("other.example.", Some("8.8.8.8"), 443);
-    assert!(!check_connectivity_domain(&mut c, &p, &env));
+    assert!(!check_connectivity_domain(&mut c, &p, &env, &mut Decision::default()));
     let mut c = fx.conn("", Some("8.8.8.8"), 443);
-    assert!(!check_connectivity_domain(&mut c, &p, &env));
+    assert!(!check_connectivity_domain(&mut c, &p, &env, &mut Decision::default()));
     let mut c = fx.conn("connectivity.example.", Some("8.8.8.8"), 443);
     c.inbound = true;
-    assert!(!check_connectivity_domain(&mut c, &p, &env));
+    assert!(!check_connectivity_domain(&mut c, &p, &env, &mut Decision::default()));
     let blocked = fx.profile(json!({"filter": {"blockInternet": true}}));
     let mut c = fx.conn("connectivity.example.", Some("8.8.8.8"), 443);
-    assert!(!check_connectivity_domain(&mut c, &blocked, &env));
+    assert!(!check_connectivity_domain(&mut c, &blocked, &env, &mut Decision::default()));
 
     // Better than Portal: no special grant.
     env.status = OnlineStatus::SemiOnline;
     let mut c = fx.conn("connectivity.example.", Some("8.8.8.8"), 443);
-    assert!(!check_connectivity_domain(&mut c, &p, &env));
+    assert!(!check_connectivity_domain(&mut c, &p, &env, &mut Decision::default()));
     env.status = OnlineStatus::Offline;
-    assert!(check_connectivity_domain(&mut c, &p, &env));
+    assert!(check_connectivity_domain(&mut c, &p, &env, &mut Decision::default()));
 }
 
 #[test]
@@ -688,7 +688,7 @@ fn bypass_prevention_rules() {
     let (result, reason, responder) = prevent_bypassing(&mut c, &env);
     assert_eq!(result, EpResult::Denied);
     assert_eq!(reason, "blocked canary domain to prevent enabling of DNS-over-HTTPs");
-    assert_eq!(responder, Some(BypassResponder::NxDomain));
+    assert_eq!(responder, Some(DnsResponder::NxDomain));
 
     // System resolver DNS requests are excluded.
     let mut sys = process(77);
@@ -703,19 +703,19 @@ fn bypass_prevention_rules() {
     let (result, reason, responder) = prevent_bypassing(&mut c, &env);
     assert_eq!(result, EpResult::Denied);
     assert_eq!(reason, "blocked DNS query, manual dns setup required");
-    assert_eq!(responder, Some(BypassResponder::BlockIp));
+    assert_eq!(responder, Some(DnsResponder::BlockIp));
 
     let mut c = fx.conn("", Some("8.8.8.8"), 853);
     let (result, reason, responder) = prevent_bypassing(&mut c, &env);
     assert_eq!(result, EpResult::Denied);
     assert_eq!(reason, "blocked rogue connection to DNS resolver");
-    assert_eq!(responder, Some(BypassResponder::BlockIp));
+    assert_eq!(responder, Some(DnsResponder::BlockIp));
     assert_eq!(env.bypass_reports.get(), 1);
 
     fx.store("doh.example.", &["17-DNS"]);
     let mut c = fx.conn("doh.example.", Some("8.8.8.8"), 443);
     ent(&mut c).load_lists();
-    assert_eq!(prevent_bypassing(&mut c, &env).2, Some(BypassResponder::BlockIp));
+    assert_eq!(prevent_bypassing(&mut c, &env).2, Some(DnsResponder::BlockIp));
     assert_eq!(env.bypass_reports.get(), 2);
 
     let mut c = fx.conn("fine.example.", Some("8.8.8.8"), 443);
@@ -788,9 +788,9 @@ fn bypass_prevention_decider() {
         )
     );
     let mut c = fx.conn("", Some("8.8.8.8"), 53);
-    assert!(!check_bypass_prevention(&mut c, &off, &env));
+    assert!(!check_bypass_prevention(&mut c, &off, &env, &mut Decision::default()));
     let mut c = fx.conn("", Some("8.8.8.8"), 443);
-    assert!(!check_bypass_prevention(&mut c, &on, &env));
+    assert!(!check_bypass_prevention(&mut c, &on, &env, &mut Decision::default()));
 }
 
 #[test]
@@ -806,25 +806,24 @@ fn filter_lists() {
     let (done, verdict, msg, key) = run(check_filter_lists, &mut c, &p, &env);
     assert!(done);
     assert_eq!(verdict, Verdict::Block);
-    assert!(msg.contains("evil.example."), "{msg}");
-    assert!(msg.contains("MAL"), "{msg}");
+    assert_eq!(msg, "evil.example. in activated lists MAL");
     assert_eq!(key, CFG_OPTION_FILTER_LISTS_KEY);
     assert!(c.reason.context.as_ref().unwrap()["filterlists"].is_array());
 
     // No match.
     let mut c = fx.conn("fine.example.", Some("8.8.8.8"), 443);
     ent(&mut c).load_lists();
-    assert!(!check_filter_lists(&mut c, &p, &env));
+    assert!(!check_filter_lists(&mut c, &p, &env, &mut Decision::default()));
 
     // Unbreak list cancels the block.
     env.unbreak = vec!["UNBREAK1".to_string()];
     let mut c = fx.conn("evil2.example.", Some("8.8.8.8"), 443);
     ent(&mut c).load_lists();
-    assert!(!check_filter_lists(&mut c, &p, &env));
+    assert!(!check_filter_lists(&mut c, &p, &env, &mut Decision::default()));
     assert_eq!(c.verdict, Verdict::Undecided);
     let mut c = fx.conn("evil.example.", Some("8.8.8.8"), 443);
     ent(&mut c).load_lists();
-    assert!(check_filter_lists(&mut c, &p, &env));
+    assert!(check_filter_lists(&mut c, &p, &env, &mut Decision::default()));
 }
 
 #[test]
@@ -836,7 +835,7 @@ fn custom_filter_list() {
     // Not loaded: nothing happens.
     let env = TestEnv::default();
     let mut c = fx.conn("bad.example.", Some("1.2.3.4"), 443);
-    assert!(!check_custom_filter_list(&mut c, &p, &env));
+    assert!(!check_custom_filter_list(&mut c, &p, &env, &mut Decision::default()));
 
     let mut env = TestEnv::default();
     env.custom.loaded = true;
@@ -866,7 +865,7 @@ fn custom_filter_list() {
     let no_cname = fx.profile(json!({"filter": {"includeCNAMEs": false}}));
     let mut c = fx.conn("ok.example.", Some("1.2.3.4"), 443);
     ent(&mut c).cname = vec!["alias.example.".into()];
-    assert!(!check_custom_filter_list(&mut c, &no_cname, &env));
+    assert!(!check_custom_filter_list(&mut c, &no_cname, &env, &mut Decision::default()));
 
     let mut c = fx.conn("ok.example.", Some("6.6.6.6"), 443);
     assert_eq!(
@@ -886,7 +885,7 @@ fn custom_filter_list() {
         "country is in the custom filter list"
     );
     let mut c = fx.conn("ok.example.", Some("1.2.3.4"), 443);
-    assert!(!check_custom_filter_list(&mut c, &p, &env));
+    assert!(!check_custom_filter_list(&mut c, &p, &env, &mut Decision::default()));
 }
 
 #[test]
@@ -908,15 +907,15 @@ fn domain_heuristics() {
         )
     );
     let mut c = fx.conn(dga, Some("8.8.8.8"), 443);
-    assert!(!check_domain_heuristics(&mut c, &off, &env));
+    assert!(!check_domain_heuristics(&mut c, &off, &env, &mut Decision::default()));
 
     // No domain, normal domain, TLD only.
     let mut c = fx.conn("", Some("8.8.8.8"), 443);
-    assert!(!check_domain_heuristics(&mut c, &on, &env));
+    assert!(!check_domain_heuristics(&mut c, &on, &env, &mut Decision::default()));
     let mut c = fx.conn("www.google.com.", Some("8.8.8.8"), 443);
-    assert!(!check_domain_heuristics(&mut c, &on, &env));
+    assert!(!check_domain_heuristics(&mut c, &on, &env, &mut Decision::default()));
     let mut c = fx.conn("com.", Some("8.8.8.8"), 443);
-    assert!(!check_domain_heuristics(&mut c, &on, &env));
+    assert!(!check_domain_heuristics(&mut c, &on, &env, &mut Decision::default()));
 
     // Very long domains are checked as a whole (Go checks the first
     // len(eTLD+1) bytes).
@@ -928,7 +927,7 @@ fn domain_heuristics() {
     );
     let long_ok = format!("{}.example.com.", "q".repeat(120));
     let mut c = fx.conn(&long_ok, Some("8.8.8.8"), 443);
-    assert!(!check_domain_heuristics(&mut c, &on, &env));
+    assert!(!check_domain_heuristics(&mut c, &on, &env, &mut Decision::default()));
 }
 
 #[test]
@@ -954,24 +953,24 @@ fn auto_permit_related() {
 
     // Unrelated domain, no domain, unknown process.
     let mut c = fx.conn("www.example.com.", Some("8.8.8.8"), 443);
-    assert!(!check_auto_permit_related(&mut c, &ask, &env));
+    assert!(!check_auto_permit_related(&mut c, &ask, &env, &mut Decision::default()));
     let mut c = fx.conn("", Some("8.8.8.8"), 443);
-    assert!(!check_auto_permit_related(&mut c, &ask, &env));
+    assert!(!check_auto_permit_related(&mut c, &ask, &env, &mut Decision::default()));
     let mut c = fx.conn("www.firefox.com.", Some("8.8.8.8"), 443);
     c.process = Some(Arc::new(process(-1)));
-    assert!(!check_auto_permit_related(&mut c, &ask, &env));
+    assert!(!check_auto_permit_related(&mut c, &ask, &env, &mut Decision::default()));
 
     // Disabled by the default action permit or the option.
     let permit = fx.profile(json!({"filter": {"defaultAction": "permit"}}));
     let mut c = fx.conn("www.firefox.com.", Some("8.8.8.8"), 443);
-    assert!(!check_auto_permit_related(&mut c, &permit, &env));
+    assert!(!check_auto_permit_related(&mut c, &permit, &env, &mut Decision::default()));
     let disabled = fx.profile(json!({"filter": {"defaultAction": "ask", "disableAutoPermit": true}}));
     assert!(disabled.disable_auto_permit());
-    assert!(!check_auto_permit_related(&mut c, &disabled, &env));
+    assert!(!check_auto_permit_related(&mut c, &disabled, &env, &mut Decision::default()));
 
     // Matches by process name and exec name too (similarity above 0.5).
     let mut c = fx.conn("firefx.example.", Some("8.8.8.8"), 443);
-    assert!(check_auto_permit_related(&mut c, &ask, &env));
+    assert!(check_auto_permit_related(&mut c, &ask, &env, &mut Decision::default()));
 }
 
 #[test]
@@ -1021,7 +1020,7 @@ fn earlier_decider_wins() {
     let mut c = fx.conn("evil.example.", Some("8.8.8.8"), 443);
     decide_on_connection(&mut c, Some(&p), &env);
     assert_eq!(c.verdict, Verdict::Accept);
-    assert!(c.reason.msg.starts_with("allowed by rule"));
+    assert_eq!(c.reason.msg, "allowed by rule: domain matches evil.example");
 
     // Without an endpoint rule the filter list decides.
     let p = fx.profile(json!({}));
@@ -1129,4 +1128,40 @@ fn preauth_ports_registry() {
     ports.register(17, 1234);
     assert!(ports.is_pre_authenticated(17, 1234));
     assert!(!ports.is_pre_authenticated(17, 1234));
+}
+
+#[test]
+fn canary_dns_request_carries_nxdomain_responder() {
+    let fx = fx();
+    let env = TestEnv::default();
+    let p = fx.profile(json!({"filter": {"preventBypassing": true}}));
+    let mut c = dns_conn(&fx, "use-application-dns.net.");
+    let decision = decide_on_connection(&mut c, Some(&p), &env);
+    assert_eq!(
+        state(&c),
+        (
+            Verdict::Block,
+            "bypass prevention: blocked canary domain to prevent enabling of DNS-over-HTTPs".into(),
+            CFG_OPTION_PREVENT_BYPASSING_KEY.into()
+        )
+    );
+    assert_eq!(decision.responder, Some(DnsResponder::NxDomain));
+    assert!(decision.into_filter_outcome().responder.is_some());
+
+    // Port 53 uses the BlockIP reply; other connections have none.
+    let mut c = fx.conn("", Some("8.8.8.8"), 53);
+    let decision = decide_on_connection(&mut c, Some(&p), &env);
+    assert_eq!(decision.responder, Some(DnsResponder::BlockIp));
+    let mut c = fx.conn("fine.example.", Some("8.8.8.8"), 443);
+    assert_eq!(decide_on_connection(&mut c, Some(&p), &env).responder, None);
+}
+
+#[test]
+fn local_endpoint_accessors_ignore_global_rules() {
+    let fx = fx();
+    let p = fx.profile(json!({"filter": {"endpoints": ["- a.example"], "serviceEndpoints": ["+ b.example"]}}));
+    assert_eq!(p.local_endpoints().0.len(), 1);
+    assert_eq!(p.local_service_endpoints().0.len(), 1);
+    let p = fx.profile(json!({}));
+    assert!(!p.local_endpoints().is_set());
 }

@@ -1489,6 +1489,7 @@ dependencies = [
  "pm-database",
  "pm-endpoints",
  "pm-intel",
+ "pm-nameserver",
  "pm-netenv",
  "pm-netstate",
  "pm-network",

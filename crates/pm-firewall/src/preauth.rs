@@ -5,7 +5,7 @@
 //! resolver/netenv hooks are not part of this crate.
 
 use std::collections::HashSet;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard, PoisonError};
 
 pub const PROTOCOL_TCP: u8 = 6;
 pub const PROTOCOL_UDP: u8 = 17;
@@ -30,25 +30,23 @@ impl PreAuthPorts {
         PreAuthPorts::default()
     }
 
+    fn guard(&self) -> MutexGuard<'_, HashSet<(u8, u16)>> {
+        self.ports.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
     pub fn register(&self, protocol: u8, port: u16) {
-        self.ports
-            .lock()
-            .expect("lock poisoned")
+        self.guard()
             .insert((protocol, port));
     }
 
     pub fn unregister(&self, protocol: u8, port: u16) {
-        self.ports
-            .lock()
-            .expect("lock poisoned")
+        self.guard()
             .remove(&(protocol, port));
     }
 
     /// Checks and immediately removes the pre-authentication.
     pub fn is_pre_authenticated(&self, protocol: u8, port: u16) -> bool {
-        self.ports
-            .lock()
-            .expect("lock poisoned")
+        self.guard()
             .remove(&(protocol, port))
     }
 }

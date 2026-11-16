@@ -27,8 +27,8 @@ struct Layer {
     profile: Arc<Profile>,
     perspective: Perspective,
     default_action: u8,
-    endpoints: Endpoints,
-    service_endpoints: Endpoints,
+    endpoints: Arc<Endpoints>,
+    service_endpoints: Arc<Endpoints>,
     split_tun_usage_policy: Endpoints,
     /// Whether the profile sets filter lists (and they could be resolved).
     filter_lists_set: bool,
@@ -52,8 +52,8 @@ impl Layer {
             profile,
             perspective,
             default_action: DEFAULT_ACTION_NOT_SET,
-            endpoints: Endpoints::default(),
-            service_endpoints: Endpoints::default(),
+            endpoints: Arc::default(),
+            service_endpoints: Arc::default(),
             split_tun_usage_policy: Endpoints::default(),
             filter_lists_set: false,
             filter_list_ids: Vec::new(),
@@ -86,8 +86,8 @@ impl Layer {
             }
             endpoints
         };
-        layer.endpoints = parse(CFG_OPTION_ENDPOINTS_KEY);
-        layer.service_endpoints = parse(CFG_OPTION_SERVICE_ENDPOINTS_KEY);
+        layer.endpoints = Arc::new(parse(CFG_OPTION_ENDPOINTS_KEY));
+        layer.service_endpoints = Arc::new(parse(CFG_OPTION_SERVICE_ENDPOINTS_KEY));
         layer.split_tun_usage_policy = parse(CFG_OPTION_SPLIT_TUN_USAGE_POLICY_KEY);
 
         if let Some(list) = perspective.get_string_array(CFG_OPTION_FILTER_LISTS_KEY) {
@@ -324,10 +324,23 @@ impl LayeredProfile {
         global.match_entity(entity)
     }
 
+    /// Returns the parsed endpoint rules of the local profile only (Go
+    /// `LocalProfileWithoutLocking().GetEndpoints()`).
+    pub fn local_endpoints(&self) -> Arc<Endpoints> {
+        self.first_layer(|layer| Some(Arc::clone(&layer.endpoints)))
+            .unwrap_or_default()
+    }
+
+    /// Returns the parsed service endpoint rules of the local profile only.
+    pub fn local_service_endpoints(&self) -> Arc<Endpoints> {
+        self.first_layer(|layer| Some(Arc::clone(&layer.service_endpoints)))
+            .unwrap_or_default()
+    }
+
     /// Matches the entity against the endpoint rules of the local profile,
     /// then the global ones.
     pub fn match_endpoint(&self, entity: &mut Entity) -> (EpResult, Option<Reason>) {
-        self.match_layers(|l| &l.endpoints, self.global.endpoints(), entity)
+        self.match_layers(|l| l.endpoints.as_ref(), self.global.endpoints(), entity)
     }
 
     /// Matches the remote entity of an inbound connection against the service
@@ -335,7 +348,7 @@ impl LayeredProfile {
     pub fn match_service_endpoint(&self, entity: &mut Entity) -> (EpResult, Option<Reason>) {
         entity.enable_reverse_resolving();
         self.match_layers(
-            |l| &l.service_endpoints,
+            |l| l.service_endpoints.as_ref(),
             self.global.service_endpoints(),
             entity,
         )

@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 pm-endpoints = { path = "../pm-endpoints" }
 pm-intel = { path = "../pm-intel" }
+pm-nameserver = { path = "../pm-nameserver" }
 pm-netenv = { path = "../pm-netenv" }
 pm-netstate = { path = "../pm-netstate" }
 pm-network = { path = "../pm-network" }

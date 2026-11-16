@@ -6,8 +6,29 @@ use pm_profile::{
     DEFAULT_ACTION_NOT_SET, DEFAULT_ACTION_PERMIT,
 };
 
+use pm_nameserver::FilterOutcome;
+
+use crate::bypass::DnsResponder;
 use crate::deciders::{Decider, DEFAULT_DECIDERS, NO_REASON_OPTION_KEY};
 use crate::env::FirewallEnv;
+
+/// What `decide_on_connection` returns besides the verdict on the connection.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Decision {
+    /// The reply the nameserver must craft for a DNS request (Go keeps it in
+    /// the reason context). Convert with [`Decision::into_filter_outcome`].
+    pub responder: Option<DnsResponder>,
+}
+
+impl Decision {
+    /// The matching outcome for the nameserver's firewall hook.
+    pub fn into_filter_outcome(self) -> FilterOutcome {
+        FilterOutcome {
+            responder: self.responder.map(DnsResponder::to_responder),
+            extra_rrs: Vec::new(),
+        }
+    }
+}
 
 /// Makes a decision about a connection.
 ///
@@ -17,14 +38,15 @@ pub fn decide_on_connection(
     conn: &mut Connection,
     profile: Option<&LayeredProfile>,
     env: &dyn FirewallEnv,
-) {
+) -> Decision {
+    let mut decision = Decision::default();
     let Some(profile) = profile else {
         conn.deny("unknown process or profile", NO_REASON_OPTION_KEY);
-        return;
+        return decision;
     };
     if conn.entity.is_none() {
         conn.deny("unknown process or profile", NO_REASON_OPTION_KEY);
-        return;
+        return decision;
     }
 
     // Check if the layered profile needs updating.
@@ -50,16 +72,17 @@ pub fn decide_on_connection(
         entity.load_lists();
     }
 
-    let (done, default_action) = run_deciders(&DEFAULT_DECIDERS, conn, profile, env);
+    let (done, default_action) =
+        run_deciders(&DEFAULT_DECIDERS, conn, profile, env, &mut decision);
     if done {
-        return;
+        return decision;
     }
 
     // DNS requests are always default allowed, as the endpoint lists could not
     // be checked fully.
     if conn.conn_type == ConnectionType::Dns {
         conn.accept("allowing dns request", NO_REASON_OPTION_KEY);
-        return;
+        return decision;
     }
 
     // Deciders did not conclude, use the default action.
@@ -76,6 +99,7 @@ pub fn decide_on_connection(
         }
         _ => conn.deny("blocked by default action", CFG_OPTION_DEFAULT_ACTION_KEY),
     }
+    decision
 }
 
 /// Runs the deciders in order; returns whether one concluded, else the
@@ -85,9 +109,10 @@ pub fn run_deciders(
     conn: &mut Connection,
     profile: &LayeredProfile,
     env: &dyn FirewallEnv,
+    decision: &mut Decision,
 ) -> (bool, u8) {
     for decider in deciders {
-        if decider(conn, profile, env) {
+        if decider(conn, profile, env, decision) {
             return (true, DEFAULT_ACTION_NOT_SET);
         }
     }
