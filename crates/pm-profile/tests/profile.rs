@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use pm_database::{Databases, MemoryStorage};
 use pm_profile::{
-    find_matching_profile, merge_profiles, Fingerprint, MatchingData, Profile, ProfileConfig,
-    ProfileStore, Tag, DEFAULT_ACTION_BLOCK, DEFAULT_ACTION_PERMIT, SOURCE_LOCAL,
+    find_matching_profile, merge_profiles, Fingerprint, MatchingData, Profile, ProfileStore, Tag,
+    SOURCE_LOCAL,
 };
 use serde_json::json;
 
@@ -84,10 +84,7 @@ fn new_derives_ids_and_expands_config() {
     assert!(profile.saved_internally);
 
     // The flat config was expanded into a nested object.
-    let (config, error) = profile.parse_config();
-    assert!(error.is_none());
-    assert_eq!(config.default_action, DEFAULT_ACTION_BLOCK);
-    assert_eq!(config.endpoints, vec!["+ 1.1.1.1"]);
+    assert_eq!(profile.config["filter"]["endpoints"][0], "+ 1.1.1.1");
     assert_eq!(
         profile.config["filter"]["defaultAction"].as_str(),
         Some("block")
@@ -108,38 +105,6 @@ fn new_derives_ids_and_expands_config() {
         ..Profile::default()
     });
     assert_eq!(migrated.presentation_path, "/usr/bin/legacy");
-}
-
-#[test]
-fn config_parsing() {
-    let (config, error) = ProfileConfig::from_config(
-        json!({
-            "filter": {
-                "defaultAction": "permit",
-                "endpoints": ["+ 1.1.1.1", "- 10.0.0.0/8"],
-                "serviceEndpoints": ["+ localhost:80"],
-                "lists": ["list-a", "list-b"],
-            },
-            "splittun": {"usagePolicy": ["+ 1.1.1.1"]},
-        })
-        .as_object()
-        .unwrap(),
-    );
-    assert!(error.is_none());
-    assert_eq!(config.default_action, DEFAULT_ACTION_PERMIT);
-    assert_eq!(config.endpoints.len(), 2);
-    assert_eq!(config.service_endpoints, vec!["+ localhost:80"]);
-    assert_eq!(config.filter_lists, vec!["list-a", "list-b"]);
-    assert_eq!(config.split_tun_usage_policy, vec!["+ 1.1.1.1"]);
-
-    // Invalid actions are reported.
-    let (config, error) = ProfileConfig::from_config(
-        json!({"filter": {"defaultAction": "nope"}})
-            .as_object()
-            .unwrap(),
-    );
-    assert_eq!(config.default_action, 0);
-    assert_eq!(error.as_deref(), Some("default action \"nope\" invalid"));
 }
 
 #[test]

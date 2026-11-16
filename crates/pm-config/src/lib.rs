@@ -14,7 +14,8 @@
 //!   `SaveConfig` drops them). This is deliberate: user data is not lost, and
 //!   files written for known keys are byte-identical to Go.
 //! * Validation functions ([`ValidationFunc`]) are supported and receive the
-//!   validated value as JSON. Value migrations are not implemented yet.
+//!   validated value as JSON. Value migrations ([`MigrationFunc`]) run before
+//!   validation when values are set, replaced, loaded or read by a [`Perspective`].
 //! * The interface cache of the Go database layer is not used; the config
 //!   storage is served from the option registry.
 
@@ -34,12 +35,13 @@ use serde_json::{Map, Value};
 use tokio::sync::broadcast;
 
 pub use option::{
-    type_name, CachedValue, ConfigOption, ExpertiseLevel, OptionState, OptionType, PossibleValue,
-    ReleaseLevel, ValidationError, ValidationFunc, CATEGORY_ANNOTATION, DISPLAY_HINT_ANNOTATION,
-    DISPLAY_HINT_FILE_PICKER, DISPLAY_HINT_ONE_OF, DISPLAY_HINT_ORDERED, DISPLAY_ORDER_ANNOTATION,
-    EXPERTISE_LEVEL_DEVELOPER, EXPERTISE_LEVEL_EXPERT, EXPERTISE_LEVEL_USER, OPT_TYPE_ANY,
-    OPT_TYPE_BOOL, OPT_TYPE_INT, OPT_TYPE_STRING, OPT_TYPE_STRING_ARRAY, QUICK_SETTINGS_ANNOTATION,
-    RELEASE_LEVEL_BETA, RELEASE_LEVEL_EXPERIMENTAL, RELEASE_LEVEL_STABLE, REQUIRES_ANNOTATION,
+    migrate_security_level_to_boolean, type_name, CachedValue, ConfigOption, ExpertiseLevel,
+    MigrationFunc, OptionState, OptionType, PossibleValue, ReleaseLevel, ValidationError,
+    ValidationFunc, CATEGORY_ANNOTATION, DISPLAY_HINT_ANNOTATION, DISPLAY_HINT_FILE_PICKER,
+    DISPLAY_HINT_ONE_OF, DISPLAY_HINT_ORDERED, DISPLAY_ORDER_ANNOTATION, EXPERTISE_LEVEL_DEVELOPER,
+    EXPERTISE_LEVEL_EXPERT, EXPERTISE_LEVEL_USER, OPT_TYPE_ANY, OPT_TYPE_BOOL, OPT_TYPE_INT,
+    OPT_TYPE_STRING, OPT_TYPE_STRING_ARRAY, QUICK_SETTINGS_ANNOTATION, RELEASE_LEVEL_BETA,
+    RELEASE_LEVEL_EXPERIMENTAL, RELEASE_LEVEL_STABLE, REQUIRES_ANNOTATION,
     REQUIRES_FEATURE_ID_ANNOTATION, REQUIRES_UI_RELOAD_ANNOTATION, RESTART_PENDING_ANNOTATION,
     SETTABLE_PER_APP_ANNOTATION, STACKABLE_ANNOTATION, SUBSYSTEM_ANNOTATION, UNIT_ANNOTATION,
 };

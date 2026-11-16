@@ -1,5 +1,7 @@
 //! The profile model.
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -34,6 +36,19 @@ pub const CFG_OPTION_SERVICE_ENDPOINTS_KEY: &str = "filter/serviceEndpoints";
 pub const CFG_OPTION_FILTER_LISTS_KEY: &str = "filter/lists";
 /// Configuration key of the split-tunnel usage policy.
 pub const CFG_OPTION_SPLIT_TUN_USAGE_POLICY_KEY: &str = "splittun/usagePolicy";
+
+/// The outdated marker of a profile (Go `outdated` flag).
+///
+/// Cloning yields an unset flag, so a copy of a profile is never flagged by
+/// marking the original; share a profile through an `Arc` to share the flag.
+#[derive(Debug, Default)]
+pub struct OutdatedFlag(AtomicBool);
+
+impl Clone for OutdatedFlag {
+    fn clone(&self) -> Self {
+        OutdatedFlag::default()
+    }
+}
 
 /// A profile that predefines the security settings for applications.
 ///
@@ -84,9 +99,10 @@ pub struct Profile {
     /// Whether the profile was saved by the core itself; not serialized.
     #[serde(skip)]
     pub saved_internally: bool,
-    /// Set when a newer version of the profile exists; shared between clones.
+    /// Set when a newer version of the profile exists. Use
+    /// [`Profile::mark_outdated`]; a clone starts with the flag unset.
     #[serde(skip)]
-    pub outdated: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    pub outdated: OutdatedFlag,
 }
 
 fn serialize_time<S: serde::Serializer>(seconds: &i64, serializer: S) -> Result<S::Ok, S::Error> {
@@ -120,7 +136,7 @@ impl Default for Profile {
             created: 0,
             internal: false,
             saved_internally: false,
-            outdated: Default::default(),
+            outdated: OutdatedFlag::default(),
         }
     }
 }
@@ -164,82 +180,19 @@ impl Profile {
         make_profile_key(&self.source, &self.id)
     }
 
-    /// Parses the profile configuration.
-    pub fn parse_config(&self) -> (ProfileConfig, Option<String>) {
-        ProfileConfig::from_config(&self.config)
-    }
-
     /// Marks the profile as outdated, so layered profiles re-layer it.
     pub fn mark_outdated(&self) {
-        self.outdated
-            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self.outdated.0.store(true, Ordering::SeqCst);
     }
 
     /// Returns whether the profile was marked as outdated.
     pub fn is_outdated(&self) -> bool {
-        self.outdated.load(std::sync::atomic::Ordering::SeqCst)
+        self.outdated.0.load(Ordering::SeqCst)
     }
-}
 
-/// Parsed settings of a profile.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct ProfileConfig {
-    pub default_action: u8,
-    /// Raw endpoint rule strings; parsing arrives with a `pm-endpoints` crate.
-    pub endpoints: Vec<String>,
-    pub service_endpoints: Vec<String>,
-    pub filter_lists: Vec<String>,
-    pub split_tun_usage_policy: Vec<String>,
-}
-
-impl ProfileConfig {
-    /// Parses the settings from a (nested) profile config map.
-    pub fn from_config(config: &Map<String, Value>) -> (ProfileConfig, Option<String>) {
-        let mut parsed = ProfileConfig::default();
-        let mut first_error = None;
-
-        if let Some(action) = get_string(config, CFG_OPTION_DEFAULT_ACTION_KEY) {
-            match action.as_str() {
-                DEFAULT_ACTION_PERMIT_VALUE => parsed.default_action = DEFAULT_ACTION_PERMIT,
-                DEFAULT_ACTION_ASK_VALUE => parsed.default_action = DEFAULT_ACTION_ASK,
-                DEFAULT_ACTION_BLOCK_VALUE => parsed.default_action = DEFAULT_ACTION_BLOCK,
-                _ => first_error = Some(format!("default action \"{action}\" invalid")),
-            }
-        }
-
-        parsed.endpoints = get_string_array(config, CFG_OPTION_ENDPOINTS_KEY);
-        parsed.service_endpoints = get_string_array(config, CFG_OPTION_SERVICE_ENDPOINTS_KEY);
-        parsed.filter_lists = get_string_array(config, CFG_OPTION_FILTER_LISTS_KEY);
-        parsed.split_tun_usage_policy =
-            get_string_array(config, CFG_OPTION_SPLIT_TUN_USAGE_POLICY_KEY);
-
-        (parsed, first_error)
-    }
-}
-
-/// Looks up a nested config value by a flat key (`a/b/c`).
-fn lookup<'a>(config: &'a Map<String, Value>, key: &str) -> Option<&'a Value> {
-    let mut parts = key.split('/');
-    let mut current = config.get(parts.next()?)?;
-    for part in parts {
-        current = current.as_object()?.get(part)?;
-    }
-    Some(current)
-}
-
-/// Returns a string setting.
-fn get_string(config: &Map<String, Value>, key: &str) -> Option<String> {
-    lookup(config, key)?.as_str().map(str::to_string)
-}
-
-/// Returns a string array setting.
-fn get_string_array(config: &Map<String, Value>, key: &str) -> Vec<String> {
-    match lookup(config, key) {
-        Some(Value::Array(entries)) => entries
-            .iter()
-            .filter_map(|entry| entry.as_str().map(str::to_string))
-            .collect(),
-        _ => Vec::new(),
+    /// Clears the outdated flag.
+    pub(crate) fn clear_outdated(&self) {
+        self.outdated.0.store(false, Ordering::SeqCst);
     }
 }
 

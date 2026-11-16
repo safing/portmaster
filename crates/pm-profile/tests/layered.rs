@@ -353,3 +353,49 @@ fn outdated_local_profile_is_replaced() {
     assert_eq!(rev, 3);
     assert!(lp.needs_update());
 }
+
+#[test]
+fn invalid_profile_value_stops_parsing_like_go() {
+    let env = env();
+    env.config
+        .set_config_option(CFG_OPTION_ENDPOINTS_KEY, json!(["+ example.com"]))
+        .unwrap();
+    env.global.refresh().unwrap();
+    // The wrong-typed bool makes the whole layer config invalid: endpoints and
+    // default action of the profile are ignored, the global ones apply.
+    let lp = layered(
+        &env,
+        json!({"filter": {
+            "blockP2P": "nope",
+            "defaultAction": "block",
+            "endpoints": ["- example.com"],
+            "lists": ["TRAC"],
+        }}),
+    );
+    assert!(lp.config_error().is_some());
+    assert_eq!(lp.default_action(), DEFAULT_ACTION_PERMIT);
+    let mut entity = domain_entity(&env, "example.com.");
+    assert_eq!(lp.match_endpoint(&mut entity).0, EpResult::Permitted);
+    // The partial perspective is kept: valid options of the profile still apply.
+    let lp = layered(
+        &env,
+        json!({"filter": {"blockP2P": "nope", "blockInbound": false}}),
+    );
+    assert!(!lp.block_inbound());
+    assert!(!lp.block_p2p());
+}
+
+#[test]
+fn legacy_security_levels_are_migrated() {
+    let env = env();
+    // Global default of blockInbound is true; a legacy level of 0 turns it off.
+    let lp = layered(&env, json!({"filter": {"blockInbound": 0, "blockP2P": 5}}));
+    assert_eq!(lp.config_error(), None);
+    assert!(!lp.block_inbound());
+    assert!(lp.block_p2p());
+
+    env.config
+        .set_config_option(CFG_OPTION_BLOCK_SCOPE_LAN_KEY, json!(3))
+        .unwrap();
+    assert!(layered(&env, json!({})).block_scope_lan());
+}

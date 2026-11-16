@@ -101,13 +101,6 @@ fn profile_json_matches_go() {
     let serialized = String::from_utf8(pm_dsd::gojson::to_vec(&profile).unwrap()).unwrap();
     assert_eq!(serialized, expected);
 
-    // The parsed config exposes the settings.
-    let (config, error) = profile.parse_config();
-    assert!(error.is_none());
-    assert_eq!(config.default_action, pm_profile::DEFAULT_ACTION_BLOCK);
-    assert_eq!(config.endpoints, vec!["+ 1.1.1.1:443", "- 10.0.0.0/8"]);
-    assert_eq!(config.filter_lists, vec!["list-a"]);
-
     // Round trip through serde.
     let decoded: Profile = serde_json::from_str(expected).unwrap();
     assert_eq!(decoded.warning_last_updated, 1_700_000_200);

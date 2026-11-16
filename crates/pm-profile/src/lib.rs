@@ -11,9 +11,9 @@
 //! * [`LayeredProfile`] resolves every option as local value, else global
 //!   value, and matches endpoints and filter lists local-first. SPN policies
 //!   are not ported.
-//! * The profile options are registered by [`options::register_options`]. Profile
-//!   configs are still read directly from the config map instead of through a
-//!   `config.Perspective`.
+//! * The profile options are registered by [`options::register_options`].
+//!   Profile configs are read through a `pm_config::Perspective`, which also
+//!   migrates legacy security-level values like Go.
 //! * Binaries (`binmeta` icons) are modelled as data only; fetching icons and
 //!   metadata from executables is not ported.
 //! * Profile lifecycle events, active-profile caches and database hooks are not
@@ -47,7 +47,7 @@ pub use layered::LayeredProfile;
 pub use matching::{find_matching_profile, ProfileMatch};
 pub use merge::merge_profiles;
 pub use profile::{
-    ensure_profile, now, Profile, ProfileConfig, DEFAULT_ACTION_ASK, DEFAULT_ACTION_BLOCK,
+    ensure_profile, now, OutdatedFlag, Profile, DEFAULT_ACTION_ASK, DEFAULT_ACTION_BLOCK,
     DEFAULT_ACTION_NOT_SET, DEFAULT_ACTION_PERMIT, DEFAULT_ACTION_PERMIT_VALUE,
 };
 pub use proxy_url::validate_upstream_proxy_url;

@@ -7,7 +7,6 @@
 //! or exit hub policies. The `use_spn` and `spn_routing_algorithm` options are
 //! still resolved, as they are plain profile options.
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
 use pm_config::{Config, Perspective};
@@ -41,18 +40,38 @@ struct Layer {
 impl Layer {
     /// Parses the config of the profile, like Go `parseConfig`.
     ///
-    /// Invalid values are reported in `error`; everything else stays usable.
+    /// If the config has an invalid value, parsing stops there like in Go:
+    /// the partial perspective is kept, the default action, endpoints, filter
+    /// lists and split tunnel policy stay unset (the global ones apply), and
+    /// the error is recorded. Otherwise, the last error is recorded and
+    /// everything else stays usable.
     fn parse(profile: Arc<Profile>, config: &Arc<Config>, global: &GlobalProfileConfig) -> Layer {
         let (perspective, perspective_error) =
             config.perspective(&Value::Object(profile.config.clone()));
-        let mut last_error = perspective_error.map(|err| err.to_string());
+        let mut layer = Layer {
+            profile,
+            perspective,
+            default_action: DEFAULT_ACTION_NOT_SET,
+            endpoints: Endpoints::default(),
+            service_endpoints: Endpoints::default(),
+            split_tun_usage_policy: Endpoints::default(),
+            filter_lists_set: false,
+            filter_list_ids: Vec::new(),
+            error: None,
+        };
+        if let Some(err) = perspective_error {
+            layer.error = Some(err.to_string());
+            return layer;
+        }
 
-        let mut default_action = DEFAULT_ACTION_NOT_SET;
+        let perspective = &layer.perspective;
+        let mut last_error = None;
+
         if let Some(action) = perspective.get_string(CFG_OPTION_DEFAULT_ACTION_KEY) {
             match action.as_str() {
-                DEFAULT_ACTION_PERMIT_VALUE => default_action = DEFAULT_ACTION_PERMIT,
-                DEFAULT_ACTION_ASK_VALUE => default_action = DEFAULT_ACTION_ASK,
-                DEFAULT_ACTION_BLOCK_VALUE => default_action = DEFAULT_ACTION_BLOCK,
+                DEFAULT_ACTION_PERMIT_VALUE => layer.default_action = DEFAULT_ACTION_PERMIT,
+                DEFAULT_ACTION_ASK_VALUE => layer.default_action = DEFAULT_ACTION_ASK,
+                DEFAULT_ACTION_BLOCK_VALUE => layer.default_action = DEFAULT_ACTION_BLOCK,
                 _ => last_error = Some(format!("default action \"{action}\" invalid")),
             }
         }
@@ -67,42 +86,20 @@ impl Layer {
             }
             endpoints
         };
-        let endpoints = parse(CFG_OPTION_ENDPOINTS_KEY);
-        let service_endpoints = parse(CFG_OPTION_SERVICE_ENDPOINTS_KEY);
+        layer.endpoints = parse(CFG_OPTION_ENDPOINTS_KEY);
+        layer.service_endpoints = parse(CFG_OPTION_SERVICE_ENDPOINTS_KEY);
+        layer.split_tun_usage_policy = parse(CFG_OPTION_SPLIT_TUN_USAGE_POLICY_KEY);
 
-        let mut filter_lists_set = false;
-        let mut filter_list_ids = Vec::new();
         if let Some(list) = perspective.get_string_array(CFG_OPTION_FILTER_LISTS_KEY) {
             // Like Go, a failed resolve only leaves the lists unset.
             if let Ok(ids) = global.resolve_list_ids(&list) {
-                filter_list_ids = ids;
-                filter_lists_set = true;
+                layer.filter_list_ids = ids;
+                layer.filter_lists_set = true;
             }
         }
 
-        let mut parse = |key: &str| {
-            let Some(list) = perspective.get_string_array(key) else {
-                return Endpoints::default();
-            };
-            let (endpoints, err) = parse_endpoints(&list);
-            if let Some(err) = err {
-                last_error = Some(err.0);
-            }
-            endpoints
-        };
-        let split_tun_usage_policy = parse(CFG_OPTION_SPLIT_TUN_USAGE_POLICY_KEY);
-
-        Layer {
-            profile,
-            perspective,
-            default_action,
-            endpoints,
-            service_endpoints,
-            split_tun_usage_policy,
-            filter_lists_set,
-            filter_list_ids,
-            error: last_error,
-        }
+        layer.error = last_error;
+        layer
     }
 }
 
@@ -122,7 +119,6 @@ pub struct LayeredProfile {
     config: Arc<Config>,
     global: Arc<GlobalProfileConfig>,
     inner: RwLock<Inner>,
-    security_level: AtomicU64,
 }
 
 macro_rules! bool_options {
@@ -150,7 +146,6 @@ impl LayeredProfile {
                 revision: 1,
                 global_generation: config.generation(),
             }),
-            security_level: AtomicU64::new(0),
         }
     }
 
@@ -158,13 +153,16 @@ impl LayeredProfile {
         self.inner.read().expect("lock poisoned").layers.clone()
     }
 
+    /// Returns the first layer result of `find`, without copying the layers.
+    /// `find` must be cheap and must not call back into this profile.
+    fn first_layer<T>(&self, find: impl Fn(&Layer) -> Option<T>) -> Option<T> {
+        let inner = self.inner.read().expect("lock poisoned");
+        inner.layers.iter().find_map(|layer| find(layer))
+    }
+
     fn layered_bool(&self, key: &str, global: &(dyn Fn() -> bool + Send + Sync)) -> bool {
-        for layer in self.layers() {
-            if let Some(value) = layer.perspective.get_bool(key) {
-                return value;
-            }
-        }
-        global()
+        self.first_layer(|layer| layer.perspective.get_bool(key))
+            .unwrap_or_else(global)
     }
 
     bool_options! {
@@ -208,32 +206,25 @@ impl LayeredProfile {
 
     /// Returns how many days of history are kept.
     pub fn keep_history(&self) -> i64 {
-        for layer in self.layers() {
-            if let Some(value) = layer.perspective.get_int(CFG_OPTION_KEEP_HISTORY_KEY) {
-                return value;
-            }
-        }
-        (self.global.keep_history)()
+        self.first_layer(|layer| layer.perspective.get_int(CFG_OPTION_KEEP_HISTORY_KEY))
+            .unwrap_or_else(|| (self.global.keep_history)())
     }
 
     fn layered_string(&self, key: &str, global: &(dyn Fn() -> String + Send + Sync)) -> String {
-        for layer in self.layers() {
-            if let Some(value) = layer.perspective.get_string(key) {
-                return value;
-            }
-        }
-        global()
+        self.first_layer(|layer| layer.perspective.get_string(key))
+            .unwrap_or_else(global)
     }
 
     /// Returns the database key of the first layer that sets the config key.
     /// An empty string means that the global config is effective.
     pub fn get_profile_source(&self, config_key: &str) -> String {
-        for layer in self.layers() {
-            if layer.perspective.has(config_key) {
-                return layer.profile.key();
-            }
-        }
-        String::new()
+        self.first_layer(|layer| {
+            layer
+                .perspective
+                .has(config_key)
+                .then(|| layer.profile.key())
+        })
+        .unwrap_or_default()
     }
 
     /// Returns the local profile.
@@ -253,10 +244,10 @@ impl LayeredProfile {
         self.inner.read().expect("lock poisoned").revision
     }
 
-    /// Returns the highest security level of all layers. It is never raised
-    /// (the security level feature was removed), so it is always 0.
+    /// Returns the security level. Go never raises it (it stays 0), and the
+    /// security level feature is gone, so this is always 0.
     pub fn security_level(&self) -> u8 {
-        self.security_level.load(Ordering::Relaxed) as u8
+        0
     }
 
     /// Returns whether a layer is outdated or the global config changed.
@@ -272,6 +263,9 @@ impl LayeredProfile {
     /// `load_local` loads the current version of the local profile with the
     /// given ID, like Go `GetLocalProfile`. If it fails, the outdated layer is
     /// kept and the update is retried the next time.
+    ///
+    /// The write lock is held while `load_local` runs, so the closure must not
+    /// use this layered profile (it would deadlock).
     pub fn update(&self, mut load_local: impl FnMut(&str) -> Result<Profile, String>) -> u64 {
         let mut inner = self.inner.write().expect("lock poisoned");
         let mut changed = false;
@@ -283,7 +277,7 @@ impl LayeredProfile {
             }
             // Updating profiles outside of the local source is not supported.
             if layer.profile.source != SOURCE_LOCAL {
-                layer.profile.outdated.store(false, Ordering::SeqCst);
+                layer.profile.clear_outdated();
                 continue;
             }
             changed = true;
@@ -306,12 +300,10 @@ impl LayeredProfile {
 
     /// Returns the active default action (`DEFAULT_ACTION_*`).
     pub fn default_action(&self) -> u8 {
-        for layer in self.layers() {
-            if layer.default_action > DEFAULT_ACTION_NOT_SET {
-                return layer.default_action;
-            }
-        }
-        self.global.default_action_value()
+        self.first_layer(|layer| {
+            (layer.default_action > DEFAULT_ACTION_NOT_SET).then_some(layer.default_action)
+        })
+        .unwrap_or_else(|| self.global.default_action_value())
     }
 
     fn match_layers(

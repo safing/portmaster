@@ -89,6 +89,59 @@ impl PartialEq for ValidationFunc {
     }
 }
 
+/// Converts a raw value of an option to the current format before it is
+/// validated, like Go `config.MigrationFunc`.
+#[derive(Clone)]
+pub struct MigrationFunc(Arc<MigrationFn>);
+
+type MigrationFn = dyn Fn(&ConfigOption, &Value) -> Value + Send + Sync;
+
+impl MigrationFunc {
+    pub fn new(func: impl Fn(&ConfigOption, &Value) -> Value + Send + Sync + 'static) -> Self {
+        MigrationFunc(Arc::new(func))
+    }
+
+    pub fn call(&self, option: &ConfigOption, value: &Value) -> Value {
+        (self.0)(option, value)
+    }
+}
+
+impl fmt::Debug for MigrationFunc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("MigrationFunc")
+    }
+}
+
+impl PartialEq for MigrationFunc {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+/// Migrates a legacy security level (int) value to a boolean, like Go
+/// `status.MigrateSecurityLevelToBoolean`.
+///
+/// The level is truncated to 8 bits; the option is enabled if the "normal"
+/// bit (1) is set. Non-numeric values and non-boolean options are unchanged.
+pub fn migrate_security_level_to_boolean(option: &ConfigOption, value: &Value) -> Value {
+    if option.opt_type != OPT_TYPE_BOOL {
+        return value.clone();
+    }
+    let Value::Number(number) = value else {
+        return value.clone();
+    };
+    let level = if let Some(v) = number.as_i64() {
+        v as u8
+    } else if let Some(v) = number.as_u64() {
+        v as u8
+    } else if let Some(v) = number.as_f64() {
+        v as i64 as u8
+    } else {
+        return value.clone();
+    };
+    Value::Bool(level & 1 > 0)
+}
+
 /// A value that is allowed for an option.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PossibleValue {
@@ -139,6 +192,9 @@ pub struct ConfigOption {
     /// Not part of the exported definition.
     #[serde(skip)]
     pub validation_func: Option<ValidationFunc>,
+    /// Not part of the exported definition.
+    #[serde(skip)]
+    pub migrations: Vec<MigrationFunc>,
 }
 
 impl Default for ConfigOption {
@@ -158,6 +214,7 @@ impl Default for ConfigOption {
             possible_values: Vec::new(),
             annotations: None,
             validation_func: None,
+            migrations: Vec::new(),
         }
     }
 }
@@ -225,6 +282,16 @@ impl ConfigOption {
         func: impl Fn(&Value) -> Result<(), String> + Send + Sync + 'static,
     ) -> ConfigOption {
         self.validation_func = Some(ValidationFunc::new(func));
+        self
+    }
+
+    /// Adds a value migration, applied before validation.
+    #[must_use]
+    pub fn with_migration(
+        mut self,
+        func: impl Fn(&ConfigOption, &Value) -> Value + Send + Sync + 'static,
+    ) -> ConfigOption {
+        self.migrations.push(MigrationFunc::new(func));
         self
     }
 
@@ -607,8 +674,14 @@ pub(crate) enum LayerTarget {
 
 impl OptionState {
     /// Validates a value against this option.
+    ///
+    /// The option's migrations run first, like Go `migrateValue`.
     pub fn validate(&self, value: &Value) -> Result<CachedValue, ValidationError> {
-        validate_value(&self.option, self.regex.as_ref(), value)
+        let mut migrated = std::borrow::Cow::Borrowed(value);
+        for migration in &self.option.migrations {
+            migrated = std::borrow::Cow::Owned(migration.call(&self.option, &migrated));
+        }
+        validate_value(&self.option, self.regex.as_ref(), &migrated)
     }
 
     /// Sets or clears a value layer. On a validation error the layer is

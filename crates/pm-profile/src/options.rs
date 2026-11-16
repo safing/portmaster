@@ -80,7 +80,9 @@ fn base(
 }
 
 fn security_level(option: ConfigOption) -> ConfigOption {
-    option.with_annotation(DISPLAY_HINT_ANNOTATION, json!(DISPLAY_HINT_SECURITY_LEVEL))
+    option
+        .with_annotation(DISPLAY_HINT_ANNOTATION, json!(DISPLAY_HINT_SECURITY_LEVEL))
+        .with_migration(pm_config::migrate_security_level_to_boolean)
 }
 
 // Go marshals maps sorted by key; keep the verdict names sorted.
