@@ -24,11 +24,12 @@ psl.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
 pm-database = { path = "../pm-database" }
-tokio.workspace = true
 
 [lints]
 workspace = true

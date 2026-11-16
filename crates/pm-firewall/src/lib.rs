@@ -10,8 +10,9 @@
 //!   context) is returned in [`Decision::responder`]; the reason context stays
 //!   unset. [`Decision::into_filter_outcome`] converts it for the nameserver's
 //!   `FirewallHook`.
-//! * Packet handling lives in [`packet`]. DNS response filtering and prompts
-//!   are not part of this crate; the packet handler reaches them through hooks.
+//! * Packet handling lives in [`packet`]; DNS response filtering is a hook.
+//! * Prompts are here; the ask timeout and profile storage are injected through
+//!   [`PromptEnv`].
 //! * Split tunnel verdicts are here, but the proxy is injected through
 //!   [`SplitTunnelEnv`].
 
@@ -25,6 +26,7 @@ mod levenshtein;
 mod master;
 pub mod packet;
 mod preauth;
+mod prompt;
 mod split_tunnel;
 
 pub use bypass::{looks_like_outgoing_dns_request, prevent_bypassing, DnsResponder};
@@ -38,6 +40,12 @@ pub use dga::{lms_score, lms_score_of_domain};
 pub use env::{CustomLists, FirewallEnv, LocalNetwork, MulticastRequest, NoCustomLists};
 pub use master::{decide_on_connection, run_deciders, Decision};
 pub use preauth::{protocol_from_network, PreAuthPorts};
+pub use prompt::{
+    create_prompt, endpoint_rule, prompt, PromptEnv, PromptOutcome, PromptProfile, PromptTarget,
+    ALLOW_DOMAIN_ALL, ALLOW_DOMAIN_DISTINCT, ALLOW_IP, ALLOW_SERVING_IP, BLOCK_DOMAIN_ALL,
+    BLOCK_DOMAIN_DISTINCT, BLOCK_IP, BLOCK_SERVING_IP, CANCEL_PROMPT, DECISION_TIMEOUT_SECONDS,
+    PROMPT_ID_PREFIX,
+};
 pub use split_tunnel::{
     check_split_tunneling, is_own_split_tunnel_proxy_connection, request_split_tunneling,
     SplitTunnelEnv,

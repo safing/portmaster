@@ -159,6 +159,8 @@ pub struct Connection {
     pub process: Option<Arc<Process>>,
     pub save_when_finished: bool,
     pub profiles: Arc<dyn ProfileLookup>,
+    /// Active prompt of the connection; not serialized.
+    pub prompt: Option<Arc<pm_notifications::NotificationHandle>>,
 }
 
 impl Default for Connection {
@@ -203,6 +205,7 @@ impl Default for Connection {
             process: None,
             save_when_finished: false,
             profiles: Arc::new(NoProfiles),
+            prompt: None,
         }
     }
 }
@@ -523,6 +526,19 @@ impl Connection {
 
     pub fn failed(&mut self, reason: &str, option_key: &str) {
         self.set_verdict(Verdict::Failed, reason, option_key, None);
+    }
+
+    /// Sets the active prompt, like Go `SetPrompt`.
+    ///
+    /// Go deletes the previous notification here; the Rust handle has no
+    /// reference to the registry, so the caller removes the old notification.
+    pub fn set_prompt(&mut self, prompt: Arc<pm_notifications::NotificationHandle>) {
+        self.prompt = Some(prompt);
+    }
+
+    /// Removes the active prompt, like Go `RemovePrompt`.
+    pub fn remove_prompt(&mut self) {
+        self.prompt = None;
     }
 
     /// Returns the verdict as a verb.

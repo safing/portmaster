@@ -1515,6 +1515,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+ "tokio-util",
  "tracing",
 ]
 
@@ -1683,6 +1684,7 @@ dependencies = [
  "pm-intel",
  "pm-interception",
  "pm-netstate",
+ "pm-notifications",
  "pm-process",
  "pm-query",
  "pm-record",

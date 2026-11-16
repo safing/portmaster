@@ -12,6 +12,7 @@ pm-intel = { path = "../pm-intel" }
 pm-interception = { path = "../pm-interception" }
 pm-geoip = { path = "../pm-geoip" }
 pm-netstate = { path = "../pm-netstate" }
+pm-notifications = { path = "../pm-notifications" }
 pm-process = { path = "../pm-process" }
 pm-query = { path = "../pm-query" }
 pm-record = { path = "../pm-record" }
