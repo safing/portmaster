@@ -4,8 +4,10 @@ import (
 	"errors"
 	"io"
 	"net"
+	"runtime"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -302,5 +304,136 @@ func TestTCPAssignUniqueIDExhausted(t *testing.T) {
 	msg := &dns.Msg{}
 	if !trc.assignUniqueID(msg) || msg.Id != 4242 {
 		t.Fatalf("expected to get free ID 4242, got ID %d", msg.Id)
+	}
+}
+
+// TestTCPResolverConnReaderExitsWithFullResponseQueue checks that the reader
+// of a connection terminates when the handler stops while the reader is
+// blocked handing a response to the full response queue. Nobody drains the
+// queue after the handler stopped, so the reader would otherwise block
+// forever and keep the connection, its buffers and its worker alive.
+func TestTCPResolverConnReaderExitsWithFullResponseQueue(t *testing.T) {
+	t.Parallel()
+
+	clientSide, serverSide := net.Pipe()
+	defer func() {
+		_ = serverSide.Close()
+	}()
+	trc := &tcpResolverConn{
+		conn:            &dns.Conn{Conn: clientSide},
+		resolverInfo:    &ResolverInfo{Name: "PipeTest", Type: ServerTypeTCP},
+		queries:         make(chan *tcpQuery, 10),
+		responses:       make(chan *dns.Msg, 10),
+		inFlightQueries: make(map[uint16]*tcpQuery, 10),
+		inFlightTimeout: time.Minute,
+		heartbeat:       make(chan struct{}),
+		abandoned:       abool.New(),
+	}
+	// Readers blocked on a response queue that do not belong to this test.
+	foreignReaders := blockedTCPReaders()
+	module.mgr.Go("test dns client", trc.handler)
+
+	// Submit a query and read only the start of it on the server side, so that
+	// the handler is stuck writing it and does not process responses.
+	trc.queries <- &tcpQuery{
+		Query:    &Query{FQDN: "flood.example.", QType: dns.Type(dns.TypeA), NoCaching: true},
+		Response: make(chan *dns.Msg, 1),
+	}
+	_ = serverSide.SetDeadline(time.Now().Add(5 * time.Second))
+	_, err := io.ReadFull(serverSide, make([]byte, 2))
+	if err != nil {
+		t.Fatalf("server failed to read query: %s", err)
+	}
+
+	// Send more responses than the response queue holds. With the pipe, a
+	// write returns only after the reader read it completely, so the reader
+	// then blocks handing the last response to the full queue.
+	server := &dns.Conn{Conn: serverSide}
+	for i := range cap(trc.responses) + 1 {
+		reply := &dns.Msg{}
+		reply.SetQuestion("flood.example.", dns.TypeA)
+		reply.Id = uint16(i) //nolint:gosec // Small loop counter.
+		reply.Response = true
+		err = server.WriteMsg(reply)
+		if err != nil {
+			t.Fatalf("server failed to write response %d: %s", i, err)
+		}
+	}
+	var readers []string
+	deadline := time.Now().Add(5 * time.Second)
+	for len(readers) == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("reader did not block on the full response queue")
+		}
+		time.Sleep(time.Millisecond)
+		for _, id := range blockedTCPReaders() {
+			if !slices.Contains(foreignReaders, id) {
+				readers = append(readers, id)
+			}
+		}
+	}
+
+	// Fail the pending write by closing the server side: the handler stops
+	// and shuts down the connection.
+	_ = serverSide.Close()
+
+	// The reader must terminate.
+	deadline = time.Now().Add(5 * time.Second)
+	for {
+		stacks := allGoroutineStacks()
+		var leaked []string
+		for _, id := range readers {
+			if strings.Contains(stacks, "goroutine "+id+" [") {
+				leaked = append(leaked, id)
+			}
+		}
+		if len(leaked) == 0 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("reader goroutine(s) %v leaked after the connection was shut down", leaked)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// blockedTCPReaders returns the goroutine IDs of the tcp resolver connection
+// readers that are blocked handing a response to the response queue, i.e.
+// that are blocked in the reader function itself and not in reading.
+func blockedTCPReaders() []string {
+	var ids []string
+	for g := range strings.SplitSeq(allGoroutineStacks(), "\n\n") {
+		header, frames, _ := strings.Cut(g, "\n")
+		if !strings.Contains(header, "[chan send") && !strings.Contains(header, "[select") {
+			continue
+		}
+		// Find the innermost frame outside of the runtime.
+		var topFrame string
+		for line := range strings.SplitSeq(frames, "\n") {
+			if !strings.HasPrefix(line, "\t") && !strings.HasPrefix(line, "runtime.") {
+				topFrame = line
+				break
+			}
+		}
+		if !strings.Contains(topFrame, "/service/resolver.(*tcpResolverConn).reader(") {
+			continue
+		}
+		fields := strings.Fields(header)
+		if len(fields) >= 2 {
+			ids = append(ids, fields[1])
+		}
+	}
+	return ids
+}
+
+// allGoroutineStacks returns the stacks of all goroutines.
+func allGoroutineStacks() string {
+	buf := make([]byte, 1<<20)
+	for {
+		n := runtime.Stack(buf, true)
+		if n < len(buf) {
+			return string(buf[:n])
+		}
+		buf = make([]byte, 2*len(buf))
 	}
 }
