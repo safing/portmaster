@@ -27,6 +27,7 @@ mod decode;
 mod entity;
 mod index;
 mod record;
+mod updater;
 
 use pm_database::Interface;
 
@@ -40,6 +41,11 @@ pub use entity::{split_domain, Entity, LocationProvider, ReverseResolver, Static
 pub use index::{
     are_semvers_equal, resolve_list_ids, unbreak_filter_list_ids, update_list_index, Category,
     ListIndexFile, Source, UNBREAK_CATEGORY_IDS,
+};
+pub use updater::{
+    cache_database_version_or_zero, get_cache_database_version, highest_version, is_base_file,
+    resolve_update_order, set_cache_database_version, without_valid_version, BASE_LIST_FILE,
+    INTERMEDIATE_LIST_FILE, LIST_FILES, LIST_INDEX_FILE, URGENT_LIST_FILE,
 };
 pub use record::{
     bloom_cache_key, list_cache_key, normalize_entry, BloomFilterRecord, CacheVersionRecord,
