@@ -650,6 +650,12 @@ impl Firewall {
         }
         drop(tx);
 
+        let queue_numbers: Vec<u16> = queues.iter().map(|handle| handle.queue_number()).collect();
+        tracing::info!(
+            queues = ?queue_numbers,
+            "filter: nfqueue interception started"
+        );
+
         let handler = Arc::clone(&self.handler);
         let cancel = self.cancel.clone();
         let metrics = Arc::clone(&self.metrics);

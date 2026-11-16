@@ -72,11 +72,17 @@ impl Drop for VerdictHandle {
 
 /// A running queue; stops when dropped or on [`QueueHandle::stop`].
 pub struct QueueHandle {
+    number: u16,
     stop: Option<oneshot::Sender<()>>,
     task: tokio::task::JoinHandle<std::io::Result<()>>,
 }
 
 impl QueueHandle {
+    /// Returns the netlink queue number this handle reads.
+    pub fn queue_number(&self) -> u16 {
+        self.number
+    }
+
     pub async fn stop(mut self) -> std::io::Result<()> {
         if let Some(stop) = self.stop.take() {
             let _ = stop.send(());
@@ -111,6 +117,7 @@ pub fn start(
     let (stop_tx, stop_rx) = oneshot::channel();
     let task = tokio::spawn(run(fd, num, inbound, out, stop_rx));
     Ok(QueueHandle {
+        number: num,
         stop: Some(stop_tx),
         task,
     })
