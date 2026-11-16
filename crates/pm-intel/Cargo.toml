@@ -18,6 +18,7 @@ pm-netstate = { path = "../pm-netstate" }
 pm-netutils = { path = "../pm-netutils" }
 pm-notifications = { path = "../pm-notifications" }
 pm-record = { path = "../pm-record" }
+pm-updates = { path = "../pm-updates" }
 psl = "2.1.255"
 serde.workspace = true
 serde_json.workspace = true

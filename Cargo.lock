@@ -1549,6 +1549,7 @@ dependencies = [
  "pm-netutils",
  "pm-notifications",
  "pm-record",
+ "pm-updates",
  "psl",
  "serde",
  "serde_json",

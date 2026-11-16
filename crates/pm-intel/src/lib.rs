@@ -25,6 +25,7 @@ mod bloom;
 pub mod customlists;
 mod decode;
 mod entity;
+mod index;
 mod record;
 
 use pm_database::Interface;
@@ -36,6 +37,10 @@ pub use bloom::{
 };
 pub use decode::{decode_file, parse_header, EntryResource, ListEntry};
 pub use entity::{split_domain, Entity, LocationProvider, ReverseResolver, StaticLocations};
+pub use index::{
+    are_semvers_equal, resolve_list_ids, unbreak_filter_list_ids, update_list_index, Category,
+    ListIndexFile, Source, UNBREAK_CATEGORY_IDS,
+};
 pub use record::{
     bloom_cache_key, list_cache_key, normalize_entry, BloomFilterRecord, CacheVersionRecord,
     EntityRecord, FilterLists, CACHE_DB_PREFIX, CACHE_VERSION_KEY, INDEX_KEY, LIST_KEY_PREFIX,
