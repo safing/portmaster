@@ -29,6 +29,7 @@ members = [
     "crates/pm-netquery",
     "crates/pm-jess",
     "crates/pm-firewall",
+    "crates/pm-splittun",
 ]
 
 [workspace.package]

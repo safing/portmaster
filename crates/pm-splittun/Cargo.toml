@@ -1,0 +1,25 @@
+[package]
+name = "pm-splittun"
+version = "0.1.0"
+edition.workspace = true
+description = "Split tunnel module of the Portmaster core: pending requests and proxy lifecycle"
+license.workspace = true
+
+[dependencies]
+pm-config = { path = "../pm-config" }
+pm-network = { path = "../pm-network" }
+pm-process = { path = "../pm-process" }
+pm-profile = { path = "../pm-profile" }
+pm-proxy = { path = "../pm-proxy" }
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+pm-database = { path = "../pm-database" }
+pm-intel = { path = "../pm-intel" }
+
+[lints]
+workspace = true
