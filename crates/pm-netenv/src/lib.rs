@@ -9,50 +9,79 @@
 //! * The OS access is injected through [`InterfaceSource`]; [`SystemInterfaces`]
 //!   is the Linux implementation. Physical default interface detection on
 //!   other platforms reports the Go "not supported" error.
-//! * DNS/HTTP probing and the ICMP listener are not ported yet;
-//!   [`NetEnv::update_online_status`] is the entry point the checker will call.
+//! * DNS/HTTP probing lives in [`online_check`]; the ICMP listener and probe
+//!   support live in [`icmp`]. Both are injected so no root is needed in tests.
 //! * Go keeps the caches in package-level sync primitives; here they live in
-//!   [`InterfaceCache`] and [`AddressCache`], with [`network`] providing a
-//!   process-wide default source.
-//! * The captive portal notification (`netenv:captive-portal`) is not sent yet:
-//!   it needs the notifications module, which the caller owns.
+//!   [`InterfaceCache`], [`AddressCache`] and [`EnvironmentCache`], with
+//!   [`network`] and [`environment`] providing process-wide defaults.
+//! * Nameservers, gateways and the NetworkManager connectivity state are read
+//!   from files and the `busctl` command line tool; see [`dbus`] for the
+//!   deviation from Go's native D-Bus client.
+//! * Notifications are emitted as [`NotificationEvent`]s through an injected
+//!   [`NotificationSink`]. The caller (which owns the notification manager)
+//!   sends them; see [`notifications`].
 
 use std::net::IpAddr;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{Arc, OnceLock, RwLock};
 
 use pm_mgr::EventMgr;
 use serde::{Deserialize, Serialize};
 
 mod addresses;
+pub mod dbus;
+pub mod environment;
 mod flag;
+mod icmp;
 mod interfaces;
 mod network_change;
+mod notifications;
 mod online_check;
 mod system;
 
 pub use addresses::{AddressCache, LocalNetwork};
-pub use flag::{
-    global_source, network_changed_flag, notify_network_change, FlagPair,
-    NetworkChangeFlag, NetworkChangeSource,
+pub use dbus::{
+    connectivity_state_from_dbus, nameservers_from_dbus, ConnectivityState, DbusClient, DbusValue,
+    SystemDbus,
 };
-pub use network_change::{
-    NetworkChangeMonitor, OFFLINE_CHECK_INTERVAL, ONLINE_CHECK_INTERVAL,
+pub use environment::{
+    add_nameservers, connectivity_state, environment, gateways, gateways_info, nameservers,
+    parse_ipv4_routes, parse_ipv6_routes, parse_resolvconf, EnvironmentCache, EnvironmentSource,
+    GatewayInfo, Nameserver, SystemEnvironment, IPV4_ROUTE_PATH, IPV6_ROUTE_PATH, RESOLV_CONF_PATH,
+};
+pub use flag::{
+    global_source, network_changed_flag, notify_network_change, FlagPair, NetworkChangeFlag,
+    NetworkChangeSource,
+};
+pub use icmp::{
+    build_echo, embedded_echo_ids, interface_index, parse_icmp_v4, recv_icmp, recv_timeout,
+    run_probe, target_socket_address, IcmpListener, IcmpListenerGuard, IcmpPacket, IcmpReply,
+    IcmpSocket, IcmpV4Packet, IcmpV4Type, PacketReceiver, ProbeOutcome, RecvOutcome,
+    SystemIcmpSocket, ICMP_CHANNEL_CAPACITY, ICMP_INITIAL_MAX_HOPS, ICMP_PROBE_ATTEMPTS_PER_HOP,
+    ICMP_SEND_RETRIES, ICMP_SEND_RETRY_DELAY,
 };
 pub use interfaces::{
     canonical_mac, is_routable_unicast, network_contains, normalize_ip, InterfaceCache,
     InterfaceInfo, InterfaceSource, NetInterface, PhysicalDefaultInterfaces, RawInterface,
     RouteCandidate,
 };
-pub use system::SystemInterfaces;
-pub use online_check::{
-    check_online_status, is_connectivity_domain, no_portal_probe, shared_probe, DnsCheck,
-    DnsCheckOutcome, OnlineCheckEnv, OnlineCheckResult, PortalProbe, PortalProbeResult,
-    dynamic_check_delay, OnlineMonitor, StaticDnsCheck, StaticPortalProbe, SystemPortalProbe,
-    CONNECTIVITY_DOMAINS,
-    DNS_TEST_DOMAIN, DNS_TEST_EXPECTED_IP, IGNORE_IPS_IN_ONLINE_STATUS_CHECK, PORTAL_TEST_IP,
-    PORTAL_TEST_URL,
+pub use network_change::{NetworkChangeMonitor, OFFLINE_CHECK_INTERVAL, ONLINE_CHECK_INTERVAL};
+pub use notifications::{
+    captive_portal_event, notification_change, online_status_event, NoopNotificationSink,
+    NotificationAction, NotificationChange, NotificationEvent, NotificationSink,
+    CAPTIVE_PORTAL_EVENT_ID, CAPTIVE_PORTAL_MESSAGE, CAPTIVE_PORTAL_TITLE, IGNORE_ACTION_ID,
+    IGNORE_ACTION_TEXT, LIMITED_EVENT_ID, LIMITED_MESSAGE, LIMITED_TITLE, NOTIFICATION_TYPE_INFO,
+    OFFLINE_EVENT_ID, OFFLINE_MESSAGE, OFFLINE_TITLE, OPEN_PORTAL_ACTION_TEXT,
+    OPEN_PORTAL_ACTION_TYPE,
 };
+pub use online_check::{
+    check_online_status, dynamic_check_delay, is_connectivity_domain, no_portal_probe,
+    shared_probe, DnsCheck, DnsCheckOutcome, OnlineCheckEnv, OnlineCheckResult, OnlineMonitor,
+    PortalProbe, PortalProbeResult, StaticDnsCheck, StaticPortalProbe, SystemPortalProbe,
+    CONNECTIVITY_DOMAINS, DNS_TEST_DOMAIN, DNS_TEST_EXPECTED_IP, IGNORE_IPS_IN_ONLINE_STATUS_CHECK,
+    PORTAL_TEST_IP, PORTAL_TEST_URL,
+};
+pub use system::SystemInterfaces;
 
 /// The process-wide network caches.
 pub struct Network {
@@ -60,6 +89,8 @@ pub struct Network {
     pub interfaces: Arc<InterfaceCache>,
     /// Local address cache backed by the system interfaces.
     pub addresses: Arc<AddressCache>,
+    /// Nameserver and gateway cache backed by files and D-Bus.
+    pub environment: &'static EnvironmentCache,
 }
 
 static NETWORK: OnceLock<Network> = OnceLock::new();
@@ -74,6 +105,7 @@ pub fn network() -> &'static Network {
                 network_changed_flag(),
             )),
             addresses: Arc::new(AddressCache::new(source, network_changed_flag())),
+            environment: environment(),
         }
     })
 }
@@ -214,6 +246,8 @@ pub struct NetEnv {
     online_status: AtomicU8,
     captive_portal: RwLock<Option<CaptivePortal>>,
     online_status_events: EventMgr<OnlineStatus>,
+    notification_sink: RwLock<Arc<dyn NotificationSink>>,
+    status_notification_id: RwLock<Option<String>>,
 }
 
 impl Default for NetEnv {
@@ -223,13 +257,25 @@ impl Default for NetEnv {
 }
 
 impl NetEnv {
-    /// Creates an empty network environment.
+    /// Creates an empty network environment without a notification owner.
     pub fn new() -> NetEnv {
+        NetEnv::with_notification_sink(Arc::new(NoopNotificationSink))
+    }
+
+    /// Creates a network environment with an injected notification sink.
+    pub fn with_notification_sink(sink: Arc<dyn NotificationSink>) -> NetEnv {
         NetEnv {
             online_status: AtomicU8::new(OnlineStatus::Unknown as u8),
             captive_portal: RwLock::new(None),
             online_status_events: EventMgr::new("online status change"),
+            notification_sink: RwLock::new(sink),
+            status_notification_id: RwLock::new(None),
         }
+    }
+
+    /// Replaces the notification sink, e.g. once the core is initialized.
+    pub fn set_notification_sink(&self, sink: Arc<dyn NotificationSink>) {
+        *self.notification_sink.write().expect("lock poisoned") = sink;
     }
 
     /// Returns the current online status.
@@ -271,14 +317,44 @@ impl NetEnv {
         status: OnlineStatus,
         portal: Option<CaptivePortal>,
     ) -> bool {
-        *self.captive_portal.write().expect("lock poisoned") = portal;
+        // Go sets the captive portal only once per detection and clears it when
+        // the status update no longer carries a portal URL.
+        let previous_portal = self.captive_portal();
+        let had_portal = previous_portal
+            .as_ref()
+            .is_some_and(|portal| !portal.url.is_empty());
+        let portal = match (previous_portal, portal) {
+            (Some(previous), Some(next)) if !previous.url.is_empty() && !next.url.is_empty() => {
+                Some(previous)
+            }
+            (_, next) => next,
+        };
+        *self.captive_portal.write().expect("lock poisoned") = portal.clone();
 
         let previous = self.online_status.swap(status as u8, Ordering::SeqCst);
         let changed = previous != status as u8;
-        if changed {
-            tracing::info!(status = %status, "netenv: online status changed");
-            self.online_status_events.submit(status);
+        if !changed {
+            return false;
         }
+
+        tracing::info!(status = %status, "netenv: online status changed");
+        self.online_status_events.submit(status);
+
+        let mut status_id = self.status_notification_id.write().expect("lock poisoned");
+        let change = notification_change(status, portal.as_ref(), had_portal, status_id.as_deref());
+        let new_id = change
+            .notify
+            .iter()
+            .find(|event| event.event_id == OFFLINE_EVENT_ID || event.event_id == LIMITED_EVENT_ID)
+            .map(|event| event.event_id.clone());
+        if new_id.is_some() || change.delete_online_status {
+            *status_id = new_id;
+        }
+        drop(status_id);
+        self.notification_sink
+            .read()
+            .expect("lock poisoned")
+            .handle(change);
         changed
     }
 }
@@ -308,6 +384,33 @@ pub fn get_captive_portal() -> Option<CaptivePortal> {
 pub fn shared() -> Arc<NetEnv> {
     static SHARED: OnceLock<Arc<NetEnv>> = OnceLock::new();
     Arc::clone(SHARED.get_or_init(|| Arc::new(NetEnv::new())))
+}
+
+static CONNECTED_TO_SPN: AtomicBool = AtomicBool::new(false);
+static CONNECTED_TO_DNS: AtomicBool = AtomicBool::new(false);
+
+/// Records whether the core is connected to the SPN, like Go
+/// `netenv.ConnectedToSPN`.
+pub fn set_connected_to_spn(connected: bool) {
+    CONNECTED_TO_SPN.store(connected, Ordering::SeqCst);
+}
+
+/// Returns whether the core is connected to the SPN, like Go
+/// `netenv.ConnectedToSPN.IsSet`.
+pub fn is_connected_to_spn() -> bool {
+    CONNECTED_TO_SPN.load(Ordering::SeqCst)
+}
+
+/// Records whether the core is connected to the internal DNS, like Go
+/// `netenv.ConnectedToDNS`.
+pub fn set_connected_to_dns(connected: bool) {
+    CONNECTED_TO_DNS.store(connected, Ordering::SeqCst);
+}
+
+/// Returns whether the core is connected to the internal DNS, like Go
+/// `netenv.ConnectedToDNS.IsSet`.
+pub fn is_connected_to_dns() -> bool {
+    CONNECTED_TO_DNS.load(Ordering::SeqCst)
 }
 
 #[cfg(test)]

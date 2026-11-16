@@ -401,11 +401,13 @@ impl OnlineMonitor {
     /// Updates whether the core is connected to the SPN.
     pub fn set_connected_to_spn(&self, connected: bool) {
         self.connected_to_spn.store(connected, Ordering::SeqCst);
+        crate::set_connected_to_spn(connected);
     }
 
     /// Updates whether the core is connected to the internal DNS.
     pub fn set_connected_to_dns(&self, connected: bool) {
         self.connected_to_dns.store(connected, Ordering::SeqCst);
+        crate::set_connected_to_dns(connected);
     }
 
     /// Triggers a check as soon as possible, like
@@ -420,8 +422,10 @@ impl OnlineMonitor {
             addresses: &self.addresses,
             portal: self.portal.as_ref(),
             dns: self.dns.as_deref(),
-            connected_to_spn: self.connected_to_spn.load(Ordering::SeqCst),
-            connected_to_dns: self.connected_to_dns.load(Ordering::SeqCst),
+            connected_to_spn: self.connected_to_spn.load(Ordering::SeqCst)
+                || crate::is_connected_to_spn(),
+            connected_to_dns: self.connected_to_dns.load(Ordering::SeqCst)
+                || crate::is_connected_to_dns(),
         };
         let result = check_online_status(&env);
         self.netenv.apply_online_check(&result);

@@ -8,8 +8,10 @@ license.workspace = true
 [dependencies]
 pm-mgr = { path = "../pm-mgr" }
 pm-netstate = { path = "../pm-netstate" }
+pm-netutils = { path = "../pm-netutils" }
 nix = { version = "0.31.3", default-features = false, features = ["net"] }
 serde.workspace = true
+serde_json.workspace = true
 sha1.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
