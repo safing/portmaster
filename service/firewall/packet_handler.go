@@ -380,7 +380,11 @@ func fastTrackedPermit(conn *network.Connection, pkt packet.Packet) (verdict net
 			// Add to DNS request connections to attribute DNS request if outgoing.
 			if pkt.IsOutbound() {
 				// Assign PID from packet directly, as processing stops after fast-track.
-				conn.PID = pkt.Info().PID
+				// Keep a PID that is already known (e.g. adopted from a PID hint) if
+				// the packet does not carry one, as nfqueue packets never do.
+				if pkt.Info().PID != process.UndefinedProcessID {
+					conn.PID = pkt.Info().PID
+				}
 				network.SaveDNSRequestConnection(conn, pkt)
 			}
 
