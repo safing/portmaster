@@ -28,6 +28,7 @@ members = [
     "crates/pm-nameserver",
     "crates/pm-netquery",
     "crates/pm-jess",
+    "crates/pm-firewall",
 ]
 
 [workspace.package]

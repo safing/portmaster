@@ -1482,6 +1482,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pm-firewall"
+version = "0.1.0"
+dependencies = [
+ "pm-config",
+ "pm-database",
+ "pm-endpoints",
+ "pm-intel",
+ "pm-netenv",
+ "pm-netstate",
+ "pm-network",
+ "pm-process",
+ "pm-profile",
+ "pm-resolver",
+ "psl",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "pm-geoip"
 version = "0.1.0"
 dependencies = [
