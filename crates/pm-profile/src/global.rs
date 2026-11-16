@@ -189,6 +189,15 @@ impl GlobalProfileConfig {
         *self.resolver.write().expect("lock poisoned") = Some(resolver);
     }
 
+    /// Resolves filter list IDs with the list resolver; without one, the IDs
+    /// are returned as is.
+    pub fn resolve_list_ids(&self, ids: &[String]) -> Result<Vec<String>, String> {
+        match self.resolver.read().expect("lock poisoned").as_ref() {
+            Some(resolve) => resolve(ids),
+            None => Ok(ids.to_vec()),
+        }
+    }
+
     /// Re-parses the rule lists and the default action, like Go
     /// `updateGlobalConfigProfile`. All lists are updated; the last error is
     /// returned.
@@ -218,15 +227,12 @@ impl GlobalProfileConfig {
         parsed.service_endpoints = parse(&self.service_endpoints_list);
 
         let ids = (self.filter_lists_list)();
-        let resolved = match self.resolver.read().expect("lock poisoned").as_ref() {
-            Some(resolve) => match resolve(&ids) {
-                Ok(resolved) => resolved,
-                Err(err) => {
-                    last_err = Some(err);
-                    Vec::new()
-                }
-            },
-            None => ids,
+        let resolved = match self.resolve_list_ids(&ids) {
+            Ok(resolved) => resolved,
+            Err(err) => {
+                last_err = Some(err);
+                Vec::new()
+            }
         };
 
         let mut parse = |list: &Getter<Vec<String>>| {
