@@ -26,8 +26,10 @@ pm-nameserver = { path = "../pm-nameserver" }
 pm-network = { path = "../pm-network" }
 pm-resolver = { path = "../pm-resolver" }
 pm-notifications = { path = "../pm-notifications" }
+pm-splittun = { path = "../pm-splittun" }
 pm-status = { path = "../pm-status" }
 pm-intel = { path = "../pm-intel" }
+pm-firewall = { path = "../pm-firewall" }
 pm-geoip = { path = "../pm-geoip" }
 pm-query = { path = "../pm-query" }
 pm-record = { path = "../pm-record" }

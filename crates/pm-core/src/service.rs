@@ -38,6 +38,8 @@ pub struct Service {
     pub profile_config: Arc<pm_profile::GlobalProfileConfig>,
     /// Resolver and nameserver.
     pub dns: Arc<crate::dns::Dns>,
+    /// Custom filter list and its file watcher.
+    pub custom_lists: Arc<pm_intel::customlists::CustomListService>,
     /// Subscribed in `new` so changes before `run` are not missed.
     profile_changes: Mutex<Option<tokio::sync::broadcast::Receiver<()>>>,
     listener: Mutex<Option<TcpListener>>,
@@ -103,6 +105,9 @@ impl Service {
         let config = Config::new();
         register_options(&config, options)?;
         pm_profile::options::register_options(&config)?;
+        pm_firewall::register_options(&config)?;
+        pm_splittun::register_options(&config)?;
+        pm_intel::customlists::register_options(&config)?;
         crate::dns::register_options(&config, &options.nameserver_address)?;
         config.register_database(&databases)?;
         let config_file = data_dir.join("config.json");
@@ -133,6 +138,24 @@ impl Service {
         api.register_config_endpoints(Arc::clone(&config));
         api.update_api_keys(&api_keys);
         api.set_ui_archives(Arc::new(UiArchives::new(&options.bin_dir)));
+
+        // The country table is static, the endpoint is always available.
+        pm_geoip::register_api(&api)
+            .map_err(|error| anyhow::anyhow!("register geoip api: {error}"))?;
+
+        // Custom filter list: option, endpoint and background reloader.
+        let custom_lists = Arc::new(pm_intel::customlists::CustomListService::with_reporting(
+            Some(Arc::clone(&notifications)),
+            Some(Arc::new(pm_mgr::StateMgr::new("CustomList"))),
+        ));
+        custom_lists.set_file_path(
+            &config.get_as_string(
+                pm_intel::customlists::CFG_OPTION_CUSTOM_LIST_FILE_KEY,
+                "",
+            )(),
+        );
+        pm_intel::customlists::register_api(&api, Arc::clone(&custom_lists))
+            .map_err(|error| anyhow::anyhow!("register customlists api: {error}"))?;
 
         let listener = TcpListener::bind(&listen_address)
             .await
@@ -173,6 +196,7 @@ impl Service {
             geoip,
             profile_config,
             dns,
+            custom_lists,
             profile_changes: Mutex::new(Some(profile_changes)),
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
@@ -208,8 +232,11 @@ impl Service {
 
         let server = pm_api::serve(api, listener);
 
-        // Keep the parsed global rules in sync with config changes.
+        // Keep the parsed global rules and the custom filter list in sync with
+        // config changes.
         let profile_config = Arc::clone(&self.profile_config);
+        let custom_lists = Arc::clone(&self.custom_lists);
+        let config = Arc::clone(&self.config);
         let mut changes = self
             .profile_changes
             .lock()
@@ -223,8 +250,40 @@ impl Service {
                 if let Err(error) = profile_config.refresh() {
                     tracing::warn!(%error, "profile: some global settings are invalid");
                 }
+                custom_lists.set_file_path(
+                    &config.get_as_string(
+                        pm_intel::customlists::CFG_OPTION_CUSTOM_LIST_FILE_KEY,
+                        "",
+                    )(),
+                );
             }
         });
+
+        // Reload the custom filter list on start and every minute, like the Go
+        // module worker (which delays the first run by 20 seconds).
+        let list_watcher = {
+            let custom_lists = Arc::clone(&self.custom_lists);
+            let config = Arc::clone(&self.config);
+            tokio::spawn(async move {
+                let start = tokio::time::Instant::now() + Duration::from_secs(20);
+                let mut interval = tokio::time::interval_at(start, Duration::from_secs(60));
+                loop {
+                    interval.tick().await;
+                    custom_lists.set_file_path(
+                        &config.get_as_string(
+                            pm_intel::customlists::CFG_OPTION_CUSTOM_LIST_FILE_KEY,
+                            "",
+                        )(),
+                    );
+                    match custom_lists.check_and_update_configured() {
+                        Ok(_) => {}
+                        Err(error) => {
+                            tracing::warn!(%error, "intel/customlists: reload failed");
+                        }
+                    }
+                }
+            })
+        };
 
         let outcome: anyhow::Result<()> = tokio::select! {
             result = server => result.map_err(anyhow::Error::from),
@@ -236,6 +295,7 @@ impl Service {
         };
 
         refresher.abort();
+        list_watcher.abort();
         self.dns.shutdown().await;
         databases.shutdown()?;
         outcome

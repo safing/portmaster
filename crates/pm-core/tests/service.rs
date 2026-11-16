@@ -41,9 +41,19 @@ fn temp_dir(tag: &str) -> std::path::PathBuf {
 }
 
 async fn http_get(address: std::net::SocketAddr, path: &str, headers: &str) -> String {
+    http_request("GET", address, path, headers).await
+}
+
+async fn http_request(
+    method: &str,
+    address: std::net::SocketAddr,
+    path: &str,
+    headers: &str,
+) -> String {
     let mut stream = tokio::net::TcpStream::connect(address).await.unwrap();
-    let message =
-        format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n{headers}\r\n");
+    let message = format!(
+        "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n{headers}\r\n"
+    );
     stream.write_all(message.as_bytes()).await.unwrap();
     let mut response = Vec::new();
     stream.read_to_end(&mut response).await.unwrap();
@@ -91,6 +101,35 @@ async fn core_serves_api_and_database() {
     assert!(keys.contains(&"core/listenAddress"), "{keys:?}");
     assert!(keys.contains(&"core/apiKeys"), "{keys:?}");
     assert!(keys.contains(&"core/expertiseLevel"), "{keys:?}");
+    // Firewall, split tunnel and custom list options are registered.
+    for key in [
+        "filter/enable",
+        "filter/askTimeout",
+        "filter/customListFile",
+        "splittun/enable",
+        "splittun/use",
+    ] {
+        assert!(keys.contains(&key), "missing option {key}: {keys:?}");
+    }
+
+    // GeoIP country information is served from the static table.
+    let response = http_get(address, "/api/v1/intel/geoip/countries", "").await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    let body = response.split("\r\n\r\n").nth(1).expect("body");
+    let countries: serde_json::Value = serde_json::from_str(body).expect("countries json");
+    assert_eq!(countries["US"]["Name"], "United States of America");
+
+    // The custom filter list endpoint reloads the configured file.
+    let list_file = data_dir.join("custom-filter-list.txt");
+    std::fs::write(&list_file, "example.com\n1.2.3.4\nUS\n").unwrap();
+    service.custom_lists.set_file_path(list_file.to_str().unwrap());
+    let response = http_request("POST", address, "/api/v1/customlists/update", "").await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    assert!(
+        response.contains("Custom filter list loaded successfully."),
+        "{response}"
+    );
+    assert!(service.custom_lists.lists().is_loaded());
 
     // The databases were created on disk.
     assert!(data_dir.join("databases/core/sqlite/db.sqlite").exists());
