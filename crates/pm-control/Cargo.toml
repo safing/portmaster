@@ -1,0 +1,22 @@
+[package]
+name = "pm-control"
+version = "0.1.0"
+edition.workspace = true
+description = "Pause and resume control for the Portmaster core, ported from service/control"
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+pm-dsd = { path = "../pm-dsd" }
+pm-notifications = { path = "../pm-notifications" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints]
+workspace = true

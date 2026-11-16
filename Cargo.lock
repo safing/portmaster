@@ -1426,6 +1426,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "pm-control"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "pm-dsd",
+ "pm-notifications",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "pm-core"
 version = "0.1.0"
 dependencies = [
@@ -1438,6 +1452,7 @@ dependencies = [
  "pm-api",
  "pm-apprise",
  "pm-config",
+ "pm-control",
  "pm-database",
  "pm-debug",
  "pm-dsd",

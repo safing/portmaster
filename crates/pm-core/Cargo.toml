@@ -17,6 +17,7 @@ getrandom.workspace = true
 hex.workspace = true
 pm-api = { path = "../pm-api" }
 pm-config = { path = "../pm-config" }
+pm-control = { path = "../pm-control" }
 pm-debug = { path = "../pm-debug" }
 pm-database = { path = "../pm-database" }
 pm-dsd = { path = "../pm-dsd" }

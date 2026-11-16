@@ -17,3 +17,5 @@ pub mod core_api;
 pub mod account_api;
 
 pub mod apprise;
+
+pub mod control;

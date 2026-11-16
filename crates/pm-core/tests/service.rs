@@ -61,6 +61,18 @@ async fn http_request(
     String::from_utf8_lossy(&response).into_owned()
 }
 
+async fn http_post(address: std::net::SocketAddr, path: &str, body: &str) -> String {
+    let mut stream = tokio::net::TcpStream::connect(address).await.unwrap();
+    let message = format!(
+        "POST {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}",
+        body.len()
+    );
+    stream.write_all(message.as_bytes()).await.unwrap();
+    let mut response = Vec::new();
+    stream.read_to_end(&mut response).await.unwrap();
+    String::from_utf8_lossy(&response).into_owned()
+}
+
 #[tokio::test]
 async fn core_serves_api_and_database() {
     let data_dir = temp_dir("serve");
@@ -180,6 +192,18 @@ async fn core_serves_api_and_database() {
     assert!(service.api.endpoint("app/profile").is_some());
     assert!(service.api.endpoint("app/auth").is_some());
     assert!(service.api.endpoint("debug/core").is_some());
+    assert!(service.api.endpoint("control/pause").is_some());
+    assert!(service.api.endpoint("control/resume").is_some());
+
+    // Pause/resume control mirrors Go's service/control endpoints.
+    let response = http_post(address, "/api/v1/control/pause", r#"{"duration":60}"#).await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    assert!(response.contains("Pause initiated"), "{response}");
+    assert!(service.control.info().await.interception);
+    let response = http_post(address, "/api/v1/control/resume", "").await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    assert!(response.contains("Resume initiated"), "{response}");
+    assert!(!service.control.info().await.interception);
 
     let response = http_get(address, "/api/v1/debug/core", "").await;
     assert!(response.starts_with("HTTP/1.1 200"), "{response}");

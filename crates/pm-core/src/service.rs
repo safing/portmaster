@@ -64,6 +64,8 @@ pub struct Service {
     pub device_locations: Arc<crate::location::CoreDeviceLocations>,
     /// Firewall environment and packet pipeline.
     pub firewall: Arc<crate::firewall::Firewall>,
+    /// Pause/resume control module.
+    pub control: Arc<pm_control::Control<crate::control::CoreControlEnv>>,
     /// Triggered by a restart request (updater or API).
     pub restart_token: CancellationToken,
     /// Split tunnel proxies.
@@ -457,6 +459,19 @@ impl Service {
 
 
 
+        // Go service/control: pause/resume with automatic resume.
+        let control = Arc::new(pm_control::Control::new(
+            crate::control::CoreControlEnv::new(
+                Arc::clone(&config),
+                Arc::clone(&firewall),
+                service_restart_token.clone(),
+            ),
+            Arc::new(crate::control::CoreNotificationSink(Arc::clone(&notifications)))
+                as Arc<dyn pm_control::NotificationSink>,
+        ));
+        crate::control::register_api(&api, Arc::clone(&control))
+            .map_err(|error| anyhow::anyhow!("register control api: {error}"))?;
+
         // Netquery API on top of the live connection database.
         let retention_profiles = Arc::clone(&firewall.profiles);
         let retention_config = Arc::clone(&config);
@@ -510,6 +525,7 @@ impl Service {
             apprise,
             device_locations,
             firewall,
+            control,
             restart_token,
             split_proxies: Arc::clone(&split_proxies),
             split_queue: Arc::clone(&split_queue),
@@ -753,6 +769,7 @@ impl Service {
         intel_worker.abort();
         list_watcher.abort();
         self.split_proxies.stop();
+        self.control.shutdown().await;
         if let Err(error) = self.firewall.stop().await {
             tracing::warn!(%error, "filter: failed to stop interception");
         }
