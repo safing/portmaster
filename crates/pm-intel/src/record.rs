@@ -5,11 +5,12 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::RwLock;
 
-use pm_database::Interface;
+use pm_database::{Interface, Query};
 use pm_record::{Key, Meta, Record};
 use serde::{Deserialize, Serialize};
 
 use crate::bloom::ScopedBloom;
+use pm_updates::Artifact;
 use crate::decode::ListEntry;
 use crate::{Error, Result};
 
@@ -27,6 +28,14 @@ pub const RESET_VERSION: &str = "v0.6.0";
 /// Returns the cache key of the bloom filter of a scope.
 pub fn bloom_cache_key(scope: &str) -> String {
     format!("{CACHE_DB_PREFIX}/bloom/{scope}")
+}
+
+/// Returns the current time in Unix seconds.
+fn unix_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs() as i64)
+        .unwrap_or(0)
 }
 
 /// Returns the cache key of an entity record.
@@ -98,6 +107,17 @@ pub fn entity_record(entry: &ListEntry, updated_at: i64) -> Result<Record> {
         format: pm_dsd::format::JSON,
         data,
     })
+}
+
+/// Report of an applied filter list update.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct AppliedUpdate {
+    /// Number of processed files.
+    pub files: usize,
+    /// Number of processed entries.
+    pub entries: usize,
+    /// Whether the bloom filters were rebuilt from a base file.
+    pub rebuilt: bool,
 }
 
 /// The filter lists and their lookups.
@@ -198,6 +218,106 @@ impl FilterLists {
             self.store_entry(entry, updated_at)?;
         }
         Ok(entries.len())
+    }
+
+    /// Applies update files in order, like Go `performUpdate`.
+    ///
+    /// Processing a base file rebuilds the bloom filters from scratch and
+    /// removes cache entries that were not touched by the update. Returns the
+    /// report and leaves the cache version to the caller.
+    pub fn apply_update(
+        &self,
+        files: &[Artifact],
+        started_at: i64,
+    ) -> Result<AppliedUpdate> {
+        let mut rebuilt = false;
+        let mut new_filter: Option<ScopedBloom> = None;
+        let mut entries = 0usize;
+
+        for file in files {
+            if crate::updater::is_base_file(&file.filename) {
+                if rebuilt {
+                    tracing::warn!(
+                        "intel/filterlists: multiple base files in one update, rebuilding again"
+                    );
+                }
+                rebuilt = true;
+                new_filter = Some(ScopedBloom::new());
+            }
+
+            let reader = std::fs::File::open(file.path())?;
+            for mut entry in crate::decode_file(reader)? {
+                normalize_entry(&mut entry);
+                if !entry.resources.is_empty() {
+                    match new_filter.as_mut() {
+                        Some(filter) => filter.add(&entry.type_, &entry.entity),
+                        None => self
+                            .filter
+                            .write()
+                            .expect("lock poisoned")
+                            .add(&entry.type_, &entry.entity),
+                    }
+                }
+                let record = entity_record(&entry, unix_now())?;
+                self.cache.put(record)?;
+                entries += 1;
+            }
+        }
+
+        if let Some(filter) = new_filter {
+            self.filter
+                .write()
+                .expect("lock poisoned")
+                .replace_with(filter);
+            tracing::info!(
+                "intel/filterlists: rebuilt bloom filters (added/capacity): {}",
+                self.capacity_report()
+            );
+        }
+
+        self.set_loaded(true);
+        if let Err(error) = self.save_bloom_cache() {
+            tracing::error!(
+                "intel/filterlists: failed to persist bloom filters in cache database: {error}"
+            );
+        }
+
+        if rebuilt {
+            let cutoff = started_at - 60;
+            match self.remove_obsolete_entries(cutoff) {
+                Ok(removed) => tracing::debug!(
+                    "intel/filterlists: removed {removed} obsolete entries written before {cutoff}"
+                ),
+                Err(error) => return Err(error),
+            }
+        }
+
+        Ok(AppliedUpdate {
+            files: files.len(),
+            entries,
+            rebuilt,
+        })
+    }
+
+    /// Removes cached list entries whose `UpdatedAt` is before `cutoff`, like
+    /// Go `removeAllObsoleteFilterEntries`.
+    ///
+    /// Go uses a database purge with an `UpdatedAt` condition; the Rust
+    /// database has no meta conditions yet, so the entries are filtered here.
+    pub fn remove_obsolete_entries(&self, cutoff: i64) -> Result<usize> {
+        let records = self.cache.query(&Query::new(LIST_KEY_PREFIX))?;
+        let mut removed = 0;
+        for record in records {
+            let Ok(entity) = serde_json::from_slice::<EntityRecord>(&record.data) else {
+                continue;
+            };
+            if entity.updated_at < cutoff {
+                let key = format!("{}:{}", record.key.db, record.key.key);
+                self.cache.delete(&key)?;
+                removed += 1;
+            }
+        }
+        Ok(removed)
     }
 
     /// Looks up the sources that contain the entity, like Go `lookupBlockLists`.

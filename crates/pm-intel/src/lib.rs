@@ -48,7 +48,7 @@ pub use updater::{
     INTERMEDIATE_LIST_FILE, LIST_FILES, LIST_INDEX_FILE, URGENT_LIST_FILE,
 };
 pub use record::{
-    bloom_cache_key, list_cache_key, normalize_entry, BloomFilterRecord, CacheVersionRecord,
+    bloom_cache_key, AppliedUpdate, list_cache_key, normalize_entry, BloomFilterRecord, CacheVersionRecord,
     EntityRecord, FilterLists, CACHE_DB_PREFIX, CACHE_VERSION_KEY, INDEX_KEY, LIST_KEY_PREFIX,
     RESET_VERSION,
 };
