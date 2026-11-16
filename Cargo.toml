@@ -45,6 +45,7 @@ members = [
     "crates/pm-rng",
     "crates/pm-metrics",
     "crates/pm-log",
+    "crates/pm-xray",
 ]
 
 [workspace.package]

@@ -1,0 +1,6 @@
+vless://00010203-0405-0607-0809-0a0b0c0d0e0f@vless.example.com:443?type=ws&security=tls&path=%2Fws#DE-VLESS-01
+trojan://s3cr3t@trojan.example.com:443#US-Trojan
+ss://YWVzLTEyOC1nY206cGFzc3dvcmQ@ss.example.com:8388#FR-SS
+vmess://00112233-4455-6677-8899-aabbccddeeff@vmess.example.com:443#RU-VMESS
+socks://user:pass@socks.example.com:1080#SOCKS
+https://proxy.example.com:443#HTTPS-Proxy

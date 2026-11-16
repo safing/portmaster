@@ -86,6 +86,8 @@ pub struct Service {
     pub sync: Arc<pm_sync::Sync>,
     /// Metrics registry module, including persistence and the /metrics API.
     pub metrics: Arc<pm_metrics::Metrics>,
+    /// Xray subscriptions, node discovery and child process lifecycle.
+    pub xray: Arc<pm_xray::Xray>,
     /// Subscribed in `new` so changes before `run` are not missed.
     profile_changes: Mutex<Option<tokio::sync::broadcast::Receiver<()>>>,
     listener: Mutex<Option<TcpListener>>,
@@ -295,6 +297,7 @@ impl Service {
                 push: options.push_metrics.clone(),
             },
         )?;
+        pm_xray::register_options(&config)?;
         pm_profile::options::register_options(&config)?;
         pm_firewall::register_options(&config)?;
         pm_splittun::register_options(&config)?;
@@ -373,6 +376,19 @@ impl Service {
         metrics
             .start(&databases)
             .map_err(|error| anyhow::anyhow!("start metrics: {error}"))?;
+
+        // Xray: subscriptions, node discovery and the child process. A missing
+        // binary is a soft warning inside `Xray::start`, never a fatal error.
+        let xray = pm_xray::Xray::new(
+            &config,
+            &databases,
+            Arc::clone(&geoip),
+            data_dir.clone(),
+            options.bin_dir.clone(),
+        );
+        xray.register_api(&api)
+            .map_err(|error| anyhow::anyhow!("register xray api: {error}"))?;
+        xray.start();
 
         // The remaining core endpoints: shutdown and directory map.
         let shutdown_token = service_restart_token.clone();
@@ -704,6 +720,7 @@ impl Service {
             split_queue: Arc::clone(&split_queue),
             sync,
             metrics,
+            xray,
             profile_changes: Mutex::new(Some(profile_changes)),
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
@@ -1036,6 +1053,7 @@ impl Service {
         list_watcher.abort();
         broadcasts_worker.abort();
         self.split_proxies.stop();
+        self.xray.stop();
         self.compat.stop();
         self.stop_dns_monitor();
         self.control.shutdown().await;
@@ -1063,6 +1081,7 @@ impl Service {
     /// Shuts the service down.
     pub fn shutdown(&self) -> anyhow::Result<()> {
         self.stop_dns_monitor();
+        self.xray.stop();
         self.dns.stop();
         self.metrics.stop();
         self.databases.shutdown()?;
