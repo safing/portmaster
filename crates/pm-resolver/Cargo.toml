@@ -11,7 +11,6 @@ base64.workspace = true
 getrandom.workspace = true
 hex.workspace = true
 hickory-proto.workspace = true
-nix = { version = "0.31.3", default-features = false, features = ["net"] }
 pm-api = { path = "../pm-api" }
 pm-config = { path = "../pm-config" }
 pm-database = { path = "../pm-database" }
@@ -36,6 +35,11 @@ webpki-roots.workspace = true
 [dev-dependencies]
 rcgen.workspace = true
 tokio = { workspace = true, features = ["full", "test-util"] }
+
+# `nix` is an empty crate on non-Unix targets; its only use in this crate is
+# gated to Unix in `env.rs`.
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.31.3", default-features = false, features = ["net"] }
 
 [lints]
 workspace = true

@@ -6,7 +6,9 @@
 //! the logic is testable without real hardware: [`InterfaceSource`] provides
 //! interfaces and routes.
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::IpAddr;
+#[cfg(unix)]
+use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
@@ -495,11 +497,13 @@ pub fn network_contains(network: IpAddr, prefix_len: u8, ip: IpAddr) -> bool {
 }
 
 /// Returns the prefix length of an IPv4 netmask.
+#[cfg(unix)]
 pub(crate) fn mask_prefix_v4(mask: Ipv4Addr) -> u8 {
     u32::from(mask).leading_ones() as u8
 }
 
 /// Returns the prefix length of an IPv6 netmask.
+#[cfg(unix)]
 pub(crate) fn mask_prefix_v6(mask: Ipv6Addr) -> u8 {
     u128::from(mask).leading_ones() as u8
 }

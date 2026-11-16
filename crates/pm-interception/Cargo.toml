@@ -6,12 +6,17 @@ description = "Linux packet interception for the Portmaster core (iptables rules
 license.workspace = true
 
 [dependencies]
-nfq = "0.2.6"
-rustix = { version = "1.1.6", features = ["net", "fs"] }
 pm-netstate = { path = "../pm-netstate" }
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+
+# nfqueue/ctnetlink are Linux kernel interfaces. The two crates that talk to
+# them are not buildable on other platforms, so they are only compiled on Linux;
+# conntrack and queue resolve to inert stubs everywhere else.
+[target.'cfg(target_os = "linux")'.dependencies]
+nfq = "0.2.6"
+rustix = { version = "1.1.6", features = ["net", "fs"] }
 
 # Same as the workspace lints, but `deny` instead of `forbid` so that the single
 # documented unsafe block in queue.rs can be allowed locally.

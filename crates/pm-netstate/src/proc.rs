@@ -1,10 +1,18 @@
 //! Port of Go `service/network/proc` (Linux): `/proc/net` tables and socket
 //! owners via `/proc/<pid>/fd`.
+//!
+//! # Platform support
+//!
+//! The `/proc` tables and `/proc/<pid>/fd` owner scans only exist on Linux.
+//! On other platforms the parser helpers remain usable with synthetic data,
+//! but [`ProcFs`] cannot discover live sockets or their owners: the table
+//! reads fail with an I/O error and [`ProcFs::find_pid`] returns
+//! [`UNDEFINED_PROCESS_ID`]. Windows has no POSIX user IDs, so socket owners
+//! are reported with uid 0 (see [`owner_uid`]).
 
 use std::collections::HashMap;
 use std::fs;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, RwLock};
 use std::time::{Duration, Instant};
@@ -59,6 +67,22 @@ pub enum Error {
 
 /// Result type of this module.
 pub type Result<T> = std::result::Result<T, Error>;
+
+/// Returns the POSIX uid of a `/proc/<pid>` entry on Unix.
+///
+/// On non-Unix platforms (notably Windows) there is no numeric uid. The
+/// fallback returns 0 so that all sockets appear to belong to the same user,
+/// which keeps the owner cache consistent without any `/proc` lookups.
+#[cfg(unix)]
+fn owner_uid(metadata: &fs::Metadata) -> i32 {
+    use std::os::unix::fs::MetadataExt;
+    metadata.uid() as i32
+}
+
+#[cfg(not(unix))]
+fn owner_uid(_metadata: &fs::Metadata) -> i32 {
+    0
+}
 
 #[derive(Debug, Clone, Copy)]
 struct SocketOwner {
@@ -253,7 +277,7 @@ impl ProcFs {
                 continue;
             };
             pids_by_user
-                .entry(metadata.uid() as i32)
+                .entry(owner_uid(&metadata))
                 .or_default()
                 .push(pid);
         }

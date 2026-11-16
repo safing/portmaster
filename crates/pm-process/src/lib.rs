@@ -15,6 +15,15 @@
 //!   lower-case hex like Go; an unknown algorithm is an error instead of a panic.
 //! * The process tree database is populated through an injected
 //!   [`pm_database::Controller`], like Go's `SetDBController`.
+//!
+//! # Platform support
+//!
+//! Process details are read from `/proc`, so [`ProcReader`] has no live data
+//! off Linux. The Windows-specific constants from Go
+//! (`service/process/process_windows.go`) are ported: [`SYSTEM_PROCESS_ID`]
+//! is 4 on Windows. Go's no-op `FindProcessGroupLeader` and undefined
+//! `GetProcessGroupID` have no counterpart here because leader resolution is
+//! cache-based; Windows job objects are not ported.
 
 mod cache;
 mod config;
@@ -39,6 +48,12 @@ pub const UNSOLICITED_PROCESS_ID: i32 = -3;
 /// PID used for hosts on the network.
 pub const NETWORK_HOST_PROCESS_ID: i32 = -255;
 /// PID of the system/kernel itself.
+///
+/// Matches Go `service/process`: PID 0 on Linux, PID 4 (NT Kernel & System) on
+/// Windows. The other platforms use Go's default of 0.
+#[cfg(windows)]
+pub const SYSTEM_PROCESS_ID: i32 = 4;
+#[cfg(not(windows))]
 pub const SYSTEM_PROCESS_ID: i32 = 0;
 /// PID of the system init process.
 pub const SYSTEM_INIT_ID: i32 = 1;

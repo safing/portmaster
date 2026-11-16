@@ -12,9 +12,9 @@ use std::sync::{Arc, OnceLock, RwLock};
 use pm_netutils::is_valid_fqdn;
 use serde::{Deserialize, Serialize};
 
-use crate::dbus::{
-    connectivity_state_from_dbus, nameservers_from_dbus, ConnectivityState, SystemDbus,
-};
+use crate::dbus::ConnectivityState;
+#[cfg(not(windows))]
+use crate::dbus::{connectivity_state_from_dbus, nameservers_from_dbus, SystemDbus};
 use crate::{network_changed_flag, NetworkChangeFlag};
 
 /// Path of the resolver configuration file.
@@ -82,10 +82,11 @@ pub trait EnvironmentSource: Send + Sync {
     fn connectivity_state(&self) -> Result<ConnectivityState, String>;
 }
 
-/// Linux implementation using files and the D-Bus command line client.
+/// System implementation: files and D-Bus on Linux, PowerShell on Windows.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SystemEnvironment;
 
+#[cfg(not(windows))]
 impl EnvironmentSource for SystemEnvironment {
     fn nameservers(&self) -> Result<Vec<Nameserver>, String> {
         let mut nameservers = Vec::new();
@@ -124,6 +125,23 @@ impl EnvironmentSource for SystemEnvironment {
 
     fn connectivity_state(&self) -> Result<ConnectivityState, String> {
         connectivity_state_from_dbus(&SystemDbus)
+    }
+}
+
+/// Windows implementation using the default interface from PowerShell, like
+/// Go `service/netenv/environment_windows.go`.
+#[cfg(windows)]
+impl EnvironmentSource for SystemEnvironment {
+    fn nameservers(&self) -> Result<Vec<Nameserver>, String> {
+        crate::windows_env::nameservers()
+    }
+
+    fn gateways(&self) -> Result<Vec<GatewayInfo>, String> {
+        crate::windows_env::gateways()
+    }
+
+    fn connectivity_state(&self) -> Result<ConnectivityState, String> {
+        Err("NetworkManager connectivity state is only available on Linux".to_string())
     }
 }
 

@@ -144,6 +144,8 @@ pub fn ip_in_networks(ip: IpAddr, networks: &[(IpAddr, u8)]) -> bool {
         .any(|(net, prefix)| in_network(ip, *net, *prefix))
 }
 
+/// Reads local interface addresses through `getifaddrs` on Unix.
+#[cfg(unix)]
 fn system_interface_addresses() -> Vec<(IpAddr, IpAddr)> {
     let Ok(addrs) = nix::ifaddrs::getifaddrs() else {
         return Vec::new();
@@ -158,6 +160,12 @@ fn system_interface_addresses() -> Vec<(IpAddr, IpAddr)> {
     addrs
         .filter_map(|ifa| Some((to_ip(&ifa.address?)?, to_ip(&ifa.netmask?)?)))
         .collect()
+}
+
+/// `getifaddrs` is Unix-only; Windows has no interface source in this port yet.
+#[cfg(not(unix))]
+fn system_interface_addresses() -> Vec<(IpAddr, IpAddr)> {
+    Vec::new()
 }
 
 /// The environment of the running system: `pm-netenv` for the online state,

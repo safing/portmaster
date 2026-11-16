@@ -3,21 +3,28 @@
 //!
 //! Linux uses `getifaddrs` for the interfaces, `/proc/net/route` and
 //! `/proc/net/ipv6_route` for the default routes, and `/sys/class/net/<name>/device`
-//! to recognize physical adapters. Other platforms report that physical
-//! default interface detection is unsupported until their port lands.
+//! to recognize physical adapters. Other platforms have no system interface
+//! source yet: enumeration returns an empty list and physical/default-route
+//! detection reports "unsupported". Go's Windows interface enumeration
+//! (`GetAdaptersAddresses`) is not ported because it requires Windows-only
+//! unsafe FFI; the PowerShell-based nameserver/gateway lookup lives in the
+//! private `windows_env` module.
 
+#[cfg(unix)]
 use std::collections::BTreeMap;
+#[cfg(unix)]
 use std::net::IpAddr;
 
-use crate::interfaces::{
-    mask_prefix_v4, mask_prefix_v6, RawInterface, RouteCandidate, InterfaceSource,
-};
+use crate::interfaces::{RawInterface, RouteCandidate, InterfaceSource};
+#[cfg(unix)]
+use crate::interfaces::{mask_prefix_v4, mask_prefix_v6};
 
 /// Operating system interface source.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SystemInterfaces;
 
 impl InterfaceSource for SystemInterfaces {
+    #[cfg(unix)]
     fn interfaces(&self) -> Result<Vec<RawInterface>, String> {
         let addrs = nix::ifaddrs::getifaddrs().map_err(|error| error.to_string())?;
         let mut interfaces: BTreeMap<String, RawInterface> = BTreeMap::new();
@@ -75,6 +82,15 @@ impl InterfaceSource for SystemInterfaces {
         }
 
         Ok(interfaces.into_values().collect())
+    }
+
+    /// Interface enumeration uses `getifaddrs`, which is only available on
+    /// Unix. Go's Windows path calls `GetAdaptersAddresses` through P/Invoke;
+    /// it needs unsafe FFI and platform types that are not part of this port,
+    /// so until it lands the system source simply has no interfaces to report.
+    #[cfg(not(unix))]
+    fn interfaces(&self) -> Result<Vec<RawInterface>, String> {
+        Ok(Vec::new())
     }
 
     fn is_physical(&self, name: &str) -> bool {
