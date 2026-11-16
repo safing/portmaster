@@ -354,7 +354,24 @@ func (db *Database) withConn(ctx context.Context, fn func(conn *sqlite.Conn) err
 	}
 	defer res.Release()
 
-	return fn(res.Value())
+	conn := res.Value()
+
+	// Interrupt the running statement when ctx is done (e.g. the HTTP request
+	// was abandoned by the UI), so that an expensive query does not keep the
+	// pooled connection busy. The previous interrupt is restored before the
+	// connection goes back to the pool (deferred calls run in reverse order).
+	if done := ctx.Done(); done != nil {
+		prevDone := conn.SetInterrupt(done)
+		defer conn.SetInterrupt(prevDone)
+	}
+
+	err = fn(conn)
+	if err != nil && ctx.Err() != nil {
+		// Report the cause of the interruption to the caller.
+		return fmt.Errorf("query aborted: %w: %w", ctx.Err(), err)
+	}
+
+	return err
 }
 
 // ExecuteWrite executes a custom SQL query using a writable connection against the SQLite
