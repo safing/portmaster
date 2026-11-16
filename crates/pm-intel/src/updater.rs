@@ -9,7 +9,10 @@ use pm_database::Interface;
 use pm_record::{Key, Meta, Record};
 use pm_updates::{Artifact, Version};
 
-use crate::{CacheVersionRecord, Error, Result, CACHE_VERSION_KEY, RESET_VERSION};
+use crate::{
+    AppliedUpdate, CacheVersionRecord, Error, FilterLists, Result, CACHE_VERSION_KEY, RESET_VERSION,
+};
+use crate::update_list_index;
 
 /// Name of the base filter list file; contains all entries.
 pub const BASE_LIST_FILE: &str = "base.dsdl";
@@ -100,6 +103,65 @@ pub fn resolve_update_order(
         Some(start) => update_order.split_off(start),
         None => Vec::new(),
     }
+}
+
+/// Result of a completed filter list update.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FilterListUpdate {
+    /// Applied files and entries.
+    pub report: AppliedUpdate,
+    /// Highest applied file version.
+    pub version: String,
+}
+
+/// Updates the index and applies the pending filter list files, like Go
+/// `performUpdate`.
+///
+/// Index update errors are logged and do not abort the list update, like in Go.
+/// Returns `None` when the cache is already current.
+pub fn update_filter_lists(
+    lists: &FilterLists,
+    cache: &pm_database::Interface,
+    index_file: impl AsRef<std::path::Path>,
+    index_version: &str,
+    candidates: Vec<Artifact>,
+    started_at: i64,
+) -> Result<Option<FilterListUpdate>> {
+    if let Err(error) = update_list_index(cache, index_file, index_version) {
+        tracing::warn!("intel/filterlists: failed to update list index: {error}");
+    }
+
+    let (valid, invalid) = without_valid_version(candidates);
+    for artifact in &invalid {
+        tracing::warn!(
+            "intel/filterlists: {} has version {:?}, but semver is invalid",
+            artifact.filename,
+            artifact.version
+        );
+    }
+
+    let cache_version = cache_database_version_or_zero(cache);
+    let order = resolve_update_order(valid, &cache_version);
+    if order.is_empty() {
+        tracing::debug!("intel/filterlists: ignoring update, latest version is already used");
+        return Ok(None);
+    }
+
+    tracing::debug!(
+        "intel/filterlists: applying filter list files: {:?}",
+        order
+            .iter()
+            .map(|artifact| (&artifact.filename, &artifact.version))
+            .collect::<Vec<_>>()
+    );
+    let report = lists.apply_update(&order, started_at)?;
+    let version = highest_version(&order)
+        .ok_or_else(|| Error::InvalidData("no version in update order".to_string()))?
+        .to_string();
+    set_cache_database_version(cache, &version)?;
+    tracing::info!("intel/filterlists: successfully migrated cache database to {version}");
+
+    Ok(Some(FilterListUpdate { report, version }))
 }
 
 /// Returns the artifacts without a valid semver, which Go skips with a warning.

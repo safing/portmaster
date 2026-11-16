@@ -44,7 +44,8 @@ pub use index::{
 };
 pub use updater::{
     cache_database_version_or_zero, get_cache_database_version, highest_version, is_base_file,
-    resolve_update_order, set_cache_database_version, without_valid_version, BASE_LIST_FILE,
+    resolve_update_order, set_cache_database_version, update_filter_lists, without_valid_version,
+    FilterListUpdate, BASE_LIST_FILE,
     INTERMEDIATE_LIST_FILE, LIST_FILES, LIST_INDEX_FILE, URGENT_LIST_FILE,
 };
 pub use record::{
