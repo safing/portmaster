@@ -515,8 +515,18 @@ func (i *Interface) Delete(key string) error {
 		return ErrReadOnly
 	}
 
+	r.Lock()
 	i.options.Apply(r)
 	r.Meta().Delete()
+	r.Unlock()
+
+	// Remove the record from the read cache and drop any pending delayed write
+	// of it, so that neither serves nor writes back the deleted record.
+	// The record may not be locked when updating the cache.
+	i.updateCache(r, true, true, 0)
+
+	r.Lock()
+	defer r.Unlock()
 	return db.Put(r)
 }
 

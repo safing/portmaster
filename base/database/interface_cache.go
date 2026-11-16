@@ -192,6 +192,15 @@ func (i *Interface) updateCache(r record.Record, write bool, remove bool, ttl in
 
 	// Check if record should be deleted
 	if remove {
+		// Drop a pending delayed write of the same key: the removal wins over
+		// it and is written through to the database storage by the caller.
+		// Otherwise the evict handler would first write the stale pending
+		// record to storage.
+		if write && r.DatabaseName() == i.options.DelayCachedWrites {
+			i.writeCacheLock.Lock()
+			delete(i.writeCache, r.Key())
+			i.writeCacheLock.Unlock()
+		}
 		// Remove entry from cache.
 		i.cache.Remove(r.Key())
 		// Let write through to database storage.
