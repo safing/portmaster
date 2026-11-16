@@ -38,9 +38,9 @@ pub fn register_api(
                 .ok_or_else(|| ApiError::Message(
                     "failed to identify requesting process: the API token does not carry process identity".to_string(),
                 ).with_status(500))?;
-            let cache = pm_process::ProcessCache::new(pm_process::ProcReader::new(
-                pm_netstate::ProcFs::default(),
-            ));
+            let cache = pm_process::ProcessCache::with_default_tag_handlers(
+                pm_process::ProcReader::new(pm_netstate::ProcFs::default()),
+            );
             let process = cache.get_or_find(caller.pid).map_err(|error| {
                 ApiError::Message(format!("failed to identify requesting process: {error}"))
                     .with_status(500)
