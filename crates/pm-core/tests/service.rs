@@ -176,6 +176,12 @@ async fn core_serves_api_and_database() {
         .get_interface("definitely-not-an-interface")
         .is_err());
 
+    // GeoIP starts empty; the intel worker fills it from the index.
+    assert!(!service.geoip.is_initialized(false));
+    assert!(!service.geoip.is_initialized(true));
+    assert_eq!(pm_geoip::V4_RESOURCE, "geoipv4.mmdb");
+    assert_eq!(pm_geoip::V6_RESOURCE, "geoipv6.mmdb");
+
     // The network change monitor works against the real interfaces.
     assert!(service.network_monitor.check_once().is_ok());
 

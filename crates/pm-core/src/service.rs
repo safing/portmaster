@@ -299,6 +299,7 @@ impl Service {
             Arc::clone(&intel_updater),
             Arc::clone(&filter_lists),
             Arc::clone(&filter_lists_module),
+            Arc::clone(&geoip),
         )?;
 
         let listener = TcpListener::bind(&listen_address)
@@ -477,6 +478,7 @@ impl Service {
             let updater = Arc::clone(&self.intel_updater);
             let module = Arc::clone(&self.filter_lists_module);
             let lists = Arc::clone(&self.filter_lists);
+            let geoip = Arc::clone(&self.geoip);
             tokio::spawn(async move {
                 let start = tokio::time::Instant::now() + Duration::from_secs(15);
                 let mut interval = tokio::time::interval_at(
@@ -491,12 +493,13 @@ impl Service {
                     let updater = Arc::clone(&updater);
                     let module = Arc::clone(&module);
                     let lists = Arc::clone(&lists);
+                    let geoip = Arc::clone(&geoip);
                     let result = tokio::task::spawn_blocking(move || {
                         module.handle_resources_updated(|| {
                             updater
                                 .update_check()
                                 .map_err(|error| error.to_string())?;
-                            apply_intel_update(&updater, &lists)
+                            apply_intel_update(&updater, &lists, &geoip)
                         })
                     })
                     .await;
@@ -716,11 +719,13 @@ fn register_update_endpoints(
     intel_updater: Arc<pm_updates::Updater>,
     lists: Arc<pm_intel::FilterLists>,
     module: Arc<pm_intel::FilterListsModule>,
+    geoip: Arc<pm_geoip::GeoIp>,
 ) -> anyhow::Result<()> {
     let check_binary = Arc::clone(&binary_updater);
     let check_intel = Arc::clone(&intel_updater);
     let check_lists = Arc::clone(&lists);
     let check_module = Arc::clone(&module);
+    let check_geoip = Arc::clone(&geoip);
     api.register_endpoint(
         pm_api::Endpoint::new(
             "updates/check",
@@ -734,6 +739,7 @@ fn register_update_endpoints(
             let intel_updater = Arc::clone(&check_intel);
             let lists = Arc::clone(&check_lists);
             let module = Arc::clone(&check_module);
+            let geoip = Arc::clone(&check_geoip);
             tokio::task::spawn_blocking(move || {
                 if let Err(error) = binary_updater.update_check() {
                     tracing::warn!(%error, "updates/binaries: update check failed");
@@ -742,7 +748,7 @@ fn register_update_endpoints(
                     intel_updater
                         .update_check()
                         .map_err(|error| error.to_string())?;
-                    apply_intel_update(&intel_updater, &lists)
+                    apply_intel_update(&intel_updater, &lists, &geoip)
                 });
             });
             Ok("update check triggered".to_string())
@@ -759,6 +765,7 @@ fn register_update_endpoints(
                 let intel_updater = Arc::clone(&intel_updater);
                 let lists = Arc::clone(&lists);
                 let module = Arc::clone(&module);
+                let geoip = Arc::clone(&geoip);
                 tokio::task::spawn_blocking(move || {
                     if let Err(error) = binary_updater.upgrade() {
                         tracing::warn!(%error, "updates/binaries: upgrade failed");
@@ -767,7 +774,7 @@ fn register_update_endpoints(
                         intel_updater
                             .upgrade()
                             .map_err(|error| error.to_string())?;
-                        apply_intel_update(&intel_updater, &lists)
+                        apply_intel_update(&intel_updater, &lists, &geoip)
                     });
                 });
                 Ok("upgrade triggered".to_string())
@@ -783,6 +790,7 @@ fn register_update_endpoints(
 fn apply_intel_update(
     updater: &pm_updates::Updater,
     lists: &pm_intel::FilterLists,
+    geoip: &pm_geoip::GeoIp,
 ) -> std::result::Result<(), String> {
     let index_file = updater
         .get_file(pm_intel::LIST_INDEX_FILE)
@@ -802,8 +810,19 @@ fn apply_intel_update(
         candidates,
         pm_database::now(),
     )
-    .map(|_| ())
-    .map_err(|error| error.to_string())
+    .map_err(|error| error.to_string())?;
+
+    // Reload the GeoIP databases of the new intel index, like the Go geoip
+    // worker reacting to the resource update event.
+    for resource in [pm_geoip::V4_RESOURCE, pm_geoip::V6_RESOURCE] {
+        if let Ok(file) = updater.get_file(resource) {
+            if let Err(error) = geoip.replace_resource(file.path(), resource) {
+                tracing::warn!(%error, resource, "intel/geoip: failed to load database");
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Waits for a shutdown signal (SIGINT/SIGTERM).
