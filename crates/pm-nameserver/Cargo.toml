@@ -1,0 +1,29 @@
+[package]
+name = "pm-nameserver"
+version = "0.1.0"
+edition.workspace = true
+description = "Local DNS server of the Portmaster core"
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+hickory-proto.workspace = true
+pm-config = { path = "../pm-config" }
+pm-netstate = { path = "../pm-netstate" }
+pm-netutils = { path = "../pm-netutils" }
+pm-network = { path = "../pm-network" }
+pm-process = { path = "../pm-process" }
+pm-resolver = { path = "../pm-resolver" }
+psl.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+pm-dsd = { path = "../pm-dsd" }
+tokio = { workspace = true, features = ["full", "test-util"] }
+
+[lints]
+workspace = true

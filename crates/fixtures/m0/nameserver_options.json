@@ -1,0 +1,19 @@
+[
+  {
+    "Name": "Internal DNS Server Listen Address",
+    "Key": "dns/listenAddress",
+    "Description": "Defines the IP address and port on which the internal DNS Server listens.",
+    "Help": "",
+    "Sensitive": false,
+    "OptType": 1,
+    "ExpertiseLevel": 2,
+    "ReleaseLevel": 0,
+    "RequiresRestart": true,
+    "DefaultValue": "localhost:53",
+    "ValidationRegex": "^(localhost|[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}|\\[[:0-9A-Fa-f]+\\]):[0-9]{1,5}$",
+    "Annotations": {
+      "safing/portbase:ui:category": "Development",
+      "safing/portbase:ui:order": 514
+    }
+  }
+]

@@ -89,6 +89,7 @@ func main() {
 	genConfig()
 	genProfileOptions()
 	genResolver()
+	genNameserver()
 	genNetState()
 	genProcess()
 	genNetwork()

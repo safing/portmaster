@@ -1,0 +1,1705 @@
+{
+  "listen_addresses": [
+    {
+      "error": false,
+      "input": "localhost:53",
+      "ip1": "127.0.0.17",
+      "ip2": "::1",
+      "port": 53
+    },
+    {
+      "error": false,
+      "input": "127.0.0.1:53",
+      "ip1": "127.0.0.1",
+      "ip2": null,
+      "port": 53
+    },
+    {
+      "error": false,
+      "input": "0.0.0.0:53",
+      "ip1": "0.0.0.0",
+      "ip2": null,
+      "port": 53
+    },
+    {
+      "error": false,
+      "input": "[::1]:5353",
+      "ip1": "::1",
+      "ip2": null,
+      "port": 5353
+    },
+    {
+      "error": false,
+      "input": "[::]:53",
+      "ip1": "::",
+      "ip2": null,
+      "port": 53
+    },
+    {
+      "error": false,
+      "input": "192.0.2.1:65535",
+      "ip1": "192.0.2.1",
+      "ip2": null,
+      "port": 65535
+    },
+    {
+      "error": true,
+      "input": "192.0.2.1:65536"
+    },
+    {
+      "error": true,
+      "input": "192.0.2.1:abc"
+    },
+    {
+      "error": true,
+      "input": "192.0.2.1"
+    },
+    {
+      "error": true,
+      "input": "nothost:53"
+    },
+    {
+      "error": false,
+      "input": "localhost:0",
+      "ip1": "127.0.0.17",
+      "ip2": "::1",
+      "port": 0
+    },
+    {
+      "error": true,
+      "input": ""
+    }
+  ],
+  "message_records": [
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "simple",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"simple\"",
+        "ttl": 0,
+        "txt": [
+          "simple"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "with spaces and: colon",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"with spaces and: colon\"",
+        "ttl": 0,
+        "txt": [
+          "with spaces and: colon"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "semi;colon",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"semi;colon\"",
+        "ttl": 0,
+        "txt": [
+          "semi;colon"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": true,
+      "level": "INF",
+      "msg": "quote\"inside"
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "back\\slash",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"backslash\"",
+        "ttl": 0,
+        "txt": [
+          "back\\slash"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "tab\there",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"tab\\009here\"",
+        "ttl": 0,
+        "txt": [
+          "tab\there"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "unicode ключ",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"unicode \\208\\186\\208\\187\\209\\142\\209\\135\"",
+        "ttl": 0,
+        "txt": [
+          "unicode ключ"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"\"",
+        "ttl": 0,
+        "txt": [
+          ""
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\" \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"",
+        "ttl": 0,
+        "txt": [
+          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "percent %s",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"percent %s\"",
+        "ttl": 0,
+        "txt": [
+          "percent %s"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "line\nbreak",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"line\\010break\"",
+        "ttl": 0,
+        "txt": [
+          "line\nbreak"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "cr\rx",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"cr\\013x\"",
+        "ttl": 0,
+        "txt": [
+          "cr\rx"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": true,
+      "level": "INF",
+      "msg": "tail\\"
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "esc\\\"quote",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"esc\\\"quote\"",
+        "ttl": 0,
+        "txt": [
+          "esc\\\"quote"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "dec\\065",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"decA\"",
+        "ttl": 0,
+        "txt": [
+          "dec\\065"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "nul\u0000byte",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"nul\\000byte\"",
+        "ttl": 0,
+        "txt": [
+          "nul\u0000byte"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "INF",
+      "msg": "del",
+      "rr": {
+        "class": "IN",
+        "name": "inf.portmaster.",
+        "text": "inf.portmaster.\t0\tIN\tTXT\t\"del\\127\"",
+        "ttl": 0,
+        "txt": [
+          "del"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "simple",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"simple\"",
+        "ttl": 0,
+        "txt": [
+          "simple"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "with spaces and: colon",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"with spaces and: colon\"",
+        "ttl": 0,
+        "txt": [
+          "with spaces and: colon"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "semi;colon",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"semi;colon\"",
+        "ttl": 0,
+        "txt": [
+          "semi;colon"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": true,
+      "level": "ERR",
+      "msg": "quote\"inside"
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "back\\slash",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"backslash\"",
+        "ttl": 0,
+        "txt": [
+          "back\\slash"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "tab\there",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"tab\\009here\"",
+        "ttl": 0,
+        "txt": [
+          "tab\there"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "unicode ключ",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"unicode \\208\\186\\208\\187\\209\\142\\209\\135\"",
+        "ttl": 0,
+        "txt": [
+          "unicode ключ"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"\"",
+        "ttl": 0,
+        "txt": [
+          ""
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\" \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"",
+        "ttl": 0,
+        "txt": [
+          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "percent %s",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"percent %s\"",
+        "ttl": 0,
+        "txt": [
+          "percent %s"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "line\nbreak",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"line\\010break\"",
+        "ttl": 0,
+        "txt": [
+          "line\nbreak"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "cr\rx",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"cr\\013x\"",
+        "ttl": 0,
+        "txt": [
+          "cr\rx"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": true,
+      "level": "ERR",
+      "msg": "tail\\"
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "esc\\\"quote",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"esc\\\"quote\"",
+        "ttl": 0,
+        "txt": [
+          "esc\\\"quote"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "dec\\065",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"decA\"",
+        "ttl": 0,
+        "txt": [
+          "dec\\065"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "nul\u0000byte",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"nul\\000byte\"",
+        "ttl": 0,
+        "txt": [
+          "nul\u0000byte"
+        ],
+        "type": "TXT"
+      }
+    },
+    {
+      "error": false,
+      "level": "ERR",
+      "msg": "del",
+      "rr": {
+        "class": "IN",
+        "name": "err.portmaster.",
+        "text": "err.portmaster.\t0\tIN\tTXT\t\"del\\127\"",
+        "ttl": 0,
+        "txt": [
+          "del"
+        ],
+        "type": "TXT"
+      }
+    }
+  ],
+  "responders": [
+    {
+      "qname": "example.com.",
+      "qtype": 1,
+      "reply": {
+        "answer": [
+          {
+            "class": "IN",
+            "name": "example.com.",
+            "text": "example.com.\t1\tIN\tA\t0.0.0.17",
+            "ttl": 1,
+            "type": "A"
+          }
+        ],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"blocked by test\"",
+            "ttl": 0,
+            "txt": [
+              "blocked by test"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 1
+          }
+        ],
+        "ra": false,
+        "rcode": 0,
+        "rd": true,
+        "response": true
+      },
+      "responder": "block_ip"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 28,
+      "reply": {
+        "answer": [
+          {
+            "class": "IN",
+            "name": "example.com.",
+            "text": "example.com.\t1\tIN\tAAAA\t::17",
+            "ttl": 1,
+            "type": "AAAA"
+          }
+        ],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"blocked by test\"",
+            "ttl": 0,
+            "txt": [
+              "blocked by test"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 28
+          }
+        ],
+        "ra": false,
+        "rcode": 0,
+        "rd": true,
+        "response": true
+      },
+      "responder": "block_ip"
+    },
+    {
+      "qname": "Example.COM.",
+      "qtype": 1,
+      "reply": {
+        "answer": [
+          {
+            "class": "IN",
+            "name": "Example.COM.",
+            "text": "Example.COM.\t1\tIN\tA\t0.0.0.17",
+            "ttl": 1,
+            "type": "A"
+          }
+        ],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"blocked by test\"",
+            "ttl": 0,
+            "txt": [
+              "blocked by test"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "Example.COM.",
+            "type": 1
+          }
+        ],
+        "ra": false,
+        "rcode": 0,
+        "rd": true,
+        "response": true
+      },
+      "responder": "block_ip"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 16,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"blocked by test\"",
+            "ttl": 0,
+            "txt": [
+              "blocked by test"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 16
+          }
+        ],
+        "ra": false,
+        "rcode": 3,
+        "rd": true,
+        "response": true
+      },
+      "responder": "block_ip"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 15,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"blocked by test\"",
+            "ttl": 0,
+            "txt": [
+              "blocked by test"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 15
+          }
+        ],
+        "ra": false,
+        "rcode": 3,
+        "rd": true,
+        "response": true
+      },
+      "responder": "block_ip"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 1,
+      "reply": {
+        "answer": [
+          {
+            "class": "IN",
+            "name": "example.com.",
+            "text": "example.com.\t1\tIN\tA\t0.0.0.0",
+            "ttl": 1,
+            "type": "A"
+          }
+        ],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"zero\"",
+            "ttl": 0,
+            "txt": [
+              "zero"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 1
+          }
+        ],
+        "ra": false,
+        "rcode": 0,
+        "rd": true,
+        "response": true
+      },
+      "responder": "zero_ip"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 28,
+      "reply": {
+        "answer": [
+          {
+            "class": "IN",
+            "name": "example.com.",
+            "text": "example.com.\t1\tIN\tAAAA\t::",
+            "ttl": 1,
+            "type": "AAAA"
+          }
+        ],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"zero\"",
+            "ttl": 0,
+            "txt": [
+              "zero"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 28
+          }
+        ],
+        "ra": false,
+        "rcode": 0,
+        "rd": true,
+        "response": true
+      },
+      "responder": "zero_ip"
+    },
+    {
+      "qname": "Example.COM.",
+      "qtype": 1,
+      "reply": {
+        "answer": [
+          {
+            "class": "IN",
+            "name": "Example.COM.",
+            "text": "Example.COM.\t1\tIN\tA\t0.0.0.0",
+            "ttl": 1,
+            "type": "A"
+          }
+        ],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"zero\"",
+            "ttl": 0,
+            "txt": [
+              "zero"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "Example.COM.",
+            "type": 1
+          }
+        ],
+        "ra": false,
+        "rcode": 0,
+        "rd": true,
+        "response": true
+      },
+      "responder": "zero_ip"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 16,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"zero\"",
+            "ttl": 0,
+            "txt": [
+              "zero"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 16
+          }
+        ],
+        "ra": false,
+        "rcode": 3,
+        "rd": true,
+        "response": true
+      },
+      "responder": "zero_ip"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 15,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"zero\"",
+            "ttl": 0,
+            "txt": [
+              "zero"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 15
+          }
+        ],
+        "ra": false,
+        "rcode": 3,
+        "rd": true,
+        "response": true
+      },
+      "responder": "zero_ip"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 1,
+      "reply": {
+        "answer": [
+          {
+            "class": "IN",
+            "name": "example.com.",
+            "text": "example.com.\t1\tIN\tA\t127.0.0.1",
+            "ttl": 1,
+            "type": "A"
+          }
+        ],
+        "extra": [],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 1
+          }
+        ],
+        "ra": false,
+        "rcode": 0,
+        "rd": true,
+        "response": true
+      },
+      "responder": "localhost"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 28,
+      "reply": {
+        "answer": [
+          {
+            "class": "IN",
+            "name": "example.com.",
+            "text": "example.com.\t1\tIN\tAAAA\t::1",
+            "ttl": 1,
+            "type": "AAAA"
+          }
+        ],
+        "extra": [],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 28
+          }
+        ],
+        "ra": false,
+        "rcode": 0,
+        "rd": true,
+        "response": true
+      },
+      "responder": "localhost"
+    },
+    {
+      "qname": "Example.COM.",
+      "qtype": 1,
+      "reply": {
+        "answer": [
+          {
+            "class": "IN",
+            "name": "Example.COM.",
+            "text": "Example.COM.\t1\tIN\tA\t127.0.0.1",
+            "ttl": 1,
+            "type": "A"
+          }
+        ],
+        "extra": [],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "Example.COM.",
+            "type": 1
+          }
+        ],
+        "ra": false,
+        "rcode": 0,
+        "rd": true,
+        "response": true
+      },
+      "responder": "localhost"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 16,
+      "reply": {
+        "answer": [],
+        "extra": [],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 16
+          }
+        ],
+        "ra": false,
+        "rcode": 3,
+        "rd": true,
+        "response": true
+      },
+      "responder": "localhost"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 15,
+      "reply": {
+        "answer": [],
+        "extra": [],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 15
+          }
+        ],
+        "ra": false,
+        "rcode": 3,
+        "rd": true,
+        "response": true
+      },
+      "responder": "localhost"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 1,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"nxdomain: no such thing\"",
+            "ttl": 0,
+            "txt": [
+              "nxdomain: no such thing"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 1
+          }
+        ],
+        "ra": false,
+        "rcode": 3,
+        "rd": true,
+        "response": true
+      },
+      "responder": "nxdomain"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 28,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"nxdomain: no such thing\"",
+            "ttl": 0,
+            "txt": [
+              "nxdomain: no such thing"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 28
+          }
+        ],
+        "ra": false,
+        "rcode": 3,
+        "rd": true,
+        "response": true
+      },
+      "responder": "nxdomain"
+    },
+    {
+      "qname": "Example.COM.",
+      "qtype": 1,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"nxdomain: no such thing\"",
+            "ttl": 0,
+            "txt": [
+              "nxdomain: no such thing"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "Example.COM.",
+            "type": 1
+          }
+        ],
+        "ra": false,
+        "rcode": 3,
+        "rd": true,
+        "response": true
+      },
+      "responder": "nxdomain"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 16,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"nxdomain: no such thing\"",
+            "ttl": 0,
+            "txt": [
+              "nxdomain: no such thing"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 16
+          }
+        ],
+        "ra": false,
+        "rcode": 3,
+        "rd": true,
+        "response": true
+      },
+      "responder": "nxdomain"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 15,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"nxdomain: no such thing\"",
+            "ttl": 0,
+            "txt": [
+              "nxdomain: no such thing"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 15
+          }
+        ],
+        "ra": false,
+        "rcode": 3,
+        "rd": true,
+        "response": true
+      },
+      "responder": "nxdomain"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 1,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"unsupported qclass\"",
+            "ttl": 0,
+            "txt": [
+              "unsupported qclass"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 1
+          }
+        ],
+        "ra": false,
+        "rcode": 5,
+        "rd": true,
+        "response": true
+      },
+      "responder": "refused"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 28,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"unsupported qclass\"",
+            "ttl": 0,
+            "txt": [
+              "unsupported qclass"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 28
+          }
+        ],
+        "ra": false,
+        "rcode": 5,
+        "rd": true,
+        "response": true
+      },
+      "responder": "refused"
+    },
+    {
+      "qname": "Example.COM.",
+      "qtype": 1,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"unsupported qclass\"",
+            "ttl": 0,
+            "txt": [
+              "unsupported qclass"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "Example.COM.",
+            "type": 1
+          }
+        ],
+        "ra": false,
+        "rcode": 5,
+        "rd": true,
+        "response": true
+      },
+      "responder": "refused"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 16,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"unsupported qclass\"",
+            "ttl": 0,
+            "txt": [
+              "unsupported qclass"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 16
+          }
+        ],
+        "ra": false,
+        "rcode": 5,
+        "rd": true,
+        "response": true
+      },
+      "responder": "refused"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 15,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"unsupported qclass\"",
+            "ttl": 0,
+            "txt": [
+              "unsupported qclass"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 15
+          }
+        ],
+        "ra": false,
+        "rcode": 5,
+        "rd": true,
+        "response": true
+      },
+      "responder": "refused"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 1,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"internal error: \"",
+            "ttl": 0,
+            "txt": [
+              "internal error: "
+            ],
+            "type": "TXT"
+          },
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"second message\"",
+            "ttl": 0,
+            "txt": [
+              "second message"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 1
+          }
+        ],
+        "ra": false,
+        "rcode": 2,
+        "rd": true,
+        "response": true
+      },
+      "responder": "server_failure"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 28,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"internal error: \"",
+            "ttl": 0,
+            "txt": [
+              "internal error: "
+            ],
+            "type": "TXT"
+          },
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"second message\"",
+            "ttl": 0,
+            "txt": [
+              "second message"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 28
+          }
+        ],
+        "ra": false,
+        "rcode": 2,
+        "rd": true,
+        "response": true
+      },
+      "responder": "server_failure"
+    },
+    {
+      "qname": "Example.COM.",
+      "qtype": 1,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"internal error: \"",
+            "ttl": 0,
+            "txt": [
+              "internal error: "
+            ],
+            "type": "TXT"
+          },
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"second message\"",
+            "ttl": 0,
+            "txt": [
+              "second message"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "Example.COM.",
+            "type": 1
+          }
+        ],
+        "ra": false,
+        "rcode": 2,
+        "rd": true,
+        "response": true
+      },
+      "responder": "server_failure"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 16,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"internal error: \"",
+            "ttl": 0,
+            "txt": [
+              "internal error: "
+            ],
+            "type": "TXT"
+          },
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"second message\"",
+            "ttl": 0,
+            "txt": [
+              "second message"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 16
+          }
+        ],
+        "ra": false,
+        "rcode": 2,
+        "rd": true,
+        "response": true
+      },
+      "responder": "server_failure"
+    },
+    {
+      "qname": "example.com.",
+      "qtype": 15,
+      "reply": {
+        "answer": [],
+        "extra": [
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"internal error: \"",
+            "ttl": 0,
+            "txt": [
+              "internal error: "
+            ],
+            "type": "TXT"
+          },
+          {
+            "class": "IN",
+            "name": "inf.portmaster.",
+            "text": "inf.portmaster.\t0\tIN\tTXT\t\"second message\"",
+            "ttl": 0,
+            "txt": [
+              "second message"
+            ],
+            "type": "TXT"
+          }
+        ],
+        "id": 4711,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 15
+          }
+        ],
+        "ra": false,
+        "rcode": 2,
+        "rd": true,
+        "response": true
+      },
+      "responder": "server_failure"
+    },
+    {
+      "qname": "example.com.+example.org.",
+      "qtype": 0,
+      "reply": {
+        "answer": [
+          {
+            "class": "IN",
+            "name": "example.com.",
+            "text": "example.com.\t1\tIN\tA\t0.0.0.17",
+            "ttl": 1,
+            "type": "A"
+          },
+          {
+            "class": "IN",
+            "name": "example.org.",
+            "text": "example.org.\t1\tIN\tAAAA\t::17",
+            "ttl": 1,
+            "type": "AAAA"
+          }
+        ],
+        "extra": [],
+        "id": 7,
+        "nil": false,
+        "ns": [],
+        "opcode": 0,
+        "question": [
+          {
+            "class": 1,
+            "name": "example.com.",
+            "type": 1
+          }
+        ],
+        "ra": false,
+        "rcode": 0,
+        "rd": true,
+        "response": true
+      },
+      "responder": "block_ip"
+    }
+  ]
+}
