@@ -140,19 +140,6 @@ fn config_parsing() {
     );
     assert_eq!(config.default_action, 0);
     assert_eq!(error.as_deref(), Some("default action \"nope\" invalid"));
-
-    // The layered profile carries the settings.
-    let profile = Profile::new(Profile {
-        source: SOURCE_LOCAL.to_string(),
-        config: json!({"filter": {"defaultAction": "block"}})
-            .as_object()
-            .cloned()
-            .unwrap(),
-        ..Profile::default()
-    });
-    let layered = profile.layered_profile();
-    assert_eq!(layered.default_action(), DEFAULT_ACTION_BLOCK);
-    assert_eq!(layered.local_profile_id, profile.scoped_id());
 }
 
 #[test]

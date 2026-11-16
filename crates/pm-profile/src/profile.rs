@@ -84,6 +84,9 @@ pub struct Profile {
     /// Whether the profile was saved by the core itself; not serialized.
     #[serde(skip)]
     pub saved_internally: bool,
+    /// Set when a newer version of the profile exists; shared between clones.
+    #[serde(skip)]
+    pub outdated: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 fn serialize_time<S: serde::Serializer>(seconds: &i64, serializer: S) -> Result<S::Ok, S::Error> {
@@ -117,6 +120,7 @@ impl Default for Profile {
             created: 0,
             internal: false,
             saved_internally: false,
+            outdated: Default::default(),
         }
     }
 }
@@ -165,18 +169,15 @@ impl Profile {
         ProfileConfig::from_config(&self.config)
     }
 
-    /// Returns the layered profile of this profile.
-    ///
-    /// Config layers are not merged yet; the layered profile carries the
-    /// settings of this profile.
-    pub fn layered_profile(&self) -> LayeredProfile {
-        let (config, error) = self.parse_config();
-        LayeredProfile {
-            local_profile_id: self.scoped_id(),
-            config,
-            error,
-            updated: crate::now(),
-        }
+    /// Marks the profile as outdated, so layered profiles re-layer it.
+    pub fn mark_outdated(&self) {
+        self.outdated
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    /// Returns whether the profile was marked as outdated.
+    pub fn is_outdated(&self) -> bool {
+        self.outdated.load(std::sync::atomic::Ordering::SeqCst)
     }
 }
 
@@ -213,27 +214,6 @@ impl ProfileConfig {
             get_string_array(config, CFG_OPTION_SPLIT_TUN_USAGE_POLICY_KEY);
 
         (parsed, first_error)
-    }
-}
-
-/// A view on a profile with its effective settings.
-#[derive(Debug, Clone)]
-pub struct LayeredProfile {
-    pub local_profile_id: String,
-    pub config: ProfileConfig,
-    pub error: Option<String>,
-    pub updated: i64,
-}
-
-impl LayeredProfile {
-    /// Returns the default action.
-    pub fn default_action(&self) -> u8 {
-        self.config.default_action
-    }
-
-    /// Returns the endpoint rule strings.
-    pub fn endpoints(&self) -> &[String] {
-        &self.config.endpoints
     }
 }
 

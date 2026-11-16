@@ -1668,6 +1668,7 @@ dependencies = [
  "pm-database",
  "pm-dsd",
  "pm-endpoints",
+ "pm-intel",
  "regex",
  "serde",
  "serde_json",

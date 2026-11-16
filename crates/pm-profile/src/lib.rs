@@ -8,8 +8,9 @@
 //!
 //! * Endpoint rules are parsed with `pm-endpoints`; [`GlobalProfileConfig`]
 //!   keeps the parsed global lists.
-//! * `LayeredProfile` currently carries the local profile and its parsed
-//!   settings; merging with the global config layers is not ported yet.
+//! * [`LayeredProfile`] resolves every option as local value, else global
+//!   value, and matches endpoints and filter lists local-first. SPN policies
+//!   are not ported.
 //! * The profile options are registered by [`options::register_options`]. Profile
 //!   configs are still read directly from the config map instead of through a
 //!   `config.Perspective`.
@@ -21,6 +22,7 @@
 mod fingerprint;
 mod global;
 mod icon;
+mod layered;
 mod matching;
 mod merge;
 mod option_texts;
@@ -37,18 +39,18 @@ pub use fingerprint::{
     FINGERPRINT_TYPE_PATH, FINGERPRINT_TYPE_TAG,
 };
 pub use global::{GlobalProfileConfig, ListResolver};
-pub use proxy_url::validate_upstream_proxy_url;
 pub use icon::{
     sort_and_compact_icons, Icon, IconSource, IconType, ICON_SOURCE_CORE, ICON_SOURCE_IMPORT,
     ICON_SOURCE_UI, ICON_SOURCE_USER, ICON_TYPE_API, ICON_TYPE_DATABASE, ICON_TYPE_FILE,
 };
+pub use layered::LayeredProfile;
 pub use matching::{find_matching_profile, ProfileMatch};
 pub use merge::merge_profiles;
 pub use profile::{
-    ensure_profile, now, LayeredProfile, Profile, ProfileConfig, DEFAULT_ACTION_ASK,
-    DEFAULT_ACTION_BLOCK, DEFAULT_ACTION_NOT_SET, DEFAULT_ACTION_PERMIT,
-    DEFAULT_ACTION_PERMIT_VALUE,
+    ensure_profile, now, Profile, ProfileConfig, DEFAULT_ACTION_ASK, DEFAULT_ACTION_BLOCK,
+    DEFAULT_ACTION_NOT_SET, DEFAULT_ACTION_PERMIT, DEFAULT_ACTION_PERMIT_VALUE,
 };
+pub use proxy_url::validate_upstream_proxy_url;
 pub use store::{Error as StoreError, ProfileStore};
 
 /// Profile source: local, editable profiles.
