@@ -105,6 +105,17 @@ impl CoreProfiles {
     pub fn store(&self) -> &ProfileStore {
         &self.store
     }
+
+    /// Returns the layered view of a local profile by its ID, used by the
+    /// netquery history retention callback.
+    pub fn layered_for_id(&self, id: &str) -> Option<Arc<LayeredProfile>> {
+        let profile = self.store.get(id).ok()?;
+        Some(Arc::new(LayeredProfile::new(
+            Arc::new(profile),
+            &self.config,
+            &self.global,
+        )))
+    }
 }
 
 impl ProfileLookup for CoreProfiles {

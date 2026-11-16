@@ -59,6 +59,10 @@ pub struct Service {
     pub network_monitor: Arc<pm_netenv::NetworkChangeMonitor>,
     /// Firewall environment and packet pipeline.
     pub firewall: Arc<crate::firewall::Firewall>,
+    /// Split tunnel proxies.
+    pub split_proxies: Arc<pm_splittun::Proxies>,
+    /// Pending split tunnel requests.
+    pub split_queue: Arc<pm_splittun::RequestQueue>,
     /// Subscribed in `new` so changes before `run` are not missed.
     profile_changes: Mutex<Option<tokio::sync::broadcast::Receiver<()>>>,
     listener: Mutex<Option<TcpListener>>,
@@ -379,6 +383,24 @@ impl Service {
 
 
 
+        // Netquery API on top of the live connection database.
+        let retention_profiles = Arc::clone(&firewall.profiles);
+        let retention_config = Arc::clone(&config);
+        let retention = Arc::new(move |profile: &str| {
+            if let Some(id) = profile.strip_prefix("local/") {
+                if let Some(layered) = retention_profiles.layered_for_id(id) {
+                    return layered.keep_history();
+                }
+            }
+            retention_config.get_as_int("history/keep", 30)()
+        });
+        pm_netquery::api::register_api(
+            &api,
+            Arc::clone(&firewall.netquery_db),
+            pm_netquery::api::ApiOptions::new(Arc::new(move || dev_mode), retention),
+        )
+        .map_err(|error| anyhow::anyhow!("register netquery api: {error}"))?;
+
         api.set_ready(true);
 
         Ok(Service {
@@ -400,6 +422,8 @@ impl Service {
             system_interfaces,
             network_monitor,
             firewall,
+            split_proxies: Arc::clone(&split_proxies),
+            split_queue: Arc::clone(&split_queue),
             profile_changes: Mutex::new(Some(profile_changes)),
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
@@ -600,6 +624,17 @@ impl Service {
             })
         };
 
+        // Start the split tunnel proxies when the module is enabled.
+        if self.config.get_as_bool("splittun/enable", false)() {
+            if let Err(error) = self
+                .split_proxies
+                .start(self.split_queue.clone(), self.system_interfaces.as_ref())
+                .await
+            {
+                tracing::error!(%error, "splittun: failed to start proxies");
+            }
+        }
+
         // Install iptables and start the packet readers when enabled and
         // privileged. This is a no-op otherwise.
         if let Err(error) = self.firewall.start() {
@@ -622,6 +657,7 @@ impl Service {
         binary_worker.abort();
         intel_worker.abort();
         list_watcher.abort();
+        self.split_proxies.stop();
         if let Err(error) = self.firewall.stop().await {
             tracing::warn!(%error, "filter: failed to stop interception");
         }

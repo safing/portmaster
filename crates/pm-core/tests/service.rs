@@ -164,6 +164,8 @@ async fn core_serves_api_and_database() {
         .endpoint("updates/check")
         .is_some());
     assert!(service.api.endpoint("updates/apply").is_some());
+    assert!(service.api.endpoint("netquery/query").is_some());
+    assert!(service.api.endpoint("netquery/query/batch").is_some());
 
     // The split tunnel interface environment is backed by netenv.
     use pm_splittun::InterfaceEnv;
@@ -209,6 +211,7 @@ async fn core_serves_api_and_database() {
 
     // The network change monitor works against the real interfaces.
     assert!(service.network_monitor.check_once().is_ok());
+    assert!(!service.split_proxies.is_ready(), "disabled by default");
 
     // The intel updater and filter lists module are wired.
     assert_eq!(service.intel_updater.config().name, "Portmaster Intel");
