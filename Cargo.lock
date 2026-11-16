@@ -1157,6 +1157,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "md-5"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69b6441f590336821bb897fb28fc622898ccceb1d6cea3fde5ea86b090c4de98"
+dependencies = [
+ "cfg-if",
+ "digest 0.11.3",
+]
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1694,6 +1704,8 @@ dependencies = [
 name = "pm-process"
 version = "0.1.0"
 dependencies = [
+ "hex",
+ "md-5",
  "pm-config",
  "pm-database",
  "pm-dsd",
@@ -1701,6 +1713,8 @@ dependencies = [
  "pm-profile",
  "serde",
  "serde_json",
+ "sha1 0.10.7",
+ "sha2",
  "thiserror",
  "tokio",
  "tracing",

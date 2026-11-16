@@ -11,13 +11,15 @@
 //!   resolved through the cache instead of a link on the process object.
 //! * Process loads are serialized with one mutex instead of Go's single-flight
 //!   groups; the resulting cache is the same.
-//! * Executable hashing (`ExecHashes`) is not implemented yet.
+//! * Executable hashing uses the `md-5`, `sha1` and `sha2` crates and returns
+//!   lower-case hex like Go; an unknown algorithm is an error instead of a panic.
 //! * The process tree database is populated through an injected
 //!   [`pm_database::Controller`], like Go's `SetDBController`.
 
 mod cache;
 mod config;
 mod find;
+mod hash;
 mod info;
 
 use serde::{Deserialize, Serialize};
@@ -25,6 +27,7 @@ use serde::{Deserialize, Serialize};
 pub use cache::{now, ProcessCache, SpecialProcess, TagDescription, TagHandler};
 pub use config::{enabled_getter, register_options, CFG_OPTION_ENABLE_PROCESS_DETECTION_KEY};
 pub use find::{get_pid_of_connection, get_process_of_connection};
+pub use hash::{hash_file, HashError};
 pub use info::{Error as ProcError, ProcInfo, ProcReader};
 
 /// PID that is not used by any process.
@@ -153,6 +156,22 @@ impl Process {
     /// Returns the database key of the process record.
     pub fn scoped_key(&self) -> String {
         format!("tree/{}", self.process_key)
+    }
+
+    /// Returns the hash of the executable with the given algorithm.
+    ///
+    /// Like Go's `GetExecHash`, the result is cached in `ExecHashes`; unlike Go,
+    /// an unknown algorithm is an error instead of a panic, and a failed hash is
+    /// not cached.
+    pub fn get_exec_hash(&mut self, algorithm: &str) -> Result<String, HashError> {
+        if let Some(sum) = self.exec_hashes.get(algorithm) {
+            return Ok(sum.clone());
+        }
+
+        let sum = hash_file(&self.path, algorithm)?;
+        self.exec_hashes
+            .insert(algorithm.to_string(), sum.clone());
+        Ok(sum)
     }
 
     /// Creates a process with empty fields and the given key.

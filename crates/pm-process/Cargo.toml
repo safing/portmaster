@@ -6,6 +6,8 @@ description = "Process cache and connection attribution for the Portmaster core"
 license.workspace = true
 
 [dependencies]
+hex.workspace = true
+md-5.workspace = true
 pm-config = { path = "../pm-config" }
 pm-database = { path = "../pm-database" }
 pm-dsd = { path = "../pm-dsd" }
@@ -13,6 +15,8 @@ pm-netstate = { path = "../pm-netstate" }
 pm-profile = { path = "../pm-profile" }
 serde.workspace = true
 serde_json.workspace = true
+sha1.workspace = true
+sha2.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 
