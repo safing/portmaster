@@ -284,6 +284,8 @@ impl Response {
 /// The API server state: endpoint registry, keys and authenticator.
 pub struct Api {
     endpoints: RwLock<BTreeMap<String, Arc<Endpoint>>>,
+    /// Raw handlers served at exact paths outside `/api/v1/`.
+    handlers: RwLock<BTreeMap<String, HandlerFunc>>,
     api_keys: RwLock<HashMap<String, AuthToken>>,
     authenticator: RwLock<Option<Arc<dyn Authenticator>>>,
     databases: RwLock<Option<Arc<pm_database::Databases>>>,
@@ -299,6 +301,7 @@ impl Api {
     pub fn new(listen_address: &str) -> Arc<Api> {
         let api = Arc::new(Api {
             endpoints: RwLock::new(BTreeMap::new()),
+            handlers: RwLock::new(BTreeMap::new()),
             api_keys: RwLock::new(HashMap::new()),
             authenticator: RwLock::new(None),
             databases: RwLock::new(None),
@@ -333,6 +336,18 @@ impl Api {
             return Err(ApiError::AlreadyRegistered);
         }
         endpoints.insert(endpoint.path.clone(), Arc::new(endpoint));
+        Ok(())
+    }
+
+    /// Registers a raw handler at an exact path outside `/api/v1/`, like Go
+    /// `api.RegisterHandler`. The handler is authorized with dynamic read
+    /// permission and receives the resolved authentication token.
+    pub fn register_handler(&self, path: &str, func: HandlerFunc) -> Result<()> {
+        let mut handlers = self.handlers.write().expect("lock poisoned");
+        if handlers.contains_key(path) {
+            return Err(ApiError::AlreadyRegistered);
+        }
+        handlers.insert(path.to_string(), func);
         Ok(())
     }
 
@@ -413,6 +428,23 @@ impl Api {
             return self.decorate(response, &request, None);
         }
         request.path = cleaned;
+
+        // Raw handlers (such as /metrics) live outside /api/v1/.
+        let raw_handler = self
+            .handlers
+            .read()
+            .expect("lock poisoned")
+            .get(&request.path)
+            .cloned();
+        if let Some(handler) = raw_handler {
+            request.effective_method = "GET".to_string();
+            request.read_method = true;
+            if let Err(response) = self.authorize_required(&mut request, DYNAMIC) {
+                return self.decorate(response, &request, None);
+            }
+            let response = handler(&mut request);
+            return self.decorate(response, &request, None);
+        }
 
         // Cross-origin checks.
         let mut cors_origin = None;

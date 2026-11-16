@@ -1,0 +1,19 @@
+[package]
+name = "pm-metrics"
+version = "0.1.0"
+edition.workspace = true
+description = "Prometheus-compatible metrics registry, port of the Go base/metrics package"
+license.workspace = true
+
+[dependencies]
+pm-api = { path = "../pm-api" }
+pm-config = { path = "../pm-config" }
+pm-database = { path = "../pm-database" }
+pm-record = { path = "../pm-record" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

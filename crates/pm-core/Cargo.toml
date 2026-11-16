@@ -44,6 +44,7 @@ pm-status = { path = "../pm-status" }
 pm-updates = { path = "../pm-updates" }
 pm-intel = { path = "../pm-intel" }
 pm-jess = { path = "../pm-jess" }
+pm-metrics = { path = "../pm-metrics" }
 nix = { version = "0.31.3", default-features = false, features = ["user"] }
 pm-firewall = { path = "../pm-firewall" }
 pm-dnsmonitor = { path = "../pm-dnsmonitor" }

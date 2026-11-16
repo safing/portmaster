@@ -43,6 +43,7 @@ members = [
     "crates/pm-sync",
     "crates/pm-utils",
     "crates/pm-rng",
+    "crates/pm-metrics",
 ]
 
 [workspace.package]
