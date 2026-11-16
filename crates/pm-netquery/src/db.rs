@@ -129,6 +129,17 @@ impl Database {
         Ok((out, errors))
     }
 
+    /// Runs generated read-only SQL with bound parameters (used by the chart
+    /// endpoints). `with_schema` decodes connection columns like `query`.
+    pub fn query_raw(
+        &self,
+        sql: &str,
+        params: &BTreeMap<String, Param>,
+        with_schema: bool,
+    ) -> Result<Vec<Row>, DbError> {
+        self.run_read(sql, params, with_schema)
+    }
+
     fn run_read(
         &self,
         sql: &str,

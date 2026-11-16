@@ -588,6 +588,44 @@ impl Builder {
     }
 }
 
+/// Go `TextSearch.toSQLConditionClause`; empty when there are no fields.
+fn text_search_clause(text: &TextSearch, params: &mut BTreeMap<String, Param>) -> Result<String, QueryError> {
+    let key = ":t".to_string();
+    let mut parts = Vec::new();
+    for f in &text.fields {
+        let col = column(f).ok_or_else(|| invalid(format!("column {f} is not allowed in text-search")))?;
+        if col.kind != ColumnKind::Text {
+            return Err(invalid(format!(
+                "type of column {} cannot be used in text-search",
+                col.name
+            )));
+        }
+        parts.push(format!("{} LIKE {key}", col.name));
+    }
+    if parts.is_empty() {
+        return Ok(String::new());
+    }
+    params.insert(key, Param::Text(format!("%{}%", text.value)));
+    Ok(format!("( {} )", parts.join(" OR ")))
+}
+
+/// The WHERE condition (without the `WHERE` keyword) of the chart endpoints:
+/// the query and the text search of `req`, with errors unwrapped like Go.
+pub fn chart_where_clause(req: &QueryRequest) -> Result<(String, BTreeMap<String, Param>), QueryError> {
+    let mut params = BTreeMap::new();
+    let mut clause = where_clause(&req.query, "", &mut params)?;
+    if let Some(text) = &req.text_search {
+        let text_clause = text_search_clause(text, &mut params)?;
+        if !text_clause.is_empty() {
+            if !clause.is_empty() {
+                clause += " AND ";
+            }
+            clause += &text_clause;
+        }
+    }
+    Ok((clause, params))
+}
+
 /// Go `QueryRequestPayload.generateSQL` for the connections table.
 pub fn generate_sql(req: &QueryRequest) -> Result<(String, BTreeMap<String, Param>), QueryError> {
     let mut b = Builder::default();
@@ -599,26 +637,13 @@ pub fn generate_sql(req: &QueryRequest) -> Result<(String, BTreeMap<String, Para
         .map_err(|e| invalid(format!("generating where clause: {e}")))?;
 
     if let Some(text) = &req.text_search {
-        let key = ":t".to_string();
-        let mut parts = Vec::new();
-        for f in &text.fields {
-            let col = column(f).ok_or_else(|| {
-                invalid(format!("generating text-search clause: column {f} is not allowed in text-search"))
-            })?;
-            if col.kind != ColumnKind::Text {
-                return Err(invalid(format!(
-                    "generating text-search clause: type of column {} cannot be used in text-search",
-                    col.name
-                )));
-            }
-            parts.push(format!("{} LIKE {key}", col.name));
-        }
-        if !parts.is_empty() {
-            params.insert(key, Param::Text(format!("%{}%", text.value)));
+        let clause = text_search_clause(text, &mut params)
+            .map_err(|e| invalid(format!("generating text-search clause: {e}")))?;
+        if !clause.is_empty() {
             if !where_.is_empty() {
                 where_ += " AND ";
             }
-            where_ += &format!("( {} )", parts.join(" OR "));
+            where_ += &clause;
         }
     }
 

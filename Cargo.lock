@@ -1585,6 +1585,8 @@ name = "pm-netquery"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "http",
+ "pm-api",
  "pm-dsd",
  "regex",
  "rusqlite",
