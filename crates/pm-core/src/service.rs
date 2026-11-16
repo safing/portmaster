@@ -58,6 +58,8 @@ pub struct Service {
     pub system_interfaces: Arc<pm_splittun::SystemInterfaceEnv>,
     /// Network change monitor.
     pub network_monitor: Arc<pm_netenv::NetworkChangeMonitor>,
+    /// Estimated device locations.
+    pub device_locations: Arc<crate::location::CoreDeviceLocations>,
     /// Firewall environment and packet pipeline.
     pub firewall: Arc<crate::firewall::Firewall>,
     /// Triggered by a restart request (updater or API).
@@ -231,6 +233,17 @@ impl Service {
             Arc::new(pm_netenv::SystemPortalProbe::new()),
             None,
         ));
+
+        // Device location estimation from addresses, GeoIP, traceroute and
+        // the local time zone.
+        let device_locations = Arc::new(
+            crate::location::CoreLocationEnvironment::new(
+                Arc::clone(&pm_netenv::network().addresses),
+                Arc::clone(&geoip),
+                pm_netenv::network_changed_flag(),
+            )
+            .into_service(),
+        );
 
         // Network change monitor: checksum of the interfaces; a change
         // triggers an online status investigation.
@@ -450,6 +463,14 @@ impl Service {
             }
             retention_config.get_as_int("history/keep", 30)()
         });
+        crate::core_api::register_api(
+            &api,
+            Arc::clone(&config),
+            Arc::clone(&notifications),
+            Arc::clone(&firewall.netquery_db),
+        )
+        .map_err(|error| anyhow::anyhow!("register core api: {error}"))?;
+
         pm_netquery::api::register_api(
             &api,
             Arc::clone(&firewall.netquery_db),
@@ -477,6 +498,7 @@ impl Service {
             online_monitor,
             system_interfaces,
             network_monitor,
+            device_locations,
             firewall,
             restart_token,
             split_proxies: Arc::clone(&split_proxies),

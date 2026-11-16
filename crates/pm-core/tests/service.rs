@@ -169,6 +169,21 @@ async fn core_serves_api_and_database() {
     assert!(service.api.endpoint("netquery/query/batch").is_some());
     assert!(service.api.endpoint("core/shutdown").is_some());
     assert!(service.api.endpoint("updates/get/{artifact_path}/{artifact_name}").is_some());
+    assert!(service.api.endpoint("app/profile").is_some());
+    assert!(service.api.endpoint("app/auth").is_some());
+    assert!(service.api.endpoint("debug/core").is_some());
+
+    let response = http_get(address, "/api/v1/debug/core", "").await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    assert!(response.contains("Portmaster Debug Information"), "{response}");
+
+    // app/profile reports that the auth token has no process identity yet.
+    let response = http_get(address, "/api/v1/app/profile", "").await;
+    assert!(response.contains("failed to identify requesting process"), "{response}");
+
+    // Invalid permissions are rejected before any prompt is shown.
+    let response = http_get(address, "/api/v1/app/auth?app-name=test&read=bad&write=user", "").await;
+    assert!(response.contains("invalid read permission"), "{response}");
 
     // Directory map from core/paths.
     let response = http_get(address, "/api/v1/core/paths", "").await;
@@ -228,6 +243,9 @@ async fn core_serves_api_and_database() {
     // The network change monitor works against the real interfaces.
     assert!(service.network_monitor.check_once().is_ok());
     assert!(!service.split_proxies.is_ready(), "disabled by default");
+    // Device locations can be gathered without root; traceroute is optional.
+    let locations = service.device_locations.get_internet_location();
+    let _ = locations.best();
 
     // The intel updater and filter lists module are wired.
     assert_eq!(service.intel_updater.config().name, "Portmaster Intel");
