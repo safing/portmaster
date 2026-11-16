@@ -24,6 +24,7 @@ pub fn register_api(
     config: std::sync::Arc<Config>,
     notifications: std::sync::Arc<Notifications>,
     netquery_db: std::sync::Arc<pm_netquery::Database>,
+    profiles: std::sync::Arc<crate::firewall::CoreProfiles>,
 ) -> Result<()> {
     api.register_endpoint(
         Endpoint::new(
@@ -32,11 +33,27 @@ pub fn register_api(
             "",
         )
         .with_read(PERMIT_USER)
-        .with_struct(|_| {
-            Err(ApiError::Message(
-                "failed to identify requesting process: the API token does not carry process identity".to_string(),
-            )
-            .with_status(500))
+        .with_struct(move |request| {
+            let caller = request.auth().and_then(|token| token.process.clone())
+                .ok_or_else(|| ApiError::Message(
+                    "failed to identify requesting process: the API token does not carry process identity".to_string(),
+                ).with_status(500))?;
+            let cache = pm_process::ProcessCache::new(pm_process::ProcReader::new(
+                pm_netstate::ProcFs::default(),
+            ));
+            let process = cache.get_or_find(caller.pid).map_err(|error| {
+                ApiError::Message(format!("failed to identify requesting process: {error}"))
+                    .with_status(500)
+            })?;
+            let layered = profiles.layered_for(&process).ok_or_else(|| {
+                ApiError::Message("unknown process or profile".to_string()).with_status(500)
+            })?;
+            let local = layered.local_profile();
+            Ok(json!({
+                "profile": local.id,
+                "source": local.source,
+                "name": local.name,
+            }))
         }),
     )?;
 

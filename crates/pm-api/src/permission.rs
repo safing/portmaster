@@ -52,16 +52,38 @@ pub fn parse_permission(text: &str) -> Option<Permission> {
     }
 }
 
+/// Identity of the process that was authenticated for an API request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthProcess {
+    /// PID of the calling process.
+    pub pid: i32,
+    /// Path of its executable.
+    pub path: String,
+}
+
 /// A set of granted permissions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthToken {
     pub read: Permission,
     pub write: Permission,
+    /// Process identity, when the authenticator identified the caller.
+    pub process: Option<AuthProcess>,
 }
 
 impl AuthToken {
+    /// Attaches the authenticated process identity.
+    #[must_use]
+    pub fn with_process(mut self, process: AuthProcess) -> AuthToken {
+        self.process = Some(process);
+        self
+    }
+
     pub const fn new(read: Permission, write: Permission) -> AuthToken {
-        AuthToken { read, write }
+        AuthToken {
+            read,
+            write,
+            process: None,
+        }
     }
 
     /// A token that is not authenticated.

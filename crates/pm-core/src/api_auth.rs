@@ -9,7 +9,7 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use pm_api::{AuthError, AuthToken, Authenticator, Request, PERMIT_SELF};
+use pm_api::{AuthError, AuthProcess, AuthToken, Authenticator, Request, PERMIT_SELF};
 use pm_netstate::{ip_scope, IpProtocol, IpScope, NetState, PacketInfo, ProcFs};
 use pm_process::{
     get_pid_of_connection, ProcReader, ProcessCache, SYSTEM_PROCESS_ID, UNIDENTIFIED_PROCESS_ID,
@@ -109,7 +109,7 @@ impl ApiAuthenticator {
         self
     }
 
-    fn authenticate_process(&self, client: SocketAddr) -> Result<(), Denial> {
+    fn authenticate_process(&self, client: SocketAddr) -> Result<AuthProcess, Denial> {
         let denied = |message: &str, retry: bool| Denial {
             message: message.to_string(),
             retry,
@@ -140,6 +140,7 @@ impl ApiAuthenticator {
             }
             Some(first) => {
                 original_pid = first.pid;
+                let original_path = first.path.clone();
                 let mut proc = first;
                 // Check the process and its parents for up to two levels.
                 for level in 0..=CHECK_LEVELS {
@@ -151,7 +152,10 @@ impl ApiAuthenticator {
                         let allowed = self.allowed_clients.contains(&real_path)
                             || real_path.to_string_lossy().starts_with(&root);
                         if allowed {
-                            return Ok(());
+                            return Ok(AuthProcess {
+                                pid: original_pid,
+                                path: original_path,
+                            });
                         }
                     }
                     checked.push(proc.path.clone());
@@ -212,7 +216,7 @@ impl Authenticator for ApiAuthenticator {
 
         // It is important that this works: up to 5 attempts, 500 ms after each
         // retry-flagged one (2.5 s in total).
-        let mut result = Ok(());
+        let mut result: Result<AuthProcess, Denial> = Ok(AuthProcess { pid: -1, path: String::new() });
         for _ in 0..AUTH_TRIES {
             result = self.authenticate_process(client);
             match &result {
@@ -223,7 +227,9 @@ impl Authenticator for ApiAuthenticator {
         }
 
         match result {
-            Ok(()) => Ok(Some(AuthToken::new(PERMIT_SELF, PERMIT_SELF))),
+            Ok(process) => Ok(Some(
+                AuthToken::new(PERMIT_SELF, PERMIT_SELF).with_process(process),
+            )),
             Err(Denial { message, .. }) => Err(AuthError::Denied(message)),
         }
     }
@@ -415,7 +421,12 @@ mod tests {
         let (auth, _) = authenticator(lookup, &e, vec![]);
         assert_eq!(
             auth.authenticate(&request()).unwrap(),
-            Some(AuthToken::new(PERMIT_SELF, PERMIT_SELF))
+            Some(
+                AuthToken::new(PERMIT_SELF, PERMIT_SELF).with_process(AuthProcess {
+                    pid: 100,
+                    path: e.inside.to_string_lossy().into_owned(),
+                }),
+            )
         );
         let _ = std::fs::remove_dir_all(&e.dir);
     }

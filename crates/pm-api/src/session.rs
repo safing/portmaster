@@ -70,7 +70,7 @@ impl Sessions {
             return None;
         }
         session.valid_until = Instant::now() + self.ttl;
-        Some(session.token)
+        Some(session.token.clone())
     }
 
     /// Deletes a session.
@@ -123,9 +123,9 @@ mod tests {
     fn sessions_expire_and_refresh() {
         let sessions = Sessions::with_ttl(Duration::from_millis(50));
         let token = AuthToken::new(PERMIT_ADMIN, PERMIT_ADMIN);
-        let value = sessions.create(token).unwrap();
+        let value = sessions.create(token.clone()).unwrap();
         assert_eq!(value.len(), 64);
-        assert_eq!(sessions.check(&value), Some(token));
+        assert_eq!(sessions.check(&value), Some(token.clone()));
         assert_eq!(sessions.len(), 1);
 
         std::thread::sleep(Duration::from_millis(60));
@@ -137,8 +137,8 @@ mod tests {
     fn sessions_are_unique_and_deletable() {
         let sessions = Sessions::new();
         let token = AuthToken::new(PERMIT_ANYONE, PERMIT_ANYONE);
-        let first = sessions.create(token).unwrap();
-        let second = sessions.create(token).unwrap();
+        let first = sessions.create(token.clone()).unwrap();
+        let second = sessions.create(token.clone()).unwrap();
         assert_ne!(first, second);
         sessions.delete(&first);
         assert_eq!(sessions.check(&first), None);

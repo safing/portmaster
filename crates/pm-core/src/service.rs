@@ -468,6 +468,7 @@ impl Service {
             Arc::clone(&config),
             Arc::clone(&notifications),
             Arc::clone(&firewall.netquery_db),
+            Arc::clone(&firewall.profiles),
         )
         .map_err(|error| anyhow::anyhow!("register core api: {error}"))?;
 

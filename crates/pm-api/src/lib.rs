@@ -36,7 +36,7 @@ pub use endpoint::{
 };
 pub use permission::{
     bearer_token, parse_api_keys, parse_permission, permission_name, permission_role, AuthError,
-    AuthToken, Authenticator, Permission, DYNAMIC, NOT_FOUND, NOT_SUPPORTED, PERMIT_ADMIN,
+    AuthProcess, AuthToken, Authenticator, Permission, DYNAMIC, NOT_FOUND, NOT_SUPPORTED, PERMIT_ADMIN,
     PERMIT_ANYONE, PERMIT_SELF, PERMIT_USER,
 };
 pub use session::{session_cookie, Sessions, SESSION_COOKIE_NAME};
@@ -184,6 +184,11 @@ impl Request {
     /// Returns a path variable.
     pub fn param(&self, name: &str) -> Option<&str> {
         self.params.get(name).map(String::as_str)
+    }
+
+    /// Returns the authenticated caller, if the authenticator identified it.
+    pub fn auth(&self) -> Option<&AuthToken> {
+        self.auth.as_ref()
     }
 
     /// Returns a query parameter.
@@ -525,8 +530,8 @@ impl Api {
             if let Some(authenticator) = authenticator {
                 match authenticator.authenticate(request) {
                     Ok(found) => {
-                        if let Some(found) = found {
-                            self.create_session(request, found);
+                        if let Some(found) = &found {
+                            self.create_session(request, found.clone());
                         }
                         token = found;
                     }
@@ -621,7 +626,7 @@ impl Api {
             .read()
             .expect("lock poisoned")
             .get(key)
-            .copied()
+            .cloned()
     }
 
     fn execute(&self, request: &mut Request, endpoint: &Endpoint) -> Response {
@@ -917,7 +922,7 @@ impl Api {
             )
             .with_read(DYNAMIC)
             .with_struct(|request| {
-                let token = request.auth.unwrap_or_else(AuthToken::public);
+                let token = request.auth.clone().unwrap_or_else(AuthToken::public);
                 Ok(serde_json::json!({
                     "Read": token.read,
                     "Write": token.write,
@@ -938,6 +943,7 @@ impl Api {
             .with_handler(|request| {
                 if request
                     .auth
+                    .as_ref()
                     .is_some_and(|token| token.read != PERMIT_ANYONE)
                 {
                     return Response::body(
@@ -966,6 +972,7 @@ impl Api {
             .with_handler(|request| {
                 if request
                     .auth
+                    .as_ref()
                     .is_some_and(|token| token.read != PERMIT_ANYONE)
                 {
                     return Response::body(
