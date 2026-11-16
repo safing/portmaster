@@ -155,9 +155,9 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
 
   bwChartConfig = DefaultBandwidthChartConfig;
 
-  activeConnections: number = 0;
-  blockedConnections: number = 0;
-  activeProfiles: number = 0;
+  activeConnections = 0;
+  blockedConnections = 0;
+  activeProfiles = 0;
   activeIdentities = 0;
   dataIncoming = 0;
   dataOutgoing = 0;
@@ -411,7 +411,7 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
         this.updateMapCountries()
 
         // perCountryConns
-        let profiles = new Set<string>();
+        const profiles = new Set<string>();
 
         this.activeConnections = 0;
         this.countriesPerProfile = {};

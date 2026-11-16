@@ -34,7 +34,7 @@ export class NavigationComponent implements OnInit {
   hasNewNotifications = false;
 
   /** The color to use for the notifcation-available hint (dot) */
-  notificationColor: string = 'text-green-300';
+  notificationColor = 'text-green-300';
 
   pauseState: ControlPauseStateData | null = null;
   get isPaused(): boolean { return this.pauseState?.Interception===true || this.pauseState?.SPN===true; }

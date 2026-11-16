@@ -4,7 +4,7 @@ import { AppInfo, PortmasterDir, ProcessInfo } from "./integration";
 export class ElectronIntegrationService extends BrowserIntegrationService {
 
   openExternal(pathOrUrl: string): Promise<void> {
-    if (!!window.app) {
+    if (window.app) {
       return window.app.openExternal(pathOrUrl);
     }
 
@@ -24,7 +24,7 @@ export class ElectronIntegrationService extends BrowserIntegrationService {
   }
 
   getAppIcon(info: ProcessInfo): Promise<string> {
-    if (!!window.app) {
+    if (window.app) {
       return window.app.getFileIcon(info.execPath)
     }
 
@@ -36,7 +36,7 @@ export class ElectronIntegrationService extends BrowserIntegrationService {
   }
 
   exitApp(): Promise<void> {
-    if (!!window.app) {
+    if (window.app) {
       window.app.exitApp();
     }
 
@@ -44,7 +44,7 @@ export class ElectronIntegrationService extends BrowserIntegrationService {
   }
 
   onExitRequest(cb: () => void): () => void {
-    let listener = (event: MessageEvent<any>) => {
+    const listener = (event: MessageEvent<any>) => {
       if (event.data === 'on-app-close') {
         cb();
       }

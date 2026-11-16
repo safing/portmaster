@@ -2,7 +2,7 @@ import { AppInfo, IntegrationService, PortmasterDir, ProcessInfo } from "./integ
 
 export class BrowserIntegrationService implements IntegrationService {
   writeToClipboard(text: string): Promise<void> {
-    if (!!navigator.clipboard) {
+    if (navigator.clipboard) {
       return navigator.clipboard.writeText(text);
     }
 
@@ -35,7 +35,9 @@ export class BrowserIntegrationService implements IntegrationService {
 
   onExitRequest(cb: () => void): () => void {
     // nothing to do, there
-    return () => { }
+    return () => {
+      // nothing to do, there
+    }
   }
 }
 

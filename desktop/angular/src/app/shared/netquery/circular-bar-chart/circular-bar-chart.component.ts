@@ -38,7 +38,7 @@ export interface CircularBarChartConfig<T> {
 
 
 export function splitQueryResult<T extends QueryResult, K extends keyof T>(results: T[], series: K[]): (QueryResult & { series: string, value: number })[] {
-  let mapped: (QueryResult & { series: string, value: number })[] = [];
+  const mapped: (QueryResult & { series: string, value: number })[] = [];
 
   results.forEach(row => {
     series.forEach(seriesKey => {
@@ -109,7 +109,7 @@ export class CircularBarChartComponent<T> implements OnInit, AfterViewInit {
   }
 
   private prepareChart() {
-    if (!!this.svg) {
+    if (this.svg) {
       const parent = this.svg.node()?.parentElement
       parent?.remove()
     }
@@ -359,7 +359,7 @@ export class CircularBarChartComponent<T> implements OnInit, AfterViewInit {
         .attr("font-size", "0.6rem")
         .attr("fill", "#fff")
         .text(d => {
-          if (!!this.config?.seriesLabel) {
+          if (this.config?.seriesLabel) {
             return this.config.seriesLabel(d)
           }
 

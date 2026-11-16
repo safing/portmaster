@@ -234,13 +234,13 @@ export class AppViewComponent implements OnInit, OnDestroy {
     // Actually safe the profile
     this.profileService.saveProfile(this.appProfile!).subscribe({
       next: () => {
-        if (!!event.accepted) {
+        if (event.accepted) {
           event.accepted();
         }
       },
       error: (err) => {
         // if there's a callback function for errors call it.
-        if (!!event.rejected) {
+        if (event.rejected) {
           event.rejected(err);
         }
 
@@ -437,7 +437,7 @@ export class AppViewComponent implements OnInit, OnDestroy {
       async ([profile, queryMap, global, allSettings, viewSetting]) => {
         const previousProfile = this.appProfile;
 
-        if (!!profile) {
+        if (profile) {
           const key = profile![0].Source + '/' + profile![0].ID;
 
           const query: Condition = {
@@ -519,7 +519,7 @@ export class AppViewComponent implements OnInit, OnDestroy {
 
         this._loading = false;
 
-        if (!!this.appProfile?.PresentationPath) {
+        if (this.appProfile?.PresentationPath) {
           let parts: string[] = [];
           let sep = '/';
           if (this.appProfile.PresentationPath[0] === '/') {
@@ -543,7 +543,7 @@ export class AppViewComponent implements OnInit, OnDestroy {
 
         // if we have a profile flatten it's configuration map to something
         // more useful.
-        if (!!this.appProfile) {
+        if (this.appProfile) {
           profileConfig = flattenProfileConfig(this.appProfile.Config);
         }
 
@@ -561,7 +561,7 @@ export class AppViewComponent implements OnInit, OnDestroy {
         //    the action button would fail and the user would not notice something
         //    changing.
         //
-        if (!!this.highlightSettingKey) {
+        if (this.highlightSettingKey) {
           if (profileConfig[this.highlightSettingKey] === undefined) {
             this.viewSettingChange.next('all');
           }
