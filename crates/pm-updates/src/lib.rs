@@ -17,9 +17,11 @@
 //!   same Go duration layout, but the exact seconds depend on the clock.
 
 mod downloader;
+mod glob;
 mod index;
 mod version;
 
+pub use glob::{Glob, GlobError};
 pub use downloader::{
     copy_and_check_sha256_sum, decompress, default_user_agent, Downloader, HttpClient,
     HttpsClient,
