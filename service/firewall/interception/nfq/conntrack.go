@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sync"
 
 	ct "github.com/florianl/go-conntrack"
 
@@ -15,10 +16,24 @@ import (
 	pmpacket "github.com/safing/portmaster/service/network/packet"
 )
 
-var nfct *ct.Nfct // Conntrack handler. NFCT: Network Filter Connection Tracking.
+var (
+	// nfct is the conntrack handler. NFCT: Network Filter Connection Tracking.
+	nfct *ct.Nfct
+	// nfctLock serializes all use of nfct, including Close and reassignment.
+	// The handle is not safe for concurrent use: go-conntrack's Query and Get
+	// send the request and read the reply in two separately locked netlink
+	// calls (Conn.Send, then Conn.Receive) without matching the reply to the
+	// request, so concurrent callers can receive each other's replies.
+	// nfctLock is a leaf lock: nothing called while holding it may acquire
+	// other Portmaster locks (callers hold connection locks).
+	nfctLock sync.Mutex
+)
 
 // InitNFCT initializes the network filter conntrack library.
 func InitNFCT() error {
+	nfctLock.Lock()
+	defer nfctLock.Unlock()
+
 	var err error
 	nfct, err = ct.Open(&ct.Config{})
 	if err != nil {
@@ -29,8 +44,12 @@ func InitNFCT() error {
 
 // TeardownNFCT deinitializes the network filter conntrack library.
 func TeardownNFCT() {
+	nfctLock.Lock()
+	defer nfctLock.Unlock()
+
 	if nfct != nil {
 		_ = nfct.Close()
+		nfct = nil
 	}
 }
 
@@ -54,6 +73,9 @@ func TeardownNFCT() {
 // Connections already processed by Portmaster carry a non-zero connmark and
 // are handled via CONNMARK --restore-mark; they are unaffected.
 func DeleteUnmarkedConnections() error {
+	nfctLock.Lock()
+	defer nfctLock.Unlock()
+
 	if nfct == nil {
 		return errors.New("nfq: nfct not initialized")
 	}
@@ -121,6 +143,9 @@ func isLoopbackConnection(c ct.Con) bool {
 
 // DeleteAllMarkedConnection deletes all marked entries from the conntrack table.
 func DeleteAllMarkedConnection() error {
+	nfctLock.Lock()
+	defer nfctLock.Unlock()
+
 	if nfct == nil {
 		return errors.New("nfq: nfct not initialized")
 	}
@@ -173,6 +198,9 @@ func deleteMarkedConnections(nfct *ct.Nfct, f ct.Family) (deleted int) {
 
 // DeleteMarkedConnection removes a specific connection from the conntrack table.
 func DeleteMarkedConnection(conn *network.Connection) error {
+	nfctLock.Lock()
+	defer nfctLock.Unlock()
+
 	if nfct == nil {
 		return errors.New("nfq: nfct not initialized")
 	}
