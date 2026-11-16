@@ -51,6 +51,8 @@ pub struct Service {
     pub intel_updater: Arc<pm_updates::Updater>,
     /// Filter lists module glue: cache loading, states and event handling.
     pub filter_lists_module: Arc<pm_intel::FilterListsModule>,
+    /// Online status monitor.
+    pub online_monitor: Arc<pm_netenv::OnlineMonitor>,
     /// Subscribed in `new` so changes before `run` are not missed.
     profile_changes: Mutex<Option<tokio::sync::broadcast::Receiver<()>>>,
     listener: Mutex<Option<TcpListener>>,
@@ -197,6 +199,15 @@ impl Service {
         }
 
 
+        // Online status monitor: addresses, portal probe and (later) the DNS
+        // check. The first check runs when the service starts serving.
+        let online_monitor = Arc::new(pm_netenv::OnlineMonitor::new(
+            pm_netenv::shared(),
+            Arc::clone(&pm_netenv::network().addresses),
+            Arc::new(pm_netenv::SystemPortalProbe::new()),
+            None,
+        ));
+
         // Configuration.
         let config = Config::new();
         register_options(&config, options)?;
@@ -314,6 +325,7 @@ impl Service {
             binary_updater,
             intel_updater,
             filter_lists_module,
+            online_monitor,
             profile_changes: Mutex::new(Some(profile_changes)),
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
@@ -385,6 +397,15 @@ impl Service {
                 );
                 intel_updater.configure(auto_intel, pm_updates::intel_update_urls());
             }
+        });
+
+        // Online status checks: immediately, on triggers and after the
+        // per-status delay.
+        let online_monitor = Arc::clone(&self.online_monitor);
+        let online_worker = tokio::spawn(async move {
+            online_monitor
+                .run(tokio_util::sync::CancellationToken::new())
+                .await;
         });
 
         // Binary updates: check every hour (first after 15 seconds, like Go).
@@ -490,6 +511,7 @@ impl Service {
         };
 
         refresher.abort();
+        online_worker.abort();
         binary_worker.abort();
         intel_worker.abort();
         list_watcher.abort();

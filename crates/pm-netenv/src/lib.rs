@@ -27,6 +27,7 @@ use serde::{Deserialize, Serialize};
 mod addresses;
 mod flag;
 mod interfaces;
+mod online_check;
 mod system;
 
 pub use addresses::{AddressCache, LocalNetwork};
@@ -40,13 +41,21 @@ pub use interfaces::{
     RouteCandidate,
 };
 pub use system::SystemInterfaces;
+pub use online_check::{
+    check_online_status, is_connectivity_domain, no_portal_probe, shared_probe, DnsCheck,
+    DnsCheckOutcome, OnlineCheckEnv, OnlineCheckResult, PortalProbe, PortalProbeResult,
+    dynamic_check_delay, OnlineMonitor, StaticDnsCheck, StaticPortalProbe, SystemPortalProbe,
+    CONNECTIVITY_DOMAINS,
+    DNS_TEST_DOMAIN, DNS_TEST_EXPECTED_IP, IGNORE_IPS_IN_ONLINE_STATUS_CHECK, PORTAL_TEST_IP,
+    PORTAL_TEST_URL,
+};
 
 /// The process-wide network caches.
 pub struct Network {
     /// Interface cache backed by the system interfaces.
-    pub interfaces: InterfaceCache,
+    pub interfaces: Arc<InterfaceCache>,
     /// Local address cache backed by the system interfaces.
-    pub addresses: AddressCache,
+    pub addresses: Arc<AddressCache>,
 }
 
 static NETWORK: OnceLock<Network> = OnceLock::new();
@@ -56,11 +65,11 @@ pub fn network() -> &'static Network {
     NETWORK.get_or_init(|| {
         let source: Arc<dyn InterfaceSource> = Arc::new(SystemInterfaces);
         Network {
-            interfaces: InterfaceCache::new(
+            interfaces: Arc::new(InterfaceCache::new(
                 Arc::clone(&source),
                 network_changed_flag(),
-            ),
-            addresses: AddressCache::new(source, network_changed_flag()),
+            )),
+            addresses: Arc::new(AddressCache::new(source, network_changed_flag())),
         }
     })
 }
@@ -222,6 +231,16 @@ impl NetEnv {
     /// Returns the current online status.
     pub fn online_status(&self) -> OnlineStatus {
         OnlineStatus::from_u8(self.online_status.load(Ordering::SeqCst))
+    }
+
+    /// Applies the result of an online status check, updating the status and
+    /// the captive portal.
+    pub fn apply_online_check(&self, result: &OnlineCheckResult) -> bool {
+        let portal = result
+            .portal_url
+            .as_ref()
+            .map(|url| CaptivePortal::from_url(url));
+        self.update_online_status(result.status, portal)
     }
 
     /// Returns whether the status is online or semi-online.

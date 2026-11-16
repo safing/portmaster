@@ -209,7 +209,9 @@ async fn core_serves_api_and_database() {
         .unwrap();
     assert_eq!(record.key.key, "system/status");
     let status: serde_json::Value = serde_json::from_slice(&record.data).unwrap();
-    assert_eq!(status["OnlineStatus"], 0);
+    // The online monitor may already have determined a status.
+    let online_status = status["OnlineStatus"].as_u64().expect("online status");
+    assert!(online_status <= 5, "valid status: {online_status}");
     assert_eq!(status["Modules"], json!([]));
     assert_eq!(status["WorstState"]["Module"], "");
 

@@ -11,6 +11,9 @@ pm-netstate = { path = "../pm-netstate" }
 nix = { version = "0.31.3", default-features = false, features = ["net"] }
 serde.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+ureq = "3.5.2"
 tracing.workspace = true
 
 [lints]

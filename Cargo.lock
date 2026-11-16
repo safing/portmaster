@@ -1634,7 +1634,10 @@ dependencies = [
  "pm-netstate",
  "serde",
  "thiserror",
+ "tokio",
+ "tokio-util",
  "tracing",
+ "ureq",
 ]
 
 [[package]]
