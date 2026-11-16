@@ -18,6 +18,7 @@
 
 mod bypass;
 mod config;
+mod custom_lists;
 mod deciders;
 pub mod dns_filter;
 mod dga;
@@ -30,6 +31,7 @@ mod prompt;
 mod split_tunnel;
 
 pub use bypass::{looks_like_outgoing_dns_request, prevent_bypassing, DnsResponder};
+pub use custom_lists::ServiceCustomLists;
 pub use config::{
     register_options, CFG_OPTION_ASK_TIMEOUT_KEY, CFG_OPTION_ASK_WITH_SYSTEM_NOTIFICATIONS_KEY,
     CFG_OPTION_DNS_QUERY_INTERCEPTION_KEY, CFG_OPTION_ENABLE_FILTER_KEY,
