@@ -39,7 +39,9 @@ pub use configure::{
     DEFAULT_SUPPORT_BINARY_INDEX_URLS,
 };
 pub use glob::{Glob, GlobError};
-pub use index_scan::{generate_index_from_dir, sha256_of_file, IndexScanConfig, ScanError};
+pub use index_scan::{
+    generate_index_from_dir, sha256_of_file, IndexScanConfig, PatternMatcher, ScanError,
+};
 pub use upgrade::{UpgradeError, Upgrader};
 pub use updater::{
     index_file_path, Result as UpdateResult, UpdateError, Updater, CORRUPT_INSTALLATION_NOTIFICATION_ID,

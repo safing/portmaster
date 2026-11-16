@@ -1907,8 +1907,13 @@ dependencies = [
 name = "pm-updatemgr"
 version = "0.1.0"
 dependencies = [
+ "hex",
+ "pm-dsd",
  "pm-updates",
+ "serde",
  "serde_json",
+ "sha2",
+ "url",
 ]
 
 [[package]]

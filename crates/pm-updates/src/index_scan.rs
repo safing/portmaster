@@ -64,7 +64,9 @@ pub struct IndexScanConfig {
 
 impl IndexScanConfig {
     /// Compiles the glob patterns and normalizes the base URL.
-    fn init(&self) -> Result<PreparedScanConfig, ScanError> {
+    /// Compiles the ignore and unpack patterns for reuse by other tools,
+    /// like Go `IndexScanConfig.init`.
+    pub fn prepare(&self) -> Result<PatternMatcher, ScanError> {
         let base_url = format!("{}/", self.base_url.trim_end_matches('/'));
         let cleaned_base_url = if self.base_url.is_empty() {
             String::new()
@@ -87,7 +89,7 @@ impl IndexScanConfig {
             unpack_globs.push((setting.clone(), glob));
         }
 
-        Ok(PreparedScanConfig {
+        Ok(PatternMatcher {
             cleaned_base_url,
             ignore_globs,
             unpack_globs,
@@ -96,22 +98,23 @@ impl IndexScanConfig {
 }
 
 /// A compiled index scan configuration.
-struct PreparedScanConfig {
+/// Compiled ignore/unpack patterns of an [`IndexScanConfig`].
+pub struct PatternMatcher {
     cleaned_base_url: String,
     ignore_globs: Vec<Glob>,
     unpack_globs: Vec<(String, Glob)>,
 }
 
-impl PreparedScanConfig {
+impl PatternMatcher {
     /// Returns whether a file name should be ignored.
-    fn is_ignored(&self, filename: &str) -> bool {
+    pub fn is_ignored(&self, filename: &str) -> bool {
         self.ignore_globs
             .iter()
             .any(|pattern| pattern.is_match(filename))
     }
 
     /// Returns the unpack setting for the file name.
-    fn unpack_setting(&self, filename: &str) -> Result<String, ScanError> {
+    pub fn unpack_setting(&self, filename: &str) -> Result<String, ScanError> {
         let mut found: Option<&str> = None;
         for (setting, pattern) in &self.unpack_globs {
             if !pattern.is_match(filename) {
@@ -134,7 +137,7 @@ pub fn generate_index_from_dir(
     source_dir: impl AsRef<Path>,
     config: &IndexScanConfig,
 ) -> Result<Index, ScanError> {
-    let prepared = config.init()?;
+    let prepared = config.prepare()?;
 
     let source_dir = std::path::absolute(source_dir.as_ref()).map_err(ScanError::IndexDir)?;
     let index_version = if config.version.is_empty() {

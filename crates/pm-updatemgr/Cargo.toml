@@ -10,10 +10,13 @@ name = "updatemgr-rs"
 path = "src/main.rs"
 
 [dependencies]
+hex.workspace = true
+pm-dsd = { path = "../pm-dsd" }
 pm-updates = { path = "../pm-updates" }
+serde.workspace = true
 serde_json.workspace = true
-
-[dev-dependencies]
+sha2.workspace = true
+url.workspace = true
 
 [lints]
 workspace = true

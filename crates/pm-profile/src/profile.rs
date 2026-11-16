@@ -78,7 +78,11 @@ pub struct Profile {
     pub icon: String,
     #[serde(rename = "IconType")]
     pub icon_type: crate::IconType,
-    #[serde(rename = "Icons")]
+    #[serde(
+        rename = "Icons",
+        deserialize_with = "deserialize_null_default",
+        default
+    )]
     pub icons: Vec<Icon>,
     #[serde(rename = "LinkedPath")]
     pub linked_path: String,
@@ -86,9 +90,17 @@ pub struct Profile {
     pub presentation_path: String,
     #[serde(rename = "UsePresentationPath")]
     pub use_presentation_path: bool,
-    #[serde(rename = "Fingerprints")]
+    #[serde(
+        rename = "Fingerprints",
+        deserialize_with = "deserialize_null_default",
+        default
+    )]
     pub fingerprints: Vec<Fingerprint>,
-    #[serde(rename = "Config")]
+    #[serde(
+        rename = "Config",
+        deserialize_with = "deserialize_null_default",
+        default
+    )]
     pub config: Map<String, Value>,
     #[serde(rename = "LastEdited")]
     pub last_edited: i64,
@@ -112,6 +124,15 @@ fn serialize_time<S: serde::Serializer>(seconds: &i64, serializer: S) -> Result<
 fn deserialize_time<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<i64, D::Error> {
     let text = String::deserialize(deserializer)?;
     Ok(parse_rfc3339(&text).unwrap_or(0))
+}
+
+/// Go encodes nil slices and maps as `null`; accept them as empty values.
+fn deserialize_null_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Deserialize<'de> + Default,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
 }
 
 impl Default for Profile {
@@ -290,4 +311,29 @@ pub fn ensure_profile(profile: &Profile) -> Result<(), String> {
         return Err(format!("profile {} does not specify a source", profile.id));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Real profile records written by the Go core contain `null` for nil
+    /// slices and maps; see the `_system` profile in the shipped database.
+    #[test]
+    fn decodes_go_profiles_with_null_slices_and_map() {
+        let data = br#"{"ID":"_system","Source":"local","Name":"Operating System","Description":"This is the operation system itself.","Warning":"","WarningLastUpdated":"0001-01-01T00:00:00Z","Homepage":"","Icon":"","IconType":"","Icons":null,"LinkedPath":"","PresentationPath":"","UsePresentationPath":false,"Fingerprints":null,"Config":{},"LastEdited":0,"Created":1758680334,"Internal":false}"#;
+        let profile: Profile = serde_json::from_slice(data).expect("decode Go profile");
+        assert_eq!(profile.id, "_system");
+        assert!(profile.icons.is_empty());
+        assert!(profile.fingerprints.is_empty());
+        assert!(profile.config.is_empty());
+        assert_eq!(profile.created, 1758680334);
+
+        // A null config is equally valid (nil Go map).
+        let with_null_config = br#"{"ID":"x","Source":"local","Name":"x","Description":"","Warning":"","WarningLastUpdated":"0001-01-01T00:00:00Z","Homepage":"","Icon":"","IconType":"","Icons":null,"LinkedPath":"","PresentationPath":"","UsePresentationPath":false,"Fingerprints":null,"Config":null,"LastEdited":0,"Created":0,"Internal":false}"#;
+        let profile: Profile = serde_json::from_slice(with_null_config).expect("decode null config");
+        assert!(profile.config.is_empty());
+        assert!(profile.icons.is_empty());
+        assert!(profile.fingerprints.is_empty());
+    }
 }
