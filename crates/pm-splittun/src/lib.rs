@@ -13,10 +13,12 @@
 //! * Egress tracking lives in `pm-proxy` and only covers live sessions; a UDP
 //!   session can linger until its idle timeout.
 
+mod adapter;
 mod config;
 mod proxies;
 mod requests;
 
+pub use adapter::{SplitTunnelEnvAdapter, SplitTunnelProfiles};
 pub use config::{register_options, CFG_OPTION_SPLIT_TUN_ENABLE_KEY};
 pub use proxies::Proxies;
 pub use requests::{

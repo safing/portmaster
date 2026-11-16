@@ -1835,6 +1835,8 @@ version = "0.1.0"
 dependencies = [
  "pm-config",
  "pm-database",
+ "pm-endpoints",
+ "pm-firewall",
  "pm-intel",
  "pm-network",
  "pm-process",
