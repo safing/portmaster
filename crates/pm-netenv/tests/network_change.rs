@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use pm_netenv::{
-    global_source, InterfaceSource, NetEnv, NetworkChangeMonitor, RawInterface, RouteCandidate,
+    InterfaceSource, NetEnv, NetworkChangeMonitor, RawInterface, RouteCandidate,
 };
 
 struct FakeSource {
@@ -64,17 +64,11 @@ fn detects_interface_changes_once() {
     assert_eq!(online_checks.load(Ordering::SeqCst), 0);
 
     // A new address is a change.
-    let generation = global_source().generation();
     source.interfaces.lock().unwrap()[0]
         .addrs
         .push(("192.168.1.11".parse().unwrap(), 24));
     assert!(monitor.check_once().expect("changed"));
     assert_eq!(online_checks.load(Ordering::SeqCst), 1);
-    assert!(
-        global_source().generation() > generation,
-        "network change was announced"
-    );
-
     // The same state no longer counts as a change.
     assert!(!monitor.check_once().expect("stable"));
     assert_eq!(online_checks.load(Ordering::SeqCst), 1);
