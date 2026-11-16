@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 
 	"golang.org/x/exp/slices"
@@ -13,6 +14,7 @@ import (
 
 type (
 	// EncodeFunc is called for each non-basic type during encoding.
+	// The column definition is shared between calls and must not be modified.
 	EncodeFunc func(col *ColumnDef, valType reflect.Type, val reflect.Value) (interface{}, bool, error)
 
 	// EncodeConfig holds encoding functions.
@@ -31,21 +33,24 @@ func ToParamMap(ctx context.Context, r interface{}, keyPrefix string, cfg Encode
 		return nil, fmt.Errorf("%w, got %T", errStructExpected, r)
 	}
 
+	fields := getEncoderFields(val.Type())
 	res := make(map[string]interface{}, val.NumField())
 
-	for i := range val.NumField() {
-		fieldType := val.Type().Field(i)
-		field := val.Field(i)
+	// Build the hook list once instead of for every field. Copy it, so that
+	// the backing array of cfg.EncodeHooks is never written to.
+	hooks := make([]EncodeFunc, 0, len(cfg.EncodeHooks)+1)
+	hooks = append(hooks, cfg.EncodeHooks...)
+	hooks = append(hooks, encodeBasic())
 
-		// skip unexported fields
-		if !fieldType.IsExported() {
-			continue
-		}
+	for i := range fields {
+		ef := &fields[i]
+		fieldType := &ef.field
+		field := val.Field(ef.index)
 
-		colDef, err := getColumnDef(fieldType)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get column definition for %s: %w", fieldType.Name, err)
+		if ef.colDefErr != nil {
+			return nil, fmt.Errorf("failed to get column definition for %s: %w", fieldType.Name, ef.colDefErr)
 		}
+		colDef := ef.colDef
 
 		if slices.Contains(skipFields, colDef.Name) {
 			continue
@@ -55,10 +60,7 @@ func ToParamMap(ctx context.Context, r interface{}, keyPrefix string, cfg Encode
 			colDef,
 			fieldType.Type,
 			field,
-			append(
-				cfg.EncodeHooks,
-				encodeBasic(),
-			),
+			hooks,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to run encode hooks: %w", err)
@@ -70,11 +72,55 @@ func ToParamMap(ctx context.Context, r interface{}, keyPrefix string, cfg Encode
 			}
 		}
 
-		res[keyPrefix+sqlColumnName(fieldType)] = x
-
+		res[keyPrefix+ef.columnName] = x
 	}
 
 	return res, nil
+}
+
+// encoderField holds the per-type metadata of an exported struct field that
+// ToParamMap needs to encode it.
+type encoderField struct {
+	index      int
+	field      reflect.StructField
+	colDef     *ColumnDef
+	colDefErr  error
+	columnName string
+}
+
+// encoderFieldsCache caches the encoder fields of struct types.
+// It maps reflect.Type to []encoderField.
+var encoderFieldsCache sync.Map
+
+// getEncoderFields returns the metadata of all exported fields of the given
+// struct type. Parsing the struct tags is only done once per type, as it
+// otherwise dominates the cost of encoding a row.
+func getEncoderFields(t reflect.Type) []encoderField {
+	if cached, ok := encoderFieldsCache.Load(t); ok {
+		return cached.([]encoderField) //nolint:forcetypeassert // Only this function stores values.
+	}
+
+	fields := make([]encoderField, 0, t.NumField())
+	for i := range t.NumField() {
+		fieldType := t.Field(i)
+
+		// skip unexported fields
+		if !fieldType.IsExported() {
+			continue
+		}
+
+		colDef, err := getColumnDef(fieldType)
+		fields = append(fields, encoderField{
+			index:      i,
+			field:      fieldType,
+			colDef:     colDef,
+			colDefErr:  err,
+			columnName: sqlColumnName(fieldType),
+		})
+	}
+
+	encoderFieldsCache.Store(t, fields)
+	return fields
 }
 
 // EncodeValue encodes the given value.
