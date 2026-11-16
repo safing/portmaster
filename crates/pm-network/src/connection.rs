@@ -317,6 +317,12 @@ impl<'a> EntityJson<'a> {
     }
 }
 
+/// Returns the Go JSON form of an entity, for records that embed it (for
+/// example prompt notifications).
+pub fn entity_to_json(entity: &pm_intel::Entity) -> serde_json::Value {
+    serde_json::to_value(EntityJson::new(entity)).unwrap_or(serde_json::Value::Null)
+}
+
 #[derive(Serialize)]
 struct ConnectionJson<'a> {
     #[serde(rename = "ID")]

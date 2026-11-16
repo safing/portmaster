@@ -46,8 +46,8 @@ pub use clean::{
     END_ICMP_CONNS_AFTER_INACTIVE_FOR,
 };
 pub use connection::{
-    Connection, DnsRequestContext, JsonIp, ProcessContext, Reason, SharedConnection,
-    SplitTunContext,
+    entity_to_json, Connection, DnsRequestContext, JsonIp, ProcessContext, Reason,
+    SharedConnection, SplitTunContext,
 };
 pub use database::{
     parse_db_key, process_record, register_as_database, NetworkStorage, ParsedKey, DATABASE_NAME,

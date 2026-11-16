@@ -47,7 +47,8 @@ pub use layered::LayeredProfile;
 pub use matching::{find_matching_profile, ProfileMatch};
 pub use merge::merge_profiles;
 pub use profile::{
-    ensure_profile, now, OutdatedFlag, Profile, DEFAULT_ACTION_ASK, DEFAULT_ACTION_BLOCK,
+    ensure_profile, now, OutdatedFlag, Profile, CFG_OPTION_ENDPOINTS_KEY,
+    CFG_OPTION_SERVICE_ENDPOINTS_KEY, DEFAULT_ACTION_ASK, DEFAULT_ACTION_BLOCK,
     DEFAULT_ACTION_NOT_SET, DEFAULT_ACTION_PERMIT, DEFAULT_ACTION_PERMIT_VALUE,
 };
 pub use proxy_url::validate_upstream_proxy_url;

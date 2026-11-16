@@ -194,6 +194,64 @@ impl Profile {
     pub(crate) fn clear_outdated(&self) {
         self.outdated.0.store(false, Ordering::SeqCst);
     }
+
+    /// Adds an endpoint rule to the outgoing endpoint list.
+    ///
+    /// Returns whether the config changed; an identical rule within the same
+    /// verdict prefix is ignored, like Go `AddEndpoint`.
+    pub fn add_endpoint(&mut self, new_entry: &str) -> bool {
+        self.add_endpoint_entry(CFG_OPTION_ENDPOINTS_KEY, new_entry)
+    }
+
+    /// Adds an endpoint rule to the incoming (service) endpoint list.
+    pub fn add_service_endpoint(&mut self, new_entry: &str) -> bool {
+        self.add_endpoint_entry(CFG_OPTION_SERVICE_ENDPOINTS_KEY, new_entry)
+    }
+
+    /// Adds a rule to the endpoint list with the given config key.
+    ///
+    /// The new rule is prepended. Duplicates are only detected as long as the
+    /// rules share the verdict prefix (`+ ` or `- `): Go stops comparing at the
+    /// first rule with a different prefix, because identical rules with another
+    /// verdict would never match the same way.
+    pub fn add_endpoint_entry(&mut self, cfg_key: &str, new_entry: &str) -> bool {
+        let flattened = pm_config::flatten(&self.config);
+        let existing: Vec<String> = flattened
+            .get(cfg_key)
+            .and_then(|value| value.as_array())
+            .map(|entries| {
+                entries
+                    .iter()
+                    .filter_map(|entry| entry.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let mut entries = Vec::with_capacity(existing.len() + 1);
+        if !existing.is_empty() {
+            let prefix = format!("{} ", new_entry.split(' ').next().unwrap_or(""));
+            let mut comparing = true;
+            for entry in existing {
+                if comparing {
+                    if !entry.starts_with(&prefix) {
+                        // Rules with another prefix cannot be compared reliably.
+                        comparing = false;
+                    } else if entry == new_entry {
+                        return false;
+                    }
+                }
+                entries.push(entry);
+            }
+        }
+        entries.insert(0, new_entry.to_string());
+
+        pm_config::put_value_into_hierarchical_config(
+            &mut self.config,
+            cfg_key,
+            serde_json::json!(entries),
+        );
+        true
+    }
 }
 
 /// Returns a random UUID v4 string.
