@@ -24,6 +24,12 @@ pub struct Options {
     pub allowed_clients: Vec<PathBuf>,
     /// Write packet verdict metrics to this file (`--write-packet-metrics`).
     pub packet_metrics_file: Option<PathBuf>,
+    /// Default `core/metrics/instance` label (`--metrics-instance`).
+    pub metrics_instance: String,
+    /// Default `core/metrics/comment` label (`--metrics-comment`).
+    pub metrics_comment: String,
+    /// Default `core/metrics/push` endpoint (`--push-metrics`).
+    pub push_metrics: String,
     pub print_version: bool,
     pub help: bool,
 }
@@ -41,6 +47,9 @@ impl Default for Options {
             dev_mode: false,
             allowed_clients: Vec::new(),
             packet_metrics_file: None,
+            metrics_instance: pm_metrics::config::default_instance(),
+            metrics_comment: String::new(),
+            push_metrics: String::new(),
             print_version: false,
             help: false,
         }
@@ -81,6 +90,9 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Options, String> 
             "--allowed-clients" => options
                 .allowed_clients
                 .push(crate::api_auth::clean_path(&value(&name)?)),
+            "--metrics-instance" => options.metrics_instance = value(&name)?,
+            "--metrics-comment" => options.metrics_comment = value(&name)?,
+            "--push-metrics" => options.push_metrics = value(&name)?,
             "--version" => options.print_version = true,
             "--help" | "-h" => options.help = true,
             other => return Err(format!("unknown flag: {other}")),
@@ -105,6 +117,9 @@ Flags:
       --devmode              enable development mode
       --write-packet-metrics string   write packet verdict metrics to a file
       --allowed-clients      binary allowed to use the API (repeatable)
+      --metrics-instance string      set the default metrics instance label for all metrics
+      --metrics-comment string       set the default metrics comment label
+      --push-metrics string          set default URL to push prometheus metrics to
       --version              print version and exit
   -h, --help                 print this help and exit"
 }
@@ -188,6 +203,23 @@ mod tests {
             Some(PathBuf::from("/tmp/inline.txt"))
         );
         assert!(parse(args(&["--write-packet-metrics"])).is_err());
+    }
+
+    #[test]
+    fn metrics_flags_are_parsed() {
+        let options = parse(args(&[
+            "--metrics-instance",
+            "ci-runner",
+            "--metrics-comment=nightly build",
+            "--push-metrics",
+            "https://metrics.example/write",
+        ]))
+        .unwrap();
+        assert_eq!(options.metrics_instance, "ci-runner");
+        assert_eq!(options.metrics_comment, "nightly build");
+        assert_eq!(options.push_metrics, "https://metrics.example/write");
+        assert!(parse(args(&["--push-metrics"])).is_err());
+        assert!(parse(args(&["--metrics-instance"])).is_err());
     }
 
     #[test]

@@ -19,6 +19,10 @@ pub trait InteropEnv: Send + Sync {
     fn dns_name_servers(&self) -> Vec<String>;
     /// Whether packet interception is active (PM not paused).
     fn interception_started(&self) -> bool;
+    /// Value of the `spn/enable` option, used by the WireGuard compatibility hook.
+    fn spn_enabled(&self) -> bool;
+    /// Value of the `splittun/enable` option, used by the WireGuard compatibility hook.
+    fn splittun_enabled(&self) -> bool;
     /// Stream of interception start/stop events.
     fn subscribe_interception(&self) -> broadcast::Receiver<()>;
     /// Stream of configuration changes.
@@ -42,6 +46,8 @@ pub struct TestEnv {
     pub dns_listen: Mutex<String>,
     pub dns_servers: Mutex<Vec<String>>,
     pub interception: AtomicBool,
+    pub spn_enabled: AtomicBool,
+    pub splittun_enabled: AtomicBool,
     pub location_disabled: AtomicBool,
     pub suppressed: AtomicBool,
     pub verdict_registered: AtomicBool,
@@ -58,6 +64,8 @@ impl Default for TestEnv {
             dns_listen: Mutex::new(String::new()),
             dns_servers: Mutex::new(Vec::new()),
             interception: AtomicBool::new(false),
+            spn_enabled: AtomicBool::new(false),
+            splittun_enabled: AtomicBool::new(false),
             location_disabled: AtomicBool::new(false),
             suppressed: AtomicBool::new(false),
             verdict_registered: AtomicBool::new(false),
@@ -112,6 +120,14 @@ impl InteropEnv for TestEnv {
 
     fn interception_started(&self) -> bool {
         self.interception.load(Ordering::SeqCst)
+    }
+
+    fn spn_enabled(&self) -> bool {
+        self.spn_enabled.load(Ordering::SeqCst)
+    }
+
+    fn splittun_enabled(&self) -> bool {
+        self.splittun_enabled.load(Ordering::SeqCst)
     }
 
     fn subscribe_interception(&self) -> broadcast::Receiver<()> {

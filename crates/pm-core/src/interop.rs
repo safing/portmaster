@@ -98,6 +98,14 @@ impl InteropEnv for CoreInteropEnv {
         self.interception_active.load(Ordering::SeqCst)
     }
 
+    fn spn_enabled(&self) -> bool {
+        self.config.get_as_bool("spn/enable", false)()
+    }
+
+    fn splittun_enabled(&self) -> bool {
+        self.config.get_as_bool("splittun/enable", false)()
+    }
+
     fn subscribe_interception(&self) -> broadcast::Receiver<()> {
         self.interception_tx.subscribe()
     }

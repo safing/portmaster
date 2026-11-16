@@ -21,13 +21,19 @@ mod fetching;
 mod gauge;
 mod histogram;
 mod metric;
+pub mod process;
+pub mod push;
 mod registry;
 mod system;
 mod types;
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, OnceLock, RwLock};
+use std::sync::{Arc, Mutex, OnceLock, RwLock};
+use std::time::Duration;
+
+use tokio::task::JoinHandle;
+use tokio_util::sync::CancellationToken;
 
 use pm_api::{Api, Permission};
 use pm_config::{Config, ExpertiseLevel};
@@ -134,6 +140,10 @@ pub struct Metrics {
     values: config::ConfigValues,
     started: AtomicBool,
     scrapes: RwLock<Option<Arc<Counter>>>,
+    /// Cancels the push worker, if one was started.
+    push_cancel: CancellationToken,
+    /// Handle of the running push worker, awaited on graceful shutdown.
+    push_handle: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl Metrics {
@@ -145,6 +155,8 @@ impl Metrics {
             values: config::ConfigValues::read(config),
             started: AtomicBool::new(false),
             scrapes: RwLock::new(None),
+            push_cancel: CancellationToken::new(),
+            push_handle: Mutex::new(None),
         })
     }
 
@@ -171,7 +183,7 @@ impl Metrics {
 
     /// Starts the module: enables persistence, registers all metrics and marks
     /// the registry ready.
-    pub fn start(&self, databases: &Arc<Databases>) -> Result<()> {
+    pub fn start(self: &Arc<Self>, databases: &Arc<Databases>) -> Result<()> {
         if self.started.swap(true, Ordering::SeqCst) {
             return Err(Error::AlreadyInitialized);
         }
@@ -194,6 +206,7 @@ impl Metrics {
 
         let stats = HOST_STATS.get_or_init(HostStats::new);
         system::register_system_metrics(&self.registry, &self.values.comment, stats)?;
+        process::register_process_metrics(&self.registry)?;
 
         let scrapes = self.registry.new_counter(
             "core/metrics/scrapes/total",
@@ -207,12 +220,44 @@ impl Metrics {
         )?;
         *self.scrapes.write().expect("lock poisoned") = Some(scrapes);
 
-        // Go starts a pusher when core/metrics/push is configured. The Rust
-        // implementation exposes the value but does not spawn push workers.
+        // Go starts a pusher when core/metrics/push is configured (`metricsWriter`).
         if !self.values.push.is_empty() {
-            tracing::info!("metrics: push URL configured but push worker is not implemented");
+            self.start_push_worker();
         }
         Ok(())
+    }
+
+    /// Spawns the periodic push worker when a tokio runtime is available.
+    fn start_push_worker(self: &Arc<Self>) {
+        let registry = Arc::clone(&self.registry);
+        let render: push::RenderFn = Arc::new(move || {
+            let mut body = String::new();
+            registry.write_prometheus(
+                &mut body,
+                pm_api::PERMIT_SELF,
+                pm_config::EXPERTISE_LEVEL_DEVELOPER,
+            );
+            body
+        });
+        let publisher = Arc::new(push::Publisher::new(
+            self.values.push.clone(),
+            render,
+            Arc::new(push::HttpMetricSender::default()),
+        ));
+        let cancel = self.push_cancel.clone();
+        let url = publisher.url().to_string();
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => {
+                let handle = handle.spawn(async move { publisher.run(cancel).await });
+                *self.push_handle.lock().expect("lock poisoned") = Some(handle);
+                tracing::info!(%url, "metrics: push worker started");
+            }
+            Err(_) => {
+                tracing::warn!(
+                    "metrics: push URL configured but no tokio runtime is available; push worker not started"
+                );
+            }
+        }
     }
 
     /// Counts a `/metrics` scrape, if the counter has been registered.
@@ -223,8 +268,40 @@ impl Metrics {
     }
 
     /// Stops the module and persists counter values, like Go `stop()`.
+    ///
+    /// Cancels the push worker so it stops at its next select point. Use
+    /// [`Metrics::stop_and_join`] from an async context to also wait for any
+    /// in-flight request to finish.
     pub fn stop(&self) {
+        self.push_cancel.cancel();
         self.registry.store_persistent_metrics();
+    }
+
+    /// Cancels the push worker, waits for it to exit (bounded so a stuck request
+    /// cannot hold shutdown forever) and persists counter values.
+    pub async fn stop_and_join(&self) {
+        self.push_cancel.cancel();
+        // Take the handle out of the lock scope before awaiting, otherwise the
+        // MutexGuard would be held across the await and make this future !Send.
+        let handle = self.push_handle.lock().expect("lock poisoned").take();
+        if let Some(handle) = handle {
+            if tokio::time::timeout(Duration::from_secs(2), handle)
+                .await
+                .is_err()
+            {
+                tracing::warn!("metrics: push worker did not stop within the shutdown timeout");
+            }
+        }
+        self.registry.store_persistent_metrics();
+    }
+
+    /// Returns whether a push worker was actually started, for diagnostics.
+    pub fn push_worker_running(&self) -> bool {
+        self.push_handle
+            .lock()
+            .expect("lock poisoned")
+            .as_ref()
+            .is_some_and(|handle| !handle.is_finished())
     }
 }
 

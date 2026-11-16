@@ -13,6 +13,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::client::{ClientEvent, IvpnClient, IvpnClientFactory};
 use crate::env::InteropEnv;
+use crate::hook::{CommandRunner, HookConfig, NftHook, SystemCommandRunner};
 use crate::notifications::{
     attach_suppress_action, build_ivpn_notification, build_old_version_notification,
     EVENT_ID_IVPN, OLD_VERSION_EXPIRY_SECS,
@@ -20,6 +21,7 @@ use crate::notifications::{
 use crate::protocol::{
     ip_protocol_name, parse_connected_resp, parse_connection_starting, ConnectedResp, DnsServerConfig,
     DnsSettings, MSG_CONNECTION_STARTING, MSG_CONNECTION_STOPPED, MSG_CONNECTED_RESP,
+    VPN_TYPE_WIREGUARD,
 };
 use crate::status::{decide, ClientStatus, ConnView, VerdictDecision, VpnConnectionInfo};
 
@@ -63,11 +65,24 @@ pub struct InteropIvpn {
     first_try_done: Notify,
     active_worker: StdMutex<Option<CancellationToken>>,
     client_disconnected: Notify,
+    /// Linux WireGuard kill-switch compatibility hook (gracefully degrading).
+    nft_hook: Arc<NftHook>,
 }
 
 impl InteropIvpn {
-    /// Creates the engine with injectable environment and client factory.
+    /// Creates the engine with injectable environment and client factory, using
+    /// the real `nft`/`iptables` command runner.
     pub fn new(env: Arc<dyn InteropEnv>, factory: Arc<dyn IvpnClientFactory>) -> InteropIvpn {
+        Self::new_with_runner(env, factory, Arc::new(SystemCommandRunner))
+    }
+
+    /// Creates the engine with an injected command runner, so the WireGuard
+    /// compatibility hook can be exercised without root privileges.
+    pub fn new_with_runner(
+        env: Arc<dyn InteropEnv>,
+        factory: Arc<dyn IvpnClientFactory>,
+        runner: Arc<dyn CommandRunner>,
+    ) -> InteropIvpn {
         InteropIvpn {
             env,
             factory,
@@ -77,6 +92,7 @@ impl InteropIvpn {
             first_try_done: Notify::new(),
             active_worker: StdMutex::new(None),
             client_disconnected: Notify::new(),
+            nft_hook: Arc::new(NftHook::new(runner)),
         }
     }
 
@@ -353,9 +369,31 @@ impl InteropIvpn {
     }
 
     /// Reconciles SPN/split-tunnel compatibility rules with the current WireGuard
-    /// state. The Go implementation (`hook_linux.go`) manipulates nftables and
-    /// iptables and requires root; it is intentionally not ported.
-    fn reconcile_compatibility_state(&self) {}
+    /// state, like Go `reconcileCompatibilityState` + `ensureWgCompatRule`.
+    ///
+    /// The hook degrades gracefully: if `nft`/`iptables` are unavailable or the
+    /// process lacks privileges, it reports the failure and we only log a
+    /// warning. The engine keeps running.
+    fn reconcile_compatibility_state(&self) {
+        let wireguard_local_ip = self
+            .status
+            .read()
+            .expect("lock poisoned")
+            .as_ref()
+            .and_then(|status| status.connected_info.as_ref())
+            .filter(|info| info.vpn_type == VPN_TYPE_WIREGUARD)
+            .and_then(|info| info.client_ip.parse::<std::net::IpAddr>().ok())
+            .map(|address| address.to_string());
+
+        let config = HookConfig {
+            spn_enabled: self.env.spn_enabled(),
+            splittun_enabled: self.env.splittun_enabled(),
+            wireguard_local_ip,
+        };
+        if let Err(error) = self.nft_hook.reconcile(&config) {
+            tracing::warn!("IVPN: failed to ensure WireGuard compatibility rule: {error}");
+        }
+    }
 
     /// Configures the IVPN client to use Portmaster's resolver when custom DNS
     /// is configured and interception is active.
@@ -416,11 +454,13 @@ fn now_unix() -> i64 {
 mod tests {
     use super::*;
     use crate::env::TestEnv;
+    use crate::hook::CommandOutput;
     use crate::notifications::{EVENT_ID_IVPN_OLD_VERSION, NOTIFICATION_DB_ID_IVPN_DETECT_SUPPRESSED};
     use crate::protocol::{PROTOCOL_UDP, VPN_TYPE_WIREGUARD};
     use async_trait::async_trait;
     use std::sync::atomic::AtomicBool as StdAtomicBool;
     use std::sync::Mutex;
+    use std::time::Duration;
 
     #[derive(Default, Clone)]
     struct RecordedDns {
@@ -652,6 +692,67 @@ mod tests {
         .await
         .expect("stop handled");
         assert!(!env.location_disabled.load(Ordering::SeqCst));
+    }
+
+    /// Records commands so the test can verify the hook is actually invoked on
+    /// a WireGuard connection without touching the host firewall.
+    struct RecordingRunner {
+        commands: Mutex<Vec<Vec<String>>>,
+    }
+
+    impl CommandRunner for RecordingRunner {
+        fn exists(&self, _program: &str) -> bool {
+            true
+        }
+
+        fn run(&self, program: &str, args: &[&str]) -> Result<CommandOutput, String> {
+            self.commands.lock().expect("lock poisoned").push(
+                std::iter::once(program.to_string())
+                    .chain(args.iter().map(|argument| (*argument).to_string()))
+                    .collect(),
+            );
+            let stdout = if program == "nft" && args.contains(&"insert") {
+                br#"{"nftables":[{"insert":{"rule":{"handle":5}}}]}"#.to_vec()
+            } else {
+                Vec::new()
+            };
+            Ok(CommandOutput { stdout })
+        }
+    }
+
+    #[tokio::test]
+    async fn wg_connection_installs_compat_rule_when_spn_enabled() {
+        let env = Arc::new(TestEnv::new());
+        env.spn_enabled.store(true, Ordering::SeqCst);
+        let runner = Arc::new(RecordingRunner {
+            commands: Mutex::new(Vec::new()),
+        });
+        let (client, _) = MockClient::new(HelloOutcome::Version("3.16.0".into()));
+        let factory = Arc::new(MockFactory {
+            client: Arc::clone(&client),
+            port: 45000,
+        });
+        let interop = Arc::new(InteropIvpn::new_with_runner(env, factory, runner.clone()));
+        interop.start().await;
+
+        client.emit(MSG_CONNECTED_RESP, r#"{"VpnType":1,"ClientIP":"10.50.0.2"}"#);
+        tokio::time::timeout(Duration::from_secs(2), async {
+            loop {
+                if interop.status_snapshot().connected_info.is_some() {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("connected info updated");
+
+        let commands = runner.commands.lock().expect("lock poisoned").clone();
+        assert!(commands.iter().any(|command| {
+            command.first().map(String::as_str) == Some("nft")
+                && command.iter().any(|part| part == "10.50.0.2")
+                && command.iter().any(|part| part == "portmaster-wg-ks-bypass")
+        }), "nft bypass rule was inserted: {commands:?}");
     }
 
     #[tokio::test]

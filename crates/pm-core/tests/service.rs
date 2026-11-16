@@ -23,6 +23,7 @@ fn test_options(data_dir: &std::path::Path) -> Options {
         packet_metrics_file: None,
         print_version: false,
         help: false,
+        ..Options::default()
     }
 }
 

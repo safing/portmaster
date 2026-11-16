@@ -6,13 +6,17 @@ description = "Prometheus-compatible metrics registry, port of the Go base/metri
 license.workspace = true
 
 [dependencies]
+async-trait.workspace = true
 pm-api = { path = "../pm-api" }
 pm-config = { path = "../pm-config" }
 pm-database = { path = "../pm-database" }
 pm-record = { path = "../pm-record" }
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
 tracing.workspace = true
 
 [lints]
