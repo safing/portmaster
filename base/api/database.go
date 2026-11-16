@@ -118,14 +118,23 @@ func startDatabaseWebsocketAPI(w http.ResponseWriter, r *http.Request) {
 		conn:      wsConn,
 	}
 
-	newDBAPI.sendBytes = func(data []byte) {
-		newDBAPI.sendQueue <- data
-	}
+	newDBAPI.sendBytes = newDBAPI.queueMessage
 
 	module.mgr.Go("database api handler", newDBAPI.handler)
 	module.mgr.Go("database api writer", newDBAPI.writer)
 
 	log.Tracer(r.Context()).Infof("api request: init websocket %s %s", r.RemoteAddr, r.RequestURI)
+}
+
+// queueMessage queues a message for sending to the client.
+// If the connection is shutting down, the message is dropped. Without this,
+// senders would block forever on a full queue after the writer has exited,
+// leaking the goroutine and the queries and subscriptions it holds.
+func (api *DatabaseWebsocketAPI) queueMessage(data []byte) {
+	select {
+	case api.sendQueue <- data:
+	case <-api.shutdownSignal:
+	}
 }
 
 func (api *DatabaseWebsocketAPI) handler(_ *mgr.WorkerCtx) error {
@@ -507,6 +516,9 @@ func (api *DatabaseAPI) handleQsub(opID []byte, queryText string) {
 	}
 	ok = api.processQuery(opID, q)
 	if !ok {
+		// The subscription was already registered with the database and must
+		// be canceled, or it will be fed (and matched against) forever.
+		_ = sub.Cancel()
 		return
 	}
 	api.processSub(opID, sub)
