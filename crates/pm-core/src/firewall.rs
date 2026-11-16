@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 
 use pm_config::Config;
+use pm_firewall::inspection::InspectorRegistry;
 use pm_firewall::packet::{
     BandwidthSink, ConntrackControl, ExternalVerdict, LayeredProfileLookup, NfqPacket, PacketEnv,
     PacketHandler, QueuedPacket, SystemConntrack,
@@ -210,6 +211,9 @@ pub struct CoreFirewallEnv {
     /// Interoperability verdicts, registered lazily by the interop module.
     interop: Arc<pm_interop::Interop>,
     verdict_enabled: Arc<AtomicBool>,
+    /// Traffic inspectors run from the packet verdict handler (Go
+    /// `service/firewall/inspection`).
+    inspectors: Arc<InspectorRegistry>,
 }
 
 impl CoreFirewallEnv {
@@ -251,6 +255,7 @@ impl CoreFirewallEnv {
             ),
             interop,
             verdict_enabled,
+            inspectors: Arc::new(InspectorRegistry::new()),
         }
     }
 
@@ -281,6 +286,11 @@ impl CoreFirewallEnv {
     /// Returns the profiles for the DNS hook.
     pub fn profiles(&self) -> &Arc<CoreProfiles> {
         &self.profiles
+    }
+
+    /// Returns the inspector registry used by the packet verdict handler.
+    pub fn inspectors(&self) -> &Arc<InspectorRegistry> {
+        &self.inspectors
     }
 }
 
@@ -452,6 +462,15 @@ impl PacketEnv for CoreFirewallEnv {
         conn.lock()
             .unwrap_or_else(|error| error.into_inner())
             .remove_prompt();
+    }
+
+    /// Go `inspection.RunInspectors`, called from the packet verdict handler.
+    fn run_inspectors(
+        &self,
+        conn: &mut pm_network::Connection,
+        pkt: &dyn QueuedPacket,
+    ) -> (pm_network::Verdict, bool) {
+        self.inspectors.run_inspectors(conn, pkt)
     }
 }
 

@@ -64,6 +64,8 @@ pub struct Service {
     pub device_locations: Arc<crate::location::CoreDeviceLocations>,
     /// Firewall environment and packet pipeline.
     pub firewall: Arc<crate::firewall::Firewall>,
+    /// systemd-resolved DNS monitor (Linux varlink event listener).
+    pub dns_monitor: Mutex<Option<pm_dnsmonitor::RunningDnsMonitor>>,
     /// Compatibility module: self-check, conflict notifications and hooks.
     pub compat: Arc<pm_compat::Compat>,
     /// Pause/resume control module.
@@ -494,6 +496,29 @@ impl Service {
             set_app_warning: Some(set_app_warning),
         });
 
+        // Go service/firewall/interception/dnsmonitor: watch systemd-resolved
+        // query results and attribute the reported domains to IPs in the
+        // resolver cache. The source and sink are injected so the module is
+        // testable without systemd or root; the production source connects to
+        // the varlink socket and only runs where it exists.
+        let dns_monitor = if std::path::Path::new(pm_dnsmonitor::DEFAULT_SYSTEMD_SOCKET).exists() {
+            let dns_monitor_ip_info = Arc::clone(&ip_info);
+            let dns_monitor_self_check = Arc::clone(&compat);
+            Some(
+                pm_dnsmonitor::DnsMonitor::new(
+                    Box::new(pm_dnsmonitor::SystemdVarlinkSource::new()),
+                    Arc::new(pm_dnsmonitor::IpInfoStoreSink::new(dns_monitor_ip_info)),
+                    Arc::new(move |subdomain: &str| {
+                        dns_monitor_self_check.submit_dns_check_domain(subdomain)
+                    }),
+                )
+                .start(),
+            )
+        } else {
+            tracing::info!("dnsmonitor: systemd resolver monitor socket is not present");
+            None
+        };
+
         // Split tunnel request queue and proxies. The proxies are only started
         // when the split tunnel module is enabled.
         let split_queue = Arc::new(pm_splittun::RequestQueue::new());
@@ -646,6 +671,7 @@ impl Service {
             apprise,
             device_locations,
             firewall,
+            dns_monitor: Mutex::new(dns_monitor),
             compat,
             control,
             broadcasts,
@@ -988,6 +1014,7 @@ impl Service {
         broadcasts_worker.abort();
         self.split_proxies.stop();
         self.compat.stop();
+        self.stop_dns_monitor();
         self.control.shutdown().await;
         if let Err(error) = self.firewall.stop().await {
             tracing::warn!(%error, "filter: failed to stop interception");
@@ -998,8 +1025,20 @@ impl Service {
         outcome
     }
 
+    /// Stops the systemd-resolved DNS monitor, if it was started.
+    fn stop_dns_monitor(&self) {
+        let mut guard = self
+            .dns_monitor
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        if let Some(mut monitor) = guard.take() {
+            monitor.stop();
+        }
+    }
+
     /// Shuts the service down.
     pub fn shutdown(&self) -> anyhow::Result<()> {
+        self.stop_dns_monitor();
         self.dns.stop();
         self.databases.shutdown()?;
         Ok(())

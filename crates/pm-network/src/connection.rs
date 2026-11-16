@@ -161,6 +161,11 @@ pub struct Connection {
     pub profiles: Arc<dyn ProfileLookup>,
     /// Active prompt of the connection; not serialized.
     pub prompt: Option<Arc<pm_notifications::NotificationHandle>>,
+    /// Per-inspector "already handled" flags of Go
+    /// `Connection.GetActiveInspectors`; not serialized (see `ConnectionJson`).
+    pub active_inspectors: Vec<bool>,
+    /// Scratch data of Go `Connection.GetInspectorData`; not serialized.
+    pub inspector_data: BTreeMap<u8, Box<dyn std::any::Any + Send + Sync>>,
 }
 
 impl Default for Connection {
@@ -206,6 +211,8 @@ impl Default for Connection {
             save_when_finished: false,
             profiles: Arc::new(NoProfiles),
             prompt: None,
+            active_inspectors: Vec::new(),
+            inspector_data: BTreeMap::new(),
         }
     }
 }
@@ -477,6 +484,26 @@ impl Connection {
         // Deliberately follows the user's local Go change (always true), not
         // upstream (false).
         self.bandwidth_enabled = true;
+    }
+
+    /// Go `Connection.GetActiveInspectors`.
+    pub fn get_active_inspectors(&self) -> &[bool] {
+        &self.active_inspectors
+    }
+
+    /// Go `Connection.SetActiveInspectors`.
+    pub fn set_active_inspectors(&mut self, active: Vec<bool>) {
+        self.active_inspectors = active;
+    }
+
+    /// Go `Connection.GetInspectorData`.
+    pub fn get_inspector_data(&self) -> &BTreeMap<u8, Box<dyn std::any::Any + Send + Sync>> {
+        &self.inspector_data
+    }
+
+    /// Go `Connection.SetInspectorData`.
+    pub fn set_inspector_data(&mut self, data: BTreeMap<u8, Box<dyn std::any::Any + Send + Sync>>) {
+        self.inspector_data = data;
     }
 
     /// Sets a new verdict and its reason, like Go `SetVerdict`.
