@@ -1,16 +1,19 @@
-//! Minimal port of the Go `service/netenv` package.
+//! Port of the Go `service/netenv` package.
 //!
-//! This crate carries the network environment state that other modules consume:
-//! the online status with its change events and the detected captive portal.
+//! The crate carries the network environment that other modules consume: the
+//! online status with its change events, the captive portal, the interface
+//! cache, the local address book and the physical default interfaces.
 //!
 //! # Compatibility notes
 //!
-//! * Only the state container and its events are ported. The active checks
-//!   (DNS/HTTP probing, address gathering, ICMP listeners and network change
-//!   watching) are not implemented yet; [`NetEnv::update_online_status`] is the
-//!   entry point a future checker will call. This is why `check` is missing.
-//! * Go keeps the state in package-level atomics; here it lives in [`NetEnv`],
-//!   with [`global`] providing the process-wide default.
+//! * The OS access is injected through [`InterfaceSource`]; [`SystemInterfaces`]
+//!   is the Linux implementation. Physical default interface detection on
+//!   other platforms reports the Go "not supported" error.
+//! * DNS/HTTP probing and the ICMP listener are not ported yet;
+//!   [`NetEnv::update_online_status`] is the entry point the checker will call.
+//! * Go keeps the caches in package-level sync primitives; here they live in
+//!   [`InterfaceCache`] and [`AddressCache`], with [`network`] providing a
+//!   process-wide default source.
 //! * The captive portal notification (`netenv:captive-portal`) is not sent yet:
 //!   it needs the notifications module, which the caller owns.
 
@@ -20,6 +23,47 @@ use std::sync::{Arc, OnceLock, RwLock};
 
 use pm_mgr::EventMgr;
 use serde::{Deserialize, Serialize};
+
+mod addresses;
+mod flag;
+mod interfaces;
+mod system;
+
+pub use addresses::{AddressCache, LocalNetwork};
+pub use flag::{
+    global_source, network_changed_flag, notify_network_change, FlagPair,
+    NetworkChangeFlag, NetworkChangeSource,
+};
+pub use interfaces::{
+    canonical_mac, is_routable_unicast, network_contains, normalize_ip, InterfaceCache,
+    InterfaceInfo, InterfaceSource, NetInterface, PhysicalDefaultInterfaces, RawInterface,
+    RouteCandidate,
+};
+pub use system::SystemInterfaces;
+
+/// The process-wide network caches.
+pub struct Network {
+    /// Interface cache backed by the system interfaces.
+    pub interfaces: InterfaceCache,
+    /// Local address cache backed by the system interfaces.
+    pub addresses: AddressCache,
+}
+
+static NETWORK: OnceLock<Network> = OnceLock::new();
+
+/// Returns the process-wide network caches.
+pub fn network() -> &'static Network {
+    NETWORK.get_or_init(|| {
+        let source: Arc<dyn InterfaceSource> = Arc::new(SystemInterfaces);
+        Network {
+            interfaces: InterfaceCache::new(
+                Arc::clone(&source),
+                network_changed_flag(),
+            ),
+            addresses: AddressCache::new(source, network_changed_flag()),
+        }
+    })
+}
 
 /// Domain name used to point to a detected captive portal IP.
 pub const SPECIAL_CAPTIVE_PORTAL_DOMAIN: &str = "captiveportal.invalid.";
