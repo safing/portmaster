@@ -33,6 +33,7 @@ mod dispatch;
 mod dns;
 mod env;
 mod handler;
+mod packet_metrics;
 mod pid_hints;
 mod queued;
 mod reset;
@@ -44,4 +45,5 @@ pub use env::{
 };
 pub use dispatch::{Executor, PacketHandler};
 pub use handler::{MatcherAlreadySet, PacketStats};
-pub use queued::{IcmpType, NfqPacket, QueuedPacket, VerdictError};
+pub use packet_metrics::{PacketMetricRecord, PacketMetrics};
+pub use queued::{IcmpType, NfqPacket, QueuedPacket, VerdictError, VerdictRecorder};

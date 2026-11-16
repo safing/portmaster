@@ -164,3 +164,43 @@ async fn without_archives_the_ui_reports_not_configured() {
 
     server.abort();
 }
+
+#[tokio::test]
+async fn upgrade_lock_blocks_resources_and_reload_clears_archives() {
+    let bin_dir = temp_dir("upgrade-lock");
+    create_archive(
+        &bin_dir.join("portmaster.zip"),
+        &[("index.html", "<html>ui</html>")],
+    );
+
+    let api = Api::new("127.0.0.1:0");
+    api.set_dev_mode(true);
+    let archives = Arc::new(UiArchives::new(&bin_dir));
+    api.set_ui_archives(Arc::clone(&archives));
+    pm_api::ui::register_ui_endpoints(&api).expect("register ui endpoints");
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = tokio::spawn(pm_api::serve(api, listener));
+
+    let (status, _, _) = request(address, "GET", "/ui/modules/portmaster/").await;
+    assert!(status.contains("200"), "{status}");
+
+    // Enable the lock: resources return 423 like in Go.
+    archives.enable_upgrade_lock();
+    assert!(archives.is_upgrade_locked());
+    let (status, _, body) = request(address, "GET", "/ui/modules/portmaster/").await;
+    assert!(status.contains("423"), "{status}");
+    assert_eq!(body, b"Resources locked, upgrade in progress.\n");
+
+    archives.disable_upgrade_lock();
+    let (status, _, _) = request(address, "GET", "/ui/modules/portmaster/").await;
+    assert!(status.contains("200"), "{status}");
+
+    // The UI reload action drops the cached archive without an API lock.
+    let (status, _, body) = request(address, "POST", "/api/v1/ui/reload").await;
+    assert!(status.contains("200"), "{status}");
+    assert_eq!(body, b"all ui archives successfully reloaded\n");
+
+    server.abort();
+}

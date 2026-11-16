@@ -20,6 +20,7 @@ fn test_options(data_dir: &std::path::Path) -> Options {
         nameserver_address: "127.0.0.1:0".to_string(),
         dev_mode: true,
         allowed_clients: Vec::new(),
+        packet_metrics_file: None,
         print_version: false,
         help: false,
     }
@@ -466,4 +467,26 @@ async fn busy_listen_port_notifies_and_keeps_api_up() {
     server.abort();
     let _ = server.await;
     service.dns.shutdown().await;
+}
+
+#[tokio::test]
+async fn restart_endpoint_requests_a_restart() {
+    let data_dir = temp_dir("restart");
+    let options = test_options(&data_dir);
+    let service = Arc::new(Service::start(&options).await.unwrap());
+    let address = service.local_addr();
+    let mut server = tokio::spawn(Arc::clone(&service).run());
+
+    let response = http_request("POST", address, "/api/v1/core/restart", "").await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    assert!(response.ends_with("restart initiated\n"), "{response}");
+
+    // The updater callback uses the same token; both paths stop the service.
+    let result = tokio::time::timeout(std::time::Duration::from_secs(2), &mut server)
+        .await
+        .expect("service stops on restart request")
+        .expect("service task");
+    assert!(result.is_ok(), "service stopped cleanly: {result:?}");
+    assert!(service.restart_token.is_cancelled());
+    let _ = std::fs::remove_dir_all(&data_dir);
 }

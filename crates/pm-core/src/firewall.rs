@@ -453,6 +453,8 @@ pub struct FirewallDeps<'a> {
     pub profiles: Arc<CoreProfiles>,
     pub split_tunnel: Arc<SplitTunnelEnvAdapter>,
     pub ip_info: Arc<IpInfoStore>,
+    /// Optional file for packet verdict metrics.
+    pub packet_metrics_file: Option<std::path::PathBuf>,
 }
 
 /// Everything the live firewall needs at runtime.
@@ -464,10 +466,12 @@ pub struct Firewall {
     pub netquery: Arc<pm_netquery::Manager>,
     pub netquery_db: Arc<pm_netquery::Database>,
     pub conntrack: Arc<dyn ConntrackControl>,
+    pub metrics: Arc<pm_firewall::PacketMetrics>,
     cancel: CancellationToken,
     tasks: Mutex<Vec<tokio::task::JoinHandle<()>>>,
     subscription: Mutex<Option<pm_database::Subscription>>,
     started: AtomicBool,
+    metrics_enabled: bool,
 }
 
 impl Firewall {
@@ -486,6 +490,7 @@ impl Firewall {
             profiles,
             split_tunnel,
             ip_info,
+            packet_metrics_file,
         } = deps;
 
         let custom_lists = ServiceCustomLists::new(custom_lists);
@@ -561,6 +566,12 @@ impl Firewall {
             netquery: manager,
             netquery_db: db,
             conntrack: Arc::new(SystemConntrack::new()),
+            metrics: Arc::new(pm_firewall::PacketMetrics::new(
+                packet_metrics_file
+                    .clone()
+                    .unwrap_or_else(|| data_dir.join("packet-metrics.txt")),
+            )),
+            metrics_enabled: packet_metrics_file.is_some(),
             cancel: CancellationToken::new(),
             tasks: Mutex::new(Vec::new()),
             subscription: Mutex::new(Some(
@@ -641,6 +652,7 @@ impl Firewall {
 
         let handler = Arc::clone(&self.handler);
         let cancel = self.cancel.clone();
+        let metrics = Arc::clone(&self.metrics);
         let feed = self.netquery.clone();
         let dispatch = tokio::spawn(async move {
             loop {
@@ -648,7 +660,9 @@ impl Firewall {
                     () = cancel.cancelled() => break,
                     packet = rx.recv() => {
                         let Some(packet) = packet else { break };
-                        handler.dispatch(Box::new(NfqPacket::new(packet)));
+                        handler.dispatch(Box::new(
+                            NfqPacket::new(packet).with_metrics(metrics.recorder()),
+                        ));
                     }
                 }
             }
@@ -686,11 +700,25 @@ impl Firewall {
             }
         });
 
+        let metrics_writer = {
+            let metrics = Arc::clone(&self.metrics);
+            let cancel = self.cancel.clone();
+            if self.metrics_enabled {
+                let _ = metrics.enable();
+                Some(tokio::spawn(async move { metrics.run(cancel).await }))
+            } else {
+                None
+            }
+        };
+
         let mut tasks = self
             .tasks
             .lock()
             .unwrap_or_else(|error| error.into_inner());
         tasks.extend([dispatch, stop, handle_feed]);
+        if let Some(task) = metrics_writer {
+            tasks.push(task);
+        }
         Ok(())
     }
 
@@ -701,6 +729,7 @@ impl Firewall {
             return Ok(());
         }
         self.cancel.cancel();
+        self.metrics.disable();
         let tasks: Vec<_> = std::mem::take(
             &mut *self.tasks.lock().unwrap_or_else(|error| error.into_inner()),
         );

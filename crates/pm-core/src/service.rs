@@ -9,6 +9,7 @@ use pm_config::{Config, ConfigOption, PossibleValue};
 use pm_database::{DatabaseInfo, Databases};
 use serde_json::{json, Value};
 use tokio::net::TcpListener;
+use tokio_util::sync::CancellationToken;
 
 use crate::api_auth::{ApiAuthenticator, SystemLookup};
 use crate::cli::Options;
@@ -59,6 +60,8 @@ pub struct Service {
     pub network_monitor: Arc<pm_netenv::NetworkChangeMonitor>,
     /// Firewall environment and packet pipeline.
     pub firewall: Arc<crate::firewall::Firewall>,
+    /// Triggered by a restart request (updater or API).
+    pub restart_token: CancellationToken,
     /// Split tunnel proxies.
     pub split_proxies: Arc<pm_splittun::Proxies>,
     /// Pending split tunnel requests.
@@ -124,6 +127,12 @@ impl Service {
             &databases,
         )));
 
+        // Restart requests from the updater are handled as a graceful stop;
+        // the service manager can then start the new binary.
+        let restart_token = CancellationToken::new();
+        let updater_restart = restart_token.clone();
+        let service_restart_token = restart_token.clone();
+
         // Binary updater: checks the release channel, downloads and applies on
         // user action only, needs a restart.
         let mut binary_config = pm_updates::UpdaterConfig {
@@ -164,7 +173,7 @@ impl Service {
                 Arc::new(pm_updates::HttpsClient::new()),
                 env!("CARGO_PKG_VERSION"),
                 Some(Arc::clone(&notifications)),
-                None,
+                Some(Arc::new(move || updater_restart.cancel())),
             )
             .map_err(|error| anyhow::anyhow!("create binary updater: {error}"))?,
         );
@@ -285,6 +294,20 @@ impl Service {
         api.register_config_endpoints(Arc::clone(&config));
         api.update_api_keys(&api_keys);
         api.set_ui_archives(Arc::new(UiArchives::new(&options.bin_dir)));
+        pm_api::ui::register_ui_endpoints(&api)
+            .map_err(|error| anyhow::anyhow!("register ui api: {error}"))?;
+
+        // Restart endpoint; a restart is a graceful stop for the supervisor.
+        let api_restart = service_restart_token.clone();
+        api.register_endpoint(
+            pm_api::Endpoint::new("core/restart", "Restart Portmaster", "Restart the Portmaster Core Service.")
+                .with_write(pm_api::PERMIT_ADMIN)
+                .with_action(move |_| {
+                    api_restart.cancel();
+                    Ok("restart initiated".to_string())
+                }),
+        )
+        .map_err(|error| anyhow::anyhow!("register restart api: {error}"))?;
 
         // The country table is static, the endpoint is always available.
         pm_geoip::register_api(&api)
@@ -311,6 +334,7 @@ impl Service {
             Arc::clone(&filter_lists),
             Arc::clone(&filter_lists_module),
             Arc::clone(&geoip),
+            api.ui_archives(),
         )?;
 
         let listener = TcpListener::bind(&listen_address)
@@ -383,6 +407,7 @@ impl Service {
                 profiles,
                 split_tunnel: split_env,
                 ip_info,
+                packet_metrics_file: options.packet_metrics_file.clone(),
             },
         )?);
 
@@ -427,6 +452,7 @@ impl Service {
             system_interfaces,
             network_monitor,
             firewall,
+            restart_token,
             split_proxies: Arc::clone(&split_proxies),
             split_queue: Arc::clone(&split_queue),
             profile_changes: Mutex::new(Some(profile_changes)),
@@ -652,6 +678,10 @@ impl Service {
                 tracing::info!("shutting down");
                 Ok(())
             }
+            _ = self.restart_token.cancelled() => {
+                tracing::info!("restart requested, stopping the service");
+                Ok(())
+            }
             _ = maintenance(Arc::clone(&databases)) => Ok(()),
         };
 
@@ -828,12 +858,14 @@ fn register_update_endpoints(
     lists: Arc<pm_intel::FilterLists>,
     module: Arc<pm_intel::FilterListsModule>,
     geoip: Arc<pm_geoip::GeoIp>,
+    archives: Option<Arc<UiArchives>>,
 ) -> anyhow::Result<()> {
     let check_binary = Arc::clone(&binary_updater);
     let check_intel = Arc::clone(&intel_updater);
     let check_lists = Arc::clone(&lists);
     let check_module = Arc::clone(&module);
     let check_geoip = Arc::clone(&geoip);
+    let check_archives = archives.clone();
     api.register_endpoint(
         pm_api::Endpoint::new(
             "updates/check",
@@ -848,7 +880,11 @@ fn register_update_endpoints(
             let lists = Arc::clone(&check_lists);
             let module = Arc::clone(&check_module);
             let geoip = Arc::clone(&check_geoip);
+            let archives = check_archives.clone();
             tokio::task::spawn_blocking(move || {
+                if let Some(archives) = &archives {
+                    archives.enable_upgrade_lock();
+                }
                 if let Err(error) = binary_updater.update_check() {
                     tracing::warn!(%error, "updates/binaries: update check failed");
                 }
@@ -858,6 +894,9 @@ fn register_update_endpoints(
                         .map_err(|error| error.to_string())?;
                     apply_intel_update(&intel_updater, &lists, &geoip)
                 });
+                if let Some(archives) = &archives {
+                    archives.disable_upgrade_lock();
+                }
             });
             Ok("update check triggered".to_string())
         }),
@@ -874,7 +913,11 @@ fn register_update_endpoints(
                 let lists = Arc::clone(&lists);
                 let module = Arc::clone(&module);
                 let geoip = Arc::clone(&geoip);
+                let archives = archives.clone();
                 tokio::task::spawn_blocking(move || {
+                    if let Some(archives) = &archives {
+                        archives.enable_upgrade_lock();
+                    }
                     if let Err(error) = binary_updater.upgrade() {
                         tracing::warn!(%error, "updates/binaries: upgrade failed");
                     }
@@ -884,6 +927,9 @@ fn register_update_endpoints(
                             .map_err(|error| error.to_string())?;
                         apply_intel_update(&intel_updater, &lists, &geoip)
                     });
+                    if let Some(archives) = &archives {
+                        archives.disable_upgrade_lock();
+                    }
                 });
                 Ok("upgrade triggered".to_string())
             }),

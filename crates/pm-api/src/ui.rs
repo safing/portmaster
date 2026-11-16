@@ -13,6 +13,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
 use axum::body::Body;
@@ -31,6 +32,7 @@ pub const ASSETS_MODULE: &str = "assets";
 pub struct UiArchives {
     bin_dir: PathBuf,
     archives: RwLock<HashMap<String, Arc<Archive>>>,
+    upgrade_lock: AtomicBool,
 }
 
 struct Archive {
@@ -42,7 +44,33 @@ impl UiArchives {
         UiArchives {
             bin_dir: bin_dir.into(),
             archives: RwLock::new(HashMap::new()),
+            upgrade_lock: AtomicBool::new(false),
         }
+    }
+
+    /// Enables the upgrade lock and closes all open archives, like Go
+    /// `UI.EnableUpgradeLock`.
+    pub fn enable_upgrade_lock(&self) {
+        self.upgrade_lock.store(true, Ordering::SeqCst);
+        self.close_archives();
+    }
+
+    /// Disables the upgrade lock, like Go `UI.DisableUpgradeLock`.
+    pub fn disable_upgrade_lock(&self) {
+        self.upgrade_lock.store(false, Ordering::SeqCst);
+    }
+
+    /// Returns whether resources are locked for an upgrade.
+    pub fn is_upgrade_locked(&self) -> bool {
+        self.upgrade_lock.load(Ordering::SeqCst)
+    }
+
+    /// Drops all cached archives, like Go `UI.CloseArchives`.
+    pub fn close_archives(&self) {
+        self.archives
+            .write()
+            .expect("lock poisoned")
+            .clear();
     }
 
     /// Returns the archive of a module, loading it on first use.
@@ -147,6 +175,14 @@ pub fn content_type(path: &str) -> &'static str {
 }
 
 fn serve(module: &str, requested_path: &str, archives: &UiArchives) -> AxumResponse {
+    if archives.is_upgrade_locked() {
+        return (
+            StatusCode::LOCKED,
+            "Resources locked, upgrade in progress.\n",
+        )
+            .into_response();
+    }
+
     let Some(path) = clean_resource_path(requested_path) else {
         return (StatusCode::BAD_REQUEST, "invalid path.\n").into_response();
     };
@@ -244,6 +280,24 @@ pub async fn redirect_root() -> AxumResponse {
     response
 }
 
+/// Registers the UI endpoints, like Go `service/ui.registerAPIEndpoints`.
+pub fn register_ui_endpoints(api: &Api) -> crate::Result<()> {
+    let archives = api
+        .ui_archives()
+        .ok_or_else(|| crate::ApiError::Message("ui is not configured".to_string()))?;
+    api.register_endpoint(
+        crate::Endpoint::new(
+            "ui/reload",
+            "Reload UI Assets",
+            "Removes all assets from the cache and reloads the current (possibly updated) version from disk when requested.",
+        )
+        .with_write(crate::PERMIT_USER)
+        .with_action(move |_| {
+            archives.close_archives();
+            Ok("all ui archives successfully reloaded".to_string())
+        }),
+    )
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -269,3 +323,4 @@ mod tests {
         assert_eq!(clean_resource_path("a/../../secret"), None);
     }
 }
+

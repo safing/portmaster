@@ -41,6 +41,7 @@ pub use deciders::*;
 pub use dga::{lms_score, lms_score_of_domain};
 pub use env::{CustomLists, FirewallEnv, LocalNetwork, MulticastRequest, NoCustomLists};
 pub use master::{decide_on_connection, run_deciders, Decision};
+pub use packet::{PacketMetricRecord, PacketMetrics};
 pub use preauth::{protocol_from_network, PreAuthPorts};
 pub use prompt::{
     create_prompt, endpoint_rule, prompt, PromptEnv, PromptOutcome, PromptProfile, PromptTarget,

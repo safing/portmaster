@@ -2,13 +2,17 @@
 //! offers to `packet_handler.go`.
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use pm_interception::marks::PacketFacts;
 use pm_interception::packet::{icmp_type, PROTO_ICMPV6};
 use pm_interception::queue::{QueuedPacket as RawPacket, VerdictHandle};
 use pm_interception::Verdict;
 use pm_network::PacketInfo;
+
+/// Callback recording packet verdicts, used by the metrics writer.
+pub type VerdictRecorder = Arc<dyn Fn(i64, std::time::Duration, &str) + Send + Sync>;
 
 /// A verdict could not be applied to the packet.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -87,6 +91,9 @@ pub struct NfqPacket {
     raw: Vec<u8>,
     verdict: Mutex<Option<VerdictHandle>>,
     set: AtomicBool,
+    started: Instant,
+    started_unix_nanos: i64,
+    metrics: Option<VerdictRecorder>,
 }
 
 impl NfqPacket {
@@ -106,7 +113,22 @@ impl NfqPacket {
             raw: packet.payload,
             verdict: Mutex::new(Some(packet.verdict)),
             set: AtomicBool::new(false),
+            started: Instant::now(),
+            started_unix_nanos: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |elapsed| elapsed.as_nanos().min(i64::MAX as u128) as i64),
+            metrics: None,
         }
+    }
+
+    /// Installs a recorder called for every verdict, like Go's packet metrics.
+    #[must_use]
+    pub fn with_metrics(
+        mut self,
+        recorder: VerdictRecorder,
+    ) -> NfqPacket {
+        self.metrics = Some(recorder);
+        self
     }
 }
 
@@ -140,6 +162,13 @@ impl QueuedPacket for NfqPacket {
         let handle = guard.take().ok_or(VerdictError::AlreadySet)?;
         self.set.store(true, Ordering::SeqCst);
         handle.set(verdict.mark(&self.facts));
+        if let Some(recorder) = &self.metrics {
+            recorder(
+                self.started_unix_nanos,
+                self.started.elapsed(),
+                &format!("{verdict:?}"),
+            );
+        }
         Ok(())
     }
 }

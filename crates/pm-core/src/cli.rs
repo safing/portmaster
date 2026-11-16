@@ -22,6 +22,8 @@ pub struct Options {
     pub dev_mode: bool,
     /// Binaries that may use the API without a key (`--allowed-clients`, repeatable).
     pub allowed_clients: Vec<PathBuf>,
+    /// Write packet verdict metrics to this file (`--write-packet-metrics`).
+    pub packet_metrics_file: Option<PathBuf>,
     pub print_version: bool,
     pub help: bool,
 }
@@ -38,6 +40,7 @@ impl Default for Options {
             nameserver_address: pm_nameserver::default_nameserver_address().to_string(),
             dev_mode: false,
             allowed_clients: Vec::new(),
+            packet_metrics_file: None,
             print_version: false,
             help: false,
         }
@@ -72,6 +75,9 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Options, String> 
             "--nameserver-address" => options.nameserver_address = value(&name)?,
             "--log-stdout" => options.log_to_stdout = true,
             "--devmode" => options.dev_mode = true,
+            "--write-packet-metrics" => {
+                options.packet_metrics_file = Some(PathBuf::from(value(&name)?))
+            }
             "--allowed-clients" => options
                 .allowed_clients
                 .push(crate::api_auth::clean_path(&value(&name)?)),
@@ -97,6 +103,7 @@ Flags:
       --api-address string   set api listen address; configuration is stronger
       --nameserver-address string   set nameserver listen address; configuration is stronger
       --devmode              enable development mode
+      --write-packet-metrics string   write packet verdict metrics to a file
       --allowed-clients      binary allowed to use the API (repeatable)
       --version              print version and exit
   -h, --help                 print this help and exit"
@@ -162,6 +169,25 @@ mod tests {
             options.allowed_clients,
             vec![PathBuf::from("/opt/app/ui"), PathBuf::from("/usr/bin/tool")]
         );
+    }
+
+    #[test]
+    fn packet_metrics_flag_is_parsed() {
+        let options = parse(args(&[
+            "--write-packet-metrics",
+            "/tmp/pm-metrics.txt",
+        ]))
+        .unwrap();
+        assert_eq!(
+            options.packet_metrics_file,
+            Some(PathBuf::from("/tmp/pm-metrics.txt"))
+        );
+        let inline = parse(args(&["--write-packet-metrics=/tmp/inline.txt"])).unwrap();
+        assert_eq!(
+            inline.packet_metrics_file,
+            Some(PathBuf::from("/tmp/inline.txt"))
+        );
+        assert!(parse(args(&["--write-packet-metrics"])).is_err());
     }
 
     #[test]
