@@ -33,15 +33,34 @@ pub fn default_instance() -> String {
     }
 }
 
-/// Registers the three configuration keys, like Go `prepConfig`.
+/// Default values supplied by the CLI flags (`--metrics-instance`,
+/// `--metrics-comment`, `--push-metrics`), like Go's `instanceFlag`,
+/// `commentFlag` and `pushFlag`. The config file remains stronger.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct MetricsCliDefaults {
+    pub instance: String,
+    pub comment: String,
+    pub push: String,
+}
+
+/// Registers the three configuration keys, like Go `prepConfig`, with empty
+/// CLI defaults. Use [`register_options_with`] to pass flag values.
 pub fn register_options(config: &Config) -> pm_config::Result<()> {
+    register_options_with(config, &MetricsCliDefaults::default())
+}
+
+/// Registers the three configuration keys with the given CLI flag defaults.
+pub fn register_options_with(
+    config: &Config,
+    defaults: &MetricsCliDefaults,
+) -> pm_config::Result<()> {
     config.register(
         ConfigOption::new(
             "Metrics Instance Name",
             CFG_OPTION_INSTANCE_KEY,
             "Define the prometheus instance label for all exported metrics. Please note that changing the metrics instance name will reset persisted metrics.",
             OPT_TYPE_STRING,
-            Value::String(String::new()),
+            Value::String(defaults.instance.clone()),
         )
         .with_expertise_level(EXPERTISE_LEVEL_EXPERT)
         .with_release_level(RELEASE_LEVEL_STABLE)
@@ -57,7 +76,7 @@ pub fn register_options(config: &Config) -> pm_config::Result<()> {
             CFG_OPTION_COMMENT_KEY,
             "Define a metrics comment label, which is added to the info metric.",
             OPT_TYPE_STRING,
-            Value::String(String::new()),
+            Value::String(defaults.comment.clone()),
         )
         .with_expertise_level(EXPERTISE_LEVEL_EXPERT)
         .with_release_level(RELEASE_LEVEL_STABLE)
@@ -72,7 +91,7 @@ pub fn register_options(config: &Config) -> pm_config::Result<()> {
             CFG_OPTION_PUSH_KEY,
             "Push metrics to this URL in the prometheus format.",
             OPT_TYPE_STRING,
-            Value::String(String::new()),
+            Value::String(defaults.push.clone()),
         )
         .with_expertise_level(EXPERTISE_LEVEL_EXPERT)
         .with_release_level(RELEASE_LEVEL_STABLE)

@@ -11,13 +11,16 @@
 //! implementation speaks the daemon's newline-delimited JSON protocol on
 //! `127.0.0.1`.
 //!
-//! Not ported: the Linux nftables/iptables WireGuard kill-switch compatibility
-//! hook from Go `hook_linux.go`, which requires root privileges and direct
-//! manipulation of the host firewall.
+//! The Linux nftables/iptables WireGuard kill-switch compatibility hook from Go
+//! `hook_linux.go` is ported in [`hook`] as a gracefully-degradable module: an
+//! injectable [`hook::CommandRunner`] runs `nft`/`iptables`, and a missing tool,
+//! missing table or permission error is only logged as a warning. Windows and
+//! eBPF-specific hooks remain out of scope.
 
 mod client;
 mod engine;
 mod env;
+pub mod hook;
 mod module;
 mod notifications;
 mod ping;
@@ -30,6 +33,10 @@ pub use client::{
 };
 pub use engine::{InteropIvpn, DNS_LOCKED_DESCRIPTION};
 pub use env::{InteropEnv, TestEnv};
+pub use hook::{
+    parse_nft_insert_handle, CommandOutput, CommandRunner, HookConfig, NftHook,
+    SystemCommandRunner, BYPASS_COMMENT, NFT_TABLE,
+};
 pub use module::Interop;
 pub use notifications::{
     build_ivpn_notification, build_old_version_notification, ACTION_ID_ACK, ACTION_ID_SUPPRESS,

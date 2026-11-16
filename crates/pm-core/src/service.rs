@@ -287,7 +287,14 @@ impl Service {
         // Configuration.
         let config = Config::new();
         register_options(&config, options)?;
-        pm_metrics::config::register_options(&config)?;
+        pm_metrics::config::register_options_with(
+            &config,
+            &pm_metrics::config::MetricsCliDefaults {
+                instance: options.metrics_instance.clone(),
+                comment: options.metrics_comment.clone(),
+                push: options.push_metrics.clone(),
+            },
+        )?;
         pm_profile::options::register_options(&config)?;
         pm_firewall::register_options(&config)?;
         pm_splittun::register_options(&config)?;
@@ -1037,7 +1044,7 @@ impl Service {
         }
         self.interop_env.set_interception_started(false);
         self.dns.shutdown().await;
-        self.metrics.stop();
+        self.metrics.stop_and_join().await;
         databases.shutdown()?;
         outcome
     }
