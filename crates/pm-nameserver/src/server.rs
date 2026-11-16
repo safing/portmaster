@@ -132,13 +132,32 @@ impl Running {
 
     /// Stops the listeners and waits for running requests, up to
     /// [`LISTENER_SHUTDOWN_TIMEOUT`].
-    pub async fn shutdown(self) {
+    pub async fn shutdown(mut self) {
         self.cancel.cancel();
-        for listener in self.listeners {
-            if let Err(err) = listener.task.await {
-                tracing::warn!("nameserver: failed to stop listener: {err}");
+        let mut listeners = std::mem::take(&mut self.listeners);
+        // One deadline for all listeners; they drain their requests in parallel.
+        let wait = async {
+            for listener in &mut listeners {
+                if let Err(err) = (&mut listener.task).await {
+                    tracing::warn!("nameserver: failed to stop listener: {err}");
+                }
+            }
+        };
+        if tokio::time::timeout(LISTENER_SHUTDOWN_TIMEOUT + Duration::from_secs(1), wait)
+            .await
+            .is_err()
+        {
+            for listener in &listeners {
+                listener.task.abort();
             }
         }
+    }
+}
+
+impl Drop for Running {
+    /// Dropping the handle stops the listeners.
+    fn drop(&mut self) {
+        self.cancel.cancel();
     }
 }
 

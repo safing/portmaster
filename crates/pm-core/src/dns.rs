@@ -1,6 +1,7 @@
 //! DNS stack: the resolver and the local nameserver.
 
 use std::net::{IpAddr, SocketAddr};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
@@ -31,7 +32,7 @@ const FAILING_RESOLVERS_ID: &str = "resolver:all-configured-resolvers-failed";
 
 const FAILING_RESOLVERS_MESSAGE: &str = "All configured DNS servers in Portmaster are failing.
 
-You might not be able to connect to these servers, or all of these servers are offline.
+You might not be able to connect to these servers, or all of these servers are offline.  
 Choosing different DNS servers might fix this problem.
 
 While the issue persists, Portmaster will use the DNS servers from your system or network, if permitted by configuration.
@@ -52,6 +53,8 @@ pub fn register_options(config: &Config, nameserver_address: &str) -> anyhow::Re
 struct CoreEnvironment {
     system: SystemEnvironment,
     notifications: Arc<Notifications>,
+    /// Whether the failing-resolvers notification is shown; it is shown once.
+    notified: AtomicBool,
 }
 
 impl Environment for CoreEnvironment {
@@ -73,7 +76,12 @@ impl Environment for CoreEnvironment {
 
     fn failing_resolvers_changed(&self, all_failing: bool) {
         if !all_failing {
-            self.notifications.delete(FAILING_RESOLVERS_ID);
+            if self.notified.swap(false, Ordering::SeqCst) {
+                self.notifications.delete(FAILING_RESOLVERS_ID);
+            }
+            return;
+        }
+        if self.notified.swap(true, Ordering::SeqCst) {
             return;
         }
         let payload = ActionTypeOpenSettingPayload {
@@ -87,7 +95,7 @@ impl Environment for CoreEnvironment {
                 FAILING_RESOLVERS_MESSAGE,
             )
             .with_action(
-                Action::new("change-servers", "Change DNS Servers").with_type(
+                Action::new("", "Change DNS Servers").with_type(
                     ACTION_TYPE_OPEN_SETTING,
                     serde_json::to_value(payload).unwrap_or_default(),
                 ),
@@ -140,7 +148,7 @@ impl Listeners {
                         Notification::error(&failure.event_id(), failure.title(), &failure.message());
                     if failure.is_conflict() {
                         notification = notification.with_action(
-                            Action::new("open-docs", "Open Docs").with_type(
+                            Action::new("", "Open Docs").with_type(
                                 ACTION_TYPE_OPEN_URL,
                                 serde_json::json!(pm_nameserver::COMPATIBILITY_DOCS_URL),
                             ),
@@ -194,9 +202,10 @@ impl Dns {
         let environment = Arc::new(CoreEnvironment {
             system: SystemEnvironment,
             notifications: Arc::clone(notifications),
+            notified: AtomicBool::new(false),
         });
         let resolver = ResolverService::new(settings.clone(), environment, store);
-        resolver.load_resolvers();
+        reload(&resolver).await;
         pm_resolver::api::register_api(api, &resolver)?;
 
         let network_service = {
@@ -227,19 +236,25 @@ impl Dns {
         // Reload the resolvers and restart the listeners on config changes.
         let mut previous_servers = settings.nameservers().join(" ");
         tasks.push(tokio::spawn({
+            let cancel = cancel.clone();
             let resolver = resolver.clone();
             let running = Arc::clone(&running);
             let config = Arc::clone(config);
             let default_address = default_address.to_string();
             async move {
                 let get_address = config.get_as_string(address_key, &default_address);
-                while let Ok(()) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) =
-                    changes.recv().await
-                {
+                loop {
+                    let received = tokio::select! {
+                        () = cancel.cancelled() => return,
+                        received = changes.recv() => received,
+                    };
+                    if let Err(tokio::sync::broadcast::error::RecvError::Closed) = received {
+                        return;
+                    }
                     let servers = settings.nameservers().join(" ");
                     if servers != previous_servers {
                         previous_servers = servers;
-                        resolver.load_resolvers();
+                        reload(&resolver).await;
                         tracing::debug!("resolver: reloaded nameservers due to config change");
                     }
                     let new_address = get_address();
@@ -298,11 +313,29 @@ impl Dns {
         self.cancel.cancel();
         let tasks = std::mem::take(&mut *self.tasks.lock().expect("lock poisoned"));
         for task in tasks {
-            task.abort();
+            let _ = task.await;
         }
         if let Some(running) = self.running.lock().await.take() {
             running.shutdown().await;
         }
         self.resolver.shutdown();
+    }
+
+    /// Signals everything to stop without waiting; dropping the listeners
+    /// cancels them.
+    pub fn stop(&self) {
+        self.cancel.cancel();
+        if let Ok(mut running) = self.running.try_lock() {
+            running.take();
+        }
+        self.resolver.shutdown();
+    }
+}
+
+/// Loads the resolvers off the async workers: it reads `resolv.conf`.
+async fn reload(resolver: &ResolverService) {
+    let resolver = resolver.clone();
+    if let Err(error) = tokio::task::spawn_blocking(move || resolver.load_resolvers()).await {
+        tracing::error!(%error, "resolver: failed to load resolvers");
     }
 }

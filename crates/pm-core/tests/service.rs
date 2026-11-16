@@ -322,7 +322,7 @@ async fn busy_listen_port_notifies_and_keeps_api_up() {
 
     let server = tokio::spawn(Arc::clone(&service).run());
     let response = http_get(service.local_addr(), "/api/v1/ping", "").await;
-    assert!(response.starts_with("HTTP/1.1"), "{response}");
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
 
     server.abort();
     let _ = server.await;

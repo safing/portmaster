@@ -226,22 +226,24 @@ impl Service {
             }
         });
 
-        tokio::select! {
-            result = server => result?,
+        let outcome: anyhow::Result<()> = tokio::select! {
+            result = server => result.map_err(anyhow::Error::from),
             _ = shutdown_signal() => {
                 tracing::info!("shutting down");
+                Ok(())
             }
-            _ = maintenance(Arc::clone(&databases)) => {}
-        }
+            _ = maintenance(Arc::clone(&databases)) => Ok(()),
+        };
 
         refresher.abort();
         self.dns.shutdown().await;
         databases.shutdown()?;
-        Ok(())
+        outcome
     }
 
     /// Shuts the service down.
     pub fn shutdown(&self) -> anyhow::Result<()> {
+        self.dns.stop();
         self.databases.shutdown()?;
         Ok(())
     }
