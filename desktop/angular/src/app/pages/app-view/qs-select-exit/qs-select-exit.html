@@ -1,17 +1,17 @@
 <div class="qs-select-exit relative flex flex-wrap items-center justify-center w-full h-full gap-2 px-3 py-1 bg-gray-300 border border-gray-300 rounded shadow">
   <span class="text-primary">
-    SPN Exit
+    {{ 'app.spnExit' | t }}
   </span>
 
   <span *ngIf="!canUse" routerLink="/dashboard" class="cursor-pointer text-tertiary hover:underline">
-    Get Pro
+    {{ 'app.getPro' | t }}
   </span>
 
   <sfng-select *ngIf="canUse && spnEnabled === true && exitRuleSetting"
-    [ngModel]="selectedExitRules" (ngModelChange)="updateExitRules($event)" placeholder="Custom"
+    [ngModel]="selectedExitRules" (ngModelChange)="updateExitRules($event)" [placeholder]="'app.custom' | t"
     class="">
     <sfng-select-item *sfngSelectValue="">
-      Automatic
+      {{ 'app.automatic' | t }}
     </sfng-select-item>
     <ng-container *ngFor="let option of availableExitRules">
       <sfng-select-item *sfngSelectValue="option.Value.join(',')">
@@ -32,8 +32,8 @@
 
   <span *ngIf="canUse && spnEnabled === false"
     routerLink="/spn" class="cursor-pointer text-tertiary hover:underline"
-    sfng-tooltip="Enable SPN to start using.">
-      Disabled
+    [sfng-tooltip]="'app.enableSPNUse' | t">
+      {{ 'common.disabled' | t }}
   </span>
 
 </div>

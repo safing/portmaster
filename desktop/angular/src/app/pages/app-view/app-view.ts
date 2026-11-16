@@ -29,6 +29,7 @@ import {
   setAppSetting
 } from '@safing/portmaster-api';
 import { SfngDialogService } from '@safing/ui';
+import { I18nService } from 'src/i18n';
 import {
   BehaviorSubject,
   Observable,
@@ -73,6 +74,8 @@ export class AppViewComponent implements OnInit, OnDestroy {
 
   destroyRef = inject(DestroyRef);
   spn = inject(SPNService);
+
+  private readonly i18n = inject(I18nService);
 
   canUseHistory = false;
   canViewBW = false;
@@ -245,7 +248,7 @@ export class AppViewComponent implements OnInit, OnDestroy {
         }
 
         console.error(err);
-        this.actionIndicator.error('Failed to save setting', err);
+        this.actionIndicator.error(this.i18n.t('app.saveFailed'), err);
       },
     });
   }
@@ -300,8 +303,8 @@ export class AppViewComponent implements OnInit, OnDestroy {
     }
 
     const observer = this.actionIndicator.httpObserver(
-      'History successfully removed',
-      'Failed to remove history'
+      this.i18n.t('app.historyRemoved'),
+      this.i18n.t('app.historyRemoveFailed')
     );
 
     this.netquery
@@ -362,7 +365,7 @@ export class AppViewComponent implements OnInit, OnDestroy {
             });
 
             this.actionIndicator.error(
-              'Failed To Get Profile',
+              this.i18n.t('app.getProfileFailed'),
               this.actionIndicator.getErrorMessgae(err)
             );
 
@@ -393,8 +396,8 @@ export class AppViewComponent implements OnInit, OnDestroy {
                   complete: () => {
                     if (fingerprintsChanged) {
                       this.actionIndicator.info(
-                        'Profile ID Changed',
-                        'The fingerprint change caused the profile to be re-keyed. You can find the app in the app list to continue editing.'
+                        this.i18n.t('app.profileIDChanged'),
+                        this.i18n.t('app.fingerprintRekeyed')
                       );
                     }
                     this.router.navigate(['/app/']);
@@ -641,7 +644,7 @@ export class AppViewComponent implements OnInit, OnDestroy {
         console.log(data);
         // Copy to clip-board if supported
         await this.integration.writeToClipboard(data);
-        this.actionIndicator.success('Copied to Clipboard');
+        this.actionIndicator.success(this.i18n.t('app.copied'));
       });
   }
 
@@ -661,21 +664,21 @@ export class AppViewComponent implements OnInit, OnDestroy {
     this.dialog
       .confirm({
         canCancel: true,
-        caption: 'Caution',
-        header: 'Deleting Profile ' + this.appProfile.Name,
+        caption: this.i18n.t('app.caution'),
+        header: this.i18n.t('app.deletingProfile', { name: this.appProfile.Name }),
         message:
-          'Do you really want to delete this profile? All settings will be lost.',
+          this.i18n.t('app.deleteConfirm'),
         buttons: [
-          { id: '', text: 'Cancel', class: 'outline' },
-          { id: 'delete', class: 'danger', text: 'Yes, delete it' },
+          { id: '', text: this.i18n.t('app.deleteCancel'), class: 'outline' },
+          { id: 'delete', class: 'danger', text: this.i18n.t('app.deleteYes') },
         ],
       })
       .onAction('delete', () => {
         this.profileService.deleteProfile(this.appProfile!).subscribe(() => {
           this.router.navigate(['/app/overview']);
           this.actionIndicator.success(
-            'Profile Deleted',
-            'Successfully deleted profile ' + this.appProfile?.Name
+            this.i18n.t('app.profileDeleted'),
+            this.i18n.t('app.profileDeletedMsg', { name: this.appProfile?.Name })
           );
         });
       });

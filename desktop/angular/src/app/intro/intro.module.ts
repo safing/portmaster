@@ -4,6 +4,7 @@ import { NgModule } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { SfngDropDownModule, SfngTipUpModule, StepperConfig } from "@safing/ui";
 import { ConfigModule } from "../shared/config";
+import { I18nModule } from "src/i18n";
 import { Step1WelcomeComponent } from "./step-1-welcome";
 import { Step2TrackersComponent } from "./step-2-trackers";
 import { Step3DNSComponent } from "./step-3-dns";
@@ -24,6 +25,7 @@ const steps = [
     SfngDropDownModule,
     ConfigModule,
     SfngTipUpModule,
+    I18nModule,
   ],
   declarations: steps
 })

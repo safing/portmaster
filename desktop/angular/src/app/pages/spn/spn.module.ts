@@ -14,6 +14,7 @@ import { ExpertiseModule } from 'src/app/shared/expertise/expertise.module';
 import { SfngFocusModule } from 'src/app/shared/focus';
 import { SfngMenuModule } from 'src/app/shared/menu';
 import { CommonPipesModule } from 'src/app/shared/pipes';
+import { I18nModule } from 'src/i18n';
 import { SpnPageComponent } from './';
 import { CountryDetailsComponent } from './country-details';
 import { CountryOverlayComponent } from './country-overlay';
@@ -45,6 +46,7 @@ import { SPNFeatureCarouselComponent } from './spn-feature-carousel';
     CommonPipesModule,
     DragDropModule,
     RouterModule,
+    I18nModule,
   ],
   declarations: [
     MapRendererComponent,

@@ -6,19 +6,19 @@
       <span class="prompt-count info-circle">{{ profile.prompts.length }}</span>
       <app-menu-trigger [menu]="menu"></app-menu-trigger>
       <app-menu #menu>
-        <app-menu-group>Per Connection</app-menu-group>
-        <app-menu-item (click)="allowAll(profile)">Allow All</app-menu-item>
-        <app-menu-item (click)="denyAll(profile)">Block All</app-menu-item>
+        <app-menu-group>{{ 'pl.perConnection' | t }}</app-menu-group>
+        <app-menu-item (click)="allowAll(profile)">{{ 'pl.allowAll' | t }}</app-menu-item>
+        <app-menu-item (click)="denyAll(profile)">{{ 'pl.blockAll' | t }}</app-menu-item>
 
-        <app-menu-group>Default Action</app-menu-group>
-        <app-menu-item (click)="changeDefault(profile, 'permit')">Allow App</app-menu-item>
-        <app-menu-item (click)="changeDefault(profile, 'block')">Block App</app-menu-item>
+        <app-menu-group>{{ 'pl.defaultAction' | t }}</app-menu-group>
+        <app-menu-item (click)="changeDefault(profile, 'permit')">{{ 'pl.allowApp' | t }}</app-menu-item>
+        <app-menu-item (click)="changeDefault(profile, 'block')">{{ 'pl.blockApp' | t }}</app-menu-item>
 
         <app-menu-item class="item-seperator" [routerLink]="['/', 'app', profile.Source, profile.ID]"
-          [queryParams]="{setting: 'filter/defaultAction', tab: 'settings'}">Change Default</app-menu-item>
+          [queryParams]="{setting: 'filter/defaultAction', tab: 'settings'}">{{ 'pl.changeDefault' | t }}</app-menu-item>
 
         <app-menu-item class="item-seperator" [routerLink]="['/', 'app', profile.Source, profile.ID]">
-          App Settings
+          {{ 'pl.appSettings' | t }}
         </app-menu-item>
       </app-menu>
     </div>
@@ -31,7 +31,7 @@
           *ngFor="let prompt of (profile.showAll ? profile.prompts : profile.promptsLimited); trackBy: trackPrompts">
           <span class="entity">
             <ng-container *ngIf="!prompt.domain; else: domainView">
-              {{ prompt.EventData?.Entity?.IP || 'N/A' }}
+              {{ prompt.EventData?.Entity?.IP || ('common.na' | t) }}
             </ng-container>
             <ng-template #domainView>
               <span *ngIf="!!prompt.subdomain" class="subdomain">{{prompt.subdomain}}.</span>{{prompt.domain}}
@@ -39,18 +39,18 @@
           </span>
 
           <span class="actions">
-            <button (click)="allow(prompt)">Allow</button>
-            <button (click)="block(prompt)">Block</button>
+            <button (click)="allow(prompt)">{{ 'pl.allow' | t }}</button>
+            <button (click)="block(prompt)">{{ 'pl.block' | t }}</button>
           </span>
         </div>
         <div class="more-available" *ngIf="!profile.showAll" (click)="profile.showAll = true">
           {{ profile.prompts.length - profile.promptsLimited.length }}
-          more
+          {{ 'pl.more' | t }}
         </div>
 
         <div class="more-available" *ngIf="profile.showAll && profile.promptsLimited.length < profile.prompts.length"
           (click)="profile.showAll = false">
-          Show less
+          {{ 'pl.showLess' | t }}
         </div>
       </div>
     </div>
@@ -63,6 +63,6 @@
         d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
 
-    No Prompts
+    {{ 'pl.noPrompts' | t }}
   </div>
 </div>

@@ -29,6 +29,7 @@ import { SafePipe } from './safe.pipe';
 import { ExportDialogComponent } from './export-dialog/export-dialog.component';
 import { ImportDialogComponent } from './import-dialog/import-dialog.component';
 import { SfngAppIconModule } from '../app-icon';
+import { I18nModule } from 'src/i18n';
 
 @NgModule({
   imports: [
@@ -47,7 +48,8 @@ import { SfngAppIconModule } from '../app-icon';
     ExpertiseModule,
     SfngToggleSwitchModule,
     MarkdownModule,
-    SfngAppIconModule
+    SfngAppIconModule,
+    I18nModule
   ],
   declarations: [
     BasicSettingComponent,

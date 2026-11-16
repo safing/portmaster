@@ -14,7 +14,7 @@ import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import { far } from '@fortawesome/free-regular-svg-icons';
 import { fas } from '@fortawesome/free-solid-svg-icons';
 import { ConfigService, PortmasterAPIModule, StringSetting, getActualValue } from '@safing/portmaster-api';
-import { OverlayStepperModule, SfngAccordionModule, SfngDialogModule, SfngDropDownModule, SfngPaginationModule, SfngSelectModule, SfngTipUpModule, SfngToggleSwitchModule, SfngTooltipModule, TabModule, UiModule } from '@safing/ui';
+import { OverlayStepperModule, SFNG_TIP_UP_CONTENTS, SfngAccordionModule, SfngDialogModule, SfngDropDownModule, SfngPaginationModule, SfngSelectModule, SfngTipUpModule, SfngToggleSwitchModule, SfngTooltipModule, TabModule, UiModule } from '@safing/ui';
 import MyYamlFile from 'js-yaml-loader!../i18n/helptexts.yaml';
 import * as i18n from 'ng-zorro-antd/i18n';
 import { MarkdownModule } from 'ngx-markdown';
@@ -72,7 +72,8 @@ import { AppFingerprintPipe } from './pages/app-view/app-fingerprint.pipe';
 import { INTEGRATION_SERVICE, integrationServiceFactory } from './integration';
 import { SupportProgressDialogComponent } from './pages/support/progress-dialog';
 import { XrayModule } from './pages/xray';
-import { I18nModule } from 'src/i18n';
+import { I18nModule, I18nService } from 'src/i18n';
+import { createHelpTexts } from 'src/i18n/helptexts';
 
 function loadAndSetLocaleInitializer(configService: ConfigService) {
   return async function () {
@@ -214,6 +215,13 @@ const localeConfig = {
   ],
   bootstrap: [AppComponent],
   providers: [
+    {
+      // Override the static tip-up contents from forRoot() with a proxy that
+      // resolves helptexts for the currently selected UI language.
+      provide: SFNG_TIP_UP_CONTENTS,
+      useFactory: createHelpTexts,
+      deps: [I18nService],
+    },
     {
       provide: APP_INITIALIZER, useFactory: loadAndSetLocaleInitializer, deps: [ConfigService], multi: true
     },

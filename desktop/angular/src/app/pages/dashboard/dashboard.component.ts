@@ -12,6 +12,7 @@ import { MAP_HANDLER, MapRef } from "../spn/map-renderer";
 import { CircularBarChartConfig, splitQueryResult } from "src/app/shared/netquery/circular-bar-chart/circular-bar-chart.component";
 import { BytesPipe } from "src/app/shared/pipes/bytes.pipe";
 import { HttpErrorResponse } from "@angular/common/http";
+import { I18nService } from 'src/i18n';
 
 interface BlockedProfile {
   profileID: string;
@@ -69,6 +70,8 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
   private readonly portapi = inject(PortapiService)
   private readonly router = inject(Router);
 
+  private readonly i18n = inject(I18nService);
+
   resizeObserver!: ResizeObserver;
 
   blockedProfiles: BlockedProfile[] = []
@@ -95,9 +98,9 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
     seriesKey: 'series',
     seriesLabel: d => {
       if (d === 'sent') {
-        return 'Bytes Sent'
+        return this.i18n.t('dash.bytesSent')
       }
-      return 'Bytes Received'
+      return this.i18n.t('dash.bytesReceived')
     },
     value: 'value',
     ticks: 3,
@@ -500,8 +503,8 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
   logoutCompletely(_: Event) {
     this.spn.logout(true)
       .subscribe(this.actionIndicator.httpObserver(
-        'Logout',
-        'You have been logged out of the SPN completely.'
+        this.i18n.t('dash.logout'),
+        this.i18n.t('dash.logoutDone')
       ))
   }
 }

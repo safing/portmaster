@@ -6,6 +6,7 @@ import { FormsModule } from "@angular/forms";
 import { FontAwesomeModule } from "@fortawesome/angular-fontawesome";
 import { SfngAccordionModule, SfngDropDownModule, SfngPaginationModule, SfngSelectModule, SfngTipUpModule, SfngToggleSwitchModule, SfngTooltipModule } from "@safing/ui";
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
+import { I18nModule } from 'src/i18n';
 import { SfngAppIconModule } from "../app-icon";
 import { CountIndicatorModule } from "../count-indicator";
 import { CountryFlagModule } from "../country-flag";
@@ -50,6 +51,7 @@ import { CircularBarChartComponent } from './circular-bar-chart/circular-bar-cha
     CommonPipesModule,
     SPNModule,
     NzDatePickerModule,
+    I18nModule,
   ],
   exports: [
     SfngNetqueryViewer,

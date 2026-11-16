@@ -3,7 +3,7 @@
   snfgTooltipPosition="right"
   [sfng-tooltip]="(interferingSettings.length > 0 || spnEnabled) ? tooltipTemplate : null">
   <span class="text-primary" [class.cursor-pointer]="interferingSettings.length > 0 || spnEnabled">
-    Split Tunnel
+    {{ 'app.splitTunnel' | t }}
   </span>
 
   <sfng-toggle *ngIf="splitTunModuleEnabled === true"
@@ -12,8 +12,8 @@
 
   <span *ngIf="splitTunModuleEnabled === false"
     routerLink="/settings" [queryParams]="{setting: 'splittun/enable'}" class="cursor-pointer text-tertiary hover:underline"
-    sfng-tooltip="Enable Split Tunneling to use.">
-      Disabled
+    [sfng-tooltip]="'app.enableSplitTun' | t">
+      {{ 'common.disabled' | t }}
   </span>
 
   <ng-template *ngIf="splitTunModuleEnabled === null">
@@ -26,10 +26,10 @@
 </div>
 
 <ng-template #tooltipTemplate>
-  Settings that may interfere with Split Tunnel:
+  {{ 'app.splitInterfering' | t }}
   <ul class="pl-4 list-disc">
-    <li *ngIf="spnEnabled && spnFullOverride">SPN is routing all traffic, fully bypassing Split Tunnel</li>
-    <li *ngIf="spnEnabled && !spnFullOverride">SPN is routing non-excluded connections, partially bypassing Split Tunnel</li>
+    <li *ngIf="spnEnabled && spnFullOverride">{{ 'app.spnFullOverride' | t }}</li>
+    <li *ngIf="spnEnabled && !spnFullOverride">{{ 'app.spnPartialOverride' | t }}</li>
     <ng-container *ngFor="let setting of interferingSettings">
       <li class="cursor-pointer hover:underline" [routerLink]="[]"
         [queryParams]="{setting: setting.Key, tab: 'settings'}">
