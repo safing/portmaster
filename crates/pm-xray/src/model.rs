@@ -2,8 +2,9 @@
 //!
 //! A *subscription* is a URL that returns a list of proxy profiles (usually a
 //! Base64-encoded list of `vless://`, `vmess://`, `trojan://`, `ss://`,
-//! `socks://` or `https://` links). Every profile becomes an [`XrayNode`] that
-//! the UI can place on the existing SPN map.
+//! `socks://` or `https://` links, plus `hysteria2://`/`hy2://` and
+//! `wireguard://`). Every profile becomes an [`XrayNode`] that the UI can
+//! place on the existing SPN map.
 
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +21,11 @@ pub enum Protocol {
     Socks,
     #[serde(rename = "http", alias = "https")]
     Http,
+    /// Hysteria 2 (`hysteria://`, `hysteria2://`, `hy2://`). Xray's outbound
+    /// protocol name is `hysteria`, version 2.
+    #[serde(rename = "hysteria", alias = "hysteria2", alias = "hy2")]
+    Hysteria2,
+    Wireguard,
     #[default]
     Unknown,
 }
@@ -34,6 +40,8 @@ impl Protocol {
             Protocol::Shadowsocks => "shadowsocks",
             Protocol::Socks => "socks",
             Protocol::Http => "http",
+            Protocol::Hysteria2 => "hysteria",
+            Protocol::Wireguard => "wireguard",
             Protocol::Unknown => "unknown",
         }
     }
@@ -47,6 +55,8 @@ impl Protocol {
             "ss" | "ssr" | "shadowsocks" => Protocol::Shadowsocks,
             "socks" | "socks5" | "socks5h" => Protocol::Socks,
             "http" | "https" => Protocol::Http,
+            "hysteria" | "hysteria2" | "hy2" => Protocol::Hysteria2,
+            "wireguard" | "wg" => Protocol::Wireguard,
             _ => Protocol::Unknown,
         }
     }

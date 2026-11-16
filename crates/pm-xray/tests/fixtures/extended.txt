@@ -1,0 +1,7 @@
+hysteria2://aHVudGVyMjA5@hy.example.com:443?sni=hy.example.com&obfs=salamander&obfs-password=salamander-secret&mport=1000-2000#DE-HY2-01
+hy2://token2@[2001:db8::9]:8443?insecure=0&pinSHA256=ee55e95dabd185916504c46d990a4291fb939be93c9fd4e4e0ad3daa9fa0a46f#US-HY2-02
+ss://YWVzLTEyOC1nY206cGFzc3dvcmQ@ss.example.com:8388?plugin=obfs-local&plugin-opts=obfs%3Dhttp%3Bobfs-host%3Dwww.example.com#FR-SS-OBFS
+ss://YWVzLTEyOC1nY206cGFzc3dvcmQ@ss.example.com:8389?plugin=v2ray-plugin&plugin-opts=mode%3Dwebsocket%3Bpath%3D%2Fws%3Bhost%3Dcdn.example.com%3Btls#NL-SS-V2
+wireguard://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IEFRSURCQVVHQndnSkNnc01EUTRQRUJFU0V4UVZGaGNZR1JvYkhCMGVIeUE9CkFkZHJlc3MgPSAxMC4wLjAuMi8zMiwgZmQwMDo6Mi8xMjgKRE5TID0gMS4xLjEuMSwgMjYwNjo0NzAwOjQ3MDA6OjExMTEKTVRVID0gMTQyMAoKW1BlZXJdClB1YmxpY0tleSA9IElTSWpKQ1VtSnlncEtpc3NMUzR2TURFeU16UTFOamM0T1RvN1BEMCtQMEE9ClByZXNoYXJlZEtleSA9IFFVSkRSRVZHUjBoSlNrdE1UVTVQVUZGU1UxUlZWbGRZV1ZwYlhGMWVYMkE9CkFsbG93ZWRJUHMgPSAwLjAuMC4wLzAsIDo6LzAKRW5kcG9pbnQgPSB3Zy5leGFtcGxlLmNvbTo1MTgyMApQZXJzaXN0ZW50S2VlcGFsaXZlID0gMjUK#DE-WG-01
+vless://00010203-0405-0607-0809-0a0b0c0d0e0f@vless.example.com:443?type=grpc&security=tls&flow=xtls-rprx-vision&serviceName=GunService&fp=chrome&alpn=h2&headers=%7B%22User-Agent%22%3A%22portmaster%22%7D&unknown-option=ignored#RU-VLESS-EXT
+trojan://s3cr3t@tr.example.com:443?type=ws&path=%2Ftr&host=cdn.example.com&flow=xtls-rprx-vision#US-TROJAN-EXT

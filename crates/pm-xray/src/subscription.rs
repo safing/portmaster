@@ -11,7 +11,7 @@ use pm_database::{DatabaseInfo, Databases, Interface, Key, Meta, Options, Query,
 use pm_geoip::GeoIp;
 
 use crate::model::{AddSubscriptionRequest, Subscription, UpdateSubscriptionRequest, XrayNode};
-use crate::parser::{node_id, parse_profile};
+use crate::parser::{node_id, parse_profile, percent_decode};
 use crate::{Error, Result};
 
 /// Name of the database holding subscriptions, parsed nodes and the active node.
@@ -68,12 +68,66 @@ impl HttpFetcher {
     }
 }
 
+/// Extracts per-subscription request settings from the URL.
+///
+/// * `https://user:pass@host/sub` sends HTTP Basic authorization.
+/// * `?header-X-Name=value` sends a custom `X-Name: value` header. The query
+///   parameter is removed from the request URL.
+///
+/// This keeps credentials and headers in the single URL the UI already
+/// stores, without changing the subscription database schema.
+fn subscription_request(url: &str) -> (String, Vec<(String, String)>) {
+    let mut headers = Vec::new();
+    let (mut url, basic) = match url.split_once("://") {
+        Some((scheme, rest)) => match rest.split_once('@') {
+            Some((userinfo, endpoint))
+                if !userinfo.contains(['/', '?', '#'])
+                    && !endpoint.is_empty()
+                    && userinfo.contains(':') =>
+            {
+                let credential = STANDARD.encode(percent_decode(userinfo).as_bytes());
+                (
+                    format!("{scheme}://{endpoint}"),
+                    Some(("Authorization".to_string(), format!("Basic {credential}"))),
+                )
+            }
+            _ => (url.to_string(), None),
+        },
+        None => (url.to_string(), None),
+    };
+    if let Some(header) = basic {
+        headers.push(header);
+    }
+    if let Some((base, query)) = url.split_once('?') {
+        let mut kept = Vec::new();
+        for item in query.split('&') {
+            if let Some((name, value)) = item.split_once('=') {
+                if let Some(header) = name.strip_prefix("header-") {
+                    if !header.is_empty() {
+                        headers.push((percent_decode(header), percent_decode(value)));
+                        continue;
+                    }
+                }
+            }
+            kept.push(item);
+        }
+        url = if kept.is_empty() {
+            base.to_string()
+        } else {
+            format!("{base}?{}", kept.join("&"))
+        };
+    }
+    (url, headers)
+}
+
 impl SubscriptionFetcher for HttpFetcher {
     fn fetch(&self, url: &str) -> std::result::Result<String, String> {
-        let mut response = self
-            .agent
-            .get(url)
-            .header("User-Agent", USER_AGENT)
+        let (url, headers) = subscription_request(url);
+        let mut request = self.agent.get(&url).header("User-Agent", USER_AGENT);
+        for (name, value) in headers {
+            request = request.header(name, value);
+        }
+        let mut response = request
             .call()
             .map_err(|error| format!("request failed: {error}"))?;
         let mut data = Vec::new();
@@ -96,6 +150,15 @@ pub fn decode_payload(payload: &str) -> std::result::Result<Vec<String>, String>
     let trimmed = payload.trim();
     if trimmed.is_empty() {
         return Ok(Vec::new());
+    }
+
+    // A subscription may ship a raw wg-quick file instead of a link list.
+    // Wrap it in the wireguard:// form the parser understands.
+    if trimmed.contains("[Interface]") && trimmed.contains("[Peer]") {
+        return Ok(vec![format!(
+            "wireguard://{}",
+            URL_SAFE_NO_PAD.encode(trimmed.as_bytes())
+        )]);
     }
 
     let direct: Vec<String> = trimmed
@@ -395,6 +458,38 @@ mod tests {
             .unwrap();
         let store = SubscriptionStore::new(&databases).unwrap();
         (databases, store)
+    }
+
+    #[test]
+    fn decodes_raw_wireguard_config_from_a_subscription() {
+        let raw = "[Interface]\nPrivateKey = AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=\nAddress = 10.0.0.2/32\n[Peer]\nPublicKey = ISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0A=\nEndpoint = wg.example.com:51820\nAllowedIPs = 0.0.0.0/0\n";
+        let links = decode_payload(raw).unwrap();
+        assert_eq!(links.len(), 1);
+        let node = crate::parser::parse_profile(&links[0], "sub", None).unwrap();
+        assert_eq!(node.protocol, crate::Protocol::Wireguard);
+        assert_eq!(node.address, "wg.example.com");
+        assert_eq!(node.port, 51820);
+    }
+
+    #[test]
+    fn extracts_basic_auth_and_custom_headers_from_subscription_url() {
+        let (url, headers) = subscription_request(
+            "https://user:pass%40example@sub.example.com/sub?header-X-Token=abc%20123&type=base64",
+        );
+        assert_eq!(url, "https://sub.example.com/sub?type=base64");
+        assert_eq!(
+            headers,
+            vec![
+                (
+                    "Authorization".to_string(),
+                    format!("Basic {}", STANDARD.encode("user:pass@example")),
+                ),
+                ("X-Token".to_string(), "abc 123".to_string()),
+            ]
+        );
+        let (plain, headers) = subscription_request("https://sub.example.com/sub");
+        assert_eq!(plain, "https://sub.example.com/sub");
+        assert!(headers.is_empty());
     }
 
     #[test]
