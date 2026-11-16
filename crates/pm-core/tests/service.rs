@@ -102,6 +102,7 @@ async fn core_serves_api_and_database() {
     assert!(keys.contains(&"core/listenAddress"), "{keys:?}");
     assert!(keys.contains(&"core/apiKeys"), "{keys:?}");
     assert!(keys.contains(&"core/expertiseLevel"), "{keys:?}");
+    assert!(keys.contains(&"core/appriseURL"), "{keys:?}");
     let history_option = options_json
         .as_array()
         .unwrap()
@@ -282,6 +283,7 @@ async fn core_serves_api_and_database() {
     // The network change monitor works against the real interfaces.
     assert!(service.network_monitor.check_once().is_ok());
     assert!(!service.split_proxies.is_ready(), "disabled by default");
+    assert!(!service.apprise.is_enabled(), "opt-in by default");
     // Device locations can be gathered without root; traceroute is optional.
     let locations = service.device_locations.get_internet_location();
     let _ = locations.best();

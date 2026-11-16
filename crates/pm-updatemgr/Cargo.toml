@@ -1,0 +1,19 @@
+[package]
+name = "pm-updatemgr"
+version = "0.1.0"
+edition.workspace = true
+description = "Update artifact management tools for Portmaster"
+license.workspace = true
+
+[[bin]]
+name = "updatemgr-rs"
+path = "src/main.rs"
+
+[dependencies]
+pm-updates = { path = "../pm-updates" }
+serde_json.workspace = true
+
+[dev-dependencies]
+
+[lints]
+workspace = true

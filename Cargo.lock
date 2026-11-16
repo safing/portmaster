@@ -1436,6 +1436,7 @@ dependencies = [
  "hex",
  "nix 0.31.3",
  "pm-api",
+ "pm-apprise",
  "pm-config",
  "pm-database",
  "pm-dsd",
@@ -1899,6 +1900,14 @@ dependencies = [
  "pm-record",
  "pm-runtime",
  "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "pm-updatemgr"
+version = "0.1.0"
+dependencies = [
+ "pm-updates",
  "serde_json",
 ]
 

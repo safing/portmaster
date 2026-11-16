@@ -58,6 +58,8 @@ pub struct Service {
     pub system_interfaces: Arc<pm_splittun::SystemInterfaceEnv>,
     /// Network change monitor.
     pub network_monitor: Arc<pm_netenv::NetworkChangeMonitor>,
+    /// Optional Apprise notifications.
+    pub apprise: Arc<crate::apprise::Apprise>,
     /// Estimated device locations.
     pub device_locations: Arc<crate::location::CoreDeviceLocations>,
     /// Firewall environment and packet pipeline.
@@ -279,6 +281,9 @@ impl Service {
             Err(pm_config::Error::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(error) => return Err(error.into()),
         }
+
+        // Optional Apprise notifications.
+        let apprise = crate::apprise::from_config(&config);
 
         // Apply the update settings from the config.
         let release_channel = config.get_as_string(CFG_RELEASE_CHANNEL, "stable")();
@@ -502,6 +507,7 @@ impl Service {
             online_monitor,
             system_interfaces,
             network_monitor,
+            apprise,
             device_locations,
             firewall,
             restart_token,
@@ -594,12 +600,14 @@ impl Service {
                 .await;
         });
         let trigger_network_monitor = Arc::clone(&self.network_monitor);
+        let apprise = Arc::clone(&self.apprise);
         let mut online_events = pm_netenv::shared()
             .online_status_events()
             .subscribe("network-change", 8);
         let online_feedback = tokio::spawn(async move {
-            while online_events.recv().await.is_some() {
+            while let Some(status) = online_events.recv().await {
                 trigger_network_monitor.trigger();
+                apprise.online_status(status).await;
             }
         });
 
@@ -762,6 +770,19 @@ impl Service {
 }
 
 fn register_options(config: &Config, options: &Options) -> anyhow::Result<()> {
+    config.register(
+        ConfigOption::new(
+            "Apprise API URL",
+            crate::apprise::CFG_APPRISE_URL,
+            "Optional Apprise API URL for core notifications, e.g. online status changes. Empty disables notifications.",
+            pm_config::OPT_TYPE_STRING,
+            Value::String(String::new()),
+        )
+        .with_expertise_level(pm_config::EXPERTISE_LEVEL_DEVELOPER)
+        .with_annotation(pm_config::DISPLAY_ORDER_ANNOTATION, json!(515))
+        .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("Development")),
+    )?;
+
     config.register(
         ConfigOption::new(
             "Release Channel",

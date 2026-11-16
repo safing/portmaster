@@ -10,6 +10,7 @@ name = "portmaster-core-rs"
 path = "src/main.rs"
 
 [dependencies]
+pm-apprise = { path = "../pm-apprise" }
 anyhow.workspace = true
 async-trait.workspace = true
 getrandom.workspace = true
