@@ -176,6 +176,9 @@ async fn core_serves_api_and_database() {
         .get_interface("definitely-not-an-interface")
         .is_err());
 
+    // The network change monitor works against the real interfaces.
+    assert!(service.network_monitor.check_once().is_ok());
+
     // The intel updater and filter lists module are wired.
     assert_eq!(service.intel_updater.config().name, "Portmaster Intel");
     assert!(service.intel_updater.config().verify.is_some());

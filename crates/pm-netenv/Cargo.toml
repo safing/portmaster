@@ -10,6 +10,7 @@ pm-mgr = { path = "../pm-mgr" }
 pm-netstate = { path = "../pm-netstate" }
 nix = { version = "0.31.3", default-features = false, features = ["net"] }
 serde.workspace = true
+sha1.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true

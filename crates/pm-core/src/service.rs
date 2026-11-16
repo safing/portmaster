@@ -55,6 +55,8 @@ pub struct Service {
     pub online_monitor: Arc<pm_netenv::OnlineMonitor>,
     /// Split tunnel interface environment backed by netenv.
     pub system_interfaces: Arc<pm_splittun::SystemInterfaceEnv>,
+    /// Network change monitor.
+    pub network_monitor: Arc<pm_netenv::NetworkChangeMonitor>,
     /// Subscribed in `new` so changes before `run` are not missed.
     profile_changes: Mutex<Option<tokio::sync::broadcast::Receiver<()>>>,
     listener: Mutex<Option<TcpListener>>,
@@ -210,6 +212,15 @@ impl Service {
             None,
         ));
 
+        // Network change monitor: checksum of the interfaces; a change
+        // triggers an online status investigation.
+        let online_monitor_for_changes = Arc::clone(&online_monitor);
+        let network_monitor = Arc::new(pm_netenv::NetworkChangeMonitor::new(
+            Arc::new(pm_netenv::SystemInterfaces),
+            pm_netenv::shared(),
+            Some(Arc::new(move || online_monitor_for_changes.trigger())),
+        ));
+
         // Split tunnel interface lookups use the netenv caches.
         let system_interfaces = Arc::new(pm_splittun::SystemInterfaceEnv::new(
             Arc::clone(&pm_netenv::network().interfaces),
@@ -335,6 +346,7 @@ impl Service {
             filter_lists_module,
             online_monitor,
             system_interfaces,
+            network_monitor,
             profile_changes: Mutex::new(Some(profile_changes)),
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
@@ -405,6 +417,23 @@ impl Service {
                     pm_updates::binary_update_url_list(&release_channel),
                 );
                 intel_updater.configure(auto_intel, pm_updates::intel_update_urls());
+            }
+        });
+
+        // Network change checks and their feedback into the online monitor.
+        let network_monitor = Arc::clone(&self.network_monitor);
+        let network_worker = tokio::spawn(async move {
+            network_monitor
+                .run(tokio_util::sync::CancellationToken::new())
+                .await;
+        });
+        let trigger_network_monitor = Arc::clone(&self.network_monitor);
+        let mut online_events = pm_netenv::shared()
+            .online_status_events()
+            .subscribe("network-change", 8);
+        let online_feedback = tokio::spawn(async move {
+            while online_events.recv().await.is_some() {
+                trigger_network_monitor.trigger();
             }
         });
 
@@ -520,6 +549,8 @@ impl Service {
         };
 
         refresher.abort();
+        network_worker.abort();
+        online_feedback.abort();
         online_worker.abort();
         binary_worker.abort();
         intel_worker.abort();

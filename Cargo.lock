@@ -1633,6 +1633,7 @@ dependencies = [
  "pm-mgr",
  "pm-netstate",
  "serde",
+ "sha1 0.10.7",
  "thiserror",
  "tokio",
  "tokio-util",

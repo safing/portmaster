@@ -27,6 +27,7 @@ use serde::{Deserialize, Serialize};
 mod addresses;
 mod flag;
 mod interfaces;
+mod network_change;
 mod online_check;
 mod system;
 
@@ -34,6 +35,9 @@ pub use addresses::{AddressCache, LocalNetwork};
 pub use flag::{
     global_source, network_changed_flag, notify_network_change, FlagPair,
     NetworkChangeFlag, NetworkChangeSource,
+};
+pub use network_change::{
+    NetworkChangeMonitor, OFFLINE_CHECK_INTERVAL, ONLINE_CHECK_INTERVAL,
 };
 pub use interfaces::{
     canonical_mac, is_routable_unicast, network_contains, normalize_ip, InterfaceCache,
