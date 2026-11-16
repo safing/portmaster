@@ -1,0 +1,29 @@
+type: profile
+id: abc123
+source: local
+name: Test App
+description: A test app
+homepage: https://example.com
+presPath: /usr/bin/test
+usePresPath: true
+fingerprints:
+    - type: path
+      operation: equals
+      value: /usr/bin/test
+    - type: tag
+      key: name
+      operation: equals
+      value: Test App
+      mergedFrom: local/other
+config:
+    filter:
+        defaultAction: block
+lastEdited: 2023-11-14T22:30:00Z
+created: 2023-11-14T22:13:20Z
+
+# The application icon below is the property of its respective owner.
+# The icon is used for identification purposes only, and does not imply any endorsement or affiliation with their respective owners.
+# It is the sole responsibility of the individual or entity sharing this dataset to ensure they have the necessary permissions to do so.
+iconData: data:image/png;base64,iVBORw0KGgo=
+
+# jess-checksum: ZwuAWfseeCJQoksqprBZbbbs5FgRQEcFtuPDJ3hgWpCa1M

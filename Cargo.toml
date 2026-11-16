@@ -35,6 +35,7 @@ members = [
     "crates/pm-jess",
     "crates/pm-firewall",
     "crates/pm-splittun",
+    "crates/pm-sync",
 ]
 
 [workspace.package]

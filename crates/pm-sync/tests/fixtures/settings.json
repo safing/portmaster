@@ -1,0 +1,13 @@
+{
+ "config": {
+  "core": {
+   "devMode": true
+  },
+  "filter": {
+   "defaultAction": "block",
+   "endpoints": ["+ example.com", "- bad.com"]
+  }
+ },
+ "type": "settings",
+ "_jess-checksum": "ZwizVeRvzFe5cdeBscrJ1Zi8EYwNp6YT2PCgLV7gUuii4S"
+}

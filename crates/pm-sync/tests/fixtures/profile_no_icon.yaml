@@ -1,0 +1,24 @@
+type: profile
+id: abc123
+source: local
+name: Test App
+description: A test app
+homepage: https://example.com
+presPath: /usr/bin/test
+usePresPath: true
+fingerprints:
+    - type: path
+      operation: equals
+      value: /usr/bin/test
+    - type: tag
+      key: name
+      operation: equals
+      value: Test App
+      mergedFrom: local/other
+config:
+    filter:
+        defaultAction: block
+lastEdited: 2023-11-14T22:30:00Z
+created: 2023-11-14T22:13:20Z
+
+# jess-checksum: Zwj6E3pKHoR8XrU1uiG4pgVeJUHxq6KeLkdrZbGyKbhKCd
