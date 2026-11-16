@@ -105,6 +105,12 @@ func runTest(m *testing.M) error {
 		return fmt.Errorf("Failed to start module: %w", err)
 	}
 
+	// Stop the regular check of failing resolvers. Its first run starts with
+	// the module and, on a loaded machine, may only get to the resolver list
+	// after a test replaced it. It then asks the test's failing resolvers and
+	// clears their failing state. Tests that need the check run it themselves.
+	module.failingResolverWorkerMgr.Stop()
+
 	m.Run()
 	return nil
 }
