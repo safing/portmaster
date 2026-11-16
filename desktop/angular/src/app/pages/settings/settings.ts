@@ -6,6 +6,7 @@ import { StatusService, VersionStatus } from 'src/app/services';
 import { ActionIndicatorService } from 'src/app/shared/action-indicator';
 import { fadeInAnimation } from 'src/app/shared/animations';
 import { SaveSettingEvent } from 'src/app/shared/config/generic-setting/generic-setting';
+import { I18nService, Language } from 'src/i18n';
 
 @Component({
   templateUrl: './settings.html',
@@ -39,7 +40,18 @@ export class SettingsComponent implements OnInit, OnDestroy {
     public statusService: StatusService,
     private actionIndicator: ActionIndicatorService,
     private route: ActivatedRoute,
+    private i18n: I18nService,
   ) { }
+
+  /** @private Currently selected interface language. */
+  get language(): Language {
+    return this.i18n.language;
+  }
+
+  /** @private Switch interface language; persisted by I18nService. */
+  setLanguage(language: Language): void {
+    this.i18n.setLanguage(language);
+  }
 
   ngOnInit(): void {
     this.subscription = new Subscription();

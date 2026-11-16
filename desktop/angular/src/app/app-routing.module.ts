@@ -5,6 +5,7 @@ import { DashboardPageComponent } from './pages/dashboard/dashboard.component';
 import { MonitorPageComponent } from './pages/monitor';
 import { SettingsComponent } from './pages/settings/settings';
 import { SpnPageComponent } from './pages/spn';
+import { XrayPageComponent } from './pages/xray';
 import { SupportPageComponent } from './pages/support';
 import { SupportFormComponent } from './pages/support/form';
 
@@ -50,6 +51,10 @@ const routes: Routes = [
   {
     path: 'spn',
     component: SpnPageComponent,
+  },
+  {
+    path: 'xray',
+    component: XrayPageComponent,
   },
   {
     path: '**',

@@ -71,6 +71,8 @@ import { AppInsightsComponent } from './pages/app-view/app-insights/app-insights
 import { AppFingerprintPipe } from './pages/app-view/app-fingerprint.pipe';
 import { INTEGRATION_SERVICE, integrationServiceFactory } from './integration';
 import { SupportProgressDialogComponent } from './pages/support/progress-dialog';
+import { XrayModule } from './pages/xray';
+import { I18nModule } from 'src/i18n';
 
 function loadAndSetLocaleInitializer(configService: ConfigService) {
   return async function () {
@@ -203,6 +205,8 @@ const localeConfig = {
     CommonPipesModule,
     UiModule,
     SPNModule,
+    XrayModule,
+    I18nModule,
     PortmasterAPIModule.forRoot({
       httpAPI: environment.httpAPI,
       websocketAPI: environment.portAPI,

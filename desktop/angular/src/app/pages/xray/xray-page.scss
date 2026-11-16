@@ -1,0 +1,19 @@
+::ng-deep #spn-map #xray-pin-group {
+  g[is-exit='true'] circle {
+    fill: #239215;
+    stroke: #239215;
+    stroke-width: 2;
+  }
+
+  g[selected='true'] circle {
+    fill: #fde047;
+    stroke: #facc15;
+    stroke-width: 2.5;
+    transform: scale(1.5);
+  }
+}
+
+.xray-page select,
+.xray-page input {
+  color: inherit;
+}
