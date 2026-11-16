@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/miekg/dns"
@@ -19,7 +20,7 @@ import (
 )
 
 var (
-	dnsRequestConnections     = make(map[string]*Connection) // key: <protocol>-<local ip>-<local port>
+	dnsRequestConnections     = make(map[string]*dnsRequestConnection) // key: <protocol>-<local ip>-<local port>
 	dnsRequestConnectionsLock sync.RWMutex
 
 	openDNSRequests     = make(map[string]*Connection) // key: <pid>/<fqdn>
@@ -41,7 +42,20 @@ const (
 	// openDNSRequestLimit defines the duration after which DNS requests without
 	// a following connection are logged.
 	openDNSRequestLimit = 3 * time.Second
+
+	// dnsRequestConnectionIdleTTL defines the duration after which a saved DNS
+	// request connection that has not ended is removed if it was neither saved
+	// nor looked up in the meantime.
+	dnsRequestConnectionIdleTTL = 10 * time.Minute
 )
+
+// dnsRequestConnection is an entry of dnsRequestConnections.
+type dnsRequestConnection struct {
+	conn *Connection
+	// lastUsed holds the unix timestamp of when the entry was last saved or
+	// looked up.
+	lastUsed atomic.Int64
+}
 
 func getDNSRequestConnectionKey(packetInfo *packet.Info) (id string, ok bool) {
 	// We only support protocols with ports.
@@ -70,9 +84,12 @@ func SaveDNSRequestConnection(conn *Connection, pkt packet.Packet) {
 
 	// Add or update DNS request connection.
 	log.Tracer(pkt.Ctx()).Tracef("network: saving %s with PID %d as dns request connection for fast DNS request attribution", pkt, conn.PID)
+	entry := &dnsRequestConnection{conn: conn}
+	entry.lastUsed.Store(time.Now().Unix())
+
 	dnsRequestConnectionsLock.Lock()
 	defer dnsRequestConnectionsLock.Unlock()
-	dnsRequestConnections[key] = conn
+	dnsRequestConnections[key] = entry
 }
 
 // GetDNSRequestConnection returns a saved dns request connection.
@@ -87,8 +104,12 @@ func GetDNSRequestConnection(packetInfo *packet.Info) (conn *Connection, ok bool
 	dnsRequestConnectionsLock.RLock()
 	defer dnsRequestConnectionsLock.RUnlock()
 
-	conn, ok = dnsRequestConnections[key]
-	return conn, ok
+	entry, ok := dnsRequestConnections[key]
+	if !ok {
+		return nil, false
+	}
+	entry.lastUsed.Store(time.Now().Unix())
+	return entry.conn, true
 }
 
 // deleteDNSRequestConnection removes a connection from the dns request connections.
@@ -104,15 +125,27 @@ func deleteDNSRequestConnection(packetInfo *packet.Info) { //nolint:unused,deadc
 
 // cleanDNSRequestConnections deletes old DNS request connections.
 func cleanDNSRequestConnections() {
-	deleteOlderThan := time.Now().Unix() - 3
+	cleanDNSRequestConnectionsAt(time.Now())
+}
+
+func cleanDNSRequestConnectionsAt(now time.Time) {
+	deleteOlderThan := now.Unix() - 3
+	deleteUnusedSince := now.Add(-dnsRequestConnectionIdleTTL).Unix()
 
 	dnsRequestConnectionsLock.Lock()
 	defer dnsRequestConnectionsLock.Unlock()
 
-	for key, conn := range dnsRequestConnections {
+	for key, entry := range dnsRequestConnections {
+		conn := entry.conn
 		conn.Lock()
 
-		if conn.Ended > 0 && conn.Ended < deleteOlderThan {
+		switch {
+		case conn.Ended > 0 && conn.Ended < deleteOlderThan:
+			delete(dnsRequestConnections, key)
+		case conn.Ended == 0 && entry.lastUsed.Load() < deleteUnusedSince:
+			// Connections that are removed from the connection state while
+			// incomplete (eg. fast-tracked DNS requests) are never marked as
+			// ended, so they need to expire when not used anymore.
 			delete(dnsRequestConnections, key)
 		}
 
