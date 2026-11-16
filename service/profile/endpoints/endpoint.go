@@ -64,7 +64,7 @@ func (ep *EndpointBase) makeReason(s fmt.Stringer, value, desc string, keyval ..
 
 	r.Extra = make(map[string]interface{})
 
-	for idx := 0; idx < len(keyval)/2; idx += 2 {
+	for idx := 0; idx+1 < len(keyval); idx += 2 {
 		key := keyval[idx]
 		val := keyval[idx+1]
 
