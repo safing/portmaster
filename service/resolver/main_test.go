@@ -1,9 +1,11 @@
 package resolver
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
@@ -48,6 +50,14 @@ func runTest(m *testing.M) error {
 		os.Exit(0)
 	}
 	defer func() { _ = os.RemoveAll(_dataDir) }()
+
+	// The network-dependent tests (skipped with -short) need a more lenient
+	// request timeout. Set it here, before any module or test goroutine is
+	// started, as it is read concurrently by the resolvers.
+	flag.Parse()
+	if !testing.Short() {
+		defaultRequestTimeout = 30 * time.Second
+	}
 
 	// Set the default API listen address
 	api.SetDefaultAPIListenAddress("0.0.0.0:8080")

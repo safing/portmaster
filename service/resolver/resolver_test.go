@@ -49,8 +49,6 @@ func TestSingleResolving(t *testing.T) {
 		t.Skip()
 	}
 
-	defaultRequestTimeout = 30 * time.Second
-
 	// create separate resolver for this test
 	resolver, _, err := createResolver(testResolver, "config")
 	if err != nil {
@@ -80,8 +78,6 @@ func TestBulkResolving(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
-
-	defaultRequestTimeout = 30 * time.Second
 
 	// create separate resolver for this test
 	resolver, _, err := createResolver(testResolver, "config")
