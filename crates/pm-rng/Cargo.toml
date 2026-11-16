@@ -1,0 +1,18 @@
+[package]
+name = "pm-rng"
+version = "0.1.0"
+edition.workspace = true
+description = "Port of the Go base/rng module: Fortuna CSPRNG with entropy pools and feeders"
+license.workspace = true
+
+[dependencies]
+aes.workspace = true
+getrandom.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

@@ -142,8 +142,12 @@ fn auth_app(
         if notification.selected_action_id != "allow" {
             return Ok(());
         }
+        // Use the shared Fortuna generator (seeded from the OS) for the API
+        // key. The output format is unchanged: 8 random bytes as 16 hex chars.
         let mut bytes = [0u8; 8];
-        getrandom::fill(&mut bytes).map_err(|error| error.to_string())?;
+        pm_rng::global()
+            .read(&mut bytes)
+            .map_err(|error| error.to_string())?;
         let key = hex::encode(bytes);
         let mut keys = config_for_action.get_as_string_array(CFG_API_KEYS, &[])();
         keys.push(format!(

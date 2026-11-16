@@ -15,7 +15,6 @@ pm-broadcasts = { path = "../pm-broadcasts" }
 pm-compat = { path = "../pm-compat" }
 anyhow.workspace = true
 async-trait.workspace = true
-getrandom.workspace = true
 hex.workspace = true
 pm-api = { path = "../pm-api" }
 pm-config = { path = "../pm-config" }
@@ -34,6 +33,7 @@ pm-netquery = { path = "../pm-netquery" }
 pm-netstate = { path = "../pm-netstate" }
 pm-process = { path = "../pm-process" }
 pm-profile = { path = "../pm-profile" }
+pm-rng = { path = "../pm-rng" }
 pm-nameserver = { path = "../pm-nameserver" }
 pm-network = { path = "../pm-network" }
 pm-resolver = { path = "../pm-resolver" }
