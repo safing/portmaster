@@ -15,6 +15,7 @@ func TestOnceAgain(t *testing.T) {
 	oa := OnceAgain{}
 	executed := abool.New()
 	var testWg sync.WaitGroup
+	var inFlight atomic.Int32
 
 	// One execution should gobble up the whole batch.
 	for range 10 {
@@ -22,15 +23,23 @@ func TestOnceAgain(t *testing.T) {
 		for range 100 {
 			go func() {
 				oa.Do(func() {
-					if !executed.SetToIf(false, true) {
+					// Check for actual concurrent execution. Multiple sequential
+					// executions per batch are allowed, as goroutines might not
+					// all be started in time (eg. with the race detector).
+					if inFlight.Add(1) != 1 {
 						t.Errorf("concurrent execution!")
 					}
+					executed.Set()
 					time.Sleep(10 * time.Millisecond)
+					inFlight.Add(-1)
 				})
 				testWg.Done()
 			}()
 		}
 		testWg.Wait()
+		if executed.IsNotSet() {
+			t.Errorf("no execution!")
+		}
 		executed.UnSet() // reset check
 	}
 
