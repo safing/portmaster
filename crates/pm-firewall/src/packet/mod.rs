@@ -22,8 +22,9 @@
 //!   like Go, kept in this crate instead of pm-network).
 //! * An ICMP packet without ICMP layer is handled like in Go ([`IcmpType`]).
 //! * Not ported: SPN tunnels (hooks in [`PacketEnv`], default no-op), the
-//!   external verdict handler (hook), the stat logger (use
-//!   [`PacketHandler::take_stats`]), inspectors (none exist in Go).
+//!   external verdict handler (hook) and the stat logger (use
+//!   [`PacketHandler::take_stats`]). Inspectors live in
+//!   [`crate::inspection`] and are called from the verdict handler.
 //! * Verdict reset deletes the conntrack entry once per changed IP
 //!   connection; Go deletes it twice for IP connections and once for DNS
 //!   connections, where it cannot match anything.

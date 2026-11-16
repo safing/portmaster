@@ -46,6 +46,7 @@ pm-intel = { path = "../pm-intel" }
 pm-jess = { path = "../pm-jess" }
 nix = { version = "0.31.3", default-features = false, features = ["user"] }
 pm-firewall = { path = "../pm-firewall" }
+pm-dnsmonitor = { path = "../pm-dnsmonitor" }
 pm-geoip = { path = "../pm-geoip" }
 pm-query = { path = "../pm-query" }
 pm-record = { path = "../pm-record" }

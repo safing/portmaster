@@ -1491,6 +1491,7 @@ dependencies = [
  "pm-control",
  "pm-database",
  "pm-debug",
+ "pm-dnsmonitor",
  "pm-dsd",
  "pm-endpoints",
  "pm-firewall",
@@ -1544,6 +1545,21 @@ dependencies = [
 [[package]]
 name = "pm-debug"
 version = "0.1.0"
+
+[[package]]
+name = "pm-dnsmonitor"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "pm-compat",
+ "pm-netenv",
+ "pm-netstate",
+ "pm-resolver",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
 
 [[package]]
 name = "pm-dsd"

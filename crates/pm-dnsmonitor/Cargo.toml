@@ -1,0 +1,20 @@
+[package]
+name = "pm-dnsmonitor"
+version = "0.1.0"
+edition.workspace = true
+description = "Linux systemd-resolved varlink DNS monitor for the Portmaster core"
+license.workspace = true
+
+[dependencies]
+base64.workspace = true
+pm-compat = { path = "../pm-compat" }
+pm-netenv = { path = "../pm-netenv" }
+pm-netstate = { path = "../pm-netstate" }
+pm-resolver = { path = "../pm-resolver" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

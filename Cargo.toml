@@ -35,6 +35,7 @@ members = [
     "crates/pm-netquery",
     "crates/pm-jess",
     "crates/pm-firewall",
+    "crates/pm-dnsmonitor",
     "crates/pm-splittun",
     "crates/pm-compat",
     "crates/pm-interop",

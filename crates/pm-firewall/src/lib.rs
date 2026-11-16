@@ -21,6 +21,7 @@ mod config;
 mod custom_lists;
 mod deciders;
 pub mod dns_filter;
+pub mod inspection;
 mod dga;
 mod env;
 mod levenshtein;

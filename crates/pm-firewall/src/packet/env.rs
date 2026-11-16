@@ -100,10 +100,10 @@ pub trait PacketEnv: FirewallEnv + Send + Sync {
         Ok(())
     }
 
-    /// Go `inspection.RunInspectors`. No inspector is registered in Go, so the
-    /// default stops inspection.
-    fn run_inspectors(&self, _conn: &mut Connection, _pkt: &dyn QueuedPacket) -> (Verdict, bool) {
-        (Verdict::Undecided, false)
+    /// Go `inspection.RunInspectors`. The default runs the process-wide
+    /// registry; environments that own a registry override this method.
+    fn run_inspectors(&self, conn: &mut Connection, pkt: &dyn QueuedPacket) -> (Verdict, bool) {
+        crate::inspection::run_inspectors(conn, pkt)
     }
 
     /// Go `Connection.RemovePrompt`; called before the connection is locked.
