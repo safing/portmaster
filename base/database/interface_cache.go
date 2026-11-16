@@ -74,7 +74,7 @@ func (i *Interface) ClearCache() {
 // FlushCache writes (and thus clears) the write cache.
 func (i *Interface) FlushCache() {
 	// Check if write cache is in use.
-	if i.options.DelayCachedWrites != "" {
+	if i.options.DelayCachedWrites == "" {
 		return
 	}
 
