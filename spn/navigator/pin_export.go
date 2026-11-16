@@ -50,7 +50,20 @@ type LaneExport struct {
 }
 
 // Export puts the Pin's information into an exportable format.
+// The owning Map is read locked for this, so the Map must not be locked by
+// the caller. Use exportLocked if the Map is already locked.
 func (pin *Pin) Export() *PinExport {
+	if pin.owner != nil {
+		pin.owner.RLock()
+		defer pin.owner.RUnlock()
+	}
+	return pin.exportLocked()
+}
+
+// exportLocked puts the Pin's information into an exportable format.
+// The owning Map must be locked by the caller, as the Pin's state and lanes
+// are modified under the Map lock.
+func (pin *Pin) exportLocked() *PinExport {
 	pin.Lock()
 	defer pin.Unlock()
 

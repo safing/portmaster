@@ -68,6 +68,10 @@ type Pin struct { //nolint:maligned
 
 	// region is the region this Pin belongs to.
 	region *Region
+
+	// owner is the Map this Pin belongs to.
+	// It is used to lock the Map when the Pin is accessed from outside.
+	owner *Map
 }
 
 // PinConnection represents a connection to a terminal on the Hub.
