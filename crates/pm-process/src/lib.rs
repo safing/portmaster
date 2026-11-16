@@ -30,6 +30,7 @@ mod config;
 mod find;
 mod hash;
 mod info;
+pub mod tags;
 
 use serde::{Deserialize, Serialize};
 
@@ -38,6 +39,7 @@ pub use config::{enabled_getter, register_options, CFG_OPTION_ENABLE_PROCESS_DET
 pub use find::{get_pid_of_connection, get_process_of_connection};
 pub use hash::{hash_file, HashError};
 pub use info::{Error as ProcError, ProcInfo, ProcReader};
+pub use tags::register_default_tag_handlers;
 
 /// PID that is not used by any process.
 pub const UNDEFINED_PROCESS_ID: i32 = -1;

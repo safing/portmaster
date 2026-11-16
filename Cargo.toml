@@ -69,6 +69,7 @@ rmp-serde = "1.3.1"
 rusqlite = { version = "0.43.0", features = ["bundled"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
+shlex = "1.3.0"
 sha1 = "0.10.6"
 sha2 = "0.10.9"
 sha3 = "0.10.9"

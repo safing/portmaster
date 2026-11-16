@@ -88,6 +88,23 @@ impl ProcessCache {
         })
     }
 
+    /// Creates a cache with all built-in tag handlers registered.
+    ///
+    /// Use this in production so that process attribution and profile
+    /// matching see the tags produced by the Linux handlers.
+    pub fn with_default_tag_handlers(reader: ProcReader) -> Arc<ProcessCache> {
+        let cache = ProcessCache::new(reader);
+        cache
+            .register_default_tag_handlers()
+            .expect("registering distinct default tag handlers cannot fail");
+        cache
+    }
+
+    /// Registers every built-in tag handler, like Go's tag package `init()`s.
+    pub fn register_default_tag_handlers(&self) -> Result<()> {
+        crate::tags::register_default_tag_handlers(self)
+    }
+
     pub fn reader(&self) -> &ProcReader {
         &self.reader
     }

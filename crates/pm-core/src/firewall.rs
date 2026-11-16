@@ -506,7 +506,7 @@ impl Firewall {
         ));
 
         let processes: Arc<dyn ProcessResolver> = Arc::new(SystemProcessResolver::new(
-            ProcessCache::new(ProcReader::new(pm_netstate::ProcFs::default())),
+            ProcessCache::with_default_tag_handlers(ProcReader::new(pm_netstate::ProcFs::default())),
             Arc::new(pm_netstate::NetState::new(pm_netstate::ProcFs::default())),
         ));
         let lists = Arc::clone(&filter_lists);

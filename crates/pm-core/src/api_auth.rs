@@ -244,7 +244,7 @@ pub struct SystemLookup {
 impl SystemLookup {
     pub fn new() -> SystemLookup {
         SystemLookup {
-            cache: ProcessCache::new(ProcReader::new(ProcFs::default())),
+            cache: ProcessCache::with_default_tag_handlers(ProcReader::new(ProcFs::default())),
             state: NetState::new(ProcFs::default()),
         }
     }
