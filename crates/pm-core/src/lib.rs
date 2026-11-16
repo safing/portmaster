@@ -7,3 +7,5 @@ pub mod logging;
 pub mod service;
 
 pub mod firewall;
+
+pub mod netenv_sink;

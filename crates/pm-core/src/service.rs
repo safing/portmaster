@@ -209,6 +209,11 @@ impl Service {
         }
 
 
+        // Network environment notifications (offline/limited/captive portal).
+        pm_netenv::shared().set_notification_sink(Arc::new(
+            crate::netenv_sink::NetEnvNotificationSink::new(Arc::clone(&notifications)),
+        ));
+
         // Online status monitor: addresses, portal probe and (later) the DNS
         // check. The first check runs when the service starts serving.
         let online_monitor = Arc::new(pm_netenv::OnlineMonitor::new(
