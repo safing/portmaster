@@ -21,6 +21,16 @@ impl Options {
             sort_keys: true,
         }
     }
+
+    /// The options `filesig.jsonAddMeta` uses for the final document: no key
+    /// sorting, because sjson appended the metadata to the original order.
+    pub(crate) fn final_print() -> Self {
+        Self {
+            width: 200,
+            indent: b" ".to_vec(),
+            sort_keys: false,
+        }
+    }
 }
 
 /// Pretty-prints valid JSON like `pretty.PrettyOptions`.

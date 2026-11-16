@@ -1,0 +1,16 @@
+J{
+	"Version": 1,
+	"Name": "env-sign-v2",
+	"SuiteID": "sign_v2",
+	"Secrets": null,
+	"Senders": [
+		{
+			"Version": 1,
+			"ID": "test-signer",
+			"Scheme": "Ed25519",
+			"Key": null
+		}
+	],
+	"Recipients": null,
+	"SecurityLevel": 0
+}

@@ -16,6 +16,7 @@ mod keys;
 mod letter;
 pub mod lhash;
 pub mod pretty;
+mod sign;
 mod signet;
 
 use base64::engine::general_purpose::{GeneralPurpose, GeneralPurposeConfig};
@@ -25,6 +26,7 @@ use base64::{alphabet, Engine};
 pub use json::{json_split, Split, CHECKSUM_KEY, SIGNATURE_KEY};
 pub use keys::{BINARY_SIGNING_KEYS, INTEL_SIGNING_KEYS};
 pub use letter::{Letter, Seal};
+pub use sign::{add_json_signature, DirTrustStore, Envelope, SignetReference};
 pub use signet::TrustStore;
 
 /// Errors; the texts mirror the Go ones.
@@ -64,6 +66,13 @@ const RAW_URL: GeneralPurpose = GeneralPurpose::new(
         .with_decode_padding_mode(DecodePaddingMode::RequireNone)
         .with_decode_allow_trailing_bits(true),
 );
+
+/// Go `base64.StdEncoding`, used by `encoding/json` for `[]byte` fields.
+pub(crate) const STD: GeneralPurpose = GeneralPurpose::new(&alphabet::STANDARD, GeneralPurposeConfig::new());
+
+pub(crate) fn encode_raw_url(data: &[u8]) -> String {
+    RAW_URL.encode(data)
+}
 
 fn decode_raw_url(s: &str) -> Result<Vec<u8>, String> {
     // Go ignores line breaks.

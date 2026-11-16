@@ -12,7 +12,9 @@ blake3.workspace = true
 bs58.workspace = true
 ciborium.workspace = true
 ed25519-dalek.workspace = true
+getrandom.workspace = true
 pm-dsd = { path = "../pm-dsd" }
+serde_json.workspace = true
 sha2.workspace = true
 sha3.workspace = true
 thiserror.workspace = true

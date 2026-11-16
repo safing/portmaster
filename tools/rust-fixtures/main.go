@@ -57,13 +57,23 @@ var (
 	verifyDir string
 
 	verifyNameRecordPath string
+
+	verifyJESSIndex string
+	verifyJESSTSDir string
 )
 
 func main() {
 	flag.StringVar(&outDir, "out", "crates/fixtures/m0", "output directory")
 	flag.StringVar(&verifyDir, "verify", "", "verify a Rust-written sqlite location and print its contents as JSON")
 	flag.StringVar(&verifyNameRecordPath, "verify-namerecord", "", "read a Rust-written NameRecord JSON file the way Go does and print it")
+	flag.StringVar(&verifyJESSIndex, "verify-jess", "", "verify a Rust-signed index with Go filesig.VerifyJSONSignature")
+	flag.StringVar(&verifyJESSTSDir, "verify-jess-tsdir", "", "truststore directory with .recipient files for -verify-jess")
 	flag.Parse()
+
+	if verifyJESSIndex != "" {
+		verifyJESS(verifyJESSIndex, verifyJESSTSDir)
+		return
+	}
 
 	if verifyNameRecordPath != "" {
 		verifyNameRecord(verifyNameRecordPath)

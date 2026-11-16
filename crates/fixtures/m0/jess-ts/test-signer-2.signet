@@ -1,0 +1,13 @@
+J{
+	"Version": 1,
+	"ID": "test-signer-2",
+	"Scheme": "Ed25519",
+	"Key": "Ab0p79+RER6TFMaHKeHQ1hG8rBI8DCaokbkI7HobKG5LdsZ1SEiEJhQs1q8lwB9Db8IK5DQ+RCJaMemNrhjjYG0=",
+	"Info": {
+		"Name": "Test Signer 2",
+		"Owner": "",
+		"Created": "0001-01-01T00:00:00Z",
+		"Expires": "0001-01-01T00:00:00Z",
+		"Details": null
+	}
+}
