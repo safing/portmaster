@@ -14,6 +14,9 @@ use pm_notifications::Notifications;
 
 use crate::customlists::{CustomLists, ParseReport};
 
+/// Go `ErrNotConfigured`, returned when no file path is set.
+pub const ERR_NOT_CONFIGURED: &str = "custom filter list not configured";
+
 /// State ID for a filter list that could not be opened.
 pub const PARSE_WARNING_NOTIFICATION_ID: &str = "customlists:parse-warning";
 /// State ID for a filter list with too many invalid lines.
@@ -38,6 +41,8 @@ pub struct CustomListService {
     notifications: Option<Arc<Notifications>>,
     states: Option<Arc<StateMgr>>,
     last_parse: Mutex<LastParse>,
+    /// The configured file path, set by the core from the config option.
+    configured_path: Mutex<String>,
     /// Serializes checks, like Go `filterListLock` in the writers.
     check_lock: Mutex<()>,
 }
@@ -65,6 +70,7 @@ impl CustomListService {
             notifications,
             states,
             last_parse: Mutex::new(LastParse::default()),
+            configured_path: Mutex::new(String::new()),
             check_lock: Mutex::new(()),
         }
     }
@@ -72,6 +78,29 @@ impl CustomListService {
     /// Returns the parsed lists for lookups.
     pub fn lists(&self) -> &CustomLists {
         &self.lists
+    }
+
+    /// Sets the configured file path; the core calls this on config changes.
+    pub fn set_file_path(&self, file_path: &str) {
+        let mut path = self
+            .configured_path
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        *path = file_path.to_string();
+    }
+
+    /// Returns the configured file path.
+    pub fn file_path(&self) -> String {
+        self.configured_path
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .clone()
+    }
+
+    /// Reloads the list from the configured file path.
+    pub fn check_and_update_configured(&self) -> io::Result<UpdateOutcome> {
+        let file_path = self.file_path();
+        self.check_and_update(&file_path)
     }
 
     /// Reloads the list from `file_path` if it is configured and changed.

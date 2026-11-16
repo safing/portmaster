@@ -19,13 +19,15 @@
 //! * Lookups do not block while the file is parsed: the fresh entries are
 //!   swapped in at the end instead of being written into the live maps.
 
+mod api;
 mod config;
 mod lists;
 mod service;
 
+pub use api::{register_api, UPDATE_ENDPOINT_PATH};
 pub use config::{get_file_path, register_options, CFG_OPTION_CUSTOM_LIST_FILE_KEY};
 pub use lists::{split_domain, CustomLists, ParseReport, INVALID_LINES_WARNING_RATIO};
 pub use service::{
     CustomListService, UpdateOutcome, PARSE_STATUS_NOTIFICATION_ID,
-    PARSE_WARNING_NOTIFICATION_ID, ZERO_IP_NOTIFICATION_ID,
+    PARSE_WARNING_NOTIFICATION_ID, ZERO_IP_NOTIFICATION_ID, ERR_NOT_CONFIGURED,
 };
