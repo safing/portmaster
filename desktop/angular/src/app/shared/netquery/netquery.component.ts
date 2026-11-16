@@ -15,10 +15,10 @@ import { IPScopeNames, LocalAppProfile, NetqueryHelper } from "./connection-help
 import { SfngSearchbarFields } from "./searchbar";
 import { SfngTagbarValue } from "./tag-bar";
 import { Parser } from "./textql";
-import { connectionFieldTranslation, mergeConditions } from "./utils";
-import { DefaultBandwidthChartConfig } from "./line-chart/line-chart";
+import { createLocalizedFieldTranslation, mergeConditions } from "./utils";
+import { createLocalizedBandwidthChartConfig } from "./line-chart/line-chart";
 import { INTEGRATION_SERVICE } from "src/app/integration";
-import { I18nService } from 'src/i18n';
+import { I18nService, LocalizedValueService } from 'src/i18n';
 
 interface Suggestion<T = any> extends PossilbeValue<T> {
   count: number;
@@ -145,53 +145,59 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
   private integration = inject(INTEGRATION_SERVICE);
 
   private readonly i18n = inject(I18nService);
+  private readonly localized = inject(LocalizedValueService);
 
   /** @private the date format for the nz-range-picker */
   dateFormat = getLocaleDateFormat(getLocaleId(this.localeId), FormatWidth.Medium)
 
   /** @private A list of quick-date settings for the nz-range-picker */
-  quickDateSettings: QuickDateSetting[] = [
-    {
-      name: this.i18n.t('nq.today'),
-      apply: () => {
-        const now = new Date();
-        return [
-          new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0),
-          new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, -1),
-        ]
-      }
-    },
-    {
-      name: this.i18n.t('nq.last24h'),
-      apply: () => {
-        const now = new Date();
-        return [
-          new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() - 24, now.getMinutes(), now.getSeconds()),
-          now
-        ]
-      }
-    },
-    {
-      name: this.i18n.t('nq.last7d'),
-      apply: () => {
-        const now = new Date();
-        return [
-          new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7, now.getHours(), now.getMinutes(), now.getSeconds()),
-          now,
-        ]
-      }
-    },
-    {
-      name: this.i18n.t('nq.lastMonth'),
-      apply: () => {
-        const now = new Date();
-        return [
-          new Date(now.getFullYear(), now.getMonth() - 1, now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds()),
-          now,
-        ]
-      }
-    },
-  ]
+  quickDateSettings: QuickDateSetting[] = this.buildQuickDateSettings();
+
+  /** Rebuild the quick-date labels for the currently selected language. */
+  private buildQuickDateSettings(): QuickDateSetting[] {
+    return [
+      {
+        name: this.i18n.t('nq.today'),
+        apply: () => {
+          const now = new Date();
+          return [
+            new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0),
+            new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, -1),
+          ]
+        }
+      },
+      {
+        name: this.i18n.t('nq.last24h'),
+        apply: () => {
+          const now = new Date();
+          return [
+            new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() - 24, now.getMinutes(), now.getSeconds()),
+            now
+          ]
+        }
+      },
+      {
+        name: this.i18n.t('nq.last7d'),
+        apply: () => {
+          const now = new Date();
+          return [
+            new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7, now.getHours(), now.getMinutes(), now.getSeconds()),
+            now,
+          ]
+        }
+      },
+      {
+        name: this.i18n.t('nq.lastMonth'),
+        apply: () => {
+          const now = new Date();
+          return [
+            new Date(now.getFullYear(), now.getMonth() - 1, now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds()),
+            now,
+          ]
+        }
+      },
+    ];
+  }
 
   applyQuickDateSetting(qds: QuickDateSetting) {
     const [from, to] = qds.apply()
@@ -235,8 +241,8 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
   /** @private The bandwidth chart data */
   bwChartData: BandwidthChartResult<any>[] = [];
 
-  /** @private The configuration for the bandwidth chart */
-  readonly bwChartConfig = DefaultBandwidthChartConfig;
+  /** @private The configuration for the bandwidth chart (rebuilt on language change) */
+  bwChartConfig = createLocalizedBandwidthChartConfig(this.i18n);
 
   /** @private The list of "pro-tips" that are defined in the template. Only one pro-tip will be rendered depending on proTipIdx */
   @ViewChildren('proTip', { read: TemplateRef })
@@ -498,17 +504,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     scope: {
       visible: 'combinedMenu',
       menuTitle: this.i18n.t('nq.filterNetworkScope'),
-      suggestions: objKeys(IPScopeNames)
-        .sort()
-        .filter(key => key !== IPScope.Undefined)
-        .map(scope => {
-          return {
-            Name: IPScopeNames[scope],
-            Value: scope,
-            count: 0,
-            Description: ''
-          }
-        })
+      suggestions: this.buildScopeSuggestions(),
     },
     verdict: {},
     started: {},
@@ -522,32 +518,19 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     direction: {
       visible: 'combinedMenu',
       menuTitle: this.i18n.t('nq.filterDirection'),
-      suggestions: [
-        {
-          Name: this.i18n.t('nq.inbound'),
-          Value: 'inbound',
-          Description: '',
-          count: 0,
-        },
-        {
-          Name: this.i18n.t('nq.outbound'),
-          Value: 'outbound',
-          Description: '',
-          count: 0,
-        }
-      ]
+      suggestions: this.buildDirectionSuggestions(),
     },
     exit_node: {},
     asn: {},
     active: {
       visible: 'combinedMenu',
       menuTitle: this.i18n.t('nq.filterActive'),
-      suggestions: booleanSuggestionValues(),
+      suggestions: this.buildActiveSuggestions(),
     },
     tunneled: {
       visible: 'combinedMenu',
       menuTitle: 'SPN',
-      suggestions: booleanSuggestionValues(),
+      suggestions: this.buildActiveSuggestions(),
       tipupKey: 'spn'
     },
     from: {
@@ -558,8 +541,8 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     },
   })
 
-  /** Translations for the connection field names */
-  keyTranslation = connectionFieldTranslation;
+  /** Translations for the connection field names (rebuilt on language change) */
+  keyTranslation = createLocalizedFieldTranslation(this.i18n);
 
   /** A list of keys for group-by */
   groupByKeys: string[] = [];
@@ -567,7 +550,64 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
   /** A list of keys for sorting */
   orderByKeys: string[] = [];
 
+  private buildScopeSuggestions(): Suggestion<IPScope>[] {
+    return objKeys(IPScopeNames)
+      .sort()
+      .filter(key => key !== IPScope.Undefined)
+      .map(scope => ({
+        Name: this.localized.localize(scope, 'scope', IPScopeNames[scope]),
+        Value: scope,
+        count: 0,
+        Description: '',
+      }));
+  }
+
+  private buildDirectionSuggestions(): Suggestion<string>[] {
+    return [
+      { Name: this.i18n.t('nq.inbound'), Value: 'inbound', Description: '', count: 0 },
+      { Name: this.i18n.t('nq.outbound'), Value: 'outbound', Description: '', count: 0 },
+    ];
+  }
+
+  private buildActiveSuggestions(): Suggestion<boolean>[] {
+    return booleanSuggestionValues(this.i18n);
+  }
+
+  /**
+   * Refresh every label that was built once from translated strings. Existing
+   * counts and filter state are preserved so a language switch never resets
+   * the active query.
+   */
+  private localizeModels(): void {
+    const carryCounts = (fresh: Suggestion<any>[], previous: Suggestion<any>[]): Suggestion<any>[] =>
+      fresh.map(s => ({
+        ...s,
+        count: previous.find(old => old.Value === s.Value)?.count ?? 0,
+      }));
+
+    this.models.scope.menuTitle = this.i18n.t('nq.filterNetworkScope');
+    this.models.direction.menuTitle = this.i18n.t('nq.filterDirection');
+    this.models.active.menuTitle = this.i18n.t('nq.filterActive');
+
+    this.models.scope.suggestions = carryCounts(this.buildScopeSuggestions(), this.models.scope.suggestions);
+    this.models.direction.suggestions = carryCounts(this.buildDirectionSuggestions(), this.models.direction.suggestions);
+    this.models.active.suggestions = carryCounts(this.buildActiveSuggestions(), this.models.active.suggestions);
+    this.models.tunneled.suggestions = carryCounts(this.buildActiveSuggestions(), this.models.tunneled.suggestions);
+  }
+
   ngOnInit(): void {
+    // Rebuild all pre-computed, translated TS values whenever the UI language
+    // changes - no component re-creation, no loss of filter state.
+    this.i18n.language$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.quickDateSettings = this.buildQuickDateSettings();
+        this.localizeModels();
+        this.keyTranslation = createLocalizedFieldTranslation(this.i18n);
+        this.bwChartConfig = createLocalizedBandwidthChartConfig(this.i18n);
+        this.cdr.markForCheck();
+      });
+
     // Prepare the datasource that is used to initialize the DynamicItemPaginator.
     // It basically has a "view" function that executes the current page query
     // but with page-number and page-size applied.
@@ -1356,16 +1396,16 @@ function initializeModels(models: { [key: string]: Partial<Model<any>> }): { [ke
   return models as any;
 }
 
-function booleanSuggestionValues(): Suggestion<any>[] {
+function booleanSuggestionValues(i18n: I18nService): Suggestion<any>[] {
   return [
     {
-      Name: 'Yes',
+      Name: i18n.t('common.yes'),
       Value: true,
       Description: '',
       count: 0,
     },
     {
-      Name: 'No',
+      Name: i18n.t('common.no'),
       Value: false,
       Description: '',
       count: 0,

@@ -61,7 +61,7 @@
       </tr>
       <tr>
         <th>{{ 'acc.features' | t }}</th>
-        <td>{{ currentUser.current_plan?.feature_ids?.join(", ") }} </td>
+        <td>{{ currentUser.current_plan?.feature_ids | localizedValue:'feature' }} </td>
       </tr>
       <tr>
         <th>{{ 'acc.deviceID' | t }}</th>

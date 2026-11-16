@@ -12,7 +12,7 @@
     </div>
     <div class="preview">
       <span>
-        {{notif.Title || notif.Message}}
+        {{ notif.EventID | localizedValue:'notificationTitle':(notif.Title || notif.Message) }}
       </span>
       <div class="buttons">
         <ng-container *ngFor="let action of notif!.AvailableActions">

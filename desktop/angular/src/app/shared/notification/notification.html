@@ -13,9 +13,9 @@
       clip-rule="evenodd" />
   </svg>
 
-  <h1>{{notification.Title}}</h1>
+  <h1>{{ notification.EventID | localizedValue:'notificationTitle':notification.Title }}</h1>
 
-  <markdown emoji [data]="notification.Message" class="message"></markdown>
+  <markdown emoji [data]="notification.EventID | localizedValue:'notificationMessage':notification.Message" class="message"></markdown>
 
   <div class="buttons">
     <button *ngFor="let action of notification!.AvailableActions"

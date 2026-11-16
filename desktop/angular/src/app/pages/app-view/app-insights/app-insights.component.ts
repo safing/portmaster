@@ -3,7 +3,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AppProfile, BandwidthChartResult, ChartResult, Netquery } from '@safing/portmaster-api';
 import { repeat } from 'rxjs';
 import { CircularBarChartConfig, splitQueryResult } from 'src/app/shared/netquery/circular-bar-chart/circular-bar-chart.component';
-import { DefaultBandwidthChartConfig } from 'src/app/shared/netquery/line-chart/line-chart';
+import { createLocalizedBandwidthChartConfig } from 'src/app/shared/netquery/line-chart/line-chart';
+import { I18nService } from 'src/i18n';
 
 interface CountryBarData {
   series: 'country';
@@ -20,6 +21,7 @@ export class AppInsightsComponent implements OnInit {
   private readonly netquery = inject(Netquery);
   private readonly destroyRef = inject(DestroyRef);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly i18n = inject(I18nService);
 
   @Input()
   profile!: AppProfile;
@@ -28,7 +30,7 @@ export class AppInsightsComponent implements OnInit {
 
   bandwidthChart: BandwidthChartResult<any>[] = [];
 
-  bwChartConfig = DefaultBandwidthChartConfig;
+  bwChartConfig = createLocalizedBandwidthChartConfig(this.i18n);
 
   countryData: CountryBarData[] = [];
 
@@ -46,6 +48,13 @@ export class AppInsightsComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.i18n.language$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.bwChartConfig = createLocalizedBandwidthChartConfig(this.i18n);
+        this.cdr.markForCheck();
+      });
+
     const key = `${this.profile.Source}/${this.profile.ID}`
 
     this.netquery.batch({

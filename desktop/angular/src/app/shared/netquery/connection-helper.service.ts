@@ -5,6 +5,7 @@ import { AppProfile, AppProfileService, ConfigService, IPScope, NetqueryConnecti
 import { BehaviorSubject, Observable, OperatorFunction, Subject, combineLatest } from 'rxjs';
 import { distinctUntilChanged, filter, map, switchMap, take, takeUntil } from 'rxjs/operators';
 import { ActionIndicatorService } from '../action-indicator';
+import { LocalizedValueService } from 'src/i18n';
 import { objKeys } from '../utils';
 import { SfngSearchbarFields } from './searchbar';
 import { INTEGRATION_SERVICE } from 'src/app/integration';
@@ -29,6 +30,8 @@ export class NetqueryHelper {
   readonly settings: { [key: string]: string } = {};
 
   refresh = new Subject<void>();
+
+  private readonly localized = inject(LocalizedValueService);
 
   private onShiftKey$ = new BehaviorSubject<boolean>(false);
   private onCtrlKey$ = new BehaviorSubject<boolean>(false);
@@ -123,9 +126,11 @@ export class NetqueryHelper {
           return scopeValue;
         }
 
-        // otherwise check if it's pretty name of the scope translation
+        // otherwise check if it's the pretty (possibly localized) scope name
         val = `${val}`.toLocaleLowerCase();
-        return objKeys(IPScopeNames).find(scope => IPScopeNames[scope].toLocaleLowerCase() === val)
+        return objKeys(IPScopeNames).find(scope =>
+          IPScopeNames[scope].toLocaleLowerCase() === val ||
+          this.localized.localize(scope, 'scope', IPScopeNames[scope]).toLocaleLowerCase() === val)
       }).filter(value => value !== undefined);
     }
 
@@ -242,7 +247,7 @@ export class NetqueryHelper {
             }
 
             return {
-              Name: Verdict[item.verdict!],
+              Name: this.localized.localize(item.verdict!, 'verdict', Verdict[item.verdict!]),
               Value: item.verdict,
               Description: '',
               ...item
@@ -258,7 +263,7 @@ export class NetqueryHelper {
             }
 
             return {
-              Name: IPScopeNames[item.scope!],
+              Name: this.localized.localize(item.scope!, 'scope', IPScopeNames[item.scope!]),
               Value: item.scope,
               Description: '',
               ...item

@@ -42,7 +42,7 @@
     <span *appExpertiseLevel="'expert'" sfngAddToFilter="verdict" [sfngAddToFilterValue]="conn.verdict">
       <span>{{ 'nq.verdict' | t }}</span>
       <span>
-        {{ verdict[conn.verdict] || ('common.na' | t) }}
+        {{ conn.verdict | localizedValue:'verdict':(verdict[conn.verdict] || ('common.na' | t)) }}
       </span>
     </span>
 

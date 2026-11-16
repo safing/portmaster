@@ -1,4 +1,5 @@
 import { Condition, Matcher } from "@safing/portmaster-api";
+import { I18nService } from "src/i18n";
 import { objKeys } from "../utils";
 
 export const connectionFieldTranslation: { [key: string]: string } = {
@@ -24,6 +25,18 @@ export const connectionFieldTranslation: { [key: string]: string } = {
   remote_port: 'Port',
   bytes_sent: 'Bytes Sent',
   bytes_received: 'Bytes Received'
+}
+
+/** Build a fresh field-label map for the currently selected UI language. */
+export function createLocalizedFieldTranslation(i18n: I18nService): { [key: string]: string } {
+  const result: { [key: string]: string } = {};
+  objKeys(connectionFieldTranslation).forEach(key => {
+    const translated = i18n.t(`lc.field.${key}`);
+    result[key] = translated === `lc.field.${key}`
+      ? connectionFieldTranslation[key]
+      : translated;
+  });
+  return result;
 }
 
 export function isMatcher(v: any | Matcher): v is Matcher {
