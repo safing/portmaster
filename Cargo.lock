@@ -1469,6 +1469,7 @@ dependencies = [
  "pm-database",
  "pm-dsd",
  "pm-record",
+ "pm-utils",
  "regex",
  "serde",
  "serde_json",
@@ -2077,6 +2078,15 @@ dependencies = [
  "tracing",
  "ureq",
  "zip",
+]
+
+[[package]]
+name = "pm-utils"
+version = "0.1.0"
+dependencies = [
+ "getrandom 0.4.3",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
