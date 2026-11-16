@@ -9,7 +9,6 @@ license.workspace = true
 pm-mgr = { path = "../pm-mgr" }
 pm-netstate = { path = "../pm-netstate" }
 pm-netutils = { path = "../pm-netutils" }
-nix = { version = "0.31.3", default-features = false, features = ["net"] }
 serde.workspace = true
 serde_json.workspace = true
 sha1.workspace = true
@@ -18,6 +17,11 @@ tokio.workspace = true
 tokio-util.workspace = true
 ureq = "3.5.2"
 tracing.workspace = true
+
+# `nix` is an empty crate on non-Unix targets; the only users are gated to
+# Unix in `icmp.rs` and `system.rs`.
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.31.3", default-features = false, features = ["net"] }
 
 [lints]
 workspace = true

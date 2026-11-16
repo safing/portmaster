@@ -12,10 +12,13 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddrV4};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+#[cfg(unix)]
 use nix::net::if_::if_nametoindex;
+#[cfg(unix)]
 use nix::sys::socket::{
     recvfrom, sendto, socket, AddressFamily, MsgFlags, SockFlag, SockProtocol, SockType, SockaddrIn,
 };
+#[cfg(unix)]
 use std::os::fd::AsRawFd;
 use tokio::sync::mpsc::{self, Sender};
 
@@ -134,15 +137,17 @@ pub trait IcmpSocket: Send + Sync {
     fn recv_reply(&self, timeout: Duration) -> Result<Option<IcmpReply>, String>;
 }
 
-/// `ip4:icmp` datagram socket, the Linux system implementation.
+/// `ip4:icmp` datagram socket, the Unix system implementation.
 ///
 /// Opening a datagram ICMP socket may require privileges depending on the
 /// `net.ipv4.ping_group_range` sysctl; failures are returned to the caller
 /// instead of panicking.
+#[cfg(unix)]
 pub struct SystemIcmpSocket {
     fd: std::os::fd::OwnedFd,
 }
 
+#[cfg(unix)]
 impl SystemIcmpSocket {
     /// Opens a non-blocking ICMP datagram socket.
     pub fn new() -> Result<SystemIcmpSocket, String> {
@@ -162,6 +167,7 @@ impl SystemIcmpSocket {
     }
 }
 
+#[cfg(unix)]
 impl IcmpSocket for SystemIcmpSocket {
     fn set_ttl(&self, ttl: u8) -> Result<(), String> {
         nix::sys::socket::setsockopt(
@@ -209,6 +215,39 @@ impl IcmpSocket for SystemIcmpSocket {
                 Err(error) => return Err(format!("failed to receive icmp packet: {error}")),
             }
         }
+    }
+}
+
+/// Inert ICMP probe socket for non-Unix platforms (notably Windows).
+///
+/// Go's Windows path uses `SIO_RCVALL` on a raw socket to receive ICMP errors;
+/// that requires platform-specific unsafe setup and is not ported. The probe
+/// logic and listener in this module are still fully usable with injected
+/// [`IcmpSocket`] implementations.
+#[cfg(not(unix))]
+#[derive(Debug, Default, Clone, Copy)]
+pub struct SystemIcmpSocket;
+
+#[cfg(not(unix))]
+impl SystemIcmpSocket {
+    /// Always fails off Unix: no raw ICMP socket is available.
+    pub fn new() -> Result<SystemIcmpSocket, String> {
+        Err("ICMP system sockets are only available on Unix".to_string())
+    }
+}
+
+#[cfg(not(unix))]
+impl IcmpSocket for SystemIcmpSocket {
+    fn set_ttl(&self, _ttl: u8) -> Result<(), String> {
+        Err("ICMP system sockets are only available on Unix".to_string())
+    }
+
+    fn send_to(&self, _data: &[u8], _target: IpAddr) -> Result<(), String> {
+        Err("ICMP system sockets are only available on Unix".to_string())
+    }
+
+    fn recv_reply(&self, _timeout: Duration) -> Result<Option<IcmpReply>, String> {
+        Err("ICMP system sockets are only available on Unix".to_string())
     }
 }
 
@@ -548,8 +587,15 @@ pub fn target_socket_address(target: Ipv4Addr) -> SocketAddrV4 {
 }
 
 /// Resolves an interface name to its index, for diagnostics.
+#[cfg(unix)]
 pub fn interface_index(name: &str) -> Option<u32> {
     if_nametoindex(name).ok()
+}
+
+/// Interface-name lookup is not available off Unix.
+#[cfg(not(unix))]
+pub fn interface_index(_name: &str) -> Option<u32> {
+    None
 }
 
 #[cfg(test)]

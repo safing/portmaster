@@ -14,6 +14,13 @@
 //!   implemented with the same generations and limits.
 //! * `Exists` for UDP compares the bind address with `listens_any` (zero IP)
 //!   instead of Go's first-byte check.
+//!
+//! # Platform support
+//!
+//! Live socket/owner discovery is Linux-only because it reads `/proc`. The
+//! crate compiles on other platforms (including Windows), where the pure
+//! parsers still work on synthetic input but [`ProcFs`] has no live data to
+//! read and reports unknown process owners. See [`proc`] for details.
 
 pub mod packet;
 pub mod proc;

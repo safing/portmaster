@@ -20,6 +20,17 @@
 //! * Notifications are emitted as [`NotificationEvent`]s through an injected
 //!   [`NotificationSink`]. The caller (which owns the notification manager)
 //!   sends them; see [`notifications`].
+//!
+//! # Platform support
+//!
+//! The crate compiles on Windows. [`SystemEnvironment`] reads nameservers and
+//! gateways from PowerShell (`Get-NetIPConfiguration` / `Get-DnsClient`), the
+//! same commands Go uses. The remaining OS-facing sources are Unix-only:
+//! [`SystemInterfaces`] reports no interfaces because Go's
+//! `GetAdaptersAddresses` enumeration needs Windows-only unsafe FFI, and
+//! [`SystemIcmpSocket`] cannot be opened because Go's `SIO_RCVALL` raw socket
+//! setup likewise needs unsafe FFI. The injected sources and all
+//! parsing/status logic work with test data on every platform.
 
 use std::net::IpAddr;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
@@ -38,6 +49,7 @@ mod network_change;
 mod notifications;
 mod online_check;
 mod system;
+mod windows_env;
 
 pub use addresses::{AddressCache, LocalNetwork};
 pub use dbus::{
