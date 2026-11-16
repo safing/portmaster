@@ -195,7 +195,7 @@ impl Index {
 
     /// Initializes the index: parses versions, filters artifacts by platform
     /// and validates artifact filenames.
-    fn init(&mut self, platform: &str) -> Result<()> {
+    pub fn init(&mut self, platform: &str) -> Result<()> {
         if !self.version.is_empty() {
             let version = Version::parse(&self.version)
                 .map_err(|error| Error::InvalidVersion(self.version.clone(), error.to_string()))?;

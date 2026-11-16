@@ -9,8 +9,10 @@
 //! * Signature verification uses `jess` in Go. Until it is ported, callers pass
 //!   an [`IndexVerifier`] callback to [`Index::parse`]; without one the index is
 //!   accepted unsigned, like Go with a nil trust store.
-//! * The downloader is ported; the updater module (workers, events, upgrade
-//!   application) is not.
+//! * The downloader, index scan, upgrade application and the updater flow
+//!   (update check, notifications, auto-download/auto-apply, restart) are
+//!   ported. The module manager wiring stays with the core; [`Updater`] exposes
+//!   the resource-update event and its state manager.
 //! * Local index generation ([`generate_index_from_dir`]) uses a ported subset
 //!   of `gobwas/glob` ([`Glob`]); alternation patterns are rejected.
 //! * An empty artifact URL list serializes as `[]` instead of Go's `null`.
@@ -25,12 +27,18 @@ mod glob;
 mod index;
 mod index_scan;
 mod upgrade;
+mod updater;
 mod version;
 
 pub use config::{ConfigError, UpdateCommandConfig, UpdaterConfig};
 pub use glob::{Glob, GlobError};
 pub use index_scan::{generate_index_from_dir, sha256_of_file, IndexScanConfig, ScanError};
 pub use upgrade::{UpgradeError, Upgrader};
+pub use updater::{
+    index_file_path, Result as UpdateResult, UpdateError, Updater, CORRUPT_INSTALLATION_NOTIFICATION_ID,
+    NO_NEW_UPDATE_NOTIFICATION_ID, RESOURCE_UPDATE_EVENT, RESTART_REQUIRED_NOTIFICATION_ID,
+    UPDATE_AVAILABLE_NOTIFICATION_ID, UPDATE_FAILED_NOTIFICATION_ID, UPDATE_TASK_REPEAT_DURATION,
+};
 pub use downloader::{
     copy_and_check_sha256_sum, decompress, default_user_agent, Downloader, HttpClient,
     HttpsClient,
