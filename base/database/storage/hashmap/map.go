@@ -123,24 +123,16 @@ func (hm *HashMap) Query(q *query.Query, local, internal bool) (*iterator.Iterat
 }
 
 func (hm *HashMap) queryExecutor(queryIter *iterator.Iterator, q *query.Query, local, internal bool) {
-	hm.dbLock.RLock()
-	defer hm.dbLock.RUnlock()
+	// Collect the matching records under the lock, but feed them to the
+	// consumer only after releasing it, so that a slow consumer does not
+	// block writers (and, through a waiting writer, all other readers).
+	// Only the record pointers are held, the records are not copied.
+	matches := hm.queryMatches(q, local, internal)
 
 	var err error
 
 mapLoop:
-	for key, record := range hm.db {
-		record.Lock()
-		if !q.MatchesKey(key) ||
-			!q.MatchesRecord(record) ||
-			!record.Meta().CheckValidity() ||
-			!record.Meta().CheckPermission(local, internal) {
-
-			record.Unlock()
-			continue
-		}
-		record.Unlock()
-
+	for _, record := range matches {
 		select {
 		case <-queryIter.Done:
 			break mapLoop
@@ -213,4 +205,26 @@ func (hm *HashMap) MaintainRecordStates(ctx context.Context, purgeDeletedBefore 
 // Shutdown shuts down the database.
 func (hm *HashMap) Shutdown() error {
 	return nil
+}
+
+func (hm *HashMap) queryMatches(q *query.Query, local, internal bool) []record.Record {
+	hm.dbLock.RLock()
+	defer hm.dbLock.RUnlock()
+
+	var matches []record.Record
+	for key, r := range hm.db {
+		if !q.MatchesKey(key) {
+			continue
+		}
+
+		r.Lock()
+		if q.MatchesRecord(r) &&
+			r.Meta().CheckValidity() &&
+			r.Meta().CheckPermission(local, internal) {
+			matches = append(matches, r)
+		}
+		r.Unlock()
+	}
+
+	return matches
 }
