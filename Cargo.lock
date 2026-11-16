@@ -1399,6 +1399,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pm-api-client"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "pm-api",
+ "pm-database",
+ "pm-dsd",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-tungstenite 0.30.0",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "pm-apprise"
 version = "0.1.0"
 dependencies = [
