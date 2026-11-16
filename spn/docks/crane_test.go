@@ -17,8 +17,7 @@ import (
 	"github.com/safing/portmaster/spn/terminal"
 )
 
-func TestCraneCommunication(t *testing.T) {
-	t.Parallel()
+func TestCraneCommunication(t *testing.T) { //nolint:paralleltest // Modifies the global optimalMinLoadSize.
 
 	testCraneWithCounter(t, "plain-counter-load-100", false, 100, 1000)
 	testCraneWithCounter(t, "plain-counter-load-1000", false, 1000, 1000)

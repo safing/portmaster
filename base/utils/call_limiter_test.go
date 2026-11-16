@@ -16,6 +16,7 @@ func TestCallLimiter(t *testing.T) {
 	oa := NewCallLimiter2(pause)
 	executed := abool.New()
 	var testWg sync.WaitGroup
+	var inFlight atomic.Int32
 
 	// One execution should gobble up the whole batch.
 	// We are doing this without sleep in function, so dummy exec first to trigger first pause.
@@ -26,9 +27,14 @@ func TestCallLimiter(t *testing.T) {
 		for range 100 {
 			go func() {
 				oa.Do(func() {
-					if !executed.SetToIf(false, true) {
+					// Check for actual concurrent execution. Multiple sequential
+					// executions per batch are allowed, as goroutines might not
+					// all be started in time (eg. with the race detector).
+					if inFlight.Add(1) != 1 {
 						t.Errorf("concurrent execution!")
 					}
+					executed.Set()
+					inFlight.Add(-1)
 				})
 				testWg.Done()
 			}()

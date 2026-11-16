@@ -17,8 +17,7 @@ func init() {
 	}
 }
 
-func TestRNG(t *testing.T) {
-	t.Parallel()
+func TestRNG(t *testing.T) { //nolint:paralleltest // Modifies the global rngCipher.
 
 	key := make([]byte, 16)
 
