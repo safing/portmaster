@@ -1,0 +1,23 @@
+[package]
+name = "pm-xray"
+version = "0.1.0"
+edition.workspace = true
+description = "Xray subscription management, node discovery and process lifecycle for the Portmaster core"
+license.workspace = true
+
+[dependencies]
+base64.workspace = true
+pm-api = { path = "../pm-api" }
+pm-config = { path = "../pm-config" }
+pm-database = { path = "../pm-database" }
+pm-geoip = { path = "../pm-geoip" }
+pm-record = { path = "../pm-record" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+ureq = "3.5.2"
+
+[lints]
+workspace = true

@@ -1567,6 +1567,7 @@ dependencies = [
  "pm-status",
  "pm-sync",
  "pm-updates",
+ "pm-xray",
  "serde",
  "serde_json",
  "tokio",
@@ -2159,6 +2160,24 @@ dependencies = [
  "getrandom 0.4.3",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "pm-xray"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "pm-api",
+ "pm-config",
+ "pm-database",
+ "pm-geoip",
+ "pm-record",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "ureq",
 ]
 
 [[package]]
