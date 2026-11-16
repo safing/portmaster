@@ -244,9 +244,14 @@ fn debug_info(
         &platform_lines.iter().map(String::as_str).collect::<Vec<_>>(),
     );
 
-    // The Rust core uses tracing without an in-memory log ring yet; Go prints
-    // this section when no unexpected logs were recorded.
-    di.add_last_unexpected_logs(&[], "");
+    // Go's debug.Info.AddLastUnexpectedLogs pulls from log.GetLastUnexpectedLogs
+    // and appends a "CURRENT TIME" marker in the "060102 15:04:05.000" layout.
+    let last_logs = pm_log::get_last_unexpected_logs();
+    let current_time = format!(
+        "{} CURRENT TIME",
+        pm_log::Timestamp::now().format_go_current()
+    );
+    di.add_last_unexpected_logs(&last_logs, &current_time);
 
     let netenv = pm_netenv::shared();
     let status = netenv.online_status().to_string();
