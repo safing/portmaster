@@ -53,7 +53,11 @@ func (runner *RuntimeQueryRunner) get(keyOrPrefix string) ([]record.Record, erro
 	log.Infof("netquery: executing custom SQL query: %q", query)
 
 	var result []map[string]interface{}
-	if err := runner.db.Execute(context.Background(), query, orm.WithResult(&result)); err != nil {
+	// The query is arbitrary SQL taken from the record key, so run it as a
+	// transient statement: a persistent one would be cached on the pooled
+	// read connection, keyed by the SQL text, for the connection's lifetime.
+	err := runner.db.Execute(context.Background(), query, orm.WithResult(&result), orm.WithTransient())
+	if err != nil {
 		return nil, fmt.Errorf("failed to perform query %q: %w", query, err)
 	}
 
