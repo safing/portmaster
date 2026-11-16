@@ -131,6 +131,22 @@ async fn core_serves_api_and_database() {
     );
     assert!(service.custom_lists.lists().is_loaded());
 
+    // The intel updater and filter lists module are wired.
+    assert_eq!(service.intel_updater.config().name, "Portmaster Intel");
+    assert!(service.intel_updater.config().verify.is_some());
+    assert!(data_dir.join("intel").exists());
+    assert!(!service.filter_lists.is_loaded(), "no cache yet");
+    assert!(
+        service
+            .filter_lists_module
+            .states()
+            .export()
+            .states
+            .iter()
+            .any(|state| state.id == "filterlists:disabled"),
+        "initializing warning is shown"
+    );
+
     // The databases were created on disk.
     assert!(data_dir.join("databases/core/sqlite/db.sqlite").exists());
     assert!(!data_dir.join("databases/config").exists());

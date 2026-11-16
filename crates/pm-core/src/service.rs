@@ -40,6 +40,10 @@ pub struct Service {
     pub dns: Arc<crate::dns::Dns>,
     /// Custom filter list and its file watcher.
     pub custom_lists: Arc<pm_intel::customlists::CustomListService>,
+    /// Intel resource updater (`index.json` in the intel dir).
+    pub intel_updater: Arc<pm_updates::Updater>,
+    /// Filter lists module glue: cache loading, states and event handling.
+    pub filter_lists_module: Arc<pm_intel::FilterListsModule>,
     /// Subscribed in `new` so changes before `run` are not missed.
     profile_changes: Mutex<Option<tokio::sync::broadcast::Receiver<()>>>,
     listener: Mutex<Option<TcpListener>>,
@@ -100,6 +104,45 @@ impl Service {
         let filter_lists = Arc::new(pm_intel::FilterLists::new(pm_intel::cache_interface(
             &databases,
         )));
+
+        // Intel resource updater and the filter lists module.
+        let intel_updater = Arc::new(
+            pm_updates::Updater::new(
+                pm_updates::UpdaterConfig {
+                    name: "Portmaster Intel".to_string(),
+                    directory: data_dir.join("intel").to_string_lossy().into_owned(),
+                    download_directory: data_dir
+                        .join("download_intel")
+                        .to_string_lossy()
+                        .into_owned(),
+                    purge_directory: data_dir
+                        .join("upgrade_obsolete_intel")
+                        .to_string_lossy()
+                        .into_owned(),
+                    index_urls: vec!["https://updates.safing.io/intel.v3.json".to_string()],
+                    index_file: "index.json".to_string(),
+                    verify: Some(pm_jess::intel_trust_store()),
+                    auto_check: true,
+                    auto_download: true,
+                    auto_apply: true,
+                    needs_restart: false,
+                    notify: false,
+                    ..pm_updates::UpdaterConfig::default()
+                },
+                Arc::new(pm_updates::HttpsClient::new()),
+                env!("CARGO_PKG_VERSION"),
+                None,
+                None,
+            )
+            .map_err(|error| anyhow::anyhow!("create intel updater: {error}"))?,
+        );
+        let filter_lists_module = Arc::new(pm_intel::FilterListsModule::new(
+            Arc::clone(&filter_lists),
+            Arc::new(pm_mgr::StateMgr::new("FilterLists")),
+        ));
+        if let Err(error) = filter_lists_module.start() {
+            tracing::warn!(%error, "intel/filterlists: module start failed");
+        }
 
         // Configuration.
         let config = Config::new();
@@ -197,6 +240,8 @@ impl Service {
             profile_config,
             dns,
             custom_lists,
+            intel_updater,
+            filter_lists_module,
             profile_changes: Mutex::new(Some(profile_changes)),
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
@@ -259,6 +304,45 @@ impl Service {
             }
         });
 
+        // Intel updates: check every hour (first after 15 seconds, like Go),
+        // then apply the filter list files of the new index.
+        let intel_worker = {
+            let updater = Arc::clone(&self.intel_updater);
+            let module = Arc::clone(&self.filter_lists_module);
+            let lists = Arc::clone(&self.filter_lists);
+            tokio::spawn(async move {
+                let start = tokio::time::Instant::now() + Duration::from_secs(15);
+                let mut interval = tokio::time::interval_at(
+                    start,
+                    pm_updates::UPDATE_TASK_REPEAT_DURATION,
+                );
+                loop {
+                    interval.tick().await;
+                    let updater = Arc::clone(&updater);
+                    let module = Arc::clone(&module);
+                    let lists = Arc::clone(&lists);
+                    let result = tokio::task::spawn_blocking(move || {
+                        module.handle_resources_updated(|| {
+                            updater
+                                .update_check()
+                                .map_err(|error| error.to_string())?;
+                            apply_intel_update(&updater, &lists)
+                        })
+                    })
+                    .await;
+                    match result {
+                        Ok(Ok(())) => {}
+                        Ok(Err(error)) => {
+                            tracing::warn!(%error, "intel/filterlists: update failed")
+                        }
+                        Err(error) => {
+                            tracing::warn!(%error, "intel/filterlists: update task failed")
+                        }
+                    }
+                }
+            })
+        };
+
         // Reload the custom filter list on start and every minute, like the Go
         // module worker (which delays the first run by 20 seconds).
         let list_watcher = {
@@ -295,6 +379,7 @@ impl Service {
         };
 
         refresher.abort();
+        intel_worker.abort();
         list_watcher.abort();
         self.dns.shutdown().await;
         databases.shutdown()?;
@@ -381,6 +466,34 @@ fn register_options(config: &Config, options: &Options) -> anyhow::Result<()> {
     )?;
 
     Ok(())
+}
+
+/// Applies the filter list files of the current intel index, like Go
+/// `performUpdate` triggered by the resource update event.
+fn apply_intel_update(
+    updater: &pm_updates::Updater,
+    lists: &pm_intel::FilterLists,
+) -> std::result::Result<(), String> {
+    let index_file = updater
+        .get_file(pm_intel::LIST_INDEX_FILE)
+        .map_err(|error| format!("list index not found: {error}"))?;
+    let candidates: Vec<pm_updates::Artifact> = pm_intel::LIST_FILES
+        .iter()
+        .filter_map(|filename| updater.get_file(filename).ok())
+        .collect();
+    if candidates.is_empty() {
+        return Ok(());
+    }
+    pm_intel::update_filter_lists(
+        lists,
+        lists.cache(),
+        index_file.path(),
+        &index_file.version,
+        candidates,
+        pm_database::now(),
+    )
+    .map(|_| ())
+    .map_err(|error| error.to_string())
 }
 
 /// Waits for a shutdown signal (SIGINT/SIGTERM).
