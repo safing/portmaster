@@ -32,6 +32,15 @@ type networkIDFixture struct {
 	ID       string `json:"id"`
 }
 
+// networkTestConns are the connections of the fixture, shared with netquery.
+var networkTestConns []namedConn
+
+type namedConn struct {
+	name string
+	pid  int
+	conn *network.Connection
+}
+
 type networkVerdictFixture struct {
 	Value  int8   `json:"value"`
 	String string `json:"string"`
@@ -49,6 +58,7 @@ func genNetwork() {
 
 	var conns []networkConnFixture
 	add := func(name string, pid int, scope string, conn *network.Connection) {
+		networkTestConns = append(networkTestConns, namedConn{name, pid, conn})
 		dumped, err := dsd.Dump(conn, dsd.JSON)
 		if err != nil {
 			fail(err)

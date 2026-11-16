@@ -2,8 +2,10 @@
 //! (Go `orm.ToParamMap` with the UTC datetime encoder).
 
 use rusqlite::types::Value as Sql;
+use serde::ser::SerializeStruct;
+use serde::{Serialize, Serializer};
 
-use crate::timefmt::format_sqlite;
+use crate::timefmt::{format_rfc3339, format_sqlite};
 
 /// One row of the `connections` table.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -106,5 +108,55 @@ impl Conn {
         ];
         out.sort_by_key(|(k, _)| *k);
         out
+    }
+}
+
+/// The JSON form Go `json.Marshal` gives a `Conn` (no JSON tags, so Go field
+/// names and order); it is the payload of the runtime updates. Times are UTC.
+impl Serialize for Conn {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let extra: Option<serde_json::Value> = if self.extra_data.is_empty() {
+            None
+        } else {
+            Some(serde_json::from_slice(&self.extra_data).map_err(serde::ser::Error::custom)?)
+        };
+        let ended = self.ended.map(format_rfc3339);
+        let mut s = serializer.serialize_struct("Conn", 35)?;
+        s.serialize_field("ID", &self.id)?;
+        s.serialize_field("ProfileID", &self.profile_id)?;
+        s.serialize_field("Path", &self.path)?;
+        s.serialize_field("Type", &self.conn_type)?;
+        s.serialize_field("External", &self.external)?;
+        s.serialize_field("IPVersion", &self.ip_version)?;
+        s.serialize_field("IPProtocol", &self.ip_protocol)?;
+        s.serialize_field("LocalIP", &self.local_ip)?;
+        s.serialize_field("LocalPort", &self.local_port)?;
+        s.serialize_field("RemoteIP", &self.remote_ip)?;
+        s.serialize_field("RemotePort", &self.remote_port)?;
+        s.serialize_field("Domain", &self.domain)?;
+        s.serialize_field("Country", &self.country)?;
+        s.serialize_field("ASN", &self.asn)?;
+        s.serialize_field("ASOwner", &self.as_owner)?;
+        s.serialize_field("Latitude", &self.latitude)?;
+        s.serialize_field("Longitude", &self.longitude)?;
+        s.serialize_field("Scope", &self.scope)?;
+        s.serialize_field("WorstVerdict", &self.worst_verdict)?;
+        s.serialize_field("ActiveVerdict", &self.active_verdict)?;
+        s.serialize_field("FirewallVerdict", &self.firewall_verdict)?;
+        s.serialize_field("Started", &format_rfc3339(self.started))?;
+        s.serialize_field("Ended", &ended)?;
+        s.serialize_field("Tunneled", &self.tunneled)?;
+        s.serialize_field("Encrypted", &self.encrypted)?;
+        s.serialize_field("Internal", &self.internal)?;
+        s.serialize_field("Direction", &self.direction)?;
+        s.serialize_field("ExtraData", &extra)?;
+        s.serialize_field("Allowed", &self.allowed)?;
+        s.serialize_field("ProfileRevision", &self.profile_revision)?;
+        s.serialize_field("ExitNode", &self.exit_node)?;
+        s.serialize_field("BytesReceived", &self.bytes_received)?;
+        s.serialize_field("BytesSent", &self.bytes_sent)?;
+        s.serialize_field("Active", &self.active)?;
+        s.serialize_field("ProfileName", &self.profile_name)?;
+        s.end()
     }
 }

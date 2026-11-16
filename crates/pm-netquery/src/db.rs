@@ -303,6 +303,12 @@ impl Database {
         Ok(())
     }
 
+    /// Reclaims free pages of the history database (Go `VacuumHistory`).
+    pub fn vacuum_history(&self) -> Result<(), DbError> {
+        self.lock().execute_batch("VACUUM history")?;
+        Ok(())
+    }
+
     /// Deletes history outside each profile's retention (Go `CleanupHistory`).
     /// `retention_days` maps a stored profile ID (`local/<id>`) to its
     /// `history/keep` days; 0 disables cleanup for that profile. Errors of

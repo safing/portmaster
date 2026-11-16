@@ -5,15 +5,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
-	_ "unsafe" // Required for go:linkname.
+	"unsafe" // Also required for go:linkname.
 
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 
+	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/service/netquery"
+	"github.com/safing/portmaster/service/network"
+	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/netquery/orm"
 )
 
@@ -64,6 +68,60 @@ var netqueryRequests = []string{
 	`{"query":{"started":{"$ge":"not-a-time"}}}`,
 }
 
+// netqueryConvert is the unexported network.Connection to Conn conversion.
+//
+//go:linkname netqueryConvert github.com/safing/portmaster/service/netquery.convertConnection
+func netqueryConvert(conn *network.Connection) (*netquery.Conn, error)
+
+func setUnexported(ptr any, field string, value any) {
+	f := reflect.ValueOf(ptr).Elem().FieldByName(field)
+	reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem().Set(reflect.ValueOf(value))
+}
+
+// genNetqueryConvert runs the connections of the network fixture through
+// convertConnection and marshals the result like the runtime push does.
+func genNetqueryConvert() []any {
+	cases := append([]namedConn{}, networkTestConns...)
+	cases = append(cases, namedConn{"no_entity_inbound", 7, &network.Connection{
+		ID:      "no-entity",
+		Inbound: true,
+		Started: 1700000600,
+		ProcessContext: network.ProcessContext{
+			PID: 7, Source: "special", Profile: "system", ProfileName: "System",
+		},
+	}}, namedConn{"empty_entity_ended", 8, &network.Connection{
+		ID:      "empty-entity",
+		Type:    network.IPConnection,
+		Entity:  &intel.Entity{},
+		Started: 1700000700,
+		Ended:   1700000800,
+	}})
+
+	var out []any
+	for _, c := range cases {
+		key := fmt.Sprintf("%d-1700000000", c.pid)
+		proc := &process.Process{}
+		setUnexported(proc, "processKey", key)
+		setUnexported(c.conn, "process", proc)
+
+		model, err := netqueryConvert(c.conn)
+		if err != nil {
+			fail(err)
+		}
+		blob, err := json.Marshal(model)
+		if err != nil {
+			fail(err)
+		}
+		out = append(out, map[string]any{
+			"name":        c.name,
+			"process_key": key,
+			"json":        string(blob),
+			"extra_data":  string(model.ExtraData),
+		})
+	}
+	return out
+}
+
 func genNetquery() {
 	schema, err := orm.GenerateTableSchema("connections", netquery.Conn{})
 	if err != nil {
@@ -99,6 +157,7 @@ func genNetquery() {
 		"create_history": schema.CreateStatement("history", false),
 		"cases":          cases,
 		"rows":           genNetqueryResults(),
+		"converted":      genNetqueryConvert(),
 	})
 }
 
