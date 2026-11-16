@@ -107,6 +107,11 @@ func (table *udpTable) updateTables() (binds []*socket.BindInfo) {
 func CleanUDPStates(_ context.Context) {
 	now := time.Now().UTC()
 
+	// Update the dual-stack table before cleaning the UDP4 table, as the UDP4
+	// table also holds the states of dual-stack sockets.
+	if udp4Table.dualStack != nil {
+		udp4Table.dualStack.updateTables()
+	}
 	udp4Table.updateTables()
 	udp4Table.cleanStates(now)
 
@@ -176,6 +181,13 @@ func (table *udpTable) cleanStates(now time.Time) {
 		bindKeys[makeUDPStateKey(socketInfo.Local)] = struct{}{}
 	}
 	table.lock.RUnlock()
+	// Lookups store the states of dual-stack sockets in this table, so the
+	// sockets of the dual-stack table are active too.
+	if table.dualStack != nil {
+		for _, socketInfo := range table.dualStack.getCurrentTables() {
+			bindKeys[makeUDPStateKey(socketInfo.Local)] = struct{}{}
+		}
+	}
 
 	table.statesLock.Lock()
 	defer table.statesLock.Unlock()
