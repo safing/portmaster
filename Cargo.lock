@@ -1439,6 +1439,7 @@ dependencies = [
  "pm-apprise",
  "pm-config",
  "pm-database",
+ "pm-debug",
  "pm-dsd",
  "pm-endpoints",
  "pm-firewall",
@@ -1485,6 +1486,10 @@ dependencies = [
  "tokio",
  "tracing",
 ]
+
+[[package]]
+name = "pm-debug"
+version = "0.1.0"
 
 [[package]]
 name = "pm-dsd"

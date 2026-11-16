@@ -10,6 +10,7 @@ members = [
     "crates/pm-config",
     "crates/pm-api",
     "crates/pm-apprise",
+    "crates/pm-debug",
     "crates/pm-updatemgr",
     "crates/pm-core",
     "crates/pm-netstate",

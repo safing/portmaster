@@ -83,7 +83,10 @@ pub fn register_api(
             "Returns network debugging information, similar to debug/info, but with system status data.",
         )
         .with_read(PERMIT_ANYONE)
-        .with_data(move |_| Ok(debug_info(&netquery_db).into_bytes())),
+        .with_data(move |request| {
+            let style = request.query_param("style").unwrap_or_default();
+            Ok(debug_info(&netquery_db, style).into_bytes())
+        }),
     )?;
 
     Ok(())
@@ -197,28 +200,112 @@ fn now() -> i64 {
         .unwrap_or(0)
 }
 
-/// Builds the debug output, similar to Go `debugInfo`.
-fn debug_info(db: &pm_netquery::Database) -> String {
-    let mut out = String::new();
-    out.push_str("# Portmaster Debug Information\n\n");
-    out.push_str(&format!("Version: {}\n", crate::cli::version()));
-    out.push_str(&format!("Platform: {}\n", std::env::consts::OS));
-    out.push_str(&format!("Online status: {}\n", pm_netenv::shared().online_status()));
-    match db.count_rows() {
-        Ok(count) => out.push_str(&format!("Live connections: {count}\n")),
-        Err(error) => out.push_str(&format!("Live connections: unavailable ({error})\n")),
+/// Builds the debug output, like Go `service/core/api.go::debugInfo`.
+///
+/// Sections use Go's `base/utils/debug` layout via `pm_debug`. Go-specific
+/// data that has no Rust equivalent (goroutine stacks, worker info, module
+/// states) is represented by the sections that are available here.
+fn debug_info(db: &pm_netquery::Database, style: &str) -> String {
+    use pm_debug::{ADD_CONTENT_LINE_BREAKS, USE_CODE_SECTION};
+
+    let mut di = pm_debug::Info::new().with_style(style);
+    let version = crate::cli::version();
+    di.add_version_info(&version, &format!("Portmaster Core (Rust)\n{version}\n"));
+
+    // Go uses gopsutil host.Info here; read the equivalent Linux sources.
+    let (platform, platform_version, pretty_name) = os_release();
+    let kernel = std::fs::read_to_string("/proc/sys/kernel/osrelease")
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    let system = if pretty_name.is_empty() {
+        platform.clone()
+    } else {
+        pretty_name
+    };
+    let family = platform_family(&platform);
+    let section_name = format!("Platform: {platform} {platform_version}");
+    let platform_lines = [
+        format!("System: {system} {} ({family}) {platform_version}", std::env::consts::OS),
+        format!("Kernel: {kernel} {}", std::env::consts::ARCH),
+    ];
+    di.add_section(
+        &section_name,
+        USE_CODE_SECTION | ADD_CONTENT_LINE_BREAKS,
+        &platform_lines.iter().map(String::as_str).collect::<Vec<_>>(),
+    );
+
+    // The Rust core uses tracing without an in-memory log ring yet; Go prints
+    // this section when no unexpected logs were recorded.
+    di.add_last_unexpected_logs(&[], "");
+
+    let netenv = pm_netenv::shared();
+    let status = netenv.online_status().to_string();
+    let portal = netenv
+        .captive_portal()
+        .map(|portal| portal.url)
+        .unwrap_or_default();
+    let status_lines = [
+        format!("OnlineStatus:          {status}"),
+        format!("CaptivePortal:         {portal}"),
+    ];
+    di.add_section(
+        &format!("Status: {status}"),
+        USE_CODE_SECTION | ADD_CONTENT_LINE_BREAKS,
+        &status_lines.iter().map(String::as_str).collect::<Vec<_>>(),
+    );
+
+    let connections = match db.count_rows() {
+        Ok(count) => format!("Connections: {count}"),
+        Err(error) => format!("Connections: unavailable ({error})"),
+    };
+    match pm_netenv::network().addresses.get_assigned_addresses() {
+        Ok((ipv4, ipv6)) => di.add_section(
+            "Network Addresses",
+            USE_CODE_SECTION | ADD_CONTENT_LINE_BREAKS,
+            &[
+                &connections,
+                &format!("IPv4 addresses: {}", ipv4.len()),
+                &format!("IPv6 addresses: {}", ipv6.len()),
+            ],
+        ),
+        Err(_) => di.add_section("Network Addresses", USE_CODE_SECTION, &[&connections]),
     }
-    if let Ok((ipv4, ipv6)) = pm_netenv::network()
-        .addresses
-        .get_assigned_addresses()
-    {
-        out.push_str(&format!(
-            "\nAssigned addresses: {} IPv4, {} IPv6\n",
-            ipv4.len(),
-            ipv6.len()
-        ));
+
+    di.into_string()
+}
+
+/// Returns (ID, VERSION_ID, PRETTY_NAME) from `/etc/os-release`.
+fn os_release() -> (String, String, String) {
+    let Ok(contents) = std::fs::read_to_string("/etc/os-release") else {
+        return ("unknown".into(), String::new(), String::new());
+    };
+    let mut values = std::collections::HashMap::new();
+    for line in contents.lines() {
+        if let Some((key, value)) = line.split_once('=') {
+            values.insert(
+                key,
+                value.trim().trim_matches('"').replace("\\\"", "\""),
+            );
+        }
     }
-    out
+    (
+        values.get("ID").cloned().unwrap_or_else(|| "unknown".into()),
+        values.get("VERSION_ID").cloned().unwrap_or_default(),
+        values.get("PRETTY_NAME").cloned().unwrap_or_default(),
+    )
+}
+
+/// Rough equivalent of gopsutil's `PlatformFamily`.
+fn platform_family(platform: &str) -> &'static str {
+    match platform {
+        "ubuntu" | "debian" | "linuxmint" | "raspbian" => "debian",
+        "fedora" | "rhel" | "centos" | "rocky" | "almalinux" => "rhel",
+        "arch" | "manjaro" => "arch",
+        "opensuse" | "sles" => "suse",
+        "alpine" => "alpine",
+        _ => "unknown",
+    }
 }
 
 #[cfg(test)]

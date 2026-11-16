@@ -183,7 +183,9 @@ async fn core_serves_api_and_database() {
 
     let response = http_get(address, "/api/v1/debug/core", "").await;
     assert!(response.starts_with("HTTP/1.1 200"), "{response}");
-    assert!(response.contains("Portmaster Debug Information"), "{response}");
+    assert!(response.contains("**Version portmaster-core-rs"), "{response}");
+    assert!(response.contains("**Status:"), "{response}");
+    assert!(response.contains("OnlineStatus:"), "{response}");
 
     // app/profile reports that the auth token has no process identity yet.
     let response = http_get(address, "/api/v1/app/profile", "").await;

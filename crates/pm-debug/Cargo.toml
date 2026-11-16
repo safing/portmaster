@@ -1,0 +1,10 @@
+[package]
+name = "pm-debug"
+version = "0.1.0"
+edition.workspace = true
+description = "Go-compatible debug information sections for Portmaster"
+license.workspace = true
+
+[dependencies]
+[lints]
+workspace = true
