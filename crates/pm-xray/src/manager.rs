@@ -10,7 +10,7 @@ use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::thread;
 
-use crate::config::{write_config, InboundProtocol};
+use crate::config::{write_config_with_stats, InboundProtocol};
 use crate::model::{ProcessState, XrayNode, XrayStatus};
 use crate::{Error, Result};
 
@@ -127,15 +127,27 @@ impl ManagerState {
 pub struct XrayManager {
     binary: String,
     data_dir: PathBuf,
+    /// Port of the gRPC API inbound added to generated configs; 0 disables it.
+    stats_port: u16,
     inner: Mutex<ManagerState>,
     adapter: Box<dyn ProcessAdapter>,
 }
 
 impl XrayManager {
     pub fn new(binary: String, data_dir: PathBuf, adapter: Box<dyn ProcessAdapter>) -> XrayManager {
+        Self::with_stats_port(binary, data_dir, adapter, 0)
+    }
+
+    pub fn with_stats_port(
+        binary: String,
+        data_dir: PathBuf,
+        adapter: Box<dyn ProcessAdapter>,
+        stats_port: u16,
+    ) -> XrayManager {
         XrayManager {
             binary,
             data_dir,
+            stats_port,
             inner: Mutex::new(ManagerState {
                 state: ProcessState::Stopped,
                 node: None,
@@ -151,7 +163,15 @@ impl XrayManager {
 
     /// Creates a manager using the real process adapter.
     pub fn system(binary: String, data_dir: PathBuf) -> XrayManager {
-        Self::new(binary, data_dir, Box::new(SystemProcessAdapter))
+        Self::system_with_stats_port(binary, data_dir, 0)
+    }
+
+    pub fn system_with_stats_port(
+        binary: String,
+        data_dir: PathBuf,
+        stats_port: u16,
+    ) -> XrayManager {
+        Self::with_stats_port(binary, data_dir, Box::new(SystemProcessAdapter), stats_port)
     }
 
     pub fn binary(&self) -> &str {
@@ -169,7 +189,13 @@ impl XrayManager {
                 "xray binary is not configured or was not found".into(),
             ));
         }
-        let config = write_config(&self.data_dir, node, inbound_port, inbound)?;
+        let config = write_config_with_stats(
+            &self.data_dir,
+            node,
+            inbound_port,
+            inbound,
+            self.stats_port,
+        )?;
         let mut state = self.inner.lock().expect("lock poisoned");
         state.stop_child();
         state.state = ProcessState::Starting;
@@ -255,6 +281,7 @@ impl XrayManager {
             connected,
             country,
             since: None,
+            traffic: None,
         }
     }
 

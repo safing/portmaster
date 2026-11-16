@@ -6,7 +6,10 @@ use pm_api::{Api, Request, PERMIT_ADMIN, PERMIT_USER};
 use pm_config::Config;
 use pm_database::{Databases, MemoryStorage};
 use pm_geoip::GeoIp;
-use pm_xray::{AddSubscriptionRequest, ConnectRequest, ProcessAdapter, Xray, XRAY_DB};
+use pm_xray::{
+    AddSubscriptionRequest, ConnectRequest, InboundProtocol, ProcessAdapter, StatsError,
+    StatsService, TrafficCounter, Xray, XrayNode, XRAY_DB,
+};
 
 struct NoopAdapter;
 impl ProcessAdapter for NoopAdapter {
@@ -19,7 +22,45 @@ impl ProcessAdapter for NoopAdapter {
     }
 }
 
+struct FakeChild;
+impl pm_xray::ChildHandle for FakeChild {
+    fn id(&self) -> u32 {
+        42
+    }
+    fn try_wait(&mut self) -> Result<Option<i32>, String> {
+        Ok(None)
+    }
+    fn kill(&mut self) -> Result<(), String> {
+        Ok(())
+    }
+    fn wait(&mut self) -> Result<i32, String> {
+        Ok(0)
+    }
+}
+
+struct RunningAdapter;
+impl ProcessAdapter for RunningAdapter {
+    fn spawn(
+        &self,
+        _binary: &str,
+        _config: &std::path::Path,
+    ) -> Result<Box<dyn pm_xray::ChildHandle>, String> {
+        Ok(Box::new(FakeChild))
+    }
+}
+
 fn env() -> (Arc<Api>, Arc<Xray>) {
+    env_with_stats(Arc::new(pm_xray::NoopTrafficStats))
+}
+
+fn env_with_stats(stats: Arc<dyn StatsService>) -> (Arc<Api>, Arc<Xray>) {
+    env_with_stats_and_adapter(stats, Box::new(NoopAdapter))
+}
+
+fn env_with_stats_and_adapter(
+    stats: Arc<dyn StatsService>,
+    adapter: Box<dyn ProcessAdapter>,
+) -> (Arc<Api>, Arc<Xray>) {
     let config = Arc::new(Config::new());
     let databases = Arc::new(Databases::without_disk());
     databases.register_injected(XRAY_DB, "test").unwrap();
@@ -27,13 +68,14 @@ fn env() -> (Arc<Api>, Arc<Xray>) {
         .inject(XRAY_DB, Box::new(MemoryStorage::new()))
         .unwrap();
     let dir = std::env::temp_dir().join(format!("pm-xray-api-test-{}", std::process::id()));
-    let xray = Xray::with_adapter(
+    let xray = Xray::with_adapter_and_stats(
         &config,
         &databases,
         Arc::new(GeoIp::new()),
         dir,
         "/opt/bin/xray-rust".into(),
-        Box::new(NoopAdapter),
+        adapter,
+        stats,
     );
     let api = Api::new("127.0.0.1:0");
     api.set_dev_mode(true);
@@ -63,6 +105,7 @@ fn endpoints_have_expected_paths_and_permissions() {
         ("xray/connect", pm_api::NOT_SUPPORTED, PERMIT_ADMIN),
         ("xray/disconnect", pm_api::NOT_SUPPORTED, PERMIT_ADMIN),
         ("xray/status", PERMIT_USER, pm_api::NOT_SUPPORTED),
+        ("xray/stats", PERMIT_USER, pm_api::NOT_SUPPORTED),
     ];
     for (path, read, write) in expected {
         let endpoint = api.endpoint(path).unwrap_or_else(|| panic!("missing {path}"));
@@ -129,4 +172,85 @@ fn subscription_crud_and_status_over_api() {
         br#"{"node_id":"missing"}"#.to_vec(),
     ));
     assert_eq!(response.status, 404, "{}", response.body_string());
+}
+
+#[derive(Default)]
+struct FakeStats;
+
+impl StatsService for FakeStats {
+    fn get_stats(&self, name: &str) -> Result<TrafficCounter, StatsError> {
+        Ok(TrafficCounter {
+            name: name.to_owned(),
+            value: 11,
+        })
+    }
+
+    fn query_stats(&self, _pattern: &str) -> Result<Vec<TrafficCounter>, StatsError> {
+        Ok(vec![
+            TrafficCounter {
+                name: "outbound>>>proxy>>>traffic>>>uplink".into(),
+                value: 11,
+            },
+            TrafficCounter {
+                name: "outbound>>>proxy>>>traffic>>>downlink".into(),
+                value: 22,
+            },
+        ])
+    }
+}
+
+#[test]
+fn status_and_stats_endpoints_expose_traffic() {
+    let (api, xray) = env_with_stats_and_adapter(Arc::new(FakeStats), Box::new(RunningAdapter));
+    let node = XrayNode {
+        id: "node-1".into(),
+        subscription_id: "sub-1".into(),
+        name: "Test".into(),
+        country_code: String::new(),
+        country_name: String::new(),
+        protocol: pm_xray::Protocol::Vless,
+        address: "vless.example.com".into(),
+        port: 443,
+        raw_config: "vless://00010203-0405-0607-0809-0a0b0c0d0e0f@vless.example.com:443"
+            .into(),
+    };
+    xray.manager
+        .connect(&node, 1080, InboundProtocol::Socks)
+        .unwrap();
+
+    let response = api.handle(request("GET", "/api/v1/xray/status", "", Vec::new()));
+    assert_eq!(response.status, 200, "{}", response.body_string());
+    let status: serde_json::Value = serde_json::from_slice(&response.body).unwrap();
+    assert_eq!(status["traffic"]["uplink"], 11);
+    assert_eq!(status["traffic"]["downlink"], 22);
+
+    let response = api.handle(request("GET", "/api/v1/xray/stats", "name=proxy", Vec::new()));
+    assert_eq!(response.status, 200, "{}", response.body_string());
+    let stats: serde_json::Value = serde_json::from_slice(&response.body).unwrap();
+    assert_eq!(stats["available"], true);
+    assert_eq!(stats["name"], "proxy");
+    assert_eq!(stats["node"]["uplink"], 11);
+    assert_eq!(stats["node"]["downlink"], 22);
+    assert_eq!(stats["total"]["uplink"], 11);
+    assert_eq!(stats["total"]["downlink"], 22);
+    assert_eq!(stats["counters"].as_array().unwrap().len(), 2);
+    assert!(stats["error"].is_null());
+}
+
+#[test]
+fn stats_endpoint_reports_noop_fallback() {
+    let (api, _) = env();
+    let response = api.handle(request("GET", "/api/v1/xray/stats", "", Vec::new()));
+    assert_eq!(response.status, 200, "{}", response.body_string());
+    let stats: serde_json::Value = serde_json::from_slice(&response.body).unwrap();
+    assert_eq!(stats["available"], false);
+    assert_eq!(stats["total"]["uplink"], 0);
+    assert_eq!(stats["total"]["downlink"], 0);
+
+    let status: serde_json::Value = serde_json::from_slice(
+        &api.handle(request("GET", "/api/v1/xray/status", "", Vec::new()))
+            .body,
+    )
+    .unwrap();
+    assert!(status.get("traffic").is_none());
 }

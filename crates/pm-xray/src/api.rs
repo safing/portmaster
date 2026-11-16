@@ -167,11 +167,63 @@ pub fn register_api(xray: &Arc<Xray>, api: &Api) -> pm_api::Result<()> {
         Endpoint::new(
             "xray/status",
             "Xray Status",
-            "Returns the state of the Xray process and its selected node.",
+            "Returns the state of the Xray process, its selected node and live traffic counters.",
         )
         .with_read(PERMIT_USER)
         .with_struct(move |_| {
-            serde_json::to_value(status.manager.status()).map_err(pm_api::ApiError::Json)
+            serde_json::to_value(status.status()).map_err(pm_api::ApiError::Json)
+        }),
+    )?;
+
+    let stats = Arc::clone(xray);
+    api.register_endpoint(
+        Endpoint::new(
+            "xray/stats",
+            "Xray Traffic Statistics",
+            "Returns traffic counters from Xray's gRPC StatsService (GetStats/QueryStats).",
+        )
+        .with_read(PERMIT_USER)
+        .with_struct(move |request| {
+            let name = request.query_param("name").unwrap_or("proxy");
+            let pattern = request.query_param("pattern").unwrap_or(">>>traffic>>>");
+            let available = stats.stats.available();
+            let mut counters = Vec::new();
+            let mut error = serde_json::Value::Null;
+            match stats.stats.query_stats(pattern) {
+                Ok(list) => counters = list,
+                Err(failure) => error = json!(failure.to_string()),
+            }
+            let node = match stats.stats.traffic(name) {
+                Ok(snapshot) => {
+                    json!({ "uplink": snapshot.uplink, "downlink": snapshot.downlink })
+                }
+                Err(failure) => {
+                    if error.is_null() {
+                        error = json!(failure);
+                    }
+                    serde_json::Value::Null
+                }
+            };
+            // Sum the same counter set for a total view; non-positive values
+            // (e.g. reset counters) are ignored.
+            let mut uplink = 0u64;
+            let mut downlink = 0u64;
+            for counter in &counters {
+                if counter.name.ends_with(">>>uplink") {
+                    uplink = uplink.saturating_add(counter.value.max(0) as u64);
+                } else if counter.name.ends_with(">>>downlink") {
+                    downlink = downlink.saturating_add(counter.value.max(0) as u64);
+                }
+            }
+            serde_json::to_value(json!({
+                "available": available,
+                "name": name,
+                "node": node,
+                "total": { "uplink": uplink, "downlink": downlink },
+                "counters": counters,
+                "error": error,
+            }))
+            .map_err(pm_api::ApiError::Json)
         }),
     )?;
 
