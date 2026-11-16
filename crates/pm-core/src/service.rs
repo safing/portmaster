@@ -297,6 +297,32 @@ impl Service {
         pm_api::ui::register_ui_endpoints(&api)
             .map_err(|error| anyhow::anyhow!("register ui api: {error}"))?;
 
+        // The remaining core endpoints: shutdown and directory map.
+        let shutdown_token = service_restart_token.clone();
+        api.register_endpoint(
+            pm_api::Endpoint::new("core/shutdown", "Shut Down Portmaster", "Shut down the Portmaster Core Service and all UI components.")
+                .with_write(pm_api::PERMIT_SELF)
+                .with_action(move |_| {
+                    shutdown_token.cancel();
+                    Ok("shutdown initiated".to_string())
+                }),
+        )
+        .map_err(|error| anyhow::anyhow!("register shutdown api: {error}"))?;
+
+        let bin_dir = options.bin_dir.to_string_lossy().into_owned();
+        let data_dir_str = data_dir.to_string_lossy().into_owned();
+        let log_dir = options.log_dir.to_string_lossy().into_owned();
+        api.register_endpoint(
+            pm_api::Endpoint::new("core/paths", "Get Directories", "Returns the directories used by Portmaster: binaries (bin), variable data (data) and log files (logs).")
+                .with_read(pm_api::PERMIT_USER)
+                .with_struct(move |_| Ok(json!({
+                    "bin": bin_dir,
+                    "data": data_dir_str,
+                    "logs": log_dir,
+                }))),
+        )
+        .map_err(|error| anyhow::anyhow!("register paths api: {error}"))?;
+
         // Restart endpoint; a restart is a graceful stop for the supervisor.
         let api_restart = service_restart_token.clone();
         api.register_endpoint(
@@ -902,6 +928,29 @@ fn register_update_endpoints(
         }),
     )
     .map_err(|error| anyhow::anyhow!("register updates/check: {error}"))?;
+
+    let get_binary = Arc::clone(&binary_updater);
+    let get_intel = Arc::clone(&intel_updater);
+    api.register_endpoint(
+        pm_api::Endpoint::new(
+            "updates/get/{artifact_path}/{artifact_name}",
+            "Get Resource",
+            "Returns the requested resource from the update system",
+        )
+        .with_read(pm_api::PERMIT_USER)
+        .with_data(move |request| {
+            let name = request.param("artifact_name").unwrap_or_default();
+            if name.is_empty() {
+                return Err(pm_api::ApiError::Message("no resource specified".to_string()).with_status(400));
+            }
+            let artifact = get_binary.get_file(name)
+                .or_else(|_| get_intel.get_file(name))
+                .map_err(|error| pm_api::ApiError::Message(error.to_string()).with_status(404))?;
+            std::fs::read(artifact.path())
+                .map_err(|error| pm_api::ApiError::Message(error.to_string()).with_status(500))
+        }),
+    )
+    .map_err(|error| anyhow::anyhow!("register updates/get: {error}"))?;
 
     api.register_endpoint(
         pm_api::Endpoint::new("updates/apply", "Trigger updates apply event", "")

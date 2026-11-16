@@ -167,6 +167,21 @@ async fn core_serves_api_and_database() {
     assert!(service.api.endpoint("updates/apply").is_some());
     assert!(service.api.endpoint("netquery/query").is_some());
     assert!(service.api.endpoint("netquery/query/batch").is_some());
+    assert!(service.api.endpoint("core/shutdown").is_some());
+    assert!(service.api.endpoint("updates/get/{artifact_path}/{artifact_name}").is_some());
+
+    // Directory map from core/paths.
+    let response = http_get(address, "/api/v1/core/paths", "").await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    let body = response.split("\r\n\r\n").nth(1).unwrap();
+    let paths: serde_json::Value = serde_json::from_str(body).unwrap();
+    assert_eq!(paths["bin"].as_str(), Some(data_dir.join("bin").to_str().unwrap()));
+    assert_eq!(paths["data"].as_str(), Some(data_dir.to_str().unwrap()));
+    assert_eq!(paths["logs"].as_str(), Some(data_dir.join("logs").to_str().unwrap()));
+
+    // Unknown update artifacts are reported as not found.
+    let response = http_get(address, "/api/v1/updates/get/bin/missing", "").await;
+    assert!(response.starts_with("HTTP/1.1 404"), "{response}");
 
     // The split tunnel interface environment is backed by netenv.
     use pm_splittun::InterfaceEnv;
