@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use pm_intel::{Entity, FilterLists, StaticLocations};
-use pm_network::Connection;
+use pm_network::{protocol, Connection};
 use pm_splittun::{
     BestPhysicalDefaultInterfaces, InterfaceEnv, InterfaceInfo, Proxies, RequestQueue,
 };
@@ -69,6 +69,7 @@ fn connection(local: std::net::SocketAddr, dest: std::net::SocketAddr) -> Connec
         ip_version: if local.is_ipv4() { 4 } else { 6 },
         local_ip: Some(local.ip()),
         local_port: local.port(),
+        ip_protocol: protocol::TCP,
         entity: Some(entity),
         ..Connection::default()
     }
@@ -128,6 +129,22 @@ async fn tcp_proxy_serves_a_pending_request() {
     assert_eq!(&response, b"hello split tunnel");
 
     assert!(queue.is_empty(), "request was consumed");
+
+    // The proxy's own egress connection to the destination is recognized while
+    // the session is alive.
+    let egress = connection(client_local, echo_addr);
+    assert!(proxies.is_proxied_connection_info(&egress));
+    drop(stream);
+    let mut released = false;
+    for _ in 0..100 {
+        if !proxies.is_proxied_connection_info(&egress) {
+            released = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(released, "egress is untracked when the session ends");
+
     proxies.stop();
     assert!(!proxies.is_ready());
 }
@@ -172,6 +189,12 @@ async fn udp_proxy_serves_a_pending_request() {
     assert_eq!(&buffer[..read], b"ping");
 
     assert!(queue.is_empty(), "request was consumed");
+
+    // UDP sessions track their destination until the idle timeout.
+    let mut egress = connection(client_local, echo_addr);
+    egress.ip_protocol = protocol::UDP;
+    assert!(proxies.is_proxied_connection_info(&egress));
+
     proxies.stop();
 }
 

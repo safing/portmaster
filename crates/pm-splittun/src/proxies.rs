@@ -11,7 +11,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use pm_network::Connection;
+use pm_network::{protocol, Connection};
 use pm_proxy::decider::Decision;
 use pm_proxy::{
     SharedDecider, TcpProxy, TcpProxyConfig, UdpProxy, UdpProxyConfig,
@@ -225,10 +225,43 @@ impl Proxies {
     /// Whether the connection is the proxy's own egress connection of an
     /// active session, like Go `IsProxiedConnectionInfo`.
     ///
-    /// The egress session cache of the Go proxy is not ported yet, so this
-    /// always returns `false`.
-    pub fn is_proxied_connection_info(&self, _conn: &Connection) -> bool {
-        false
+    /// Like Go, TCP checks both proxies because a connection to an upstream
+    /// proxy server may use the other IP version.
+    pub fn is_proxied_connection_info(&self, conn: &Connection) -> bool {
+        let Some(entity) = &conn.entity else {
+            return false;
+        };
+        let Some(ip) = entity.ip else {
+            return false;
+        };
+        let port = entity.port;
+
+        match conn.ip_protocol {
+            protocol::TCP => {
+                let tcp4 = self.tcp4.lock().unwrap_or_else(|error| error.into_inner());
+                if tcp4
+                    .as_ref()
+                    .is_some_and(|proxy| proxy.has_proxied_egress(ip, port))
+                {
+                    return true;
+                }
+                drop(tcp4);
+                self.tcp6
+                    .lock()
+                    .unwrap_or_else(|error| error.into_inner())
+                    .as_ref()
+                    .is_some_and(|proxy| proxy.has_proxied_egress(ip, port))
+            }
+            protocol::UDP => {
+                let proxy = match conn.ip_version {
+                    4 => self.udp4.lock().unwrap_or_else(|error| error.into_inner()).clone(),
+                    6 => self.udp6.lock().unwrap_or_else(|error| error.into_inner()).clone(),
+                    _ => return false,
+                };
+                proxy.is_some_and(|proxy| proxy.has_proxied_egress(ip, port))
+            }
+            _ => false,
+        }
     }
 
     /// Returns the address the IPv4 TCP proxy listens on.

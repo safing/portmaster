@@ -8,6 +8,7 @@ use tokio::sync::watch;
 use tracing::{debug, error, info, warn};
 
 use crate::decider::SharedDecider;
+use crate::egress::{EgressCache, EgressGuard};
 use crate::metrics::ProxyMetrics;
 
 pub struct TcpProxyConfig {
@@ -31,6 +32,7 @@ pub struct TcpProxy {
     decider: SharedDecider,
     config: TcpProxyConfig,
     metrics: Arc<ProxyMetrics>,
+    egress: Arc<EgressCache>,
     shutdown_tx: watch::Sender<bool>,
     shutdown_rx: watch::Receiver<bool>,
     running: AtomicBool,
@@ -49,6 +51,7 @@ impl TcpProxy {
             decider,
             config,
             metrics: Arc::new(ProxyMetrics::new()),
+            egress: Arc::new(EgressCache::new()),
             shutdown_tx,
             shutdown_rx,
             running: AtomicBool::new(false),
@@ -61,6 +64,12 @@ impl TcpProxy {
 
     pub fn metrics(&self) -> Arc<ProxyMetrics> {
         Arc::clone(&self.metrics)
+    }
+
+    /// Returns whether a session egresses to the given address, like Go
+    /// `HasProxiedEgressConnection`.
+    pub fn has_proxied_egress(&self, ip: std::net::IpAddr, port: u16) -> bool {
+        self.egress.has(ip, port)
     }
 
     pub async fn run(&self) -> io::Result<()> {
@@ -101,6 +110,7 @@ impl TcpProxy {
                             let metrics = Arc::clone(&self.metrics);
                             let connect_timeout = self.config.connect_timeout;
                             let mut session_shutdown = self.shutdown_rx.clone();
+                            let egress = Arc::clone(&self.egress);
 
                             tokio::spawn(async move {
                                 metrics.session_started();
@@ -110,6 +120,7 @@ impl TcpProxy {
                                     connect_timeout,
                                     &metrics,
                                     &mut session_shutdown,
+                                    egress,
                                 ).await {
                                     debug!("tcp_session closed with error: {}", e);
                                     metrics.inc_errors();
@@ -148,6 +159,7 @@ async fn handle_tcp_session(
     connect_timeout: Duration,
     metrics: &ProxyMetrics,
     shutdown: &mut watch::Receiver<bool>,
+    egress: Arc<EgressCache>,
 ) -> io::Result<()> {
     let target_ip = decision.remote_ip.to_string();
     let target_port = decision.remote_port;
@@ -167,6 +179,13 @@ async fn handle_tcp_session(
             .await
             .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "direct dial timed out"))??
     };
+
+    // Track the address the outgoing socket actually connected to: the
+    // destination itself or the upstream proxy server.
+    let _egress = upstream
+        .peer_addr()
+        .map(|address| EgressGuard::new(Arc::clone(&egress), address))
+        .ok();
 
     tokio::select! {
         res = tokio::io::copy_bidirectional(&mut client, &mut upstream) => {

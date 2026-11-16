@@ -7,6 +7,7 @@
 
 pub mod binding;
 pub mod decider;
+pub mod egress;
 pub mod metrics;
 pub mod tcp;
 pub mod udp;
@@ -14,6 +15,7 @@ pub mod upstream;
 
 pub use binding::LocalBinding;
 pub use decider::{Decider, Decision, SharedDecider};
+pub use egress::{EgressCache, EgressGuard};
 pub use metrics::{MetricsSnapshot, ProxyMetrics};
 pub use tcp::{TcpProxy, TcpProxyConfig};
 pub use udp::{UdpProxy, UdpProxyConfig};

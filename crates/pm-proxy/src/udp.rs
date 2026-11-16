@@ -9,6 +9,7 @@ use tokio::sync::{watch, Mutex};
 use tracing::{debug, error, info, warn};
 
 use crate::decider::SharedDecider;
+use crate::egress::EgressCache;
 use crate::metrics::ProxyMetrics;
 
 pub struct UdpProxyConfig {
@@ -30,6 +31,8 @@ impl Default for UdpProxyConfig {
 struct UdpSession {
     upstream_socket: Arc<UdpSocket>,
     last_activity: Instant,
+    /// Destination the session egresses to.
+    dest: SocketAddr,
 }
 
 pub struct UdpProxy {
@@ -37,6 +40,7 @@ pub struct UdpProxy {
     decider: SharedDecider,
     config: UdpProxyConfig,
     metrics: Arc<ProxyMetrics>,
+    egress: Arc<EgressCache>,
     sessions: Arc<Mutex<HashMap<SocketAddr, UdpSession>>>,
     shutdown_tx: watch::Sender<bool>,
     shutdown_rx: watch::Receiver<bool>,
@@ -56,6 +60,7 @@ impl UdpProxy {
             decider,
             config,
             metrics: Arc::new(ProxyMetrics::new()),
+            egress: Arc::new(EgressCache::new()),
             sessions: Arc::new(Mutex::new(HashMap::new())),
             shutdown_tx,
             shutdown_rx,
@@ -71,6 +76,12 @@ impl UdpProxy {
         Arc::clone(&self.metrics)
     }
 
+    /// Returns whether a session egresses to the given address, like Go
+    /// `HasProxiedEgressConnection`.
+    pub fn has_proxied_egress(&self, ip: std::net::IpAddr, port: u16) -> bool {
+        self.egress.has(ip, port)
+    }
+
     pub async fn run(&self) -> io::Result<()> {
         self.running.store(true, Ordering::SeqCst);
         let mut shutdown_rx = self.shutdown_rx.clone();
@@ -78,6 +89,7 @@ impl UdpProxy {
         // Spawn cleanup worker
         let sessions_for_cleanup = Arc::clone(&self.sessions);
         let metrics_for_cleanup = Arc::clone(&self.metrics);
+        let egress_for_cleanup = Arc::clone(&self.egress);
         let idle_timeout = self.config.idle_timeout;
         let cleanup_interval = self.config.cleanup_interval;
         let mut cleanup_shutdown = self.shutdown_rx.clone();
@@ -89,12 +101,18 @@ impl UdpProxy {
                     _ = ticker.tick() => {
                         let mut map = sessions_for_cleanup.lock().await;
                         let now = Instant::now();
-                        let before_len = map.len();
-                        map.retain(|_, session| now.duration_since(session.last_activity) < idle_timeout);
-                        let evicted = before_len - map.len();
-                        if evicted > 0 {
-                            debug!("udp_proxy: evicted {} idle sessions", evicted);
-                            for _ in 0..evicted {
+                        let mut removed = Vec::new();
+                        map.retain(|_, session| {
+                            let keep = now.duration_since(session.last_activity) < idle_timeout;
+                            if !keep {
+                                removed.push(session.dest);
+                            }
+                            keep
+                        });
+                        if !removed.is_empty() {
+                            debug!("udp_proxy: evicted {} idle sessions", removed.len());
+                            for dest in removed {
+                                egress_for_cleanup.remove(dest);
                                 metrics_for_cleanup.session_finished();
                             }
                         }
@@ -175,9 +193,11 @@ impl UdpProxy {
                             self.metrics.bytes_tx.fetch_add(len as u64, Ordering::Relaxed);
                             self.metrics.session_started();
 
+                            self.egress.add(target_addr);
                             sessions_guard.insert(peer_addr, UdpSession {
                                 upstream_socket: Arc::clone(&upstream),
                                 last_activity: Instant::now(),
+                                dest: target_addr,
                             });
                             drop(sessions_guard);
 

@@ -10,8 +10,8 @@
 //!   [`InterfaceEnv`]; the netenv module fills this in.
 //! * The proxy lifecycle ([`Proxies`]) is driven by the caller instead of a
 //!   module manager worker.
-//! * Egress tracking of the Go proxy session cache is not ported yet;
-//!   [`RequestQueue`] only covers the pending-request side.
+//! * Egress tracking lives in `pm-proxy` and only covers live sessions; a UDP
+//!   session can linger until its idle timeout.
 
 mod config;
 mod proxies;
