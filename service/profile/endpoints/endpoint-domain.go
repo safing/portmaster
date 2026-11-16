@@ -36,34 +36,26 @@ type EndpointDomain struct {
 }
 
 func (ep *EndpointDomain) check(entity *intel.Entity, domain string) (EPResult, Reason) {
-	result, reason := ep.match(ep, entity, ep.OriginalValue, "domain matches")
-
+	var matched bool
 	switch ep.MatchType {
 	case domainMatchTypeExact:
-		if domain == ep.Domain {
-			return result, reason
-		}
+		matched = domain == ep.Domain
 	case domainMatchTypeZone:
-		if domain == ep.Domain {
-			return result, reason
-		}
-		if strings.HasSuffix(domain, ep.DomainZone) {
-			return result, reason
-		}
+		matched = domain == ep.Domain || strings.HasSuffix(domain, ep.DomainZone)
 	case domainMatchTypeSuffix:
-		if strings.HasSuffix(domain, ep.Domain) {
-			return result, reason
-		}
+		matched = strings.HasSuffix(domain, ep.Domain)
 	case domainMatchTypePrefix:
-		if strings.HasPrefix(domain, ep.Domain) {
-			return result, reason
-		}
+		matched = strings.HasPrefix(domain, ep.Domain)
 	case domainMatchTypeContains:
-		if strings.Contains(domain, ep.Domain) {
-			return result, reason
-		}
+		matched = strings.Contains(domain, ep.Domain)
 	}
-	return NoMatch, nil
+
+	// Only build the reason if the domain matches, as this is done for every
+	// domain rule against the domain and all CNAMEs of every connection.
+	if !matched {
+		return NoMatch, nil
+	}
+	return ep.match(ep, entity, ep.OriginalValue, "domain matches")
 }
 
 // Matches checks whether the given entity matches this endpoint definition.
