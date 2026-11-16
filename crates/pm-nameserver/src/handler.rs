@@ -41,9 +41,10 @@ pub struct Nameserver {
 }
 
 /// Mutable state of one request that the final bookkeeping needs.
-#[derive(Default)]
 struct Flow {
     rr_cache: Option<RRCache>,
+    /// Aborts the resolve (shutdown).
+    cancel: CancellationToken,
 }
 
 struct CleanOnDrop<'a>(&'a FailingQueries);
@@ -389,7 +390,10 @@ impl Nameserver {
             }
         };
 
-        let mut flow = Flow::default();
+        let mut flow = Flow {
+            rr_cache: None,
+            cancel: cancel.clone(),
+        };
         let reply = self
             .process(
                 request,
@@ -397,7 +401,6 @@ impl Nameserver {
                 &mut q,
                 icann,
                 &mut flow,
-                cancel,
                 non_standard_format.then_some(original_question.name()),
             )
             .await;
@@ -413,7 +416,6 @@ impl Nameserver {
         q: &mut Query,
         icann: bool,
         flow: &mut Flow,
-        cancel: &CancellationToken,
         restore_name: Option<&Name>,
     ) -> Option<Message> {
         let id = query_id(q);
@@ -435,7 +437,7 @@ impl Nameserver {
 
         // Resolve the request.
         let rr_cache: Option<RRCache>;
-        match self.deps.resolver.resolve(q.clone(), cancel).await {
+        match self.deps.resolver.resolve(q.clone(), &flow.cancel).await {
             Ok(cache) => rr_cache = Some(cache),
             Err(failure) => {
                 let err = failure.error.clone();
