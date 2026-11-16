@@ -70,3 +70,18 @@ fn field_select_is_validated_next_to_count() {
     let req = QueryRequest::from_json(&serde_json::from_str(raw).unwrap()).unwrap();
     assert!(generate_sql(&req).is_err());
 }
+
+#[test]
+fn ui_aliases_and_case_insensitive_keys() {
+    // Aliases the UI sends (app statistics, first connection).
+    for raw in [
+        r#"{"select":[{"$sum":{"field":"bytes_sent","as":"bytes_sent"}},{"$min":{"field":"started","as":"first_connection"}}]}"#,
+        r#"{"query":{"country":{"$notin":["DE"]}},"PageSize":5}"#,
+    ] {
+        let req = QueryRequest::from_json(&serde_json::from_str(raw).unwrap()).unwrap();
+        let (sql, _) = generate_sql(&req).unwrap_or_else(|e| panic!("{raw}: {e}"));
+        assert!(sql.contains("AS bytes_sent") || sql.contains("NOT IN"), "{sql}");
+    }
+    let req = QueryRequest::from_json(&serde_json::json!({"page": i64::MAX})).unwrap();
+    assert!(generate_sql(&req).is_ok());
+}

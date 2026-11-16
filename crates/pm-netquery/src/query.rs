@@ -1,9 +1,14 @@
 //! JSON query → SQL, port of Go `netquery/query.go` and `query_request.go`.
 //!
-//! Deliberate deviations from Go (security): `as` aliases must be letters only
-//! (Go's regex is unanchored and lets any text into the SQL) and `databases`
+//! Deliberate deviations from Go (security): `as` aliases must be SQL
+//! identifiers `[A-Za-z_][A-Za-z0-9_]*` (Go's `[a-zA-Z]+` is unanchored and lets
+//! any text into the SQL) and `databases`
 //! may only name `main` or `history` (Go interpolates them unchecked), and a
-//! `$field` select is always validated, even next to another select key.
+//! `$field` select is always validated, even next to another select key. With
+//! several select keys set, the emitted aggregate uses the validated field
+//! (Go emits `$sum.field` unchecked next to `$distinct`).
+//!
+//! Like Go `encoding/json`, payload keys match case-insensitively.
 
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
@@ -14,7 +19,7 @@ use serde_json::{Map, Value};
 use crate::schema::{column, ColumnKind};
 use crate::timefmt::{format_sqlite, parse_rfc3339};
 
-static CHAR_ONLY: LazyLock<Regex> = LazyLock::new(|| Regex::new("^[a-zA-Z]+$").expect("regex"));
+static CHAR_ONLY: LazyLock<Regex> = LazyLock::new(|| Regex::new("^[A-Za-z_][A-Za-z0-9_]*$").expect("regex"));
 
 /// A query error; texts follow Go where practical.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -174,11 +179,11 @@ fn as_object<'a>(v: &'a Value, field: &str) -> Result<Option<&'a Map<String, Val
 fn parse_matcher(obj: &Map<String, Value>) -> Result<Matcher, QueryError> {
     let mut m = Matcher::default();
     for (key, v) in obj {
-        match key.as_str() {
+        match key.to_ascii_lowercase().as_str() {
             "$eq" => m.equal = (!v.is_null()).then(|| v.clone()),
             "$ne" => m.not_equal = (!v.is_null()).then(|| v.clone()),
             "$in" => m.in_ = as_list(v, "Matcher.$in")?,
-            "$notIn" => m.not_in = as_list(v, "Matcher.$notIn")?,
+            "$notin" => m.not_in = as_list(v, "Matcher.$notIn")?,
             "$like" => m.like = as_string(v, "Matcher.$like")?,
             "$gt" => m.greater = as_float(v, "Matcher.$gt")?,
             "$ge" => m.greater_or_equal = as_float(v, "Matcher.$ge")?,
@@ -242,7 +247,7 @@ pub fn parse_query(v: &Value) -> Result<Query, QueryError> {
 fn check_as(alias: &str, what: &str) -> Result<(), QueryError> {
     if !alias.is_empty() && !CHAR_ONLY.is_match(alias) {
         return Err(unmarshal(format!(
-            "invalid characters in {what}.as, value must match [a-zA-Z]+"
+            "invalid characters in {what}.as, value must match [A-Za-z_][A-Za-z0-9_]*"
         )));
     }
     Ok(())
@@ -254,7 +259,7 @@ fn parse_aggregate(v: &Value, what: &str) -> Result<Option<Aggregate>, QueryErro
     };
     let mut agg = Aggregate::default();
     for (k, v) in o {
-        match k.as_str() {
+        match k.to_ascii_lowercase().as_str() {
             "condition" if !v.is_null() => agg.condition = Some(parse_query(v)?),
             "field" => agg.field = as_string(v, &format!("{what}.field"))?,
             "as" => agg.as_ = as_string(v, &format!("{what}.as"))?,
@@ -278,13 +283,13 @@ fn parse_select(v: &Value) -> Result<Select, QueryError> {
     };
     let mut sel = Select::default();
     for (k, v) in obj {
-        match k.as_str() {
+        match k.to_ascii_lowercase().as_str() {
             "field" => sel.field = as_string(v, "field")?,
             "$count" => {
                 if let Some(o) = as_object(v, "$count")? {
                     let mut c = Count::default();
                     for (k, v) in o {
-                        match k.as_str() {
+                        match k.to_ascii_lowercase().as_str() {
                             "as" => c.as_ = as_string(v, "Count.as")?,
                             "field" => c.field = as_string(v, "Count.field")?,
                             "distinct" => c.distinct = as_bool(v, "Count.distinct")?,
@@ -333,10 +338,11 @@ fn parse_order_by(v: &Value) -> Result<OrderBy, QueryError> {
 impl QueryRequest {
     /// Parses a payload like Go `json.Unmarshal` into `QueryRequestPayload`.
     pub fn from_json(v: &Value) -> Result<QueryRequest, QueryError> {
-        let obj = as_object(v, "QueryRequestPayload")?.cloned().unwrap_or_default();
+        let empty = Map::new();
+        let obj = as_object(v, "QueryRequestPayload")?.unwrap_or(&empty);
         let mut req = QueryRequest::default();
-        for (k, v) in &obj {
-            match k.as_str() {
+        for (k, v) in obj {
+            match k.to_ascii_lowercase().as_str() {
                 "select" => {
                     req.select = match v {
                         Value::Array(items) => items.iter().map(parse_select).collect::<Result<_, _>>()?,
@@ -347,21 +353,21 @@ impl QueryRequest {
                     }
                 }
                 "query" => req.query = parse_query(v)?,
-                "orderBy" => {
+                "orderby" => {
                     req.order_by = match v {
                         Value::Array(items) => items.iter().map(parse_order_by).collect::<Result<_, _>>()?,
                         Value::Null => Vec::new(),
                         other => vec![parse_order_by(other)?],
                     }
                 }
-                "groupBy" => {
+                "groupby" => {
                     req.group_by = as_list(v, "groupBy")?
                         .unwrap_or_default()
                         .iter()
                         .map(|g| as_string(g, "groupBy"))
                         .collect::<Result<_, _>>()?
                 }
-                "textSearch" => {
+                "textsearch" => {
                     if let Some(o) = as_object(v, "textSearch")? {
                         let fields = o
                             .get("fields")
@@ -381,7 +387,7 @@ impl QueryRequest {
                         .map(|d| as_string(d, "databases"))
                         .collect::<Result<_, _>>()?
                 }
-                "pageSize" => req.page_size = as_int(v, "pageSize")?,
+                "pagesize" => req.page_size = as_int(v, "pageSize")?,
                 "page" => req.page = as_int(v, "page")?,
                 _ => {}
             }
@@ -409,10 +415,6 @@ impl Builder {
         }
         Err(invalid(format!("column name {field:?} not allowed")))
     }
-}
-
-fn is_number(v: &Value) -> bool {
-    v.is_number()
 }
 
 /// Go `orm.EncodeValue` with the default datetime encoder (UTC).
@@ -449,7 +451,7 @@ fn matcher_clause(
     let mut add = |op: &str, op_suffix: &str, list: bool, values: &[Value]| -> Result<(), QueryError> {
         let mut placeholders = Vec::new();
         for (idx, value) in values.iter().enumerate() {
-            let encoded = if col.is_time && col.kind == ColumnKind::Text && is_number(value) {
+            let encoded = if col.is_time && col.kind == ColumnKind::Text && value.is_number() {
                 Param::Float(value.as_f64().unwrap_or_default())
             } else {
                 encode(col, value)?
@@ -459,7 +461,7 @@ fn matcher_clause(
             params.insert(uniq, encoded);
         }
         let mut name = col.name.to_string();
-        if values.first().is_some_and(is_number) && col.is_time && col.kind == ColumnKind::Text {
+        if values.first().is_some_and(Value::is_number) && col.is_time && col.kind == ColumnKind::Text {
             name = format!("strftime('%s', {name})+0");
         }
         if placeholders.len() == 1 && !list {
@@ -680,7 +682,7 @@ pub fn generate_sql(req: &QueryRequest) -> Result<(String, BTreeMap<String, Para
     }
     let mut paging = format!("LIMIT {limit}");
     if req.page > 0 {
-        paging += &format!(" OFFSET {}", req.page * limit);
+        paging += &format!(" OFFSET {}", req.page.saturating_mul(limit));
     }
 
     let sql = format!(
