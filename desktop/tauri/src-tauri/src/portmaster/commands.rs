@@ -69,6 +69,9 @@ pub fn set_state<R: Runtime>(
 
 #[cfg(target_os = "linux")]
 #[tauri::command]
+// One argument per field the frontend sends; a Tauri command cannot take
+// them as a struct without changing the invoke shape on the Angular side.
+#[allow(clippy::too_many_arguments)]
 pub fn get_app_info<R: Runtime>(
     window: Window<R>,
     response_id: String,
@@ -76,6 +79,8 @@ pub fn get_app_info<R: Runtime>(
     exec_path: String,
     pid: i64,
     cmdline: String,
+    desktop_id: Option<String>,
+    app_dir: Option<String>,
 ) -> Result {
     let mut id = response_id;
 
@@ -84,6 +89,8 @@ pub fn get_app_info<R: Runtime>(
         exec_path,
         pid,
         matching_path,
+        desktop_id,
+        app_dir,
     };
 
     if id.is_empty() {
@@ -91,7 +98,7 @@ pub fn get_app_info<R: Runtime>(
     }
     let cloned = id.clone();
 
-    // GTK calls are not thread-safe and must run on the main thread. 
+    // GTK calls are not thread-safe and must run on the main thread.
     // Schedule the work on the GTK/GLib main thread to avoid random segfaults.
     glib::idle_add_local(move || {
         let _ = match crate::xdg::get_app_info(info.clone()) {
@@ -111,6 +118,7 @@ pub fn get_app_info<R: Runtime>(
 
 #[cfg(target_os = "windows")]
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub fn get_app_info<R: Runtime>(
     window: Window<R>,
     response_id: String,
@@ -118,6 +126,8 @@ pub fn get_app_info<R: Runtime>(
     _exec_path: String,
     _pid: i64,
     _cmdline: String,
+    _desktop_id: Option<String>,
+    _app_dir: Option<String>,
 ) -> Result {
     let mut id = response_id;
 
