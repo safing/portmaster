@@ -30,8 +30,10 @@ async fn resolves_and_calls_hook_around_the_resolver() {
     assert_eq!(reply.queries.len(), 1);
 
     let extras = txt_extras(&reply);
-    assert!(extras[0].starts_with("freshly resolved by Fake"), "{extras:?}");
-    assert!(extras[1].starts_with("record valid for "), "{extras:?}");
+    // The first record is the verdict of the (still undecided) connection.
+    assert_eq!(extras[0], "undecided: ");
+    assert!(extras[1].starts_with("freshly resolved by Fake"), "{extras:?}");
+    assert!(extras[2].starts_with("record valid for "), "{extras:?}");
 
     assert_eq!(rig.hook.log.filter_connection.load(Ordering::SeqCst), 1);
     assert_eq!(rig.hook.log.filter_resolved.load(Ordering::SeqCst), 1);
@@ -82,7 +84,7 @@ async fn block_verdict_before_resolving() {
     assert_eq!(answer_ips(&reply), vec![IpAddr::V4(Ipv4Addr::new(0, 0, 0, 17))]);
     assert_eq!(reply.answers[0].ttl, 1);
     assert!(reply.metadata.recursion_available);
-    assert_eq!(txt_extras(&reply), vec!["block: test reason".to_string()]);
+    assert_eq!(txt_extras(&reply), vec!["blocked: test reason".to_string()]);
     assert_eq!(rig.hook.log.saved_conn.load(Ordering::SeqCst), 1);
     assert_eq!(rig.hook.log.filter_resolved.load(Ordering::SeqCst), 0);
 
@@ -119,7 +121,7 @@ async fn block_verdict_after_resolving_keeps_cache_info() {
     let reply = ask(&rig, "example.com.", RecordType::A).await.unwrap();
     assert_eq!(answer_ips(&reply), vec![IpAddr::V4(Ipv4Addr::new(0, 0, 0, 17))]);
     let extras = txt_extras(&reply);
-    assert_eq!(extras[0], "block: filtered");
+    assert_eq!(extras[0], "blocked: filtered");
     assert!(extras[1].starts_with("freshly resolved by "), "{extras:?}");
     assert_eq!(rig.hook.log.saved_conn.load(Ordering::SeqCst), 1);
 }
@@ -242,7 +244,7 @@ async fn nxdomain_answer_without_alternatives() {
     assert_eq!(reply.metadata.response_code, ResponseCode::NXDomain);
     assert_eq!(
         txt_extras(&reply),
-        vec!["nxdomain: no answer found (NXDomain)".to_string()]
+        vec!["no answer found (NXDomain)".to_string()]
     );
     // The deferred saving still runs with the NXDOMAIN cache.
     assert_eq!(rig.hook.log.saved_open.load(Ordering::SeqCst), 1);
@@ -257,7 +259,7 @@ async fn nxdomain_uses_alternative_local_cache() {
         Ok(rr)
     }));
     // Entry for "<name>local." as the Go code looks it up.
-    *resolver.alt.lock().unwrap() = Some(rr_a("printer.lanlocal.", Ipv4Addr::new(10, 0, 0, 7)));
+    *resolver.alt.lock().unwrap() = Some(rr_a("printer.lan.local.", Ipv4Addr::new(10, 0, 0, 7)));
     let rig = rig(resolver);
     let reply = ask(&rig, "printer.lan.", RecordType::A).await.unwrap();
     assert_eq!(reply.metadata.response_code, ResponseCode::NoError);
@@ -273,7 +275,7 @@ async fn alternative_caches_are_skipped_in_icann_space() {
         rr.answer.clear();
         Ok(rr)
     }));
-    *resolver.alt.lock().unwrap() = Some(rr_a("host.example.comlocal.", Ipv4Addr::new(10, 0, 0, 7)));
+    *resolver.alt.lock().unwrap() = Some(rr_a("host.example.com.local.", Ipv4Addr::new(10, 0, 0, 7)));
     let rig = rig(resolver);
     tokio::time::pause();
     let reply = ask(&rig, "host.example.com.", RecordType::A).await.unwrap();
@@ -325,7 +327,10 @@ async fn missing_and_multiple_questions_are_refused() {
 #[tokio::test]
 async fn invalid_domain_is_refused() {
     let rig = rig(FakeResolver::answering());
-    let reply = ask(&rig, "exa mple.com.", RecordType::A).await.unwrap();
+    let mut msg = query_message("example.com.", RecordType::A);
+    let name = hickory_proto::rr::Name::from_labels([b"ex ample".as_slice(), b"com"]).unwrap();
+    msg.queries[0].set_name(name);
+    let reply = rig.ns.handle_request(&msg, remote()).await.unwrap();
     assert_eq!(reply.metadata.response_code, ResponseCode::Refused);
     assert_eq!(txt_extras(&reply), vec!["invalid domain".to_string()]);
     assert_eq!(rig.resolver.calls.load(Ordering::SeqCst), 0);

@@ -164,7 +164,12 @@ async fn responders_match_go() {
         } else {
             request(qname, qtype, false)
         };
-        let reply = responder_by_name(name).reply(&msg).await.unwrap();
+        let responder = if multi {
+            StaticResponder::block_ip::<&str>(&[])
+        } else {
+            responder_by_name(name)
+        };
+        let reply = responder.reply(&msg).await.unwrap();
         let want = &case["reply"];
         let ctx = format!("{name} {qname} {qtype}");
 

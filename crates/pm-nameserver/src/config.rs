@@ -134,6 +134,13 @@ pub fn parse_listen_addresses(
         (ip, None)
     };
 
+    if port_string.starts_with('+') {
+        return Err(ListenAddressError::Port {
+            port: port_string.to_string(),
+            address: listen_address.to_string(),
+            reason: "invalid syntax".to_string(),
+        });
+    }
     let port = port_string
         .parse::<u16>()
         .map_err(|e| ListenAddressError::Port {

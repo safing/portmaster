@@ -264,7 +264,7 @@ pub struct RrCacheResponder<'a>(pub &'a RRCache);
 #[async_trait]
 impl Responder for RrCacheResponder<'_> {
     async fn reply(&self, request: &Message) -> Option<Message> {
-        let mut reply = set_reply(request, ResponseCode::from(self.0.rcode));
+        let mut reply = set_reply(request, self.0.rcode.into());
         reply.answers = self.0.answer.clone();
         reply.authorities = self.0.ns.clone();
         reply.additionals = self.0.extra.clone();
