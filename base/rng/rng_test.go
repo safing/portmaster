@@ -18,9 +18,10 @@ func init() {
 }
 
 func TestRNG(t *testing.T) { //nolint:paralleltest // Modifies the global rngCipher.
-
 	key := make([]byte, 16)
 
+	// Hold the rng lock, as the generator reads rngCipher when reseeding.
+	rngLock.Lock()
 	rngCipher = "aes"
 	_, err := newCipher(key)
 	if err != nil {
@@ -32,6 +33,8 @@ func TestRNG(t *testing.T) { //nolint:paralleltest // Modifies the global rngCip
 	if err != nil {
 		t.Errorf("failed to create serpent cipher: %s", err)
 	}
+	rngCipher = "aes"
+	rngLock.Unlock()
 
 	b := make([]byte, 32)
 	_, err = Read(b)
