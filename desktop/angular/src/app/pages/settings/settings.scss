@@ -17,6 +17,29 @@
   }
 }
 
+.language-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 3rem;
+  padding-right: 1.25rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.75rem;
+
+  button {
+    padding: 0.2rem 0.6rem;
+    border: 1px solid #9ca3af;
+    border-radius: 9999px;
+    cursor: pointer;
+
+    &.active {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #fff;
+    }
+  }
+}
+
 .card-title.meta {
   div {
     display: inline-block;

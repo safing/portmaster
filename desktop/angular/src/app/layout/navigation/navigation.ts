@@ -1,8 +1,10 @@
 import { INTEGRATION_SERVICE, IntegrationService } from 'src/app/integration';
 import { ConnectedPosition } from '@angular/cdk/overlay';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Inject, OnInit, Output, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Inject, OnDestroy, OnInit, Output, inject } from '@angular/core';
 import { ConfigService, DebugAPI, PortapiService, SPNService, StringSetting, BoolSetting } from '@safing/portmaster-api';
+import { Subscription } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import { I18nService } from 'src/i18n';
 import { AppComponent } from 'src/app/app.component';
 import { NotificationType, NotificationsService, StatusService, VersionStatus, GetModuleState, ControlPauseStateData } from 'src/app/services';
 import { ActionIndicatorService } from 'src/app/shared/action-indicator';
@@ -21,7 +23,7 @@ import { TauriIntegrationService } from 'src/app/integration/taur-app';
     fadeOutAnimation,
   ]
 })
-export class NavigationComponent implements OnInit {
+export class NavigationComponent implements OnInit, OnDestroy {
   private readonly integration = inject(INTEGRATION_SERVICE);
 
   /** Emits the current portapi connection state on changes. */
@@ -42,11 +44,11 @@ export class NavigationComponent implements OnInit {
   get isPausedSPN(): boolean { return this.pauseState?.SPN===true; }
   get pauseInfo(): string {
     if (this.pauseState?.Interception===true && this.pauseState?.SPN===true) 
-      return 'Portmaster and SPN are paused';
+      return this.i18n.t('pause.both');
     else if (this.pauseState?.Interception===true)
-      return 'Portmaster is paused';
+      return this.i18n.t('pause.pm');
     else if (this.pauseState?.SPN===true)
-      return 'SPN is paused';
+      return this.i18n.t('pause.spn');
     return '';
   }
   get pauseInfoTillTime(): string {
@@ -54,10 +56,13 @@ export class NavigationComponent implements OnInit {
       const date = new Date(this.pauseState.TillTime);
       if (isNaN(date.getTime()) || date.getTime() < Date.now())
         return '';    
-      return `Auto-resume at ${date.toLocaleTimeString(undefined, { hour12: false })}`;
+      return this.i18n.t('pause.autoResume', { time: date.toLocaleTimeString(undefined, { hour12: false }) });
     }
     return '';
   }
+
+  /** Language changes need an explicit check because this view uses OnPush. */
+  private languageSubscription = Subscription.EMPTY;
 
   /** Whether or not we have new, unseen prompts */
   hasNewPrompts = false;
@@ -84,7 +89,8 @@ export class NavigationComponent implements OnInit {
     private actionIndicator: ActionIndicatorService,
     private notificationService: NotificationsService,
     private spnService: SPNService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private i18n: I18nService,
   ) { }
 
   dropDownPositions: ConnectedPosition[] = [
@@ -97,6 +103,8 @@ export class NavigationComponent implements OnInit {
   ]
 
   ngOnInit() {
+    this.languageSubscription = this.i18n.language$.subscribe(() => this.cdr.markForCheck());
+
     const mql = window.matchMedia('(max-width: 1200px)');
 
     if (mql.matches) {
@@ -169,6 +177,10 @@ export class NavigationComponent implements OnInit {
 
         this.cdr.markForCheck();
       })
+  }
+
+  ngOnDestroy() {
+    this.languageSubscription.unsubscribe();
   }
 
   toggleSideDash(event: MouseEvent) {
