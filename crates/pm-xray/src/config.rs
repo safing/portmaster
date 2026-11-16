@@ -13,6 +13,20 @@ use crate::model::{Protocol, XrayNode};
 use crate::parser::{normalize_network, parse_link, ParsedProfile};
 use crate::{Error, Result};
 
+/// Turns parsed `headers` into the JSON object used by Xray stream settings.
+/// `Host` is excluded: panels put it in the dedicated `host` field, and the
+/// xray-rs parser rejects a duplicate Host header.
+fn headers_value(headers: &[(String, String)]) -> Value {
+    let mut object = Map::new();
+    for (name, value) in headers {
+        if name.eq_ignore_ascii_case("host") {
+            continue;
+        }
+        object.insert(name.clone(), json!(value));
+    }
+    Value::Object(object)
+}
+
 /// Default local SOCKS port.
 pub const DEFAULT_INBOUND_PORT: u16 = 1080;
 /// Default directory name for generated configs.
@@ -57,8 +71,16 @@ fn stream_settings(profile: &ParsedProfile) -> Value {
         if !profile.fingerprint.is_empty() {
             tls.insert("fingerprint".into(), json!(profile.fingerprint));
         }
-        if !profile.alpn.is_empty() {
-            tls.insert("alpn".into(), json!(profile.alpn));
+        let alpn = if profile.protocol == Protocol::Hysteria2 {
+            vec!["h3".to_string()]
+        } else {
+            profile.alpn.clone()
+        };
+        if !alpn.is_empty() {
+            tls.insert("alpn".into(), json!(alpn));
+        }
+        if !profile.hy_pin.is_empty() {
+            tls.insert("pinnedPeerCertSha256".into(), json!(profile.hy_pin));
         }
         stream.insert("tlsSettings".into(), Value::Object(tls));
     }
@@ -72,14 +94,35 @@ fn stream_settings(profile: &ParsedProfile) -> Value {
             if !profile.host.is_empty() {
                 ws.insert("host".into(), json!(profile.host));
             }
+            if !profile.headers.is_empty() {
+                ws.insert("headers".into(), headers_value(&profile.headers));
+            }
             stream.insert("wsSettings".into(), Value::Object(ws));
         }
         "grpc" => {
             let mut grpc = Map::new();
-            if !profile.path.is_empty() {
-                grpc.insert("serviceName".into(), json!(profile.path));
+            let service = if profile.service_name.is_empty() {
+                &profile.path
+            } else {
+                &profile.service_name
+            };
+            if !service.is_empty() {
+                grpc.insert("serviceName".into(), json!(service));
             }
             stream.insert("grpcSettings".into(), Value::Object(grpc));
+        }
+        "httpupgrade" => {
+            let mut settings = Map::new();
+            if !profile.path.is_empty() {
+                settings.insert("path".into(), json!(profile.path));
+            }
+            if !profile.host.is_empty() {
+                settings.insert("host".into(), json!(profile.host));
+            }
+            if !profile.headers.is_empty() {
+                settings.insert("headers".into(), headers_value(&profile.headers));
+            }
+            stream.insert("httpupgradeSettings".into(), Value::Object(settings));
         }
         "xhttp" => {
             let mut xhttp = Map::new();
@@ -89,9 +132,51 @@ fn stream_settings(profile: &ParsedProfile) -> Value {
             if !profile.host.is_empty() {
                 xhttp.insert("host".into(), json!(profile.host));
             }
+            if !profile.headers.is_empty() {
+                xhttp.insert("headers".into(), headers_value(&profile.headers));
+            }
             stream.insert("xhttpSettings".into(), Value::Object(xhttp));
         }
+        "raw" => {
+            // xray-rs accepts only an absent/`none` RAW header type. Other
+            // values are parsed but dropped, so the generated config stays
+            // valid instead of failing on a panel-specific header type.
+            if profile.header_type.eq_ignore_ascii_case("none") {
+                let mut raw = Map::new();
+                raw.insert("header".into(), json!({ "type": "none" }));
+                stream.insert("rawSettings".into(), Value::Object(raw));
+            }
+        }
         _ => {}
+    }
+
+    if profile.protocol == Protocol::Hysteria2 {
+        let mut hysteria = Map::new();
+        hysteria.insert("version".into(), json!(2));
+        hysteria.insert("auth".into(), json!(profile.credential));
+        stream.insert("hysteriaSettings".into(), Value::Object(hysteria));
+
+        let mut udp = Vec::new();
+        if profile.hy_obfs_password.len() >= 4 {
+            let mut mask = json!({
+                "type": "salamander",
+                "settings": { "password": profile.hy_obfs_password },
+            });
+            if profile.hy_obfs.eq_ignore_ascii_case("gecko") {
+                mask["settings"]["packetSize"] = json!("512-1200");
+            }
+            udp.push(mask);
+        }
+        if !profile.hy_mport.is_empty() {
+            udp.push(json!({
+                "type": "udphop",
+                "settings": {
+                    "mode": "intervalLocal,intervalRemote",
+                    "remotePorts": profile.hy_mport,
+                },
+            }));
+        }
+        stream.insert("finalmask".into(), json!({ "udp": udp }));
     }
     Value::Object(stream)
 }
@@ -101,7 +186,15 @@ fn outbound_settings(profile: &ParsedProfile) -> Result<Value> {
         Protocol::Vless => {
             let mut user = Map::new();
             user.insert("id".into(), json!(profile.credential));
-            user.insert("encryption".into(), json!("none"));
+            let encryption = if profile.encryption.is_empty() {
+                "none"
+            } else {
+                &profile.encryption
+            };
+            user.insert("encryption".into(), json!(encryption));
+            if !profile.flow.is_empty() {
+                user.insert("flow".into(), json!(profile.flow));
+            }
             let mut server = Map::new();
             server.insert("address".into(), json!(profile.address));
             server.insert("port".into(), json!(profile.port));
@@ -117,6 +210,8 @@ fn outbound_settings(profile: &ParsedProfile) -> Result<Value> {
             })
         }
         Protocol::Trojan => {
+            // `flow` is parsed for completeness, but xray-rs (like Xray-core)
+            // only accepts an empty Trojan flow, so it is not emitted here.
             json!({
                 "address": profile.address,
                 "port": profile.port,
@@ -127,12 +222,47 @@ fn outbound_settings(profile: &ParsedProfile) -> Result<Value> {
             if profile.method.is_empty() || profile.password.is_empty() {
                 return Err(Error::Config("Shadowsocks needs method and password".into()));
             }
+            let mut settings = Map::new();
+            settings.insert("address".into(), json!(profile.address));
+            settings.insert("port".into(), json!(profile.port));
+            settings.insert("method".into(), json!(profile.method));
+            settings.insert("password".into(), json!(profile.password));
+            if !profile.plugin.is_empty() {
+                settings.insert("plugin".into(), json!(profile.plugin));
+                if !profile.plugin_opts.is_empty() {
+                    settings.insert("pluginOpts".into(), json!(profile.plugin_opts));
+                }
+            }
+            Value::Object(settings)
+        }
+        Protocol::Hysteria2 => {
             json!({
+                "version": 2,
                 "address": profile.address,
                 "port": profile.port,
-                "method": profile.method,
-                "password": profile.password,
             })
+        }
+        Protocol::Wireguard => {
+            let wg = profile.wireguard.as_ref().ok_or_else(|| {
+                Error::Config("WireGuard link has no decoded configuration".into())
+            })?;
+            let mut settings = Map::new();
+            settings.insert("secretKey".into(), json!(wg.secret_key));
+            settings.insert("address".into(), json!(wg.addresses));
+            settings.insert("mtu".into(), json!(wg.mtu));
+            settings.insert("remoteDNS".into(), json!(wg.dns));
+            let mut peers = Vec::new();
+            let mut peer = Map::new();
+            peer.insert("publicKey".into(), json!(wg.public_key));
+            peer.insert("endpoint".into(), json!(wg.endpoint));
+            peer.insert("allowedIPs".into(), json!(wg.allowed_ips));
+            peer.insert("keepAlive".into(), json!(wg.keep_alive));
+            if !wg.pre_shared_key.is_empty() {
+                peer.insert("preSharedKey".into(), json!(wg.pre_shared_key));
+            }
+            peers.push(Value::Object(peer));
+            settings.insert("peers".into(), json!(peers));
+            Value::Object(settings)
         }
         Protocol::Socks | Protocol::Http => {
             let mut settings = Map::new();
@@ -164,17 +294,29 @@ pub fn generate_config(
     if profile.address.is_empty() || profile.port == 0 {
         return Err(Error::Config("node has no usable server address".into()));
     }
+    let is_wireguard = profile.protocol == Protocol::Wireguard;
+    let mut outbounds = Vec::new();
+    if is_wireguard {
+        // A WireGuard tunnel needs an explicit route; keep a freedom outbound
+        // as the xray-rs WireGuard example does.
+        outbounds.push(json!({ "tag": "direct", "protocol": "freedom", "settings": {} }));
+    }
     let mut outbound = Map::new();
     outbound.insert("tag".into(), json!("proxy"));
     outbound.insert("protocol".into(), json!(profile.protocol.as_str()));
     outbound.insert("settings".into(), outbound_settings(&profile)?);
-    outbound.insert("streamSettings".into(), stream_settings(&profile));
+    // WireGuard takes no stream settings (xray-rs accepts only sockopt and
+    // finalmask there, and this generator needs neither).
+    if !is_wireguard {
+        outbound.insert("streamSettings".into(), stream_settings(&profile));
+    }
+    outbounds.push(Value::Object(outbound));
 
     let inbound_settings = match inbound {
         InboundProtocol::Socks => json!({ "auth": "noauth", "udp": true }),
         InboundProtocol::Http => json!({ "auth": "noauth" }),
     };
-    Ok(json!({
+    let mut root = json!({
         "inbounds": [{
             "tag": "socks-in",
             "protocol": inbound.as_str(),
@@ -182,12 +324,31 @@ pub fn generate_config(
             "port": inbound_port,
             "settings": inbound_settings,
         }],
-        "outbounds": [Value::Object(outbound)],
+        "outbounds": outbounds,
         "routing": {
             "domainStrategy": "AsIs",
             "rules": [],
         },
-    }))
+    });
+    if is_wireguard {
+        let wg = profile.wireguard.as_ref().expect("checked above");
+        let dns_servers: Vec<String> = if wg.dns.is_empty() {
+            ["1.1.1.1", "1.0.0.1", "2606:4700:4700::1111", "2606:4700:4700::1001"]
+                .iter()
+                .map(|ip| (*ip).to_string())
+                .collect()
+        } else {
+            wg.dns.clone()
+        };
+        let mut routed = wg.allowed_ips.clone();
+        routed.extend(dns_servers.iter().cloned());
+        root["routing"] = json!({
+            "domainStrategy": "IPOnDemand",
+            "rules": [{ "type": "field", "ip": routed, "outboundTag": "proxy" }],
+        });
+        root["dns"] = json!({ "servers": dns_servers });
+    }
+    Ok(root)
 }
 
 /// Writes a generated config into `data_dir/xray/xray-<node id>.json` and
