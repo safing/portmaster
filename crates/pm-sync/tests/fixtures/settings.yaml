@@ -1,0 +1,11 @@
+type: settings
+config:
+    core:
+        devMode: true
+    filter:
+        defaultAction: block
+        endpoints:
+            - + example.com
+            - '- bad.com'
+
+# jess-checksum: ZwuRdG4PWfkWcijkDNjmEDcx3Fhj9V2FU562nQP4HiDCup

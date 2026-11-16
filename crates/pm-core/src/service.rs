@@ -80,6 +80,8 @@ pub struct Service {
     pub split_proxies: Arc<pm_splittun::Proxies>,
     /// Pending split tunnel requests.
     pub split_queue: Arc<pm_splittun::RequestQueue>,
+    /// Profile and settings export/import module.
+    pub sync: Arc<pm_sync::Sync>,
     /// Subscribed in `new` so changes before `run` are not missed.
     profile_changes: Mutex<Option<tokio::sync::broadcast::Receiver<()>>>,
     listener: Mutex<Option<TcpListener>>,
@@ -448,6 +450,12 @@ impl Service {
                 ..pm_database::Options::default()
             }),
         );
+
+        // Go service/sync: register the export/import API and start the module.
+        let sync = pm_sync::Sync::new(Arc::clone(&config), &databases, databases_dir.join("icons"));
+        sync.register_api(&api)
+            .map_err(|error| anyhow::anyhow!("register sync api: {error}"))?;
+        sync.start();
         let profiles = Arc::new(crate::firewall::CoreProfiles::new(
             Arc::clone(&config),
             Arc::clone(&profile_config),
@@ -646,6 +654,7 @@ impl Service {
             restart_token,
             split_proxies: Arc::clone(&split_proxies),
             split_queue: Arc::clone(&split_queue),
+            sync,
             profile_changes: Mutex::new(Some(profile_changes)),
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),

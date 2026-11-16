@@ -1,0 +1,5 @@
+type: single-setting
+id: filter/defaultAction
+value: block
+
+# jess-checksum: ZwjHFSxJH2NUwEJoi9pHQJ38CAHkcJ1ihETFQ7gttgVBJD

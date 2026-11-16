@@ -1515,6 +1515,7 @@ dependencies = [
  "pm-runtime",
  "pm-splittun",
  "pm-status",
+ "pm-sync",
  "pm-updates",
  "serde",
  "serde_json",
@@ -1998,6 +1999,32 @@ dependencies = [
  "pm-runtime",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "pm-sync"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "blake2",
+ "bs58",
+ "ciborium",
+ "hex",
+ "http",
+ "pm-api",
+ "pm-config",
+ "pm-database",
+ "pm-dsd",
+ "pm-jess",
+ "pm-mgr",
+ "pm-profile",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha1 0.10.7",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]

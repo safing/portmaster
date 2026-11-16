@@ -38,6 +38,7 @@ members = [
     "crates/pm-splittun",
     "crates/pm-compat",
     "crates/pm-interop",
+    "crates/pm-sync",
 ]
 
 [workspace.package]

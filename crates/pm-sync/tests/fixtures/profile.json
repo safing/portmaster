@@ -1,0 +1,33 @@
+{
+ "config": {
+  "filter": {
+   "defaultAction": "block"
+  }
+ },
+ "created": "2023-11-14T22:13:20Z",
+ "description": "A test app",
+ "fingerprints": [
+  {
+   "operation": "equals",
+   "type": "path",
+   "value": "/usr/bin/test"
+  },
+  {
+   "key": "name",
+   "mergedFrom": "local/other",
+   "operation": "equals",
+   "type": "tag",
+   "value": "Test App"
+  }
+ ],
+ "homepage": "https://example.com",
+ "iconData": "data:image/png;base64,iVBORw0KGgo=",
+ "id": "abc123",
+ "lastEdited": "2023-11-14T22:30:00Z",
+ "name": "Test App",
+ "presPath": "/usr/bin/test",
+ "source": "local",
+ "type": "profile",
+ "usePresPath": true,
+ "_jess-checksum": "ZwsUPnwzvCwkWPAAev9SAWGrUwb7KaXakHWJLh63zuMH2N"
+}

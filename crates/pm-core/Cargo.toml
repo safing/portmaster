@@ -39,6 +39,7 @@ pm-network = { path = "../pm-network" }
 pm-resolver = { path = "../pm-resolver" }
 pm-notifications = { path = "../pm-notifications" }
 pm-splittun = { path = "../pm-splittun" }
+pm-sync = { path = "../pm-sync" }
 pm-status = { path = "../pm-status" }
 pm-updates = { path = "../pm-updates" }
 pm-intel = { path = "../pm-intel" }
