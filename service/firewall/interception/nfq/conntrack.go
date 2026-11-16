@@ -222,24 +222,16 @@ func DeleteMarkedConnection(conn *network.Connection) error {
 		family = ct.IPv6
 	}
 
-	connections, err := nfct.Get(ct.Conntrack, family, con)
+	// Delete by original tuple directly instead of Get followed by Delete:
+	// go-conntrack v0.4.0 sends Get with NLM_F_ACK but reads only the entry
+	// message, leaving the kernel's ACK queued on the shared socket. The next
+	// request on the handle then read that stale ACK ("mismatched sequence")
+	// and left its own reply behind, desynchronizing the handle for all later
+	// requests. The kernel answers a Delete with exactly one message (ACK or
+	// error), which Delete reads. A missing entry is reported as ENOENT.
+	err := nfct.Delete(ct.Conntrack, family, con)
 	if err != nil {
-		return fmt.Errorf("nfq: failed to find entry for connection %s: %w", conn.String(), err)
-	}
-
-	if len(connections) > 1 {
-		log.Warningf("nfq: multiple entries found for single connection: %s -> %d", conn.String(), len(connections))
-	}
-
-	for _, connection := range connections {
-		deleteErr := nfct.Delete(ct.Conntrack, family, connection)
-		if err == nil {
-			err = deleteErr
-		}
-	}
-
-	if err != nil {
-		log.Warningf("nfq: error while deleting conntrack entries for connection %s: %s", conn.String(), err)
+		return fmt.Errorf("nfq: failed to delete conntrack entry for connection %s: %w", conn.String(), err)
 	}
 
 	return nil
