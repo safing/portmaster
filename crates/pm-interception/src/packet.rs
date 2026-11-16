@@ -157,12 +157,16 @@ fn walk_ipv6_headers(data: &[u8]) -> Result<(u8, usize, bool), ParseError> {
 pub fn icmp_type(data: &[u8]) -> Option<u8> {
     let offset = match data.first()? >> 4 {
         4 => {
-            if data[9] != PROTO_ICMP {
+            let ihl = usize::from(data.first()? & 0x0f) * 4;
+            if ihl < 20 || *data.get(9)? != PROTO_ICMP {
                 return None;
             }
-            usize::from(data.first()? & 0x0f) * 4
+            ihl
         }
         6 => {
+            if data.len() < 40 {
+                return None;
+            }
             let (next, offset, first_fragment) = walk_ipv6_headers(data).ok()?;
             if next != PROTO_ICMPV6 || !first_fragment {
                 return None;
@@ -276,6 +280,13 @@ mod tests {
         p.extend_from_slice(&[128, 0, 0, 0]);
         assert_eq!(icmp_type(&p), Some(128));
         assert_eq!(icmp_type(&[]), None);
+        // Short or malformed input must not panic.
+        for len in 0..echo.len() {
+            let _ = icmp_type(&echo[..len]);
+        }
+        assert_eq!(icmp_type(&[0x45, 0, 0]), None);
+        assert_eq!(icmp_type(&[0x41; 12]), None);
+        assert_eq!(icmp_type(&[0x60; 10]), None);
         assert_eq!(icmp_type(&p[..40]), None);
     }
 

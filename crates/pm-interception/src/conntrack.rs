@@ -168,7 +168,7 @@ impl Conntrack {
         loop {
             let (n, _) = recv(&self.fd, &mut buf[..], RecvFlags::empty())?;
             let mut done = false;
-            for (kind, payload) in messages(&buf[..n]) {
+            for (kind, _seq, payload) in messages(&buf[..n]) {
                 match kind {
                     NLMSG_DONE => done = true,
                     NLMSG_ERROR => check_error(payload)?,
@@ -198,15 +198,7 @@ impl Conntrack {
             &tuple.attr(),
         );
         self.send(&msg)?;
-        let mut buf = vec![0u8; 8192];
-        loop {
-            let (n, _) = recv(&self.fd, &mut buf[..], RecvFlags::empty())?;
-            for (kind, payload) in messages(&buf[..n]) {
-                if kind == NLMSG_ERROR {
-                    return check_error(payload);
-                }
-            }
-        }
+        self.wait_ack()
     }
 
     /// Deletes one entry by its original tuple.
@@ -218,15 +210,7 @@ impl Conntrack {
             &entry.orig_tuple,
         );
         self.send(&msg)?;
-        let mut buf = vec![0u8; 8192];
-        loop {
-            let (n, _) = recv(&self.fd, &mut buf[..], RecvFlags::empty())?;
-            for (kind, payload) in messages(&buf[..n]) {
-                if kind == NLMSG_ERROR {
-                    return check_error(payload);
-                }
-            }
-        }
+        self.wait_ack()
     }
 
     /// Go `deleteMarkedConnections`: removes entries with permanent verdict marks.
@@ -285,6 +269,20 @@ impl Conntrack {
         m
     }
 
+    /// Waits for the ACK of the last sent message; replies to older requests
+    /// (e.g. leftovers of an aborted dump) are skipped.
+    fn wait_ack(&mut self) -> io::Result<()> {
+        let mut buf = vec![0u8; 8192];
+        loop {
+            let (n, _) = recv(&self.fd, &mut buf[..], RecvFlags::empty())?;
+            for (kind, seq, payload) in messages(&buf[..n]) {
+                if kind == NLMSG_ERROR && seq == self.seq {
+                    return check_error(payload);
+                }
+            }
+        }
+    }
+
     fn send(&self, msg: &[u8]) -> io::Result<()> {
         sendto(
             &self.fd,
@@ -308,8 +306,8 @@ fn put_attr(out: &mut Vec<u8>, kind: u16, value: &[u8]) {
     out.resize(out.len() + align4(len) - len, 0);
 }
 
-/// Iterates netlink messages: (type, payload after the 16-byte header).
-fn messages(mut buf: &[u8]) -> Vec<(u16, &[u8])> {
+/// Iterates netlink messages: (type, sequence number, payload after the 16-byte header).
+fn messages(mut buf: &[u8]) -> Vec<(u16, u32, &[u8])> {
     let mut out = Vec::new();
     while buf.len() >= 16 {
         let len = u32::from_ne_bytes([buf[0], buf[1], buf[2], buf[3]]) as usize;
@@ -317,7 +315,8 @@ fn messages(mut buf: &[u8]) -> Vec<(u16, &[u8])> {
             break;
         }
         let kind = u16::from_ne_bytes([buf[4], buf[5]]);
-        out.push((kind, &buf[16..len]));
+        let seq = u32::from_ne_bytes([buf[8], buf[9], buf[10], buf[11]]);
+        out.push((kind, seq, &buf[16..len]));
         buf = &buf[align4(len).min(buf.len())..];
     }
     out
@@ -516,6 +515,11 @@ mod tests {
         assert_eq!(err.raw_os_error(), Some(2));
         assert!(check_error(&[1]).is_err());
         assert!(messages(&[1, 2, 3]).is_empty());
+        let mut m = vec![0u8; 20];
+        m[0..4].copy_from_slice(&20u32.to_ne_bytes());
+        m[4..6].copy_from_slice(&NLMSG_ERROR.to_ne_bytes());
+        m[8..12].copy_from_slice(&42u32.to_ne_bytes());
+        assert_eq!(messages(&m), vec![(NLMSG_ERROR, 42, &m[16..])]);
     }
 
     #[test]

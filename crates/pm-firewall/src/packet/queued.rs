@@ -19,13 +19,24 @@ pub enum VerdictError {
     Other(String),
 }
 
+/// Result of reading the ICMP header of a packet (Go `LoadPacketData` and the
+/// ICMP layer lookup).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IcmpType {
+    /// The packet data could not be loaded.
+    LoadFailed,
+    /// The data loaded, but has no ICMP layer.
+    NoLayer,
+    Type(u8),
+}
+
 /// What the handler needs from an intercepted packet.
 ///
 /// Go has one method per verdict (`Accept`, `PermanentBlock`, ...); here a
 /// single [`QueuedPacket::set_verdict`] takes the [`Verdict`] and the
 /// implementation maps it to the mark. `RerouteToNameserver`, `RerouteToTunnel`
 /// and `RerouteToSplitTun` are the matching `Verdict` variants.
-pub trait QueuedPacket {
+pub trait QueuedPacket: Send + Sync {
     fn info(&self) -> &PacketInfo;
 
     fn connection_id(&self) -> String {
@@ -61,8 +72,8 @@ pub trait QueuedPacket {
     /// The complete IP packet, for ICMP listeners.
     fn raw(&self) -> &[u8];
 
-    /// The ICMP/ICMPv6 type, if the packet has such a header.
-    fn icmp_type(&self) -> Option<u8>;
+    /// The ICMP/ICMPv6 type of the packet.
+    fn icmp_type(&self) -> IcmpType;
 
     /// Sets the verdict. Only the first call can succeed.
     fn set_verdict(&self, verdict: Verdict) -> Result<(), VerdictError>;
@@ -119,8 +130,9 @@ impl QueuedPacket for NfqPacket {
         &self.raw
     }
 
-    fn icmp_type(&self) -> Option<u8> {
-        icmp_type(&self.raw)
+    fn icmp_type(&self) -> IcmpType {
+        // Packets were parsed before, so loading cannot fail.
+        icmp_type(&self.raw).map_or(IcmpType::NoLayer, IcmpType::Type)
     }
 
     fn set_verdict(&self, verdict: Verdict) -> Result<(), VerdictError> {
@@ -170,7 +182,7 @@ mod tests {
         assert!(pkt.is_outbound());
         assert_eq!(pkt.payload(), Some(&[1u8, 2, 3, 4][..]));
         assert_eq!(pkt.raw().len(), 32);
-        assert_eq!(pkt.icmp_type(), None);
+        assert_eq!(pkt.icmp_type(), IcmpType::NoLayer);
     }
 
     #[test]

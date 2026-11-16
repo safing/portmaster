@@ -4,13 +4,14 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::Duration;
 use std::time::SystemTime;
 
 use pm_config::Config;
 use pm_database::{Databases, MemoryStorage};
 use pm_firewall::packet::{
-    BandwidthMethod, BandwidthSink, BandwidthUpdate, ConnectionTuple, ConntrackControl,
+    BandwidthMethod, BandwidthSink, BandwidthUpdate, ConnectionTuple, ConntrackControl, IcmpType,
     LayeredProfileLookup, PacketEnv, PacketHandler, QueuedPacket, VerdictError,
 };
 use pm_firewall::*;
@@ -43,10 +44,33 @@ fn process(pid: i32) -> Arc<Process> {
 #[derive(Default)]
 struct FakeResolver {
     pids: Mutex<HashMap<u16, i32>>,
+    /// Local ports whose PID lookup blocks until the gate opens.
+    gated: Mutex<Vec<u16>>,
+    gate_open: Mutex<bool>,
+    gate_cv: Condvar,
+    entered: AtomicU32,
+}
+
+impl FakeResolver {
+    fn close_gate(&self, port: u16) {
+        *self.gate_open.lock().unwrap() = false;
+        self.gated.lock().unwrap().push(port);
+    }
+    fn open_gate(&self) {
+        *self.gate_open.lock().unwrap() = true;
+        self.gate_cv.notify_all();
+    }
 }
 
 impl ProcessResolver for FakeResolver {
     fn pid_of_connection(&self, info: &mut PacketInfo) -> (i32, bool) {
+        if self.gated.lock().unwrap().contains(&info.local_port()) {
+            self.entered.fetch_add(1, Ordering::SeqCst);
+            let mut open = self.gate_open.lock().unwrap();
+            while !*open {
+                open = self.gate_cv.wait(open).unwrap();
+            }
+        }
         let pid = self
             .pids
             .lock()
@@ -231,13 +255,33 @@ impl BandwidthSink for Sink {
     }
 }
 
+#[derive(Clone)]
 struct FakePacket {
     info: PacketInfo,
     payload: Vec<u8>,
     icmp: Option<u8>,
+    icmp_load_fails: bool,
     fast_tracked: bool,
     info_only: bool,
-    verdicts: Mutex<Vec<PktVerdict>>,
+    seq: u32,
+    verdicts: Arc<Mutex<Vec<PktVerdict>>>,
+    order: Option<Arc<Mutex<Vec<u32>>>>,
+}
+
+/// Dispatches a copy of the packet and waits for the workers; the verdict log
+/// is shared with the original.
+trait HandlePacket {
+    fn handle_packet(&self, pkt: &FakePacket);
+}
+
+impl HandlePacket for PacketHandler {
+    fn handle_packet(&self, pkt: &FakePacket) {
+        self.dispatch(Box::new(pkt.clone()));
+        assert!(
+            self.wait_idle(Duration::from_secs(10)),
+            "workers did not finish"
+        );
+    }
 }
 
 impl FakePacket {
@@ -253,9 +297,12 @@ impl FakePacket {
             info: PacketInfo::new(protocol, ip(src), src_port, ip(dst), dst_port, inbound),
             payload: Vec::new(),
             icmp: None,
+            icmp_load_fails: false,
             fast_tracked: false,
             info_only: false,
-            verdicts: Mutex::new(Vec::new()),
+            seq: 0,
+            verdicts: Arc::new(Mutex::new(Vec::new())),
+            order: None,
         }
     }
     fn tcp(dst: &str, dst_port: u16) -> FakePacket {
@@ -291,11 +338,18 @@ impl QueuedPacket for FakePacket {
     fn raw(&self) -> &[u8] {
         &self.payload
     }
-    fn icmp_type(&self) -> Option<u8> {
-        self.icmp
+    fn icmp_type(&self) -> IcmpType {
+        match (self.icmp_load_fails, self.icmp) {
+            (true, _) => IcmpType::LoadFailed,
+            (false, Some(t)) => IcmpType::Type(t),
+            (false, None) => IcmpType::NoLayer,
+        }
     }
     fn set_verdict(&self, verdict: PktVerdict) -> Result<(), VerdictError> {
         self.verdicts.lock().unwrap().push(verdict);
+        if let Some(order) = &self.order {
+            order.lock().unwrap().push(self.seq);
+        }
         Ok(())
     }
 }
@@ -901,12 +955,13 @@ fn inbound_icmp_turns_outbound_on_first_outbound_packet() {
 }
 
 #[test]
-fn icmp_connection_without_readable_header_is_dropped() {
+fn icmp_packet_that_fails_to_load_is_dropped() {
     let fx = fx(permit());
     fx.resolver.pids.lock().unwrap().insert(0, 4242);
     fx.handler
         .handle_packet(&icmp("192.168.1.5", "8.8.8.8", 8, false));
-    let pkt = FakePacket::new(1, "192.168.1.5", 0, "8.8.8.8", 0, false);
+    let mut pkt = FakePacket::new(1, "192.168.1.5", 0, "8.8.8.8", 0, false);
+    pkt.icmp_load_fails = true;
     fx.handler.handle_packet(&pkt);
     assert_eq!(pkt.verdicts(), vec![PktVerdict::Drop]);
 }
@@ -1078,4 +1133,169 @@ fn conntrack_wide_reset_uses_the_ipv6_setting() {
     let fx = fx(permit());
     fx.handler.reset_all_marked_conntrack().unwrap();
     assert_eq!(fx.conntrack.all_calls.lock().unwrap().clone(), vec![true]);
+}
+
+#[test]
+fn icmp_without_layer_continues_as_echo_like_go() {
+    let fx = fx(permit());
+    fx.resolver.pids.lock().unwrap().insert(0, 4242);
+    fx.handler
+        .handle_packet(&icmp("192.168.1.5", "8.8.8.8", 8, false));
+    let pkt = FakePacket::new(1, "192.168.1.5", 0, "8.8.8.8", 0, false);
+    fx.handler.handle_packet(&pkt);
+    assert_eq!(pkt.verdicts(), vec![PktVerdict::Accept]);
+
+    // With a listener, the fast track still submits it first.
+    let env = TestEnv::default();
+    env.icmp_submitted.store(true, Ordering::SeqCst);
+    let fx = fx_with(env, permit());
+    let pkt = FakePacket::new(1, "192.168.1.5", 0, "8.8.8.8", 0, false);
+    fx.handler.handle_packet(&pkt);
+    assert_eq!(pkt.verdicts(), vec![PktVerdict::Accept]);
+}
+
+// Dispatch model.
+
+fn wait_for(what: &str, cond: impl Fn() -> bool) {
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    while !cond() {
+        assert!(std::time::Instant::now() < deadline, "timeout: {what}");
+        std::thread::sleep(Duration::from_millis(1));
+    }
+}
+
+#[test]
+fn back_to_back_first_packets_both_reach_the_decision() {
+    let fx = fx(permit());
+    fx.resolver.close_gate(43210);
+    let a = FakePacket::tcp("93.184.216.34", 443);
+    let b = FakePacket::tcp("93.184.216.34", 443);
+    fx.handler.dispatch(Box::new(a.clone()));
+    // The first packet is stuck gathering data; the second arrives meanwhile.
+    wait_for("first worker", || {
+        fx.resolver.entered.load(Ordering::SeqCst) == 1
+    });
+    fx.handler.dispatch(Box::new(b.clone()));
+    assert!(a.verdicts().is_empty() && b.verdicts().is_empty());
+    fx.resolver.open_gate();
+    assert!(fx.handler.wait_idle(Duration::from_secs(10)));
+
+    assert_eq!(a.verdicts(), vec![PktVerdict::PermanentAccept]);
+    assert_eq!(b.verdicts(), vec![PktVerdict::PermanentAccept]);
+    assert_eq!(fx.profiles.lookups.load(Ordering::SeqCst), 1);
+    assert_eq!(fx.handler.tracked_handlers(), 0);
+}
+
+#[test]
+fn packets_of_a_connection_keep_their_order() {
+    let fx = fx(permit());
+    fx.resolver.close_gate(43210);
+    let order = Arc::new(Mutex::new(Vec::new()));
+    let packets: Vec<FakePacket> = (0..20)
+        .map(|seq| {
+            let mut p = FakePacket::tcp("93.184.216.34", 443);
+            p.seq = seq;
+            p.order = Some(Arc::clone(&order));
+            p
+        })
+        .collect();
+    fx.handler.dispatch(Box::new(packets[0].clone()));
+    wait_for("worker", || fx.resolver.entered.load(Ordering::SeqCst) == 1);
+    for p in &packets[1..] {
+        fx.handler.dispatch(Box::new(p.clone()));
+    }
+    fx.resolver.open_gate();
+    assert!(fx.handler.wait_idle(Duration::from_secs(10)));
+    assert_eq!(*order.lock().unwrap(), (0..20).collect::<Vec<u32>>());
+}
+
+#[test]
+fn a_slow_connection_does_not_stall_others() {
+    let fx = fx(permit());
+    fx.resolver.pids.lock().unwrap().insert(43211, 4242);
+    fx.resolver.close_gate(43210);
+    let slow = FakePacket::tcp("93.184.216.34", 443);
+    let mut fast = FakePacket::tcp("93.184.216.35", 443);
+    fast.info.src_port = 43211;
+    fx.handler.dispatch(Box::new(slow.clone()));
+    wait_for("slow worker", || {
+        fx.resolver.entered.load(Ordering::SeqCst) == 1
+    });
+    fx.handler.dispatch(Box::new(fast.clone()));
+    wait_for("fast verdict", || !fast.verdicts().is_empty());
+    assert!(slow.verdicts().is_empty());
+    fx.resolver.open_gate();
+    assert!(fx.handler.wait_idle(Duration::from_secs(10)));
+    assert_eq!(slow.last(), PktVerdict::PermanentAccept);
+}
+
+#[test]
+fn a_full_queue_drops_the_packet() {
+    let fx = fx(permit());
+    fx.resolver.close_gate(43210);
+    fx.handler
+        .dispatch(Box::new(FakePacket::tcp("93.184.216.34", 443)));
+    wait_for("worker", || fx.resolver.entered.load(Ordering::SeqCst) == 1);
+    let queued: Vec<FakePacket> = (0..100)
+        .map(|_| FakePacket::tcp("93.184.216.34", 443))
+        .collect();
+    for p in &queued {
+        fx.handler.dispatch(Box::new(p.clone()));
+    }
+    let overflow = FakePacket::tcp("93.184.216.34", 443);
+    fx.handler.dispatch(Box::new(overflow.clone()));
+    // Dropped right away, without a permanent mark.
+    assert_eq!(overflow.verdicts(), vec![PktVerdict::Drop]);
+    fx.resolver.open_gate();
+    assert!(fx.handler.wait_idle(Duration::from_secs(10)));
+    assert!(queued
+        .iter()
+        .all(|p| p.last() == PktVerdict::PermanentAccept));
+}
+
+#[test]
+fn shutdown_discards_queued_packets() {
+    let fx = fx(permit());
+    fx.resolver.close_gate(43210);
+    fx.handler
+        .dispatch(Box::new(FakePacket::tcp("93.184.216.34", 443)));
+    wait_for("worker", || fx.resolver.entered.load(Ordering::SeqCst) == 1);
+    let queued = FakePacket::tcp("93.184.216.34", 443);
+    fx.handler.dispatch(Box::new(queued.clone()));
+    fx.handler.shutdown();
+    fx.resolver.open_gate();
+    assert!(fx.handler.wait_idle(Duration::from_secs(10)));
+    assert!(queued.verdicts().is_empty());
+    // Nothing is handled after shutdown.
+    let late = FakePacket::tcp("93.184.216.36", 443);
+    fx.handler.dispatch(Box::new(late.clone()));
+    assert!(late.verdicts().is_empty());
+}
+
+#[test]
+fn connection_without_state_that_is_incomplete_is_not_dropped() {
+    let fx = fx(permit());
+    // Created behind the dispatcher's back: no handler state.
+    let info = PacketInfo::new(6, ip("192.168.1.5"), 43210, ip("93.184.216.34"), 443, false);
+    fx.network.new_incomplete_connection(&info);
+    let pkt = FakePacket::tcp("93.184.216.34", 443);
+    fx.handler.handle_packet(&pkt);
+    assert_eq!(pkt.verdicts(), vec![PktVerdict::PermanentAccept]);
+}
+
+#[test]
+fn packet_after_a_reset_gets_the_new_permanent_mark() {
+    let fx = fx(permit());
+    let first = FakePacket::tcp("93.184.216.34", 443);
+    fx.handler.handle_packet(&first);
+    assert_eq!(first.last(), PktVerdict::PermanentAccept);
+
+    switch_profile(&fx, block_all());
+    fx.handler
+        .reset_single_connection_verdict(&first.info.connection_id());
+
+    // The conntrack entry is gone; the next packet is marked from the new verdict.
+    let next = FakePacket::tcp("93.184.216.34", 443);
+    fx.handler.handle_packet(&next);
+    assert_eq!(next.verdicts(), vec![PktVerdict::PermanentBlock]);
 }
