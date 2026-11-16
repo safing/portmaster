@@ -103,6 +103,12 @@ impl Service {
             databases.controller(name)?;
         }
 
+        // Data migrations, like Go `service/profile` runs at startup.
+        let migration_db = pm_migration::internal_interface(&databases);
+        if let Err(error) = pm_profile::migrations::migrate(&migration_db) {
+            tracing::warn!(%error, "profile: migrations failed");
+        }
+
         // Runtime values: modules expose computed records through `runtime`.
         let mut runtime = pm_runtime::Runtime::new();
         runtime.start(&databases)?;

@@ -1,0 +1,17 @@
+[package]
+name = "pm-migration"
+version = "0.1.0"
+edition.workspace = true
+description = "Data migration registry compatible with Go base/database/migration"
+license.workspace = true
+
+[dependencies]
+pm-database = { path = "../pm-database" }
+pm-dsd = { path = "../pm-dsd" }
+pm-record = { path = "../pm-record" }
+pm-updates = { path = "../pm-updates" }
+thiserror.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

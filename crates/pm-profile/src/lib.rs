@@ -27,6 +27,7 @@ mod matching;
 mod merge;
 mod option_texts;
 pub mod options;
+pub mod migrations;
 mod profile;
 mod proxy_url;
 mod store;
@@ -52,7 +53,7 @@ pub use profile::{
     DEFAULT_ACTION_NOT_SET, DEFAULT_ACTION_PERMIT, DEFAULT_ACTION_PERMIT_VALUE,
 };
 pub use proxy_url::validate_upstream_proxy_url;
-pub use store::{Error as StoreError, ProfileStore};
+pub use store::{encode_profile, Error as StoreError, ProfileStore};
 
 /// Profile source: local, editable profiles.
 pub const SOURCE_LOCAL: &str = "local";

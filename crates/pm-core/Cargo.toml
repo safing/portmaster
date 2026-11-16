@@ -24,6 +24,7 @@ pm-dsd = { path = "../pm-dsd" }
 pm-endpoints = { path = "../pm-endpoints" }
 pm-interception = { path = "../pm-interception" }
 pm-mgr = { path = "../pm-mgr" }
+pm-migration = { path = "../pm-migration" }
 pm-runtime = { path = "../pm-runtime" }
 pm-netenv = { path = "../pm-netenv" }
 pm-netquery = { path = "../pm-netquery" }
@@ -53,6 +54,7 @@ tracing-subscriber.workspace = true
 
 [dev-dependencies]
 pm-mgr = { path = "../pm-mgr" }
+pm-migration = { path = "../pm-migration" }
 tokio-tungstenite = "0.30.0"
 futures-util = "0.3.34"
 

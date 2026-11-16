@@ -192,6 +192,12 @@ async fn core_serves_api_and_database() {
     assert!(service.api.endpoint("app/profile").is_some());
     assert!(service.api.endpoint("app/auth").is_some());
     assert!(service.api.endpoint("debug/core").is_some());
+
+    // Profile data migrations leave the same status record as the Go core.
+    let migration_status = pm_migration::internal_interface(&service.databases)
+        .get("core:migrations/profile")
+        .unwrap();
+    assert_eq!(String::from_utf8_lossy(&migration_status.data), "1.6.3");
     assert!(service.api.endpoint("control/pause").is_some());
     assert!(service.api.endpoint("control/resume").is_some());
 

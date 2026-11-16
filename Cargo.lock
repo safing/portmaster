@@ -1463,6 +1463,7 @@ dependencies = [
  "pm-interception",
  "pm-jess",
  "pm-mgr",
+ "pm-migration",
  "pm-nameserver",
  "pm-netenv",
  "pm-netquery",
@@ -1646,6 +1647,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "pm-migration"
+version = "0.1.0"
+dependencies = [
+ "pm-database",
+ "pm-dsd",
+ "pm-record",
+ "pm-updates",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
 name = "pm-nameserver"
 version = "0.1.0"
 dependencies = [
@@ -1796,12 +1809,16 @@ dependencies = [
  "pm-dsd",
  "pm-endpoints",
  "pm-intel",
+ "pm-migration",
+ "pm-query",
+ "pm-updates",
  "regex",
  "serde",
  "serde_json",
  "sha3 0.12.0",
  "thiserror",
  "tokio",
+ "tracing",
  "url",
 ]
 

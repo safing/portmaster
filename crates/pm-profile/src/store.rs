@@ -70,19 +70,24 @@ impl ProfileStore {
     }
 
     fn encode(&self, profile: &Profile) -> Result<Record> {
-        Ok(Record {
-            key: Key::parse(&profile.key()),
-            meta: Meta {
-                created: profile.created,
-                modified: crate::now(),
-                ..Meta::default()
-            },
-            format: pm_dsd::format::JSON,
-            data: pm_dsd::gojson::to_vec(profile)?,
-        })
+        encode_profile(profile)
     }
 
     fn decode(record: &Record) -> Result<Profile> {
         Ok(serde_json::from_slice(&record.data)?)
     }
+}
+
+/// Encodes a profile as a database record, like Go `Profile.Encode`.
+pub fn encode_profile(profile: &Profile) -> Result<Record> {
+    Ok(Record {
+        key: Key::parse(&profile.key()),
+        meta: Meta {
+            created: profile.created,
+            modified: crate::now(),
+            ..Meta::default()
+        },
+        format: pm_dsd::format::JSON,
+        data: pm_dsd::gojson::to_vec(profile)?,
+    })
 }
