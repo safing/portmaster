@@ -18,6 +18,12 @@ import (
 
 var bucketName = []byte{0}
 
+// queryPageSize is the maximum number of matching records a query collects
+// within one read transaction before handing them to the consumer.
+const queryPageSize = 100
+
+var errQueryTimeout = errors.New("query timeout")
+
 // BBolt database made pluggable for portbase.
 type BBolt struct {
 	name string
@@ -195,64 +201,29 @@ func (b *BBolt) Query(q *query.Query, local, internal bool) (*iterator.Iterator,
 }
 
 func (b *BBolt) queryExecutor(queryIter *iterator.Iterator, q *query.Query, local, internal bool) {
-	prefix := []byte(q.DatabaseKeyPrefix())
-	err := b.db.View(func(tx *bbolt.Tx) error {
-		// Create a cursor for iteration.
-		c := tx.Bucket(bucketName).Cursor()
+	// Collect the matching records page by page within a read transaction,
+	// but feed them to the consumer only after the transaction is closed.
+	// An open read transaction blocks bbolt from growing its mmap, so a slow
+	// consumer would otherwise stall the writer that needs to grow it and,
+	// through it, all other writers and new transactions.
+	var (
+		err      error
+		startKey = []byte(q.DatabaseKeyPrefix())
+	)
+	for {
+		var page []record.Record
+		page, startKey, err = b.queryPage(q, startKey, local, internal)
 
-		// Iterate over items in sorted key order. This starts from the
-		// first key/value pair and updates the k/v variables to the
-		// next key/value on each iteration.
-		//
-		// The loop finishes at the end of the cursor when a nil key is returned.
-		for key, value := c.Seek(prefix); key != nil; key, value = c.Next() {
-
-			// if we don't match the prefix anymore, exit
-			if !bytes.HasPrefix(key, prefix) {
-				return nil
-			}
-
-			// wrap value
-			iterWrapper, err := record.NewRawWrapper(b.name, string(key), value)
-			if err != nil {
-				return err
-			}
-
-			// check validity / access
-			if !iterWrapper.Meta().CheckValidity() {
-				continue
-			}
-			if !iterWrapper.Meta().CheckPermission(local, internal) {
-				continue
-			}
-
-			// check if matches & send
-			if q.MatchesRecord(iterWrapper) {
-				// copy data
-				duplicate := make([]byte, len(value))
-				copy(duplicate, value)
-
-				newWrapper, err := record.NewRawWrapper(b.name, iterWrapper.DatabaseKey(), duplicate)
-				if err != nil {
-					return err
-				}
-				select {
-				case <-queryIter.Done:
-					return nil
-				case queryIter.Next <- newWrapper:
-				default:
-					select {
-					case <-queryIter.Done:
-						return nil
-					case queryIter.Next <- newWrapper:
-					case <-time.After(1 * time.Second):
-						return errors.New("query timeout")
-					}
-				}
-			}
+		// Feed the records collected before a possible error, as before.
+		done, feedErr := feedQueryPage(queryIter, page)
+		if done {
+			err = feedErr
+			break
 		}
-		return nil
-	})
+		if err != nil || startKey == nil {
+			break
+		}
+	}
 	queryIter.Finish(err)
 }
 
@@ -424,4 +395,90 @@ func (b *BBolt) Purge(ctx context.Context, q *query.Query, local, internal, shad
 // Shutdown shuts down the database.
 func (b *BBolt) Shutdown() error {
 	return b.db.Close()
+}
+
+// queryPage collects up to queryPageSize matching records, starting at the
+// given key, within one read transaction. It returns the key to continue at,
+// or nil if there are no more records. The returned records own their data,
+// as the data returned by bbolt is only valid during the transaction.
+func (b *BBolt) queryPage(q *query.Query, startKey []byte, local, internal bool) (page []record.Record, nextKey []byte, err error) {
+	prefix := []byte(q.DatabaseKeyPrefix())
+	err = b.db.View(func(tx *bbolt.Tx) error {
+		// Create a cursor for iteration.
+		c := tx.Bucket(bucketName).Cursor()
+
+		// Iterate over items in sorted key order. This starts from the
+		// first key/value pair and updates the k/v variables to the
+		// next key/value on each iteration.
+		//
+		// The loop finishes at the end of the cursor when a nil key is returned.
+		for key, value := c.Seek(startKey); key != nil; key, value = c.Next() {
+			// if we don't match the prefix anymore, exit
+			if !bytes.HasPrefix(key, prefix) {
+				return nil
+			}
+
+			// wrap value
+			iterWrapper, err := record.NewRawWrapper(b.name, string(key), value)
+			if err != nil {
+				return err
+			}
+
+			// check validity / access
+			if !iterWrapper.Meta().CheckValidity() {
+				continue
+			}
+			if !iterWrapper.Meta().CheckPermission(local, internal) {
+				continue
+			}
+
+			// check if matches & collect
+			if !q.MatchesRecord(iterWrapper) {
+				continue
+			}
+
+			// copy data
+			duplicate := make([]byte, len(value))
+			copy(duplicate, value)
+
+			newWrapper, err := record.NewRawWrapper(b.name, iterWrapper.DatabaseKey(), duplicate)
+			if err != nil {
+				return err
+			}
+			page = append(page, newWrapper)
+
+			// Continue in a new transaction once the page is full. The next
+			// page starts at the smallest key after the current one.
+			if len(page) >= queryPageSize {
+				nextKey = make([]byte, len(key)+1)
+				copy(nextKey, key)
+				return nil
+			}
+		}
+		return nil
+	})
+	return page, nextKey, err
+}
+
+// feedQueryPage sends the given records to the query iterator. It returns
+// whether the query is done, either because it was cancelled or because the
+// consumer did not accept a record in time.
+func feedQueryPage(queryIter *iterator.Iterator, page []record.Record) (done bool, err error) {
+	for _, r := range page {
+		select {
+		case <-queryIter.Done:
+			return true, nil
+		case queryIter.Next <- r:
+		default:
+			select {
+			case <-queryIter.Done:
+				return true, nil
+			case queryIter.Next <- r:
+			case <-time.After(1 * time.Second):
+				return true, errQueryTimeout
+			}
+		}
+	}
+
+	return false, nil
 }
