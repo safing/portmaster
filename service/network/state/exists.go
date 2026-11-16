@@ -35,6 +35,20 @@ func Exists(pktInfo *packet.Info, now time.Time) (exists bool) {
 }
 
 func (table *tcpTable) exists(pktInfo *packet.Info) (exists bool) {
+	if table.existsInTable(pktInfo) {
+		return true
+	}
+
+	// Lookups also check the dual-stack table, as IPv4 connections of
+	// dual-stack sockets are only listed there (with IPv4-mapped addresses).
+	if table.dualStack != nil {
+		return table.dualStack.existsInTable(pktInfo)
+	}
+
+	return false
+}
+
+func (table *tcpTable) existsInTable(pktInfo *packet.Info) (exists bool) {
 	// Update tables if older than the connection that is checked.
 	if table.lastUpdateAt.Load() < pktInfo.SeenAt.UnixNano() {
 		table.updateTables()
@@ -62,6 +76,31 @@ func (table *tcpTable) exists(pktInfo *packet.Info) (exists bool) {
 }
 
 func (table *udpTable) exists(pktInfo *packet.Info, now time.Time) (exists bool) {
+	// Find the socket like lookups do: first in this table, then in the
+	// dual-stack table. Lookups store the connection state of sockets of
+	// the dual-stack table in this table.
+	socketInfo := table.findBind(pktInfo)
+	if socketInfo == nil && table.dualStack != nil {
+		socketInfo = table.dualStack.findBind(pktInfo)
+	}
+	if socketInfo == nil {
+		return false
+	}
+
+	udpConnState, ok := table.getConnState(socketInfo, socket.Address{
+		IP:   pktInfo.RemoteIP(),
+		Port: pktInfo.RemotePort(),
+	})
+	if !ok {
+		return false
+	}
+
+	return udpConnState.lastSeen.After(now.Add(-UDPConnectionTTL))
+}
+
+// findBind returns the bind of the given connection, matching it the same way
+// as lookups do.
+func (table *udpTable) findBind(pktInfo *packet.Info) *socket.BindInfo {
 	// Update tables if older than the connection that is checked.
 	if table.lastUpdateAt.Load() < pktInfo.SeenAt.UnixNano() {
 		table.updateTables()
@@ -72,31 +111,14 @@ func (table *udpTable) exists(pktInfo *packet.Info, now time.Time) (exists bool)
 
 	localIP := pktInfo.LocalIP()
 	localPort := pktInfo.LocalPort()
-	remoteIP := pktInfo.RemoteIP()
-	remotePort := pktInfo.RemotePort()
-
-	connThreshhold := now.Add(-UDPConnectionTTL)
 
 	// search binds
 	for _, socketInfo := range table.binds {
 		if localPort == socketInfo.Local.Port &&
-			(socketInfo.Local.IP[0] == 0 || localIP.Equal(socketInfo.Local.IP)) {
-
-			udpConnState, ok := table.getConnState(socketInfo, socket.Address{
-				IP:   remoteIP,
-				Port: remotePort,
-			})
-			switch {
-			case !ok:
-				return false
-			case udpConnState.lastSeen.After(connThreshhold):
-				return true
-			default:
-				return false
-			}
-
+			(socketInfo.ListensAny || localIP.Equal(socketInfo.Local.IP)) {
+			return socketInfo
 		}
 	}
 
-	return false
+	return nil
 }

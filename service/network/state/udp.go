@@ -121,20 +121,29 @@ func CleanUDPStates(_ context.Context) {
 	}
 }
 
+// getConnState returns a copy of the connection state, so that it can be
+// used without holding the states lock.
 func (table *udpTable) getConnState(
 	socketInfo *socket.BindInfo,
 	remoteAddress socket.Address,
-) (udpConnState *udpState, ok bool) {
+) (udpConnState udpState, ok bool) {
+	// Build the keys in stack buffers, so that the lookup does not allocate.
+	var localKeyBuf, remoteKeyBuf [udpStateKeyBufSize]byte
+	localKey := appendUDPStateKey(localKeyBuf[:0], socketInfo.Local)
+	remoteKey := appendUDPStateKey(remoteKeyBuf[:0], remoteAddress)
+
 	table.statesLock.Lock()
 	defer table.statesLock.Unlock()
 
-	bindMap, ok := table.states[makeUDPStateKey(socketInfo.Local)]
-	if ok {
-		udpConnState, ok = bindMap[makeUDPStateKey(remoteAddress)]
-		return
+	bindMap, ok := table.states[string(localKey)]
+	if !ok {
+		return udpState{}, false
 	}
-
-	return nil, false
+	state, ok := bindMap[string(remoteKey)]
+	if !ok {
+		return udpState{}, false
+	}
+	return *state, true
 }
 
 func (table *udpTable) getDirection(
