@@ -1485,6 +1485,7 @@ dependencies = [
 name = "pm-firewall"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "hickory-proto",
  "pm-config",
  "pm-database",

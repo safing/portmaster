@@ -11,6 +11,7 @@ pub mod block;
 pub mod conn;
 pub mod env;
 pub mod error;
+pub mod ipinfo;
 pub mod model;
 pub mod namerecord;
 mod option_texts;
@@ -38,6 +39,7 @@ pub use model::{
     SERVER_TYPE_TCP, TLS_PROTOCOL,
 };
 pub use env::{Environment, Nameserver, StaticEnvironment, SystemEnvironment};
+pub use ipinfo::{IpInfo, IpInfoStore, ResolvedDomain};
 pub use namerecord::{NameRecord, NameRecordStore};
 pub use query_error::{QueryError, ResolveFailure};
 pub use rrcache::RRCache;

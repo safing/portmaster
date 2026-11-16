@@ -6,6 +6,7 @@ description = "Connection verdict deciders of the Portmaster firewall"
 license.workspace = true
 
 [dependencies]
+async-trait.workspace = true
 hickory-proto.workspace = true
 pm-endpoints = { path = "../pm-endpoints" }
 pm-interception = { path = "../pm-interception" }

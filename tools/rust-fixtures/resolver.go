@@ -39,6 +39,7 @@ func genResolver() {
 	writeObject("resolver.json", map[string]any{
 		"rr_texts":     resolverRRTexts(),
 		"name_records": resolverNameRecords(),
+		"ip_infos":     resolverIPInfos(),
 	})
 }
 
@@ -168,6 +169,72 @@ func resolverNameRecords() []any {
 			"key":     "cache:intel/nameRecord/" + record.Domain + record.Question,
 			"json":    string(data),
 			"expires": record.Expires + 86400*14,
+		})
+	}
+	return cases
+}
+
+// resolverIPInfos records the persisted IPInfo JSON and the key of a few
+// records, including AddDomain results.
+func resolverIPInfos() []any {
+	info := &resolver.ResolverInfo{
+		Name:    "Cloudflare",
+		Type:    resolver.ServerTypeDoT,
+		Source:  resolver.ServerSourceConfigured,
+		IP:      net.ParseIP("1.1.1.2"),
+		Domain:  "cloudflare-dns.com",
+		IPScope: netutils.Global,
+		Port:    853,
+	}
+	rrCache := &resolver.RRCache{
+		Domain:          "example.com.",
+		Question:        dns.Type(dns.TypeA),
+		RCode:           dns.RcodeSuccess,
+		Expires:         1_700_000_060,
+		Modified:        1_700_000_000,
+		ServedFromCache: true,
+		Resolver:        info,
+	}
+	plain := &resolver.RRCache{
+		Domain:   "plain.example.net.",
+		Question: dns.Type(dns.TypeAAAA),
+		RCode:    dns.RcodeNameError,
+		Expires:  1_700_000_100,
+	}
+
+	one := &resolver.IPInfo{IP: "192.0.2.1", ProfileID: "global"}
+	one.AddDomain(resolver.ResolvedDomain{
+		Domain:            "example.com.",
+		Resolver:          info,
+		DNSRequestContext: rrCache.ToDNSRequestContext(),
+		Expires:           rrCache.Expires,
+	})
+
+	many := &resolver.IPInfo{IP: "2001:db8::1", ProfileID: "local/abc"}
+	many.AddDomain(resolver.ResolvedDomain{
+		Domain:  "sub1.example.com.",
+		CNAMEs:  []string{"example.com."},
+		Expires: 1_700_000_050,
+	})
+	many.AddDomain(resolver.ResolvedDomain{
+		Domain:            "plain.example.net.",
+		DNSRequestContext: plain.ToDNSRequestContext(),
+		Expires:           plain.Expires,
+	})
+	many.AddDomain(resolver.ResolvedDomain{
+		Domain: "sub1.example.com.",
+		CNAMEs: []string{},
+	})
+
+	var cases []any
+	for _, s := range []*resolver.IPInfo{one, many} {
+		data, err := json.Marshal(s)
+		if err != nil {
+			fail(err)
+		}
+		cases = append(cases, map[string]any{
+			"key":  "cache:intel/ipInfo/" + s.ProfileID + "/" + s.IP,
+			"json": string(data),
 		})
 	}
 	return cases

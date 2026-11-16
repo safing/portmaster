@@ -1,4 +1,14 @@
 {
+  "ip_infos": [
+    {
+      "json": "{\"IP\":\"192.0.2.1\",\"ProfileID\":\"global\",\"ResolvedDomains\":[{\"Domain\":\"example.com.\",\"CNAMEs\":null,\"Resolver\":{\"Name\":\"Cloudflare\",\"Type\":\"dot\",\"Source\":\"config\",\"IP\":\"1.1.1.2\",\"Domain\":\"cloudflare-dns.com\",\"IPScope\":4,\"Port\":853},\"DNSRequestContext\":{\"Domain\":\"example.com.\",\"Question\":\"A\",\"RCode\":\"NOERROR\",\"ServedFromCache\":true,\"RequestingNew\":false,\"IsBackup\":false,\"Filtered\":false,\"Modified\":\"2023-11-14T22:13:20Z\",\"Expires\":\"2023-11-14T22:14:20Z\"},\"Expires\":1700000060}]}",
+      "key": "cache:intel/ipInfo/global/192.0.2.1"
+    },
+    {
+      "json": "{\"IP\":\"2001:db8::1\",\"ProfileID\":\"local/abc\",\"ResolvedDomains\":[{\"Domain\":\"plain.example.net.\",\"CNAMEs\":null,\"Resolver\":null,\"DNSRequestContext\":{\"Domain\":\"plain.example.net.\",\"Question\":\"AAAA\",\"RCode\":\"NXDOMAIN\",\"ServedFromCache\":false,\"RequestingNew\":false,\"IsBackup\":false,\"Filtered\":false,\"Modified\":\"1970-01-01T00:00:00Z\",\"Expires\":\"2023-11-14T22:15:00Z\"},\"Expires\":1700000100},{\"Domain\":\"sub1.example.com.\",\"CNAMEs\":[],\"Resolver\":null,\"DNSRequestContext\":null,\"Expires\":0}]}",
+      "key": "cache:intel/ipInfo/local/abc/2001:db8::1"
+    }
+  ],
   "name_records": [
     {
       "expires": 1701209660,

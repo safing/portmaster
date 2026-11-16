@@ -16,6 +16,7 @@
 
 mod bypass;
 mod deciders;
+pub mod dns_filter;
 mod dga;
 mod env;
 mod levenshtein;
