@@ -82,6 +82,8 @@ pub struct Service {
     pub split_queue: Arc<pm_splittun::RequestQueue>,
     /// Profile and settings export/import module.
     pub sync: Arc<pm_sync::Sync>,
+    /// Metrics registry module, including persistence and the /metrics API.
+    pub metrics: Arc<pm_metrics::Metrics>,
     /// Subscribed in `new` so changes before `run` are not missed.
     profile_changes: Mutex<Option<tokio::sync::broadcast::Receiver<()>>>,
     listener: Mutex<Option<TcpListener>>,
@@ -283,6 +285,7 @@ impl Service {
         // Configuration.
         let config = Config::new();
         register_options(&config, options)?;
+        pm_metrics::config::register_options(&config)?;
         pm_profile::options::register_options(&config)?;
         pm_firewall::register_options(&config)?;
         pm_splittun::register_options(&config)?;
@@ -349,6 +352,18 @@ impl Service {
         api.set_ui_archives(Arc::new(UiArchives::new(&options.bin_dir)));
         pm_api::ui::register_ui_endpoints(&api)
             .map_err(|error| anyhow::anyhow!("register ui api: {error}"))?;
+
+        // Metrics: namespace, config, API and persistent counter state.
+        let metrics = pm_metrics::Metrics::new(&config);
+        metrics
+            .set_namespace(pm_metrics::NAMESPACE)
+            .map_err(|error| anyhow::anyhow!("set metrics namespace: {error}"))?;
+        metrics
+            .register_api(&api)
+            .map_err(|error| anyhow::anyhow!("register metrics api: {error}"))?;
+        metrics
+            .start(&databases)
+            .map_err(|error| anyhow::anyhow!("start metrics: {error}"))?;
 
         // The remaining core endpoints: shutdown and directory map.
         let shutdown_token = service_restart_token.clone();
@@ -655,6 +670,7 @@ impl Service {
             split_proxies: Arc::clone(&split_proxies),
             split_queue: Arc::clone(&split_queue),
             sync,
+            metrics,
             profile_changes: Mutex::new(Some(profile_changes)),
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
@@ -994,6 +1010,7 @@ impl Service {
         }
         self.interop_env.set_interception_started(false);
         self.dns.shutdown().await;
+        self.metrics.stop();
         databases.shutdown()?;
         outcome
     }
@@ -1001,6 +1018,7 @@ impl Service {
     /// Shuts the service down.
     pub fn shutdown(&self) -> anyhow::Result<()> {
         self.dns.stop();
+        self.metrics.stop();
         self.databases.shutdown()?;
         Ok(())
     }

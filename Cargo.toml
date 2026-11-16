@@ -39,6 +39,7 @@ members = [
     "crates/pm-compat",
     "crates/pm-interop",
     "crates/pm-sync",
+    "crates/pm-metrics",
 ]
 
 [workspace.package]

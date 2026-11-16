@@ -1499,6 +1499,7 @@ dependencies = [
  "pm-interception",
  "pm-interop",
  "pm-jess",
+ "pm-metrics",
  "pm-mgr",
  "pm-migration",
  "pm-nameserver",
@@ -1688,6 +1689,20 @@ dependencies = [
  "sha2",
  "sha3 0.10.9",
  "thiserror",
+]
+
+[[package]]
+name = "pm-metrics"
+version = "0.1.0"
+dependencies = [
+ "pm-api",
+ "pm-config",
+ "pm-database",
+ "pm-record",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]
