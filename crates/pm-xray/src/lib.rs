@@ -36,9 +36,13 @@ pub use error::{Error, Result};
 pub use manager::{ChildHandle, ProcessAdapter, SystemProcessAdapter, XrayManager};
 pub use model::{
     AddSubscriptionRequest, ConnectRequest, NodesResponse, ProcessState, Protocol, Subscription,
-    UpdateSubscriptionRequest, XrayNode, XrayStatus,
+    TrafficStatus, UpdateSubscriptionRequest, XrayNode, XrayStatus,
 };
-pub use stats::{NoopTrafficStats, TrafficSnapshot, TrafficStats};
+pub use stats::{
+    GrpcResponse, GrpcStats, GrpcStatus, GrpcTransport, H2Transport, NoopTrafficStats, StatsError,
+    StatsService, TrafficCounter, TrafficSnapshot, TrafficStats, DEFAULT_STATS_PORT, GET_STATS_PATH,
+    QUERY_STATS_PATH,
+};
 pub use subscription::{HttpFetcher, SubscriptionFetcher, SubscriptionStore, XRAY_DB};
 
 /// Path of the Xray binary in the configuration.
@@ -49,6 +53,8 @@ pub const CFG_XRAY_ENABLE: &str = "xray/enable";
 pub const CFG_XRAY_INBOUND_PORT: &str = "xray/inboundPort";
 /// Local inbound protocol: `socks` or `http`.
 pub const CFG_XRAY_INBOUND_PROTOCOL: &str = "xray/inboundProtocol";
+/// Port of the local gRPC API inbound exposing Xray's StatsService. 0 disables it.
+pub const CFG_XRAY_STATS_PORT: &str = "xray/statsPort";
 /// Binary name looked up in the bin directory and PATH.
 pub const XRAY_BINARY_NAME: &str = "xray-rust";
 
@@ -93,6 +99,17 @@ pub fn register_options(config: &Config) -> pm_config::Result<()> {
             "Local inbound protocol used by Xray: socks or http.",
             pm_config::OPT_TYPE_STRING,
             Value::String("socks".to_string()),
+        )
+        .with_expertise_level(pm_config::EXPERTISE_LEVEL_DEVELOPER)
+        .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("Development")),
+    )?;
+    config.register(
+        ConfigOption::new(
+            "Xray Stats Port",
+            CFG_XRAY_STATS_PORT,
+            "Port of the local gRPC API inbound exposing Xray's StatsService. Set to 0 to disable traffic statistics.",
+            pm_config::OPT_TYPE_INT,
+            Value::from(i64::from(DEFAULT_STATS_PORT)),
         )
         .with_expertise_level(pm_config::EXPERTISE_LEVEL_DEVELOPER)
         .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("Development")),
@@ -143,8 +160,9 @@ pub struct Xray {
     pub enabled: bool,
     pub inbound_port: u16,
     pub inbound: InboundProtocol,
-    /// Placeholder; a real gRPC StatsService adapter can replace it.
-    pub stats: NoopTrafficStats,
+    /// Source of traffic statistics: real gRPC client when a stats port is
+    /// configured, [`NoopTrafficStats`] otherwise.
+    pub stats: Arc<dyn StatsService>,
 }
 
 impl Xray {
@@ -171,21 +189,30 @@ impl Xray {
         } else {
             InboundProtocol::Socks
         };
+        let stats_port = config
+            .get_as_int(CFG_XRAY_STATS_PORT, i64::from(DEFAULT_STATS_PORT))()
+            .clamp(0, u16::MAX as i64) as u16;
+        let stats: Arc<dyn StatsService> = if stats_port == 0 {
+            Arc::new(NoopTrafficStats)
+        } else {
+            Arc::new(GrpcStats::new(stats_port))
+        };
 
         Arc::new(Xray {
             config: Arc::clone(config),
             store: SubscriptionStore::new(databases)
                 .expect("register xray database"),
-            manager: XrayManager::system(binary, data_dir),
+            manager: XrayManager::system_with_stats_port(binary, data_dir, stats_port),
             geoip,
             enabled,
             inbound_port,
             inbound,
-            stats: NoopTrafficStats,
+            stats,
         })
     }
 
     /// Creates a service with an injectable process adapter, for tests.
+    /// Stats fall back to the no-op source unless [`Xray::with_adapter_and_stats`] is used.
     pub fn with_adapter(
         config: &Arc<Config>,
         databases: &Arc<Databases>,
@@ -193,6 +220,27 @@ impl Xray {
         data_dir: PathBuf,
         binary: String,
         adapter: Box<dyn ProcessAdapter>,
+    ) -> Arc<Xray> {
+        Self::with_adapter_and_stats(
+            config,
+            databases,
+            geoip,
+            data_dir,
+            binary,
+            adapter,
+            Arc::new(NoopTrafficStats),
+        )
+    }
+
+    /// Like [`Xray::with_adapter`], with an injectable traffic stats source.
+    pub fn with_adapter_and_stats(
+        config: &Arc<Config>,
+        databases: &Arc<Databases>,
+        geoip: Arc<GeoIp>,
+        data_dir: PathBuf,
+        binary: String,
+        adapter: Box<dyn ProcessAdapter>,
+        stats: Arc<dyn StatsService>,
     ) -> Arc<Xray> {
         Arc::new(Xray {
             config: Arc::clone(config),
@@ -203,8 +251,27 @@ impl Xray {
             enabled: true,
             inbound_port: DEFAULT_INBOUND_PORT,
             inbound: InboundProtocol::Socks,
-            stats: NoopTrafficStats,
+            stats,
         })
+    }
+
+    /// Returns the process state enriched with live traffic counters. Stats
+    /// are only queried for a running process; failures are logged and leave
+    /// the `traffic` field unset so the status endpoint stays usable.
+    pub fn status(&self) -> XrayStatus {
+        let mut status = self.manager.status();
+        if status.connected && self.stats.available() {
+            match self.stats.traffic("proxy") {
+                Ok(snapshot) => {
+                    status.traffic = Some(TrafficStatus {
+                        uplink: snapshot.uplink,
+                        downlink: snapshot.downlink,
+                    });
+                }
+                Err(error) => tracing::warn!(%error, "xray: stats unavailable"),
+            }
+        }
+        status
     }
 
     /// Refreshes subscriptions and returns the number of discovered nodes.

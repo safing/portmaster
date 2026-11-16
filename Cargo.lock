@@ -2180,6 +2180,9 @@ name = "pm-xray"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "bytes",
+ "h2",
+ "http",
  "pm-api",
  "pm-config",
  "pm-database",

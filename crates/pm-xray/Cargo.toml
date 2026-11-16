@@ -7,6 +7,9 @@ license.workspace = true
 
 [dependencies]
 base64.workspace = true
+bytes = "1.12.1"
+h2 = "0.4.20"
+http.workspace = true
 pm-api = { path = "../pm-api" }
 pm-config = { path = "../pm-config" }
 pm-database = { path = "../pm-database" }

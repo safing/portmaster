@@ -2,7 +2,7 @@
 //! xray-rs examples (`config example socks-direct`, `vless-tls` and the
 //! vmess/trojan/shadowsocks fixtures).
 
-use pm_xray::config::{generate_config, write_config, InboundProtocol};
+use pm_xray::config::{generate_config, generate_config_with_stats, write_config, InboundProtocol};
 use pm_xray::{Protocol, XrayNode};
 
 fn node(raw: &str) -> XrayNode {
@@ -87,6 +87,27 @@ fn config_matches_protocol_fixtures() {
     assert_eq!(outbound["protocol"], "shadowsocks");
     assert_eq!(outbound["settings"]["method"], "aes-128-gcm");
     assert_eq!(outbound["settings"]["password"], "password");
+}
+
+#[test]
+fn config_exposes_stats_api_when_port_is_set() {
+    let raw = "vless://00010203-0405-0607-0809-0a0b0c0d0e0f@vless.example.com:443";
+    let config = generate_config_with_stats(&node(raw), 1080, InboundProtocol::Socks, 62789)
+        .unwrap();
+    assert_eq!(config["api"]["tag"], "api");
+    assert_eq!(config["api"]["services"][0], "StatsService");
+    assert_eq!(config["stats"], serde_json::json!({}));
+    assert_eq!(config["policy"]["system"]["statsOutboundUplink"], true);
+    assert_eq!(config["policy"]["system"]["statsOutboundDownlink"], true);
+    let inbounds = config["inbounds"].as_array().unwrap();
+    assert_eq!(inbounds.len(), 2);
+    assert_eq!(inbounds[1]["tag"], "api");
+    assert_eq!(inbounds[1]["port"], 62789);
+    assert_eq!(inbounds[1]["protocol"], "tunnel");
+
+    let plain = generate_config(&node(raw), 1080, InboundProtocol::Socks).unwrap();
+    assert!(plain.get("api").is_none());
+    assert_eq!(plain["inbounds"].as_array().unwrap().len(), 1);
 }
 
 #[test]

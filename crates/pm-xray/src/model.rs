@@ -166,6 +166,15 @@ impl ProcessState {
     }
 }
 
+/// Traffic counters of the selected node, read from Xray's StatsService.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub struct TrafficStatus {
+    /// Bytes sent through the proxy outbound.
+    pub uplink: u64,
+    /// Bytes received through the proxy outbound.
+    pub downlink: u64,
+}
+
 /// Response of `GET xray/status`.
 #[derive(Debug, Clone, Serialize)]
 pub struct XrayStatus {
@@ -189,6 +198,9 @@ pub struct XrayStatus {
     pub country: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub since: Option<String>,
+    /// Live traffic counters, when a StatsService API is configured.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub traffic: Option<TrafficStatus>,
 }
 
 /// Response of `GET xray/nodes`.

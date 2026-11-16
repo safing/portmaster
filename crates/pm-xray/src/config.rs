@@ -281,11 +281,25 @@ fn outbound_settings(profile: &ParsedProfile) -> Result<Value> {
     Ok(settings)
 }
 
-/// Builds the full Xray JSON configuration for a node.
+/// Builds the full Xray JSON configuration for a node without a stats API.
 pub fn generate_config(
     node: &XrayNode,
     inbound_port: u16,
     inbound: InboundProtocol,
+) -> Result<Value> {
+    generate_config_with_stats(node, inbound_port, inbound, 0)
+}
+
+/// Builds the full Xray JSON configuration for a node.
+///
+/// When `stats_port` is non-zero an `api` inbound with `StatsService` is
+/// added, together with the `stats` section and outbound traffic policies,
+/// so the gRPC StatsService client has a server to talk to.
+pub fn generate_config_with_stats(
+    node: &XrayNode,
+    inbound_port: u16,
+    inbound: InboundProtocol,
+    stats_port: u16,
 ) -> Result<Value> {
     if inbound_port == 0 {
         return Err(Error::Config("inbound port must not be zero".into()));
@@ -316,7 +330,7 @@ pub fn generate_config(
         InboundProtocol::Socks => json!({ "auth": "noauth", "udp": true }),
         InboundProtocol::Http => json!({ "auth": "noauth" }),
     };
-    let mut root = json!({
+    let mut config = json!({
         "inbounds": [{
             "tag": "socks-in",
             "protocol": inbound.as_str(),
@@ -342,13 +356,33 @@ pub fn generate_config(
         };
         let mut routed = wg.allowed_ips.clone();
         routed.extend(dns_servers.iter().cloned());
-        root["routing"] = json!({
+        config["routing"] = json!({
             "domainStrategy": "IPOnDemand",
             "rules": [{ "type": "field", "ip": routed, "outboundTag": "proxy" }],
         });
-        root["dns"] = json!({ "servers": dns_servers });
+        config["dns"] = json!({ "servers": dns_servers });
     }
-    Ok(root)
+    if stats_port != 0 {
+        config["api"] = json!({
+            "tag": "api",
+            "services": ["StatsService"],
+        });
+        config["inbounds"].as_array_mut().expect("inbounds array").push(json!({
+            "tag": "api",
+            "listen": "127.0.0.1",
+            "port": stats_port,
+            "protocol": "tunnel",
+            "settings": { "address": "127.0.0.1" },
+        }));
+        config["stats"] = json!({});
+        config["policy"] = json!({
+            "system": {
+                "statsOutboundUplink": true,
+                "statsOutboundDownlink": true,
+            },
+        });
+    }
+    Ok(config)
 }
 
 /// Writes a generated config into `data_dir/xray/xray-<node id>.json` and
@@ -359,10 +393,21 @@ pub fn write_config(
     inbound_port: u16,
     inbound: InboundProtocol,
 ) -> Result<PathBuf> {
+    write_config_with_stats(data_dir, node, inbound_port, inbound, 0)
+}
+
+/// Like [`write_config`], but includes the gRPC stats API inbound.
+pub fn write_config_with_stats(
+    data_dir: &Path,
+    node: &XrayNode,
+    inbound_port: u16,
+    inbound: InboundProtocol,
+    stats_port: u16,
+) -> Result<PathBuf> {
     let directory = data_dir.join(CONFIG_DIR);
     std::fs::create_dir_all(&directory).map_err(|error| Error::Config(error.to_string()))?;
     let path = directory.join(format!("xray-{}.json", node.id));
-    let config = generate_config(node, inbound_port, inbound)?;
+    let config = generate_config_with_stats(node, inbound_port, inbound, stats_port)?;
     let text = serde_json::to_string_pretty(&config).map_err(|error| Error::Config(error.to_string()))?;
     std::fs::write(&path, text).map_err(|error| Error::Config(error.to_string()))?;
     Ok(path)
