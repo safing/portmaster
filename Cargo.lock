@@ -1545,6 +1545,7 @@ dependencies = [
  "pm-dsd",
  "pm-geoip",
  "pm-mgr",
+ "pm-netenv",
  "pm-netstate",
  "pm-netutils",
  "pm-notifications",

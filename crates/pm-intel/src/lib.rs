@@ -26,6 +26,7 @@ pub mod customlists;
 mod decode;
 mod entity;
 mod index;
+mod module;
 mod record;
 mod updater;
 
@@ -38,6 +39,10 @@ pub use bloom::{
 };
 pub use decode::{decode_file, parse_header, EntryResource, ListEntry};
 pub use entity::{split_domain, Entity, LocationProvider, ReverseResolver, StaticLocations};
+pub use module::{
+    FilterListsModule, FILTERLISTS_DISABLED_STATE, FILTERLISTS_STALE_DATA_STATE,
+    FILTERLISTS_UPDATE_FAILED_STATE,
+};
 pub use index::{
     are_semvers_equal, resolve_list_ids, unbreak_filter_list_ids, update_list_index, Category,
     ListIndexFile, Source, UNBREAK_CATEGORY_IDS,
@@ -69,6 +74,8 @@ pub enum Error {
     InvalidData(String),
     #[error("{0}")]
     Decode(String),
+    #[error("{0}")]
+    Message(String),
     #[error("bloom filter: {0}")]
     Bloom(#[from] BloomError),
 }
