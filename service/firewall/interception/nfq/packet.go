@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	"github.com/florianl/go-nfqueue"
 	"github.com/tevino/abool"
@@ -66,6 +67,10 @@ type packet struct {
 	queue          *Queue
 	verdictSet     chan struct{}
 	verdictPending *abool.AtomicBool
+
+	// verdictWatchdog drops the packet if no verdict is set in time.
+	// It is stopped as soon as a verdict was set.
+	verdictWatchdog atomic.Pointer[time.Timer]
 }
 
 func (pkt *packet) ID() string {
@@ -95,11 +100,53 @@ func (pkt *packet) VerdictSet() bool {
 //	raw-socket.
 func (pkt *packet) mark(mark int) (err error) {
 	if pkt.verdictPending.SetToIf(false, true) {
-		defer close(pkt.verdictSet)
+		defer pkt.verdictDone()
 		return pkt.setMark(mark)
 	}
 
 	return errVerdictAlreadySet
+}
+
+// verdictDone signals that the verdict was set and stops the verdict watchdog.
+func (pkt *packet) verdictDone() {
+	close(pkt.verdictSet)
+	if t := pkt.verdictWatchdog.Load(); t != nil {
+		t.Stop()
+	}
+}
+
+// startVerdictWatchdog arms a timer that drops the packet if no verdict was set
+// within verdictTimeout. It must be called at most once per packet.
+func (pkt *packet) startVerdictWatchdog() {
+	t := time.AfterFunc(verdictTimeout, func() {
+		verdictTimeoutHandler(pkt)
+	})
+	pkt.verdictWatchdog.Store(t)
+
+	// The verdict may have been set before the timer was stored, in which case
+	// verdictDone did not see it. Stop it here, so it does not keep the packet
+	// alive until it fires. (Should both miss each other, the timeout handler
+	// still checks verdictSet and does nothing.)
+	select {
+	case <-pkt.verdictSet:
+		t.Stop()
+	default:
+	}
+}
+
+// handleVerdictTimeout drops the packet if no verdict was set yet.
+func (pkt *packet) handleVerdictTimeout() {
+	select {
+	case <-pkt.verdictSet:
+		// Verdict was set in the meantime.
+		return
+	default:
+	}
+
+	log.Warningf("nfqueue: no verdict set for packet %s (%s -> %s) after %s, dropping", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.Info().SeenAt))
+	if err := pkt.Drop(); err != nil {
+		log.Warningf("nfqueue: failed to apply default-drop to unveridcted packet %s (%s -> %s)", pkt.ID(), pkt.Info().Src, pkt.Info().Dst)
+	}
 }
 
 func (pkt *packet) setMark(mark int) error {

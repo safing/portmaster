@@ -194,36 +194,54 @@ func (q *Queue) packetHandler(ctx context.Context) func(nfqueue.Attribute) int {
 			return 0
 		}
 
-		select {
-		case q.packets <- pkt:
-			// DEBUG:
-			// log.Tracef("nfqueue: queued packet %s (%s -> %s) after %s", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.Info().SeenAt))
-		case <-ctx.Done():
-			return 0
-		case <-time.After(time.Second):
-			// The packet did not make it into the handler queue, so no handler
-			// will ever see it and set a verdict. Drop it now instead of letting
-			// it wait in the kernel queue until the verdict timeout.
-			log.Warningf("nfqueue: failed to queue packet %s (%s since it was handed over by the kernel), dropping", pkt.ID(), time.Since(pkt.Info().SeenAt))
-			if err := pkt.Drop(); err != nil {
-				log.Warningf("nfqueue: failed to drop unqueued packet %s: %s", pkt.ID(), err)
-			}
-			return 0
-		}
-
-		go func() {
-			select {
-			case <-pkt.verdictSet:
-
-			case <-time.After(20 * time.Second):
-				log.Warningf("nfqueue: no verdict set for packet %s (%s -> %s) after %s, dropping", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.Info().SeenAt))
-				if err := pkt.Drop(); err != nil {
-					log.Warningf("nfqueue: failed to apply default-drop to unveridcted packet %s (%s -> %s)", pkt.ID(), pkt.Info().Src, pkt.Info().Dst)
-				}
-			}
-		}()
+		q.queuePacket(ctx, pkt)
 
 		return 0 // continue calling this fn
+	}
+}
+
+// Timeouts for packets handed to the handler queue. They are variables so tests
+// can shorten them.
+var (
+	// queueTimeout is how long the nfqueue receive goroutine waits for room in
+	// the handler queue before dropping the packet.
+	queueTimeout = time.Second
+	// verdictTimeout is how long a queued packet may wait for a verdict before
+	// it is dropped by the verdict watchdog.
+	verdictTimeout = 20 * time.Second
+	// verdictTimeoutHandler is called by the verdict watchdog. Tests may
+	// replace it, as the real handler needs a live nfqueue to set a verdict.
+	verdictTimeoutHandler = (*packet).handleVerdictTimeout
+)
+
+// queuePacket hands the packet to the handler queue and arms the watchdog
+// that drops the packet if no verdict is set in time.
+func (q *Queue) queuePacket(ctx context.Context, pkt *packet) {
+	// Fast path: the handler queue has room. Do not allocate a timer.
+	select {
+	case q.packets <- pkt:
+		pkt.startVerdictWatchdog()
+		return
+	default:
+	}
+
+	// Slow path: wait for room in the handler queue, but not forever.
+	timer := time.NewTimer(queueTimeout)
+	defer timer.Stop()
+	select {
+	case q.packets <- pkt:
+		// DEBUG:
+		// log.Tracef("nfqueue: queued packet %s (%s -> %s) after %s", pkt.ID(), pkt.Info().Src, pkt.Info().Dst, time.Since(pkt.Info().SeenAt))
+		pkt.startVerdictWatchdog()
+	case <-ctx.Done():
+	case <-timer.C:
+		// The packet did not make it into the handler queue, so no handler
+		// will ever see it and set a verdict. Drop it now instead of letting
+		// it wait in the kernel queue until the verdict timeout.
+		log.Warningf("nfqueue: failed to queue packet %s (%s since it was handed over by the kernel), dropping", pkt.ID(), time.Since(pkt.Info().SeenAt))
+		if err := pkt.Drop(); err != nil {
+			log.Warningf("nfqueue: failed to drop unqueued packet %s: %s", pkt.ID(), err)
+		}
 	}
 }
 
