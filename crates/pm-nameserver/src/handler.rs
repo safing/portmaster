@@ -151,6 +151,18 @@ impl Nameserver {
     /// Handles a received datagram like miekg `Server.serveDNS` followed by
     /// the handler, and returns the wire reply, if any.
     pub async fn handle_packet(&self, packet: &[u8], remote: SocketAddr) -> Option<Vec<u8>> {
+        self.handle_packet_with_cancel(packet, remote, &CancellationToken::new())
+            .await
+    }
+
+    /// Like [`Nameserver::handle_packet`]; cancelling the token aborts a
+    /// running resolve (the server cancels it on shutdown).
+    pub async fn handle_packet_with_cancel(
+        &self,
+        packet: &[u8],
+        remote: SocketAddr,
+        cancel: &CancellationToken,
+    ) -> Option<Vec<u8>> {
         // Packets without a full header are ignored: any reply could be used
         // to amplify.
         if packet.len() < 12 {
@@ -196,13 +208,26 @@ impl Nameserver {
             }
         };
 
-        let reply = self.handle_request(&request, remote).await?;
+        let reply = self
+            .handle_request_with_cancel(&request, remote, cancel)
+            .await?;
         encode_reply(reply)
     }
 
     /// Handles a parsed request, like Go `handleRequest`. `None` drops the
     /// request.
     pub async fn handle_request(&self, request: &Message, remote: SocketAddr) -> Option<Message> {
+        self.handle_request_with_cancel(request, remote, &CancellationToken::new())
+            .await
+    }
+
+    /// Like [`Nameserver::handle_request`] with a cancellable resolve.
+    pub async fn handle_request_with_cancel(
+        &self,
+        request: &Message,
+        remote: SocketAddr,
+        cancel: &CancellationToken,
+    ) -> Option<Message> {
         // Check the question; only the first is processed.
         let original_question = match request.queries.len() {
             0 => {
@@ -293,8 +318,8 @@ impl Nameserver {
             tokio::time::sleep(FAILING_DELAY).await;
             let cached = format!(
                 "error is cached for another {}",
-                crate::responder::format_go_duration(
-                    (remaining.as_secs_f64().round()) as i64
+                crate::responder::format_go_duration_ms(
+                    (remaining.as_secs_f64() * 1000.0).round() as u64
                 )
             );
             return self
@@ -372,6 +397,7 @@ impl Nameserver {
                 &mut q,
                 icann,
                 &mut flow,
+                cancel,
                 non_standard_format.then_some(original_question.name()),
             )
             .await;
@@ -387,6 +413,7 @@ impl Nameserver {
         q: &mut Query,
         icann: bool,
         flow: &mut Flow,
+        cancel: &CancellationToken,
         restore_name: Option<&Name>,
     ) -> Option<Message> {
         let id = query_id(q);
@@ -407,9 +434,8 @@ impl Nameserver {
         }
 
         // Resolve the request.
-        let cancel = CancellationToken::new();
         let rr_cache: Option<RRCache>;
-        match self.deps.resolver.resolve(q.clone(), &cancel).await {
+        match self.deps.resolver.resolve(q.clone(), cancel).await {
             Ok(cache) => rr_cache = Some(cache),
             Err(failure) => {
                 let err = failure.error.clone();

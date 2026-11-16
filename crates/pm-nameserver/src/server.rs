@@ -1,6 +1,7 @@
 //! Port of the listener handling of Go `module.go`: UDP listeners, failure
 //! reporting and shutdown.
 
+use std::io::ErrorKind;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
@@ -146,6 +147,8 @@ async fn serve(
     ns: Arc<Nameserver>,
     cancel: CancellationToken,
     addr: SocketAddr,
+    primary: bool,
+    on_event: Option<EventSink>,
 ) {
     let mut buf = vec![0u8; 65_535];
     let mut requests = JoinSet::new();
@@ -157,17 +160,40 @@ async fn serve(
             received = socket.recv_from(&mut buf) => {
                 let (n, remote) = match received {
                     Ok(received) => received,
-                    Err(err) => {
+                    Err(err) if matches!(
+                        err.kind(),
+                        ErrorKind::WouldBlock
+                            | ErrorKind::Interrupted
+                            | ErrorKind::ConnectionReset
+                            | ErrorKind::ConnectionRefused
+                    ) => {
                         // Errors of single datagrams (e.g. ICMP) do not end the listener.
                         tracing::debug!("nameserver: failed to read from {addr}: {err}");
                         continue;
+                    }
+                    Err(err) => {
+                        // Like the server library, stop on other errors instead of spinning.
+                        tracing::warn!("nameserver: failed to serve on {addr}: {err}");
+                        if let Some(sink) = &on_event {
+                            sink(ListenerEvent::Failed(ListenerFailure {
+                                primary,
+                                addr,
+                                error: err.to_string(),
+                                conflict: None,
+                            }));
+                        }
+                        break;
                     }
                 };
                 let packet = buf[..n].to_vec();
                 let ns = Arc::clone(&ns);
                 let socket = Arc::clone(&socket);
+                let request_cancel = cancel.clone();
                 requests.spawn(async move {
-                    let Some(reply) = ns.handle_packet(&packet, remote).await else {
+                    let Some(reply) = ns
+                        .handle_packet_with_cancel(&packet, remote, &request_cancel)
+                        .await
+                    else {
                         return;
                     };
                     if let Err(err) = socket.send_to(&reply, remote).await {
@@ -219,16 +245,28 @@ pub async fn start(
                     Arc::clone(&ns),
                     cancel.clone(),
                     local,
+                    primary,
+                    options.on_event.clone(),
                 ));
                 listeners.push(Listener { addr: local, task });
             }
             Err(err) => {
                 // Probably some other application listens on the same port.
                 tracing::warn!("nameserver: failed to start listening on {addr}: {err}");
-                let conflict = options.lookup.as_deref().and_then(|lookup| {
-                    find_conflicting_process(lookup, ip, addresses.port)
+                // The lookup reads socket tables and the proc file system.
+                let conflict = match options.lookup.clone() {
+                    Some(lookup) => {
+                        let port = addresses.port;
+                        tokio::task::spawn_blocking(move || {
+                            find_conflicting_process(lookup.as_ref(), ip, port)
+                        })
+                        .await
+                        .ok()
+                        .flatten()
                         .map(|process| process.description())
-                });
+                    }
+                    None => None,
+                };
                 let failure = ListenerFailure {
                     primary,
                     addr,

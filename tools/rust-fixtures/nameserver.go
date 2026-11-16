@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"net"
 	"strings"
 	_ "unsafe" // Required for go:linkname.
@@ -173,6 +174,14 @@ func nameserverMessageRecords() []any {
 			} else {
 				entry["error"] = false
 				entry["rr"] = rrSummary(rr)
+				// The wire form of the TXT rdata: this is what clients get.
+				buf := make([]byte, 1024)
+				off, packErr := dns.PackRR(rr, buf, 0, nil, false)
+				if packErr != nil {
+					fail(packErr)
+				}
+				const headerLen = len("inf.portmaster.") + 1 + 10
+				entry["rdata_hex"] = hex.EncodeToString(buf[headerLen:off])
 			}
 			cases = append(cases, entry)
 		}
