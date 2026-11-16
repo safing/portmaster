@@ -21,6 +21,8 @@ zip.workspace = true
 
 [dev-dependencies]
 flate2.workspace = true
+hex.workspace = true
+sha2.workspace = true
 
 [lints]
 workspace = true

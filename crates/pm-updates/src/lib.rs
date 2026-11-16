@@ -24,11 +24,13 @@ mod downloader;
 mod glob;
 mod index;
 mod index_scan;
+mod upgrade;
 mod version;
 
 pub use config::{ConfigError, UpdateCommandConfig, UpdaterConfig};
 pub use glob::{Glob, GlobError};
 pub use index_scan::{generate_index_from_dir, sha256_of_file, IndexScanConfig, ScanError};
+pub use upgrade::{UpgradeError, Upgrader};
 pub use downloader::{
     copy_and_check_sha256_sum, decompress, default_user_agent, Downloader, HttpClient,
     HttpsClient,
