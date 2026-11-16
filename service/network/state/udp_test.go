@@ -3,6 +3,7 @@ package state
 import (
 	"encoding/binary"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 
@@ -133,5 +134,24 @@ func TestUDPStateTTL(t *testing.T) {
 	udp4.cleanStates(now)
 	if got, want := len(remotes), (AggressiveCleaningThreshold+10)/2; got != want {
 		t.Fatalf("expected %d remaining remotes, got %d", want, got)
+	}
+}
+
+func TestMakeUDPStateKey(t *testing.T) {
+	t.Parallel()
+
+	for _, address := range []socket.Address{
+		{IP: net.IPv4(192, 168, 1, 1), Port: 0},
+		{IP: net.IPv4(192, 168, 1, 1).To4(), Port: 53},
+		{IP: net.IPv6zero, Port: 5353},
+		{IP: net.ParseIP("2001:db8::1"), Port: 65535},
+		{IP: nil, Port: 1},
+	} {
+		// Expected format: raw IP bytes followed by the decimal port.
+		want := string(address.IP) + strconv.Itoa(int(address.Port))
+		got := makeUDPStateKey(address)
+		if got != want {
+			t.Errorf("makeUDPStateKey(%v) = %q, want %q", address, got, want)
+		}
 	}
 }

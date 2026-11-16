@@ -144,21 +144,24 @@ func (table *udpTable) getDirection(
 	table.statesLock.Lock()
 	defer table.statesLock.Unlock()
 
-	localKey := makeUDPStateKey(socketInfo.Local)
+	// Build the keys in stack buffers, so that looking up existing state does
+	// not allocate. Strings are only allocated when new state is stored.
+	var localKeyBuf, remoteKeyBuf [udpStateKeyBufSize]byte
+	localKey := appendUDPStateKey(localKeyBuf[:0], socketInfo.Local)
 
-	bindMap, ok := table.states[localKey]
+	bindMap, ok := table.states[string(localKey)]
 	if !ok {
 		bindMap = make(map[string]*udpState)
-		table.states[localKey] = bindMap
+		table.states[string(localKey)] = bindMap
 	}
 
-	remoteKey := makeUDPStateKey(socket.Address{
+	remoteKey := appendUDPStateKey(remoteKeyBuf[:0], socket.Address{
 		IP:   pktInfo.RemoteIP(),
 		Port: pktInfo.RemotePort(),
 	})
-	udpConnState, ok := bindMap[remoteKey]
+	udpConnState, ok := bindMap[string(remoteKey)]
 	if !ok {
-		bindMap[remoteKey] = &udpState{
+		bindMap[string(remoteKey)] = &udpState{
 			inbound:  pktInfo.Inbound,
 			lastSeen: time.Now().UTC(),
 		}
@@ -216,7 +219,17 @@ func (table *udpTable) cleanStates(now time.Time) {
 	}
 }
 
+// udpStateKeyBufSize fits a 16 byte IP and a 5 digit port.
+const udpStateKeyBufSize = 21
+
 func makeUDPStateKey(address socket.Address) string {
+	var buf [udpStateKeyBufSize]byte
+	return string(appendUDPStateKey(buf[:0], address))
+}
+
+// appendUDPStateKey appends the state key of the given address to buf.
+func appendUDPStateKey(buf []byte, address socket.Address) []byte {
 	// This could potentially go wrong, but as all IPs are created by the same source, everything should be fine.
-	return string(address.IP) + strconv.Itoa(int(address.Port))
+	buf = append(buf, address.IP...)
+	return strconv.AppendUint(buf, uint64(address.Port), 10)
 }
