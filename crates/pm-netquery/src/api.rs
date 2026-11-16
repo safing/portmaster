@@ -4,6 +4,9 @@
 //! The Go `servertiming` middleware is not ported. Handler responses carry no
 //! explicit content type: Go lets `net/http` sniff the JSON body, which
 //! yields `text/plain; charset=utf-8`.
+//!
+//! Batch generation errors report the first failing key in sorted order; Go
+//! iterates a map, so its choice is random.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -125,7 +128,11 @@ pub fn register_api(api: &Api, db: Arc<Database>, opts: ApiOptions) -> Result<()
         .with_action(move |_| {
             let errors = db
                 .cleanup_history((o.now_unix)(), |p| (o.retention_days)(p))
-                .map_err(|e| ApiError::Message(e.to_string()))?;
+                .map_err(|e| {
+                    ApiError::Message(format!(
+                        "failed to get a list of profiles from the history database: {e}"
+                    ))
+                })?;
             if errors.is_empty() {
                 Ok("Deleted outdated connections.".to_string())
             } else {
@@ -335,7 +342,8 @@ fn batch_handler(db: &Database, request: &mut Request) -> Response {
         .collect();
     let mut response = json_response(if errors.is_empty() { 200 } else { 500 }, &body);
     for e in &errors {
-        if let Ok(value) = HeaderValue::from_str(e) {
+        let clean: String = e.chars().map(|c| if c.is_control() { ' ' } else { c }).collect();
+        if let Ok(value) = HeaderValue::from_str(&clean) {
             response
                 .headers
                 .append(HeaderName::from_static("x-query-error"), value);
@@ -344,7 +352,8 @@ fn batch_handler(db: &Database, request: &mut Request) -> Response {
     response
 }
 
-type ChartSql = fn(&Value) -> Result<(String, BTreeMap<String, Param>), String>;
+/// SQL plus parameters; `None` params are encoded as `null` like Go's nil map.
+type ChartSql = fn(&Value) -> Result<(String, Option<BTreeMap<String, Param>>), String>;
 
 fn chart_handler(db: &Database, request: &mut Request, generate: ChartSql) -> Response {
     let payload = match parse_payload(request) {
@@ -355,14 +364,17 @@ fn chart_handler(db: &Database, request: &mut Request, generate: ChartSql) -> Re
         Ok(v) => v,
         Err(e) => return Response::error(400, &e),
     };
-    let rows = match db.query_raw(&sql, &params, true) {
+    let rows = match db.query_raw(&sql, &params.clone().unwrap_or_default(), true) {
         Ok(rows) => rows,
         Err(e) => return Response::error(500, &format!("{FAILED_QUERY}{e}")),
     };
     let body = BTreeMap::from([
         ("results", rows_value(rows)),
         ("query", Value::String(sql)),
-        ("params", params_value(&params)),
+        (
+            "params",
+            params.as_ref().map_or(Value::Null, params_value),
+        ),
     ]);
     json_response(200, &body)
 }
@@ -381,10 +393,16 @@ fn pick(payload: &Value, keys: &[&str]) -> Value {
     Value::Object(out)
 }
 
-fn active_chart_sql(payload: &Value) -> Result<(String, BTreeMap<String, Param>), String> {
+fn active_chart_sql(payload: &Value) -> Result<(String, Option<BTreeMap<String, Param>>), String> {
+    if !matches!(payload, Value::Object(_) | Value::Null) {
+        return Err(format!(
+            "invalid query: json: cannot unmarshal {} into Go value of type netquery.QueryActiveConnectionChartPayload",
+            json_kind(payload)
+        ));
+    }
     let req = QueryRequest::from_json(&pick(payload, &["query", "textSearch"]))
         .map_err(|e| format!("invalid query: {e}"))?;
-    let (clause, params) = chart_where_clause(&req).map_err(|e| e.to_string())?;
+    let (clause, params) = chart_where_clause(&req).map_err(|e| multierror(&[e.to_string()]))?;
     let where_sql = if clause.is_empty() {
         String::new()
     } else {
@@ -394,12 +412,12 @@ fn active_chart_sql(payload: &Value) -> Result<(String, BTreeMap<String, Param>)
         "\nWITH RECURSIVE epoch(x) AS (\n\tSELECT strftime('%s')-600\n\tUNION ALL\n\t\tSELECT x+1 FROM epoch WHERE x+1 < strftime('%s')+0\n)\nSELECT x as timestamp, SUM(verdict IN (2, 5, 6)) AS value, SUM(verdict NOT IN (2, 5, 6)) as countBlocked\n\tFROM epoch\n\tJOIN connections\n\t\tON strftime('%s', connections.started)+0 <= timestamp+0 AND (connections.ended IS NULL OR strftime('%s', connections.ended)+0 >= timestamp+0)\n\t{where_sql}\n\tGROUP BY round(timestamp/10, 0)*10;"
     );
     if clause.is_empty() {
-        return Ok((sql, BTreeMap::new()));
+        return Ok((sql, Some(BTreeMap::new())));
     }
-    Ok((sql, params))
+    Ok((sql, Some(params)))
 }
 
-fn bandwidth_chart_sql(payload: &Value) -> Result<(String, BTreeMap<String, Param>), String> {
+fn bandwidth_chart_sql(payload: &Value) -> Result<(String, Option<BTreeMap<String, Param>>), String> {
     let req = QueryRequest::from_json(&pick(payload, &["query", "groupBy"]))
         .map_err(|e| format!("invalid query: {e}"))?;
     let interval = match payload {
@@ -441,7 +459,7 @@ fn bandwidth_chart_sql(payload: &Value) -> Result<(String, BTreeMap<String, Para
     let mut group_by = vec![interval_expr];
     group_by.extend(req.group_by.iter().cloned());
 
-    let (clause, params) = chart_where_clause(&req).map_err(|e| e.to_string())?;
+    let (clause, params) = chart_where_clause(&req).map_err(|e| multierror(&[e.to_string()]))?;
     let where_sql = if clause.is_empty() {
         String::new()
     } else {
@@ -452,6 +470,8 @@ fn bandwidth_chart_sql(payload: &Value) -> Result<(String, BTreeMap<String, Para
         selects.join(", "),
         group_by.join(", ")
     );
+    // Go's empty query yields a nil parameter map.
+    let params = if req.query.is_empty() { None } else { Some(params) };
     Ok((sql, params))
 }
 

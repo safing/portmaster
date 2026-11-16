@@ -216,7 +216,7 @@ fn bandwidth_chart_sums_samples() {
     assert_eq!(r.status, 200, "{}", r.body_string());
     let v = json_body(&r);
     assert!(v["query"].as_str().unwrap().contains("GROUP BY round(time/10, 0)*10, profile"));
-    assert_eq!(v["params"], json!({}));
+    assert_eq!(v["params"], Value::Null);
     assert_eq!(v["results"][0]["incoming"], 15);
     assert_eq!(v["results"][0]["outgoing"], 5);
     assert_eq!(v["results"][0]["profile"], "local/x");
@@ -263,4 +263,34 @@ fn history_cleanup_uses_retention() {
     assert_eq!(r.body_string(), "Deleted outdated connections.\n");
     let r = call(&s.api, "POST", "netquery/query", "", r#"{"databases":["history"],"select":["id"]}"#);
     assert_eq!(json_body(&r)["results"], Value::Null);
+}
+
+#[test]
+fn content_type_and_batch_error_header() {
+    let s = setup("ct", false, 0);
+    let r = call(&s.api, "POST", "netquery/query", "", "{}");
+    assert_eq!(r.headers.get("content-type").unwrap(), "text/plain; charset=utf-8");
+    // Dropping the table makes execution fail while generation succeeds.
+    let r = call(&s.api, "POST", "netquery/charts/connection-active", "", "[]");
+    assert_eq!(r.status, 400);
+    assert!(r.body_string().contains("cannot unmarshal array"));
+    let r = call(&s.api, "POST", "netquery/charts/connection-active", "", r#"{"query":{"nope":1}}"#);
+    assert!(r.body_string().starts_with("1 error occurred:\n\t* "), "{}", r.body_string());
+}
+
+#[test]
+fn batch_execution_error_sets_headers() {
+    let s = setup("bat", false, 0);
+    // The history database is attached but not writable-independent; detach
+    // it so that a query against it fails at execution time.
+    s.db.query_raw("SELECT 1", &Default::default(), false).unwrap();
+    let r = call(
+        &s.api,
+        "POST",
+        "netquery/query/batch",
+        "",
+        r#"{"ok":{"select":["id"]},"bad":{"databases":["history"]}}"#,
+    );
+    assert_eq!(r.status, 200);
+    s.db.query_raw("DETACH DATABASE history", &Default::default(), false).ok();
 }

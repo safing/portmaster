@@ -321,7 +321,7 @@ impl Database {
         let mut errors = Vec::new();
         for profile in profiles {
             let days = retention_days(&profile);
-            if days <= 0 {
+            if days == 0 {
                 continue;
             }
             let threshold = now_unix.saturating_sub(days.saturating_mul(86_400));
