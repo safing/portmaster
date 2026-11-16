@@ -227,7 +227,12 @@ func (mh *mainHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	// See github.com/gorilla/mux.ServeHTTP for reference.
 	var match mux.RouteMatch
 	var handler http.Handler
-	if mh.mux.Match(r, &match) {
+	// Routes may be registered while the server is running, so guard the
+	// route table against concurrent modification.
+	handlerLock.RLock()
+	matched := mh.mux.Match(r, &match)
+	handlerLock.RUnlock()
+	if matched {
 		handler = match.Handler
 		apiRequest.Route = match.Route
 		apiRequest.URLVars = match.Vars
