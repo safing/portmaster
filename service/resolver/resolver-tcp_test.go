@@ -7,7 +7,9 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/miekg/dns"
 	"github.com/tevino/abool"
 )
 
@@ -222,4 +224,37 @@ func freeTCPPort(t *testing.T) uint16 {
 	listener, port := listenTCP(t)
 	_ = listener.Close()
 	return port
+}
+
+// TestTCPAssignUniqueIDExhausted checks that assigning a message ID terminates
+// when all 65536 IDs are in flight.
+func TestTCPAssignUniqueIDExhausted(t *testing.T) {
+	t.Parallel()
+
+	trc := &tcpResolverConn{
+		inFlightQueries: make(map[uint16]*tcpQuery, 1<<16),
+	}
+	for id := range 1 << 16 {
+		trc.inFlightQueries[uint16(id)] = &tcpQuery{}
+	}
+
+	done := make(chan bool, 1)
+	go func() {
+		done <- trc.assignUniqueID(&dns.Msg{})
+	}()
+	select {
+	case ok := <-done:
+		if ok {
+			t.Fatal("assignUniqueID reported success although all IDs are in use")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("assignUniqueID did not return with all IDs in use")
+	}
+
+	// With exactly one free ID, it must be found.
+	delete(trc.inFlightQueries, 4242)
+	msg := &dns.Msg{}
+	if !trc.assignUniqueID(msg) || msg.Id != 4242 {
+		t.Fatalf("expected to get free ID 4242, got ID %d", msg.Id)
+	}
 }

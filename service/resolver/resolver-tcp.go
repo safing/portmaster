@@ -412,7 +412,16 @@ func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 			msg.SetQuestion(tq.Query.FQDN, uint16(tq.Query.QType))
 
 			// Assign a unique message ID.
-			trc.assignUniqueID(msg)
+			if !trc.assignUniqueID(msg) {
+				// All message IDs are in use, fail the query.
+				log.Warningf(
+					"resolver: no free message ID for query to %s, %d queries in flight",
+					trc.resolverInfo.DescriptiveName(),
+					len(trc.inFlightQueries),
+				)
+				close(tq.Response)
+				continue
+			}
 
 			// Add query to in flight registry.
 			trc.inFlightQueries[msg.Id] = tq
@@ -444,24 +453,25 @@ func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 }
 
 // assignUniqueID makes sure that ID assigned to msg is unique.
-func (trc *tcpResolverConn) assignUniqueID(msg *dns.Msg) {
+// Returns false if all IDs are in use.
+func (trc *tcpResolverConn) assignUniqueID(msg *dns.Msg) bool {
 	// try a random ID 10000 times
 	for range 10000 { // don't try forever
 		_, exists := trc.inFlightQueries[msg.Id]
 		if !exists {
-			return // we are unique, yay!
+			return true // we are unique, yay!
 		}
 		msg.Id = dns.Id() // regenerate ID
 	}
 	// go through the complete space
-	var id uint16
-	for ; id <= (1<<16)-1; id++ { // don't try forever
-		_, exists := trc.inFlightQueries[id]
+	for id := range 1 << 16 {
+		_, exists := trc.inFlightQueries[uint16(id)]
 		if !exists {
-			msg.Id = id
-			return // we are unique, yay!
+			msg.Id = uint16(id)
+			return true // we are unique, yay!
 		}
 	}
+	return false
 }
 
 func (trc *tcpResolverConn) handleQueryResponse(msg *dns.Msg) {
