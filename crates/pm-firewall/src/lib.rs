@@ -16,6 +16,7 @@
 //!   [`SplitTunnelEnv`].
 
 mod bypass;
+mod config;
 mod deciders;
 pub mod dns_filter;
 mod dga;
@@ -27,6 +28,11 @@ mod preauth;
 mod split_tunnel;
 
 pub use bypass::{looks_like_outgoing_dns_request, prevent_bypassing, DnsResponder};
+pub use config::{
+    register_options, CFG_OPTION_ASK_TIMEOUT_KEY, CFG_OPTION_ASK_WITH_SYSTEM_NOTIFICATIONS_KEY,
+    CFG_OPTION_DNS_QUERY_INTERCEPTION_KEY, CFG_OPTION_ENABLE_FILTER_KEY,
+    CFG_OPTION_PERMANENT_VERDICTS_KEY,
+};
 pub use deciders::*;
 pub use dga::{lms_score, lms_score_of_domain};
 pub use env::{CustomLists, FirewallEnv, LocalNetwork, MulticastRequest, NoCustomLists};

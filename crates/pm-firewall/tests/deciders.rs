@@ -16,6 +16,7 @@ use pm_network::{
     Connection, ConnectionType, LocalProfileInfo, ProfileLookup, Verdict,
 };
 use pm_process::Process;
+use pm_profile::options as profile_options;
 use pm_profile::options::*;
 use pm_profile::{
     GlobalProfileConfig, LayeredProfile, Profile, DEFAULT_ACTION_ASK, DEFAULT_ACTION_BLOCK,
@@ -155,7 +156,7 @@ struct Fx {
 
 fn fx() -> Fx {
     let config = Config::new();
-    register_options(&config).unwrap();
+    profile_options::register_options(&config).unwrap();
     let global = Arc::new(GlobalProfileConfig::new(&config));
     global.refresh().unwrap();
     let databases = Arc::new(Databases::without_disk());

@@ -8,12 +8,14 @@ license.workspace = true
 [dependencies]
 async-trait.workspace = true
 hickory-proto.workspace = true
+pm-config = { path = "../pm-config" }
 pm-endpoints = { path = "../pm-endpoints" }
 pm-interception = { path = "../pm-interception" }
 pm-intel = { path = "../pm-intel" }
 pm-nameserver = { path = "../pm-nameserver" }
 pm-netenv = { path = "../pm-netenv" }
 pm-netstate = { path = "../pm-netstate" }
+pm-notifications = { path = "../pm-notifications" }
 pm-network = { path = "../pm-network" }
 pm-process = { path = "../pm-process" }
 pm-profile = { path = "../pm-profile" }
@@ -25,7 +27,6 @@ thiserror.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-pm-config = { path = "../pm-config" }
 pm-database = { path = "../pm-database" }
 tokio.workspace = true
 
