@@ -107,7 +107,7 @@ impl LocationEnvironment for CoreLocationEnvironment {
 /// Returns the local UTC offset in seconds, like `time.Now().Zone()`.
 ///
 /// Uses `date +%z` so no `unsafe` is needed; a failure yields UTC.
-fn timezone_offset_seconds() -> i32 {
+pub(crate) fn timezone_offset_seconds() -> i32 {
     let output = Command::new("date").arg("+%z").output().ok();
     output
         .and_then(|output| {

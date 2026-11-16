@@ -76,7 +76,7 @@ pub(crate) fn remove_broadcast(
 pub(crate) fn handle_broadcast<F>(
     broadcast: &BroadcastNotification,
     matching: &JsonAccessor,
-    bss: Option<&mut BroadcastStates>,
+    mut bss: Option<&mut BroadcastStates>,
     notifications: &Notifications,
     attachment: &dyn ModuleAttachment,
     on_ack: F,

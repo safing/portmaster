@@ -66,6 +66,8 @@ pub struct Service {
     pub firewall: Arc<crate::firewall::Firewall>,
     /// Pause/resume control module.
     pub control: Arc<pm_control::Control<crate::control::CoreControlEnv>>,
+    /// YAML-driven broadcast notifications module.
+    pub broadcasts: Arc<pm_broadcasts::Broadcasts>,
     /// Triggered by a restart request (updater or API).
     pub restart_token: CancellationToken,
     /// Split tunnel proxies.
@@ -472,6 +474,34 @@ impl Service {
         crate::control::register_api(&api, Arc::clone(&control))
             .map_err(|error| anyhow::anyhow!("register control api: {error}"))?;
 
+        // Broadcast notifications: the YAML source comes from the intel
+        // updater and `run()` starts the 10-minute notifier worker.
+        let broadcasts_env = Arc::new(crate::broadcasts::CoreBroadcastEnvironment::new(
+            Arc::clone(&config),
+            Arc::clone(&binary_updater),
+            Arc::clone(&intel_updater),
+            Arc::clone(&device_locations),
+        ));
+        let broadcasts = Arc::new(pm_broadcasts::Broadcasts::new(
+            databases.interface(pm_database::Options {
+                local: true,
+                internal: true,
+                ..pm_database::Options::default()
+            }),
+            Arc::clone(&notifications),
+            broadcasts_env,
+            Arc::new(crate::broadcasts::IntelBroadcastFileSource::new(Arc::clone(
+                &intel_updater,
+            ))),
+            Arc::new(crate::broadcasts::CoreBroadcastAttachment),
+        ));
+        broadcasts
+            .register_api(&api)
+            .map_err(|error| anyhow::anyhow!("register broadcasts api: {error}"))?;
+        if let Err(error) = broadcasts.ensure_install_info() {
+            tracing::warn!(%error, "broadcasts: failed to ensure install info");
+        }
+
         // Netquery API on top of the live connection database.
         let retention_profiles = Arc::clone(&firewall.profiles);
         let retention_config = Arc::clone(&config);
@@ -526,6 +556,7 @@ impl Service {
             device_locations,
             firewall,
             control,
+            broadcasts,
             restart_token,
             split_proxies: Arc::clone(&split_proxies),
             split_queue: Arc::clone(&split_queue),
@@ -731,6 +762,24 @@ impl Service {
             })
         };
 
+        // Broadcast notifications: check every 10 minutes, like Go
+        // `module.mgr.Repeat("broadcast notifier", 10*time.Minute, ...)`.
+        let broadcasts = Arc::clone(&self.broadcasts);
+        let broadcasts_worker = tokio::spawn(async move {
+            let start = tokio::time::Instant::now() + Duration::from_secs(10 * 60);
+            let mut interval = tokio::time::interval_at(start, Duration::from_secs(10 * 60));
+            loop {
+                interval.tick().await;
+                let broadcasts = Arc::clone(&broadcasts);
+                let _ = tokio::task::spawn_blocking(move || {
+                    if let Err(error) = broadcasts.run_once() {
+                        tracing::warn!(%error, "broadcasts: notifier run failed");
+                    }
+                })
+                .await;
+            }
+        });
+
         // Start the split tunnel proxies when the module is enabled.
         if self.config.get_as_bool("splittun/enable", false)() {
             if let Err(error) = self
@@ -768,6 +817,7 @@ impl Service {
         binary_worker.abort();
         intel_worker.abort();
         list_watcher.abort();
+        broadcasts_worker.abort();
         self.split_proxies.stop();
         self.control.shutdown().await;
         if let Err(error) = self.firewall.stop().await {

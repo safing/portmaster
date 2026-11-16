@@ -42,7 +42,7 @@ pub struct Broadcasts {
     pub(crate) notifications: Arc<Notifications>,
     pub(crate) env: Arc<dyn MatchingEnvironment>,
     pub(crate) files: Arc<dyn BroadcastFileSource>,
-    pub(crate) attachment: Arc<AttachmentRecorder>,
+    attachment: Arc<AttachmentRecorder>,
     pub(crate) started_at: Mutex<i64>,
     /// Serializes acknowledgement state writes, like Go's
     /// `savingBroadcastStateLock`.
@@ -197,8 +197,8 @@ impl Broadcasts {
     pub fn reset_state(&self) -> Result<String> {
         match self.db.delete(BROADCAST_STATES_DB_KEY) {
             Ok(()) => {}
-            Err(Error::Database(DatabaseError::NotFound)) => {}
-            Err(error) => return Err(error),
+            Err(DatabaseError::NotFound) => {}
+            Err(error) => return Err(Error::Database(error)),
         }
         // The other two notifications are owned by packages that are not
         // ported yet; Go ignores any error from deleting them.

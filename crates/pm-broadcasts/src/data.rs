@@ -13,7 +13,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::install_info::{make_numeric_version, InstallInfo};
-use crate::{Broadcasts, Error, Result};
+use crate::{Broadcasts, Error};
 
 /// Simplified view of Go `core.SimpleVersions`.
 #[derive(Debug, Clone, Default, Serialize)]
@@ -187,6 +187,13 @@ impl Broadcasts {
                     data.insert("Install".to_string(), data_error(&Error::Json(error)));
                 }
             },
+            Err(Error::Database(pm_database::Error::NotFound)) => {
+                // Go marshals the raw database.ErrNotFound message.
+                data.insert(
+                    "Install".to_string(),
+                    json!({ "Error": "database entry not found" }),
+                );
+            }
             Err(error) => {
                 data.insert("Install".to_string(), data_error(&error));
             }
