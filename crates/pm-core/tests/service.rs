@@ -17,6 +17,7 @@ fn test_options(data_dir: &std::path::Path) -> Options {
         log_to_stdout: true,
         log_level: "debug".to_string(),
         api_address: "127.0.0.1:0".to_string(),
+        nameserver_address: "127.0.0.1:0".to_string(),
         dev_mode: true,
         allowed_clients: Vec::new(),
         print_version: false,
@@ -253,4 +254,77 @@ async fn config_file_controls_api_keys_and_address() {
 
     server.abort();
     service.shutdown().unwrap();
+}
+
+fn dns_query(name: &str, qtype: u16) -> Vec<u8> {
+    let mut packet = vec![0x12, 0x34, 0x01, 0x00, 0, 1, 0, 0, 0, 0, 0, 0];
+    for label in name.trim_end_matches('.').split('.') {
+        packet.push(label.len() as u8);
+        packet.extend_from_slice(label.as_bytes());
+    }
+    packet.push(0);
+    packet.extend_from_slice(&qtype.to_be_bytes());
+    packet.extend_from_slice(&1u16.to_be_bytes());
+    packet
+}
+
+#[tokio::test]
+async fn nameserver_answers_internal_names() {
+    let data_dir = temp_dir("dns");
+    let service = Arc::new(Service::start(&test_options(&data_dir)).await.unwrap());
+    let addrs = service.nameserver_addrs().await;
+    assert!(!addrs.is_empty(), "nameserver is not listening");
+
+    let client = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    client
+        .send_to(&dns_query("localhost.", 1), addrs[0])
+        .await
+        .unwrap();
+    let mut buf = [0u8; 512];
+    let (n, _) = tokio::time::timeout(Duration::from_secs(5), client.recv_from(&mut buf))
+        .await
+        .expect("no reply")
+        .unwrap();
+    let reply = &buf[..n];
+    assert_eq!(&reply[..2], &[0x12, 0x34]);
+    assert_ne!(reply[2] & 0x80, 0, "not a response");
+    assert_eq!(reply[3] & 0x0f, 0, "rcode");
+    assert_eq!(u16::from_be_bytes([reply[6], reply[7]]), 1, "answer count");
+    assert_eq!(&reply[n - 4..], &[127, 0, 0, 1]);
+
+    // The resolver endpoints are registered.
+    let server = tokio::spawn(Arc::clone(&service).run());
+    let response = http_get(service.local_addr(), "/api/v1/dns/resolvers", "").await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+
+    server.abort();
+    let _ = server.await;
+    service.dns.shutdown().await;
+}
+
+#[tokio::test]
+async fn busy_listen_port_notifies_and_keeps_api_up() {
+    let data_dir = temp_dir("dns-busy");
+    let blocker = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+    let mut options = test_options(&data_dir);
+    options.nameserver_address = blocker.local_addr().unwrap().to_string();
+
+    let service = Arc::new(Service::start(&options).await.unwrap());
+    assert!(service.nameserver_addrs().await.is_empty());
+    let notification = service
+        .notifications
+        .all()
+        .into_iter()
+        .map(|handle| handle.snapshot())
+        .find(|n| n.event_id.starts_with("nameserver:"))
+        .expect("no listener failure notification");
+    assert_eq!(notification.type_, pm_notifications::TYPE_ERROR);
+
+    let server = tokio::spawn(Arc::clone(&service).run());
+    let response = http_get(service.local_addr(), "/api/v1/ping", "").await;
+    assert!(response.starts_with("HTTP/1.1"), "{response}");
+
+    server.abort();
+    let _ = server.await;
+    service.dns.shutdown().await;
 }

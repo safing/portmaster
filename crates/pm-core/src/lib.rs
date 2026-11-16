@@ -2,5 +2,6 @@
 
 pub mod api_auth;
 pub mod cli;
+pub mod dns;
 pub mod logging;
 pub mod service;
