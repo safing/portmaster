@@ -88,6 +88,7 @@ func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Inte
 	// Migrate all profiles.
 	var (
 		lastErr error
+		iterErr error
 		failed  int
 		total   int
 	)
@@ -125,6 +126,7 @@ func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Inte
 	// Check if there was an error while iterating.
 	if err := it.Err(); err != nil {
 		log.Tracer(ctx).Errorf("profile: failed to migrate from icon fields: failed to iterate over profiles for migration: %s", err)
+		iterErr = fmt.Errorf("failed to iterate over profiles for icon migration: %w", err)
 	}
 
 	// Log migration failure and try again next time.
@@ -140,7 +142,7 @@ func migrateIcons(ctx context.Context, _, to *version.Version, db *database.Inte
 		return fmt.Errorf("failed to migrate %d profiles (out of %d pending) - last error: %w", failed, total, lastErr)
 	}
 
-	return lastErr
+	return iterErr
 }
 
 var randomUUIDRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
@@ -158,6 +160,7 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 	// Migrate all profiles.
 	var (
 		lastErr error
+		iterErr error
 		failed  int
 		total   int
 	)
@@ -166,6 +169,7 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 		profile, err := EnsureProfile(r)
 		if err != nil {
 			failed++
+			total++
 			lastErr = err
 			log.Tracer(ctx).Debugf("profiles: failed to parse profile %s for migration: %s", r.Key(), err)
 			continue
@@ -209,6 +213,7 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 	// Check if there was an error while iterating.
 	if err := it.Err(); err != nil {
 		log.Tracer(ctx).Errorf("profile: failed to migrate to derived profile IDs: failed to iterate over profiles for migration: %s", err)
+		iterErr = fmt.Errorf("failed to iterate over profiles for derived profile IDs migration: %w", err)
 	}
 
 	// Delete old migrated profiles.
@@ -229,5 +234,5 @@ func migrateToDerivedIDs(ctx context.Context, _, to *version.Version, db *databa
 		return fmt.Errorf("failed to migrate %d profiles (out of %d pending) - last error: %w", failed, total, lastErr)
 	}
 
-	return nil
+	return iterErr
 }
