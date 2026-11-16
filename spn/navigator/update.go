@@ -416,7 +416,7 @@ func (m *Map) ResetFailingStates() {
 	defer m.Unlock()
 
 	for _, pin := range m.all {
-		pin.ResetFailingState()
+		pin.resetFailingState()
 	}
 
 	m.PushPinChanges()
@@ -427,7 +427,7 @@ func (m *Map) updateFailingStates(ctx *mgr.WorkerCtx) error {
 	defer m.Unlock()
 
 	for _, pin := range m.all {
-		if pin.State.Has(StateFailing) && !pin.IsFailing() {
+		if pin.State.Has(StateFailing) && !pin.isFailing() {
 			pin.removeStates(StateFailing)
 		}
 	}
