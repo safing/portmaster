@@ -134,8 +134,8 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 				defer proc.Unlock()
 				matches = q.Matches(proc)
 			}()
-			if matches {
-				it.Next <- proc
+			if matches && !sendQueryResult(it, proc) {
+				return
 			}
 		}
 	}
@@ -153,8 +153,8 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 				matches = q.Matches(dnsConn)
 			}()
 
-			if matches {
-				it.Next <- dnsConn
+			if matches && !sendQueryResult(it, dnsConn) {
+				return
 			}
 		}
 	}
@@ -172,13 +172,27 @@ func (s *StorageInterface) processQuery(q *query.Query, it *iterator.Iterator) {
 				matches = q.Matches(conn)
 			}()
 
-			if matches {
-				it.Next <- conn
+			if matches && !sendQueryResult(it, conn) {
+				return
 			}
 		}
 	}
 
 	it.Finish(nil)
+}
+
+// sendQueryResult sends the record to the iterator.
+// If the query was canceled by the consumer, the iterator is finished and
+// false is returned. Without this, an abandoned query (eg. UI disconnected)
+// would block the query worker forever, as nobody is reading the results.
+func sendQueryResult(it *iterator.Iterator, r record.Record) (ok bool) {
+	select {
+	case it.Next <- r:
+		return true
+	case <-it.Done:
+		it.Finish(nil)
+		return false
+	}
 }
 
 func registerAsDatabase() error {
