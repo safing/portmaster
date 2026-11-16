@@ -532,3 +532,26 @@ async fn cleaner_loops_run_and_stop() {
     .await
     .unwrap();
 }
+
+#[test]
+fn reason_context_keys_are_sorted_like_go() {
+    let mut conn = conn_named("ip_outbound_full");
+    conn.reason.context = Some(json!({"z": 1, "a": {"y": 1, "b": [{"d": 1, "c": 2}]}}));
+    let row = convert_connection(&conn).unwrap();
+    let extra = String::from_utf8(row.extra_data).unwrap();
+    assert!(extra.contains(r#""Context":{"a":{"b":[{"c":2,"d":1}],"y":1},"z":1}"#), "{extra}");
+}
+
+#[test]
+fn shutdown_vacuums_and_keeps_the_history_usable() {
+    let tmp = Temp::new("vacuum");
+    let db = tmp.db();
+    for i in 0..200 {
+        db.save(&row(&format!("c{i}"), "local/a", 1_700_000_000, Some(1_700_000_001)), true).unwrap();
+    }
+    db.remove_all_history().unwrap();
+    shutdown(&db);
+    assert!(ids(&db, "history").is_empty());
+    db.save(&row("after", "local/a", 1_700_000_000, Some(1_700_000_001)), true).unwrap();
+    assert_eq!(ids(&db, "history"), vec!["after"]);
+}

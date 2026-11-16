@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use pm_network::{format_ip, Connection, ConnectionType, SharedConnection};
-use pm_record::{Key, Record};
+use pm_record::{Key, Meta, Record};
 use pm_runtime::{PushFunc, Registry, SimpleValueGetter};
 use serde_json::Value;
 use tokio::sync::mpsc;
@@ -107,7 +107,12 @@ pub fn convert_connection(conn: &Connection) -> Result<Conn, ConvertError> {
             "blockedEntities",
             list(&entity.blocked_entities, entity.lists_matched),
         );
-        extra.insert("reason", to_value(&conn.reason)?);
+        let mut reason = to_value(&conn.reason)?;
+        // Only the free-form context: the struct fields keep Go's order.
+        if let Some(context) = reason.get_mut("Context") {
+            sort_keys(context);
+        }
+        extra.insert("reason", reason);
 
         c.remote_ip = format_ip(entity.ip);
         c.remote_port = entity.port;
@@ -125,6 +130,22 @@ pub fn convert_connection(conn: &Connection) -> Result<Conn, ConvertError> {
     c.extra_data =
         pm_dsd::gojson::to_vec(&extra).map_err(|e| ConvertError::ExtraData(e.to_string()))?;
     Ok(c)
+}
+
+/// Sorts object keys recursively: Go marshals maps with sorted keys.
+fn sort_keys(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            let mut entries: Vec<(String, Value)> = std::mem::take(map).into_iter().collect();
+            entries.sort_by(|a, b| a.0.cmp(&b.0));
+            for (key, mut v) in entries {
+                sort_keys(&mut v);
+                map.insert(key, v);
+            }
+        }
+        Value::Array(items) => items.iter_mut().for_each(sort_keys),
+        _ => {}
+    }
 }
 
 /// Persists feed connections and pushes updates to the runtime database.
@@ -157,38 +178,41 @@ impl Manager {
     /// incomplete connections, saves the row (history only if the connection
     /// has it enabled) and pushes the update. Errors are logged.
     pub fn handle(&self, conn: &SharedConnection) {
-        let conn = lock(conn);
-        if !conn.data_complete {
-            return;
-        }
-        let model = match convert_connection(&conn) {
-            Ok(model) => model,
-            Err(error) => {
-                tracing::error!(%error, id = %conn.id, "netquery: failed to convert connection");
+        // Hold the connection lock only for the conversion.
+        let (model, history, meta) = {
+            let conn = lock(conn);
+            if !conn.data_complete {
                 return;
             }
+            match convert_connection(&conn) {
+                Ok(model) => (model, conn.history_enabled, conn.meta),
+                Err(error) => {
+                    tracing::error!(%error, id = %conn.id, "netquery: failed to convert connection");
+                    return;
+                }
+            }
         };
-        if let Err(error) = self.store.save(&model, conn.history_enabled) {
-            tracing::error!(%error, id = %conn.id, "netquery: failed to save connection");
+        if let Err(error) = self.store.save(&model, history) {
+            tracing::error!(%error, id = %model.id, "netquery: failed to save connection");
             return;
         }
-        if let Err(error) = self.push_conn_update(&conn, &model) {
-            tracing::error!(%error, id = %conn.id, "netquery: failed to push connection update");
+        if let Err(error) = self.push_conn_update(meta, &model) {
+            tracing::error!(%error, id = %model.id, "netquery: failed to push connection update");
         }
     }
 
-    fn push_conn_update(&self, conn: &Connection, model: &Conn) -> Result<(), pm_record::Error> {
+    fn push_conn_update(&self, meta: Meta, model: &Conn) -> Result<(), pm_record::Error> {
         let key = Key::new(&self.registry.database_name(), &format!("{}{}", self.push_prefix, model.id));
-        let record = Record::from_typed(key, conn.meta, model)?;
+        let record = Record::from_typed(key, meta, model)?;
         (self.push)(&[record]);
         Ok(())
     }
 
     /// Reads updates until `cancel` fires or the feed is closed (Go
     /// `HandleFeed`). Updates are handled one after another; the SQLite calls
-    /// block the task, like Go blocks its goroutine.
+    /// run on the blocking pool.
     pub async fn handle_feed(
-        &self,
+        self: &Arc<Self>,
         mut feed: mpsc::Receiver<SharedConnection>,
         cancel: CancellationToken,
     ) {
@@ -196,7 +220,14 @@ impl Manager {
             tokio::select! {
                 () = cancel.cancelled() => return,
                 next = feed.recv() => match next {
-                    Some(conn) => self.handle(&conn),
+                    Some(conn) => {
+                        let manager = Arc::clone(self);
+                        if let Err(error) =
+                            tokio::task::spawn_blocking(move || manager.handle(&conn)).await
+                        {
+                            tracing::error!(%error, "netquery: connection handler panicked");
+                        }
+                    }
                     None => return,
                 },
             }
