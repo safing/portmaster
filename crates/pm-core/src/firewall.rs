@@ -12,8 +12,8 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use pm_config::Config;
 use pm_firewall::packet::{
-    BandwidthSink, ConntrackControl, LayeredProfileLookup, NfqPacket, PacketEnv, PacketHandler,
-    QueuedPacket, SystemConntrack,
+    BandwidthSink, ConntrackControl, ExternalVerdict, LayeredProfileLookup, NfqPacket, PacketEnv,
+    PacketHandler, QueuedPacket, SystemConntrack,
 };
 use pm_firewall::{
     CustomLists, FirewallEnv, LocalNetwork, MulticastRequest, ServiceCustomLists, SplitTunnelEnv,
@@ -207,6 +207,9 @@ pub struct CoreFirewallEnv {
     filter_enabled: AtomicBool,
     permanent_verdicts: AtomicBool,
     dns_interception: AtomicBool,
+    /// Interoperability verdicts, registered lazily by the interop module.
+    interop: Arc<pm_interop::Interop>,
+    verdict_enabled: Arc<AtomicBool>,
 }
 
 impl CoreFirewallEnv {
@@ -223,6 +226,8 @@ impl CoreFirewallEnv {
         split_tunnel: Arc<SplitTunnelEnvAdapter>,
         ip_info: Arc<IpInfoStore>,
         compat: Arc<pm_compat::Compat>,
+        interop: Arc<pm_interop::Interop>,
+        verdict_enabled: Arc<AtomicBool>,
     ) -> CoreFirewallEnv {
         let api_endpoint = local_addr.ip().is_loopback().then(|| (local_addr.ip(), local_addr.port()));
 
@@ -244,6 +249,8 @@ impl CoreFirewallEnv {
             dns_interception: AtomicBool::new(
                 config.get_as_bool("filter/dnsQueryInterception", true)(),
             ),
+            interop,
+            verdict_enabled,
         }
     }
 
@@ -426,6 +433,21 @@ impl PacketEnv for CoreFirewallEnv {
         );
     }
 
+    fn external_verdict(&self, conn: &pm_network::Connection) -> Option<ExternalVerdict> {
+        if !self.verdict_enabled.load(Ordering::SeqCst) {
+            return None;
+        }
+        let decision = self.interop.verdict_handler(conn);
+        if decision.is_undecided() {
+            return None;
+        }
+        Some(ExternalVerdict {
+            verdict: decision.verdict,
+            reason: decision.reason,
+            skip_tunnel: decision.skip_tunnel,
+        })
+    }
+
     fn remove_prompt(&self, conn: &SharedConnection) {
         conn.lock()
             .unwrap_or_else(|error| error.into_inner())
@@ -484,6 +506,10 @@ pub struct FirewallDeps<'a> {
     pub ip_info: Arc<IpInfoStore>,
     /// Compatibility module, wired to the self-check hooks.
     pub compat: Arc<pm_compat::Compat>,
+    /// Interoperability module that may supply external verdicts.
+    pub interop: Arc<pm_interop::Interop>,
+    /// Lazily set by the interop module when it registers its verdict handler.
+    pub verdict_enabled: Arc<AtomicBool>,
     /// Optional file for packet verdict metrics.
     pub packet_metrics_file: Option<std::path::PathBuf>,
 }
@@ -522,6 +548,8 @@ impl Firewall {
             split_tunnel,
             ip_info,
             compat,
+            interop,
+            verdict_enabled,
             packet_metrics_file,
         } = deps;
 
@@ -536,6 +564,8 @@ impl Firewall {
             split_tunnel,
             Arc::clone(&ip_info),
             compat,
+            interop,
+            verdict_enabled,
         ));
 
         let processes: Arc<dyn ProcessResolver> = Arc::new(SystemProcessResolver::new(

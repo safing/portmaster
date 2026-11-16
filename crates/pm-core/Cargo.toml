@@ -25,6 +25,7 @@ pm-database = { path = "../pm-database" }
 pm-dsd = { path = "../pm-dsd" }
 pm-endpoints = { path = "../pm-endpoints" }
 pm-interception = { path = "../pm-interception" }
+pm-interop = { path = "../pm-interop" }
 pm-mgr = { path = "../pm-mgr" }
 pm-migration = { path = "../pm-migration" }
 pm-runtime = { path = "../pm-runtime" }
