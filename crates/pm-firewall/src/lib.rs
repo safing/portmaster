@@ -10,9 +10,10 @@
 //!   context) is returned in [`Decision::responder`]; the reason context stays
 //!   unset. [`Decision::into_filter_outcome`] converts it for the nameserver's
 //!   `FirewallHook`.
-//! * Packet handling lives in [`packet`]. DNS response filtering, prompts,
-//!   split tunnel and SPN routing are not part of this crate; the packet
-//!   handler reaches them through hooks.
+//! * Packet handling lives in [`packet`]. DNS response filtering and prompts
+//!   are not part of this crate; the packet handler reaches them through hooks.
+//! * Split tunnel verdicts are here, but the proxy is injected through
+//!   [`SplitTunnelEnv`].
 
 mod bypass;
 mod deciders;
@@ -23,6 +24,7 @@ mod levenshtein;
 mod master;
 pub mod packet;
 mod preauth;
+mod split_tunnel;
 
 pub use bypass::{looks_like_outgoing_dns_request, prevent_bypassing, DnsResponder};
 pub use deciders::*;
@@ -30,6 +32,10 @@ pub use dga::{lms_score, lms_score_of_domain};
 pub use env::{CustomLists, FirewallEnv, LocalNetwork, MulticastRequest, NoCustomLists};
 pub use master::{decide_on_connection, run_deciders, Decision};
 pub use preauth::{protocol_from_network, PreAuthPorts};
+pub use split_tunnel::{
+    check_split_tunneling, is_own_split_tunnel_proxy_connection, request_split_tunneling,
+    SplitTunnelEnv,
+};
 
 /// Whether the process is, or belongs to, the system resolver.
 pub fn is_system_resolver(process: &pm_process::Process) -> bool {
