@@ -500,6 +500,91 @@ func TestTCPResolverQueryOnStoppedConn(t *testing.T) {
 	}
 }
 
+// TestTCPResolverAbandonsConnWithFailedHeartbeat checks that a connection
+// that failed the alive check and was replaced is shut down once it handled
+// its in-flight queries, instead of running until its TTL.
+func TestTCPResolverAbandonsConnWithFailedHeartbeat(t *testing.T) {
+	t.Parallel()
+
+	server := newTCPTestServer(t)
+	tr := NewTCPResolver(server.resolver())
+	tr.heartbeatTimeout = 50 * time.Millisecond
+
+	// Set up a connection whose server side is controlled by the test.
+	clientSide, serverSide := net.Pipe()
+	defer func() {
+		_ = serverSide.Close()
+	}()
+	oldConn := &tcpResolverConn{
+		conn:            &dns.Conn{Conn: clientSide},
+		resolverInfo:    tr.resolver.Info,
+		queries:         make(chan *tcpQuery, 10),
+		responses:       make(chan *dns.Msg, 10),
+		inFlightQueries: make(map[uint16]*tcpQuery, 10),
+		inFlightTimeout: time.Minute,
+		heartbeat:       make(chan struct{}),
+		abandoned:       abool.New(),
+		stopped:         make(chan struct{}),
+	}
+	tr.Lock()
+	tr.resolverConnInstanceID++
+	oldConn.id = tr.resolverConnInstanceID
+	tr.resolverConn = oldConn
+	tr.Unlock()
+	module.mgr.Go("test dns client", oldConn.handler)
+
+	// Submit a query and read only the start of it on the server side, so that
+	// the handler is stuck writing it and does not respond to alive checks.
+	oldConn.queries <- &tcpQuery{
+		Query:    &Query{FQDN: "slow.example.", QType: dns.Type(dns.TypeA), NoCaching: true},
+		Response: make(chan *dns.Msg, 1),
+	}
+	_ = serverSide.SetDeadline(time.Now().Add(5 * time.Second))
+	lengthPrefix := make([]byte, 2)
+	_, err := io.ReadFull(serverSide, lengthPrefix)
+	if err != nil {
+		t.Fatalf("server failed to read query: %s", err)
+	}
+
+	// The heartbeat fails, and the query is sent on a new connection.
+	_, err = tr.Query(t.Context(), &Query{FQDN: "new.example.", QType: dns.Type(dns.TypeA), NoCaching: true})
+	if err != nil {
+		t.Fatalf("query on new connection failed: %s", err)
+	}
+	tr.Lock()
+	replaced := tr.resolverConn != oldConn
+	tr.Unlock()
+	if !replaced {
+		t.Fatal("connection with failed heartbeat was not replaced")
+	}
+
+	// Let the old connection complete its pending query.
+	packed := make([]byte, int(lengthPrefix[0])<<8|int(lengthPrefix[1]))
+	_, err = io.ReadFull(serverSide, packed)
+	if err != nil {
+		t.Fatalf("server failed to read query: %s", err)
+	}
+	query := &dns.Msg{}
+	err = query.Unpack(packed)
+	if err != nil {
+		t.Fatalf("server failed to unpack query: %s", err)
+	}
+	reply := &dns.Msg{}
+	reply.SetReply(query)
+	serverConn := &dns.Conn{Conn: serverSide}
+	err = serverConn.WriteMsg(reply)
+	if err != nil {
+		t.Fatalf("server failed to write reply: %s", err)
+	}
+
+	// The old connection must be closed now that it has no in-flight queries.
+	_ = serverSide.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, err = serverConn.ReadMsg()
+	if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrClosedPipe) {
+		t.Fatalf("replaced connection was not closed: %v", err)
+	}
+}
+
 // tcpTestServer is a DNS server on a loopback TCP port that answers every A
 // query with 127.0.0.1.
 type tcpTestServer struct {

@@ -40,6 +40,9 @@ type TCPResolver struct {
 	resolverConn *tcpResolverConn
 	// resolverConnInstanceID holds the current ID of the resolverConn.
 	resolverConnInstanceID int
+	// heartbeatTimeout defines how long the connection may take to respond
+	// to an alive check before it is replaced.
+	heartbeatTimeout time.Duration
 }
 
 // tcpResolverConn represents a single connection to an upstream DNS server.
@@ -110,6 +113,7 @@ func NewTCPResolver(resolver *Resolver) *TCPResolver {
 			Timeout:      defaultConnectTimeout,
 			WriteTimeout: tcpWriteTimeout,
 		},
+		heartbeatTimeout: heartbeatTimeout,
 	}
 	newResolver.BasicResolverConn.init()
 	return newResolver
@@ -145,8 +149,11 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 			return existingConn, nil
 		case <-existingConn.stopped:
 			// The connection stopped after it was checked above. Create a new one.
-		case <-time.After(heartbeatTimeout):
+		case <-time.After(tr.heartbeatTimeout):
 			log.Warningf("resolver: heartbeat for dns client %s failed", tr.resolver.Info.DescriptiveName())
+			// Abandon the connection, so that it is shut down once it handled
+			// its in-flight queries, as it is replaced by a new one below.
+			existingConn.abandoned.Set()
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-module.mgr.Done():
