@@ -30,6 +30,10 @@ const CTA_TUPLE_REPLY: u16 = 2;
 const CTA_MARK: u16 = 8;
 const CTA_MARK_MASK: u16 = 21;
 const CTA_TUPLE_IP: u16 = 1;
+const CTA_TUPLE_PROTO: u16 = 2;
+const CTA_PROTO_NUM: u16 = 1;
+const CTA_PROTO_SRC_PORT: u16 = 2;
+const CTA_PROTO_DST_PORT: u16 = 3;
 const CTA_IP_V4_SRC: u16 = 1;
 const CTA_IP_V4_DST: u16 = 2;
 const CTA_IP_V6_SRC: u16 = 3;
@@ -74,6 +78,57 @@ impl Entry {
     /// Go `isLoopbackConnection`: any address of either tuple is loopback.
     pub fn is_loopback(&self) -> bool {
         self.addrs.iter().any(IpAddr::is_loopback)
+    }
+}
+
+/// The original tuple of a connection, as Go `DeleteMarkedConnection` builds it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConnTuple {
+    pub src: IpAddr,
+    pub dst: IpAddr,
+    pub protocol: u8,
+    pub src_port: u16,
+    pub dst_port: u16,
+}
+
+impl ConnTuple {
+    pub fn family(&self) -> Family {
+        if self.dst.is_ipv6() {
+            Family::V6
+        } else {
+            Family::V4
+        }
+    }
+
+    /// The `CTA_TUPLE_ORIG` attribute. Ports are only sent for TCP and UDP.
+    fn attr(&self) -> Vec<u8> {
+        let mut ip = Vec::new();
+        match (self.src, self.dst) {
+            (IpAddr::V4(src), IpAddr::V4(dst)) => {
+                put_attr(&mut ip, CTA_IP_V4_SRC, &src.octets());
+                put_attr(&mut ip, CTA_IP_V4_DST, &dst.octets());
+            }
+            (src, dst) => {
+                let to_v6 = |ip: IpAddr| match ip {
+                    IpAddr::V6(ip) => ip,
+                    IpAddr::V4(ip) => ip.to_ipv6_mapped(),
+                };
+                put_attr(&mut ip, CTA_IP_V6_SRC, &to_v6(src).octets());
+                put_attr(&mut ip, CTA_IP_V6_DST, &to_v6(dst).octets());
+            }
+        }
+        let mut proto = Vec::new();
+        put_attr(&mut proto, CTA_PROTO_NUM, &[self.protocol]);
+        if self.protocol == 6 || self.protocol == 17 {
+            put_attr(&mut proto, CTA_PROTO_SRC_PORT, &self.src_port.to_be_bytes());
+            put_attr(&mut proto, CTA_PROTO_DST_PORT, &self.dst_port.to_be_bytes());
+        }
+        let mut inner = Vec::new();
+        put_attr(&mut inner, CTA_TUPLE_IP | NLA_F_NESTED, &ip);
+        put_attr(&mut inner, CTA_TUPLE_PROTO | NLA_F_NESTED, &proto);
+        let mut out = Vec::new();
+        put_attr(&mut out, CTA_TUPLE_ORIG | NLA_F_NESTED, &inner);
+        out
     }
 }
 
@@ -129,6 +184,27 @@ impl Conntrack {
             }
             if done {
                 return Ok(entries);
+            }
+        }
+    }
+
+    /// Deletes the entry with the given original tuple (Go
+    /// `DeleteMarkedConnection`); a missing entry is an `ENOENT` error.
+    pub fn delete_tuple(&mut self, tuple: &ConnTuple) -> io::Result<()> {
+        let msg = self.message(
+            IPCTNL_MSG_CT_DELETE,
+            NLM_F_REQUEST | NLM_F_ACK,
+            tuple.family(),
+            &tuple.attr(),
+        );
+        self.send(&msg)?;
+        let mut buf = vec![0u8; 8192];
+        loop {
+            let (n, _) = recv(&self.fd, &mut buf[..], RecvFlags::empty())?;
+            for (kind, payload) in messages(&buf[..n]) {
+                if kind == NLMSG_ERROR {
+                    return check_error(payload);
+                }
             }
         }
     }
@@ -372,6 +448,37 @@ mod tests {
 
         let lo = parse_entry(&entry_payload([127, 0, 0, 1], [127, 0, 0, 1], 0)).unwrap();
         assert!(lo.is_loopback());
+    }
+
+    #[test]
+    fn builds_tuple_attribute() {
+        let tuple = ConnTuple {
+            src: "10.0.0.2".parse().unwrap(),
+            dst: "1.1.1.1".parse().unwrap(),
+            protocol: 6,
+            src_port: 40000,
+            dst_port: 443,
+        };
+        assert_eq!(tuple.family(), Family::V4);
+        let attr = tuple.attr();
+        let outer = attrs(&attr);
+        assert_eq!(outer.len(), 1);
+        assert_eq!(outer[0].0, CTA_TUPLE_ORIG);
+        let children = attrs(outer[0].1);
+        assert_eq!(children[0].0, CTA_TUPLE_IP);
+        assert_eq!(children[1].0, CTA_TUPLE_PROTO);
+        let proto = attrs(children[1].1);
+        assert_eq!(proto[0].1, &[6]);
+        assert_eq!(proto[1].1, &40000u16.to_be_bytes());
+        assert_eq!(proto[2].1, &443u16.to_be_bytes());
+
+        let icmp = ConnTuple {
+            protocol: 1,
+            ..tuple
+        };
+        let attr = icmp.attr();
+        let inner = attrs(attrs(&attr)[0].1);
+        assert_eq!(attrs(inner[1].1).len(), 1);
     }
 
     #[test]

@@ -41,6 +41,20 @@ pub struct VerdictHandle {
 }
 
 impl VerdictHandle {
+    /// Creates a handle that is not connected to a kernel queue; the marks
+    /// arrive on the returned receiver. For tests of packet consumers.
+    pub fn detached(id: u32) -> (VerdictHandle, mpsc::UnboundedReceiver<(u32, Mark)>) {
+        let (tx, rx) = mpsc::unbounded_channel();
+        (
+            VerdictHandle {
+                id,
+                tx,
+                sent: false,
+            },
+            rx,
+        )
+    }
+
     /// Sets the mark (the kernel verdict is always accept).
     pub fn set(mut self, mark: Mark) {
         self.sent = true;

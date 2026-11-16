@@ -7,4 +7,4 @@ pub mod packet;
 pub mod queue;
 
 pub use marks::{Mark, Verdict};
-pub use packet::{parse_layer3, ParseError};
+pub use packet::{icmp_type, parse_layer3, ParseError};
