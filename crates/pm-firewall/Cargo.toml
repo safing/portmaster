@@ -6,7 +6,9 @@ description = "Connection verdict deciders of the Portmaster firewall"
 license.workspace = true
 
 [dependencies]
+hickory-proto.workspace = true
 pm-endpoints = { path = "../pm-endpoints" }
+pm-interception = { path = "../pm-interception" }
 pm-intel = { path = "../pm-intel" }
 pm-nameserver = { path = "../pm-nameserver" }
 pm-netenv = { path = "../pm-netenv" }
@@ -14,15 +16,17 @@ pm-netstate = { path = "../pm-netstate" }
 pm-network = { path = "../pm-network" }
 pm-process = { path = "../pm-process" }
 pm-profile = { path = "../pm-profile" }
+pm-resolver = { path = "../pm-resolver" }
 psl.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+thiserror.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
 pm-config = { path = "../pm-config" }
 pm-database = { path = "../pm-database" }
-pm-resolver = { path = "../pm-resolver" }
+tokio.workspace = true
 
 [lints]
 workspace = true

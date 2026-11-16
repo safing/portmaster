@@ -94,11 +94,30 @@ fn parse_ipv6(data: &[u8]) -> Result<Parsed, ParseError> {
     let dst: [u8; 16] = data[24..40]
         .try_into()
         .map_err(|_| ParseError::Truncated("IPv6"))?;
+    let (next, offset, first_fragment) = walk_ipv6_headers(data)?;
+
+    let mut parsed = Parsed {
+        version: IpVersion::V6,
+        src: IpAddr::V6(Ipv6Addr::from(src)),
+        dst: IpAddr::V6(Ipv6Addr::from(dst)),
+        protocol: next,
+        src_port: 0,
+        dst_port: 0,
+        payload_offset: None,
+    };
+    if first_fragment {
+        parse_transport(&mut parsed, data, offset)?;
+    }
+    Ok(parsed)
+}
+
+/// Walks the IPv6 extension headers; returns the transport protocol, the
+/// offset of the transport header and whether this is the first fragment.
+fn walk_ipv6_headers(data: &[u8]) -> Result<(u8, usize, bool), ParseError> {
     let mut next = data[6];
     let mut offset = 40usize;
     let mut first_fragment = true;
 
-    // Walk extension headers to the transport layer.
     loop {
         let header_len = match next {
             0 | 43 | 60 => {
@@ -131,20 +150,28 @@ fn parse_ipv6(data: &[u8]) -> Result<Parsed, ParseError> {
             break;
         }
     }
+    Ok((next, offset, first_fragment))
+}
 
-    let mut parsed = Parsed {
-        version: IpVersion::V6,
-        src: IpAddr::V6(Ipv6Addr::from(src)),
-        dst: IpAddr::V6(Ipv6Addr::from(dst)),
-        protocol: next,
-        src_port: 0,
-        dst_port: 0,
-        payload_offset: None,
+/// Returns the ICMP/ICMPv6 type of an IP packet.
+pub fn icmp_type(data: &[u8]) -> Option<u8> {
+    let offset = match data.first()? >> 4 {
+        4 => {
+            if data[9] != PROTO_ICMP {
+                return None;
+            }
+            usize::from(data.first()? & 0x0f) * 4
+        }
+        6 => {
+            let (next, offset, first_fragment) = walk_ipv6_headers(data).ok()?;
+            if next != PROTO_ICMPV6 || !first_fragment {
+                return None;
+            }
+            offset
+        }
+        _ => return None,
     };
-    if first_fragment {
-        parse_transport(&mut parsed, data, offset)?;
-    }
-    Ok(parsed)
+    data.get(offset).copied()
 }
 
 fn parse_transport(parsed: &mut Parsed, data: &[u8], offset: usize) -> Result<(), ParseError> {
@@ -235,6 +262,21 @@ mod tests {
         assert_eq!(parsed.version, IpVersion::V6);
         assert_eq!(parsed.protocol, PROTO_UDP);
         assert_eq!(parsed.dst_port, 53);
+    }
+
+    #[test]
+    fn reads_icmp_type() {
+        let echo = ipv4(PROTO_ICMP, &[8, 0, 0, 0]);
+        assert_eq!(icmp_type(&echo), Some(8));
+        assert_eq!(icmp_type(&ipv4(PROTO_UDP, &udp(1, 2))), None);
+
+        let mut p = vec![0x60, 0, 0, 0, 0, 0, PROTO_ICMPV6, 64];
+        p.extend_from_slice(&"2001:db8::1".parse::<Ipv6Addr>().unwrap().octets());
+        p.extend_from_slice(&"2001:db8::2".parse::<Ipv6Addr>().unwrap().octets());
+        p.extend_from_slice(&[128, 0, 0, 0]);
+        assert_eq!(icmp_type(&p), Some(128));
+        assert_eq!(icmp_type(&[]), None);
+        assert_eq!(icmp_type(&p[..40]), None);
     }
 
     #[test]

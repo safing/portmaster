@@ -1485,10 +1485,12 @@ dependencies = [
 name = "pm-firewall"
 version = "0.1.0"
 dependencies = [
+ "hickory-proto",
  "pm-config",
  "pm-database",
  "pm-endpoints",
  "pm-intel",
+ "pm-interception",
  "pm-nameserver",
  "pm-netenv",
  "pm-netstate",
@@ -1499,6 +1501,8 @@ dependencies = [
  "psl",
  "serde",
  "serde_json",
+ "thiserror",
+ "tokio",
  "tracing",
 ]
 

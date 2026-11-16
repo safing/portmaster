@@ -10,8 +10,9 @@
 //!   context) is returned in [`Decision::responder`]; the reason context stays
 //!   unset. [`Decision::into_filter_outcome`] converts it for the nameserver's
 //!   `FirewallHook`.
-//! * Packet handling, DNS response filtering, prompts, split tunnel and SPN
-//!   routing are not part of this crate.
+//! * Packet handling lives in [`packet`]. DNS response filtering, prompts,
+//!   split tunnel and SPN routing are not part of this crate; the packet
+//!   handler reaches them through hooks.
 
 mod bypass;
 mod deciders;
@@ -19,6 +20,7 @@ mod dga;
 mod env;
 mod levenshtein;
 mod master;
+pub mod packet;
 mod preauth;
 
 pub use bypass::{looks_like_outgoing_dns_request, prevent_bypassing, DnsResponder};
