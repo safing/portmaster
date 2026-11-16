@@ -60,6 +60,7 @@ var (
 
 	verifyJESSIndex string
 	verifyJESSTSDir string
+	onlyRng         bool
 )
 
 func main() {
@@ -68,6 +69,7 @@ func main() {
 	flag.StringVar(&verifyNameRecordPath, "verify-namerecord", "", "read a Rust-written NameRecord JSON file the way Go does and print it")
 	flag.StringVar(&verifyJESSIndex, "verify-jess", "", "verify a Rust-signed index with Go filesig.VerifyJSONSignature")
 	flag.StringVar(&verifyJESSTSDir, "verify-jess-tsdir", "", "truststore directory with .recipient files for -verify-jess")
+	flag.BoolVar(&onlyRng, "only-rng", false, "only generate the rng.json compatibility fixture")
 	flag.Parse()
 
 	if verifyJESSIndex != "" {
@@ -87,6 +89,10 @@ func main() {
 
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		fail(err)
+	}
+	if onlyRng {
+		genRng()
+		return
 	}
 	genVarint()
 	genMeta()

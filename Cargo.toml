@@ -39,6 +39,7 @@ members = [
     "crates/pm-compat",
     "crates/pm-interop",
     "crates/pm-sync",
+    "crates/pm-rng",
 ]
 
 [workspace.package]
@@ -50,6 +51,7 @@ rust-version = "1.94"
 unsafe_code = "forbid"
 
 [workspace.dependencies]
+aes = "0.8.4"
 anyhow = "1.0.104"
 async-trait = "0.1.92"
 axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio", "ws"] }
