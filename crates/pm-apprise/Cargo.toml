@@ -1,0 +1,19 @@
+[package]
+name = "pm-apprise"
+version = "0.1.0"
+edition.workspace = true
+description = "Apprise notification client, a port of Go base/apprise"
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+
+[lints]
+workspace = true
