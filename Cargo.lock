@@ -1539,6 +1539,7 @@ dependencies = [
  "pm-dsd",
  "pm-geoip",
  "pm-netstate",
+ "pm-netutils",
  "pm-record",
  "psl",
  "serde",
