@@ -1522,6 +1522,7 @@ name = "pm-geoip"
 version = "0.1.0"
 dependencies = [
  "maxminddb",
+ "pm-api",
  "serde",
  "serde_json",
  "thiserror",

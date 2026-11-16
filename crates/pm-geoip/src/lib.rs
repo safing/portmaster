@@ -14,11 +14,12 @@
 //!   update worker to fetch a database; without the updater, [`GeoIp::get_location`]
 //!   simply reports that no database is available.
 //! * The update worker, artifact handling (`service/updates`) and the
-//!   `intel/geoip/countries` API endpoint are not ported. [`GeoIp::replace_database`]
+//!   and the `intel/geoip/countries` API endpoint is not wired into the core. [`GeoIp::replace_database`]
 //!   is the entry point a future worker will call.
 //! * `AutonomousSystemNumber` is an `u32` (as stored in MMDB) instead of Go's
 //!   `uint`.
 
+mod api;
 mod database;
 
 use std::collections::HashMap;
@@ -27,6 +28,7 @@ use std::sync::OnceLock;
 
 use serde::{Deserialize, Serialize};
 
+pub use api::{register_api, COUNTRIES_ENDPOINT_PATH};
 pub use database::{Error, GeoIp, V4_RESOURCE, V6_RESOURCE};
 
 /// Earth circumference in kilometers.
