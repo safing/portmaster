@@ -1534,6 +1534,7 @@ dependencies = [
  "base64 0.22.1",
  "flate2",
  "hex",
+ "pm-config",
  "pm-database",
  "pm-dsd",
  "pm-geoip",

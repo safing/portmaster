@@ -22,6 +22,7 @@
 
 mod block_reason;
 mod bloom;
+pub mod customlists;
 mod decode;
 mod entity;
 mod record;
