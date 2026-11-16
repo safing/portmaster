@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/tevino/abool"
@@ -40,6 +42,12 @@ const (
 var (
 	dbAPISeperatorBytes       = []byte(dbAPISeperator)
 	dbCompatibilityPermission = PermitAdmin
+
+	// dbAPIWriteTimeout is the maximum time a single websocket message write
+	// may take. It is deliberately generous: it only exists to detect a peer
+	// that keeps the connection open but stopped reading (frozen process,
+	// half-open TCP), which would otherwise block the writer forever.
+	dbAPIWriteTimeout = 60 * time.Second
 )
 
 func init() {
@@ -174,8 +182,20 @@ func (api *DatabaseWebsocketAPI) writer(ctx *mgr.WorkerCtx) error {
 		}
 
 		// log.Tracef("api: sending %s", string(*msg))
+		// Set a deadline for every single write, so that a peer that stopped
+		// reading cannot block the writer (and everything feeding the send
+		// queue) forever. After a write timeout the connection is corrupt and
+		// must not be used anymore: shutdown closes it.
+		err = api.conn.SetWriteDeadline(time.Now().Add(dbAPIWriteTimeout))
+		if err != nil {
+			return api.shutdown(err)
+		}
 		err = api.conn.WriteMessage(websocket.BinaryMessage, data)
 		if err != nil {
+			var netErr net.Error
+			if errors.As(err, &netErr) && netErr.Timeout() {
+				err = fmt.Errorf("write timed out after %s, closing connection: %w", dbAPIWriteTimeout, err)
+			}
 			return api.shutdown(err)
 		}
 	}
