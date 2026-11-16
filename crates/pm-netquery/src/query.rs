@@ -2,7 +2,8 @@
 //!
 //! Deliberate deviations from Go (security): `as` aliases must be letters only
 //! (Go's regex is unanchored and lets any text into the SQL) and `databases`
-//! may only name `main` or `history` (Go interpolates them unchecked).
+//! may only name `main` or `history` (Go interpolates them unchecked), and a
+//! `$field` select is always validated, even next to another select key.
 
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
@@ -542,6 +543,9 @@ impl Builder {
             }
 
             if let Some((f, alias)) = &s.field_select {
+                // Validate what is emitted: with another key set (e.g. `$count`), Go
+                // validates that field instead and interpolates `$field` unchecked.
+                let f = self.validate_column(f)?;
                 let alias = if alias.is_empty() { f.clone() } else { alias.clone() };
                 self.selected.push(format!("{f} AS {alias}"));
                 self.whitelisted.push(alias);

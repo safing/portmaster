@@ -63,3 +63,10 @@ fn queries_match_go() {
         }
     }
 }
+
+#[test]
+fn field_select_is_validated_next_to_count() {
+    let raw = r#"{"select":[{"$count":{"field":"*"},"$field":{"field":"1); DROP TABLE x; --","as":"x"}}]}"#;
+    let req = QueryRequest::from_json(&serde_json::from_str(raw).unwrap()).unwrap();
+    assert!(generate_sql(&req).is_err());
+}
