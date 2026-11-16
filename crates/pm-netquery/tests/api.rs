@@ -270,7 +270,6 @@ fn content_type_and_batch_error_header() {
     let s = setup("ct", false, 0);
     let r = call(&s.api, "POST", "netquery/query", "", "{}");
     assert_eq!(r.headers.get("content-type").unwrap(), "text/plain; charset=utf-8");
-    // Dropping the table makes execution fail while generation succeeds.
     let r = call(&s.api, "POST", "netquery/charts/connection-active", "", "[]");
     assert_eq!(r.status, 400);
     assert!(r.body_string().contains("cannot unmarshal array"));
@@ -281,16 +280,19 @@ fn content_type_and_batch_error_header() {
 #[test]
 fn batch_execution_error_sets_headers() {
     let s = setup("bat", false, 0);
-    // The history database is attached but not writable-independent; detach
-    // it so that a query against it fails at execution time.
-    s.db.query_raw("SELECT 1", &Default::default(), false).unwrap();
+    // `$sum` without field and condition generates `SUM()`: fine for the
+    // generator, rejected by SQLite, so the batch fails at execution time.
     let r = call(
         &s.api,
         "POST",
         "netquery/query/batch",
         "",
-        r#"{"ok":{"select":["id"]},"bad":{"databases":["history"]}}"#,
+        r#"{"ok":{"select":["id"]},"bad":{"select":[{"$sum":{"as":"x"}}]}}"#,
     );
-    assert_eq!(r.status, 200);
-    s.db.query_raw("DETACH DATABASE history", &Default::default(), false).ok();
+    assert_eq!(r.status, 500);
+    let errors: Vec<_> = r.headers.get_all("x-query-error").iter().collect();
+    assert_eq!(errors.len(), 1);
+    assert!(errors[0].to_str().unwrap().starts_with("bad: "), "{errors:?}");
+    let body: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
+    assert_eq!(body["ok"], Value::Null);
 }
