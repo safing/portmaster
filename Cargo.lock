@@ -1847,6 +1847,7 @@ dependencies = [
  "flate2",
  "hex",
  "pm-dsd",
+ "regex",
  "serde",
  "serde_json",
  "sha2",

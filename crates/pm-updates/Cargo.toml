@@ -9,6 +9,7 @@ license.workspace = true
 flate2.workspace = true
 hex.workspace = true
 pm-dsd = { path = "../pm-dsd" }
+regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.10.9"
@@ -16,6 +17,9 @@ thiserror.workspace = true
 ureq = "3.5.2"
 tracing.workspace = true
 zip.workspace = true
+
+[dev-dependencies]
+flate2.workspace = true
 
 [lints]
 workspace = true

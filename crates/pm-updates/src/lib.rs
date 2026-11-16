@@ -9,8 +9,11 @@
 //! * Signature verification uses `jess` in Go. Until it is ported, callers pass
 //!   an [`IndexVerifier`] callback to [`Index::parse`]; without one the index is
 //!   accepted unsigned, like Go with a nil trust store.
-//! * The downloader, the updater module (workers, events, upgrade application)
-//!   and local index generation (`index_scan.go`) are not ported yet.
+//! * The downloader is ported; the updater module (workers, events, upgrade
+//!   application) is not.
+//! * Local index generation ([`generate_index_from_dir`]) uses a ported subset
+//!   of `gobwas/glob` ([`Glob`]); alternation patterns are rejected.
+//! * An empty artifact URL list serializes as `[]` instead of Go's `null`.
 //! * Versions follow `hashicorp/go-version`: a leading `v` is accepted, missing
 //!   segments are padded to three and build metadata is ignored when comparing.
 //! * The "is from the future" error message formats the remaining time with the
@@ -19,9 +22,11 @@
 mod downloader;
 mod glob;
 mod index;
+mod index_scan;
 mod version;
 
 pub use glob::{Glob, GlobError};
+pub use index_scan::{generate_index_from_dir, sha256_of_file, IndexScanConfig, ScanError};
 pub use downloader::{
     copy_and_check_sha256_sum, decompress, default_user_agent, Downloader, HttpClient,
     HttpsClient,
