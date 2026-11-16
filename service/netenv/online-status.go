@@ -475,9 +475,10 @@ func checkOnlineStatus(ctx context.Context) {
 
 	// 2) try a http request
 
+	localAddr := getLocalAddr("tcp")
 	dialer := &net.Dialer{
 		Timeout:   5 * time.Second,
-		LocalAddr: getLocalAddr("tcp"),
+		LocalAddr: localAddr,
 	}
 
 	client := &http.Client{
@@ -502,6 +503,10 @@ func checkOnlineStatus(ctx context.Context) {
 
 	response, err := client.Do(request)
 	if err != nil {
+		// The first packet consumes the permitted local port, if one was sent.
+		// Release it otherwise, so it cannot be used by another process.
+		releaseLocalAddr(localAddr, netutils.IsLocalBindError(err))
+
 		var netErr net.Error
 		if !errors.As(err, &netErr) || !netErr.Timeout() {
 			// Timeout is the expected error when there is no portal

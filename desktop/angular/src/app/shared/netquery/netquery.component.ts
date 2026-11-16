@@ -665,7 +665,6 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
         this.paginator.pageLoading$
           .pipe(
             skip(1),
-            takeUntil(this.search$), // skip loading the chart if the user trigger a subsequent search
             filter(loading => !loading),
             take(1),
             switchMap(() => forkJoin({
@@ -681,7 +680,22 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
                   }),
                 ),
               bwChart: this.netquery.bandwidthChart(result.query.query!, [], 60)
+                .pipe(
+                  catchError(err => {
+                    this.actionIndicator.error(
+                      'Internal Error',
+                      'Failed to load bandwidth chart: ' + this.actionIndicator.getErrorMessgae(err)
+                    );
+
+                    return of([] as BandwidthChartResult<any>[]);
+                  }),
+                ),
             })),
+            // Drop the charts of this search when the user triggers a subsequent
+            // search. This must come after the requests above: otherwise a chart
+            // response that is already in flight is still delivered and overwrites
+            // the charts of the new search with the data of the previous one.
+            takeUntil(this.search$),
           )
           .subscribe(chart => {
             this.connectionChartData = chart.connectionChart;

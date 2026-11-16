@@ -88,3 +88,5 @@ It also holds last active time and end time.
 Cache entry is removed automatically 1 minute after an end state has been set or after 10 minutes of inactivity.  
 
 End stat is set by Endpoint layers or Resource release layers.
+
+On an ALE authorization lookup, an ended entry and an entry without a process id (created by the packet layer) are removed and the connection is treated as new, so a reused local endpoint does not inherit the previous verdict. A live entry is used regardless of the owning process, since processes can share a 5-tuple (e.g. multicast senders on a port opened with SO_REUSEADDR).

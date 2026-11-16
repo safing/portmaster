@@ -201,11 +201,27 @@ func SetExternalVerdictHandler(fn ExtVerdictHandlerFunc) error {
 }
 
 func handlePacket(pkt packet.Packet) {
+	// A packet that already received a verdict - e.g. the default-drop after
+	// the verdict timeout while it waited in the queue - cannot be influenced
+	// anymore. Do not allocate a connection and a handler worker for it, so
+	// that a backlog drains instead of growing.
+	if pkt.VerdictSet() {
+		return
+	}
+
 	// First, check for an existing connection.
 	conn, ok := network.GetConnection(pkt.GetConnectionID())
 	if ok {
 		// Add packet to connection handler queue or apply verdict directly.
 		conn.HandlePacket(pkt)
+		return
+	}
+
+	// Info-only packets do not represent an actual packet and can never complete
+	// a connection. Only keep the reported process attribution, so that the first
+	// real packet - if there ever is one - can skip the state table lookup.
+	if pkt.InfoOnly() {
+		network.SavePIDHint(pkt)
 		return
 	}
 

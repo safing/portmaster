@@ -13,6 +13,9 @@ export interface ProcessInfo {
   matchingPath: string;
 }
 
+/** The Portmaster directories that can be opened via openDir(). */
+export type PortmasterDir = 'bin' | 'data' | 'logs';
+
 export interface IntegrationService {
   /** writeToClipboard copies text to the system clipboard */
   writeToClipboard(text: string): Promise<void>;
@@ -20,8 +23,8 @@ export interface IntegrationService {
   /** openExternal opens a file or URL in an external window */
   openExternal(pathOrUrl: string): Promise<void>;
 
-  /** Gets the path to the portmaster installation directory */
-  getInstallDir(): Promise<string>;
+  /** Opens one of the Portmaster directories in the system file manager */
+  openDir(kind: PortmasterDir): Promise<void>;
 
   /** Load application information (currently linux only) */
   getAppInfo(info: ProcessInfo): Promise<AppInfo>;

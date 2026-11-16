@@ -1,9 +1,7 @@
 package sqlite
 
 import (
-	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/sqlite/im"
@@ -17,19 +15,47 @@ import (
 
 var UsePreparedStatements bool = true
 
+// upsertRowsPerStatement is the number of records written with one INSERT.
+// The driver parses the SQL on every execution, which costs about as much
+// as the insert itself, so writing several rows per statement roughly
+// halves the time per record. Much larger statements get slower again.
+const upsertRowsPerStatement = 50
+
+// recordColumns are the columns written by the upsert, in argument order.
+var recordColumns = []string{"key", "format", "value", "created", "modified", "expires", "deleted", "secret", "crownjewel"}
+
+// buildUpsert builds an INSERT for the given number of rows that replaces
+// existing records with the same key.
+func (db *SQLite) buildUpsert(rows int) (string, error) {
+	valueRows := make([][]bob.Expression, rows)
+	for i := range valueRows {
+		row := make([]bob.Expression, len(recordColumns))
+		for j, column := range recordColumns {
+			row[j] = expr.Arg(column)
+		}
+		valueRows[i] = row
+	}
+
+	// Simulate upsert with custom selection on conflict.
+	rawQuery, _, err := models.Records.Insert(
+		im.Into("records", recordColumns...),
+		im.Rows(valueRows...),
+		im.OnConflict("key").DoUpdate(
+			im.SetExcluded(recordColumns[1:]...),
+		),
+	).Build(db.ctx)
+	if err != nil {
+		return "", fmt.Errorf("build upsert for %d rows: %w", rows, err)
+	}
+	return rawQuery, nil
+}
+
 // PutMany stores many records in the database.
 func (db *SQLite) putManyWithPreparedStmts(shadowDelete bool) (chan<- record.Record, <-chan error) {
 	batch := make(chan record.Record, 100)
 	errs := make(chan error, 1)
 
-	// Simulate upsert with custom selection on conflict.
-	rawQuery, _, err := models.Records.Insert(
-		im.Into("records", "key", "format", "value", "created", "modified", "expires", "deleted", "secret", "crownjewel"),
-		im.Values(expr.Arg("key"), expr.Arg("format"), expr.Arg("value"), expr.Arg("created"), expr.Arg("modified"), expr.Arg("expires"), expr.Arg("deleted"), expr.Arg("secret"), expr.Arg("crownjewel")),
-		im.OnConflict("key").DoUpdate(
-			im.SetExcluded("format", "value", "created", "modified", "expires", "deleted", "secret", "crownjewel"),
-		),
-	).Build(db.ctx)
+	fullUpsert, err := db.buildUpsert(upsertRowsPerStatement)
 	if err != nil {
 		errs <- err
 		return batch, errs
@@ -43,27 +69,59 @@ func (db *SQLite) putManyWithPreparedStmts(shadowDelete bool) (chan<- record.Rec
 	}
 
 	// Create prepared statement WITHIN TRANSACTION.
-	preparedStmt, err := tx.PrepareContext(db.ctx, rawQuery)
+	preparedStmt, err := tx.PrepareContext(db.ctx, fullUpsert)
 	if err != nil {
+		_ = tx.Rollback(db.ctx)
 		errs <- err
 		return batch, errs
 	}
 
 	// start handler
 	go func() {
+		// Arguments of the records collected for the next statement.
+		args := make([]any, 0, upsertRowsPerStatement*len(recordColumns))
+		pending := 0
+
 		// Read all put records.
 	writeBatch:
 		for {
 			select {
 			case r := <-batch:
 				if r != nil {
-					// Write record.
-					err := writeWithPreparedStatement(db.ctx, &preparedStmt, r)
+					// Collect record and write when a full statement is reached.
+					recordArgs, err := upsertArgs(r)
 					if err != nil {
 						errs <- err
 						break writeBatch
 					}
+					args = append(args, recordArgs...)
+					pending++
+					if pending < upsertRowsPerStatement {
+						continue
+					}
+
+					_, err = preparedStmt.ExecContext(db.ctx, args...)
+					if err != nil {
+						errs <- err
+						break writeBatch
+					}
+					args = args[:0]
+					pending = 0
 				} else {
+					// Write the remaining records with a statement of matching size.
+					if pending > 0 {
+						remainderUpsert, err := db.buildUpsert(pending)
+						if err != nil {
+							errs <- err
+							break writeBatch
+						}
+						_, err = tx.ExecContext(db.ctx, remainderUpsert, args...)
+						if err != nil {
+							errs <- err
+							break writeBatch
+						}
+					}
+
 					// Finalize transcation.
 					errs <- tx.Commit(db.ctx)
 					return
@@ -81,7 +139,8 @@ func (db *SQLite) putManyWithPreparedStmts(shadowDelete bool) (chan<- record.Rec
 	return batch, errs
 }
 
-func writeWithPreparedStatement(ctx context.Context, pStmt *bob.StdPrepared, r record.Record) error {
+// upsertArgs returns the statement arguments of r in recordColumns order.
+func upsertArgs(r record.Record) ([]any, error) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -92,51 +151,37 @@ func writeWithPreparedStatement(ctx context.Context, pStmt *bob.StdPrepared, r r
 	if r.IsWrapped() {
 		wrapper, ok := r.(*record.Wrapper)
 		if !ok {
-			return fmt.Errorf("%w: reports to be wrapped but is not of type *record.Wrapper", storage.ErrRecordMalformed)
+			return nil, fmt.Errorf("%w: reports to be wrapped but is not of type *record.Wrapper", storage.ErrRecordMalformed)
 		}
 		format, ok = dsd.ValidateSerializationFormat(wrapper.Format)
 		if !ok {
-			return dsd.ErrIncompatibleFormat
+			return nil, dsd.ErrIncompatibleFormat
 		}
 	}
 
 	// Serialize.
 	data, err := r.MarshalDataOnly(r, format)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Get Meta.
-	m := r.Meta()
-
-	// Insert.
+	// Records without data are stored with NULL format and value.
+	var formatArg, valueArg any
 	if len(data) > 0 {
-		format := strconv.Itoa(int(format))
-		_, err = pStmt.ExecContext(
-			ctx,
-			r.DatabaseKey(),
-			format,
-			data,
-			m.Created,
-			m.Modified,
-			m.Expires,
-			m.Deleted,
-			m.IsSecret(),
-			m.IsCrownJewel(),
-		)
-	} else {
-		_, err = pStmt.ExecContext(
-			ctx,
-			r.DatabaseKey(),
-			nil,
-			nil,
-			m.Created,
-			m.Modified,
-			m.Expires,
-			m.Deleted,
-			m.IsSecret(),
-			m.IsCrownJewel(),
-		)
+		formatArg = int64(format)
+		valueArg = data
 	}
-	return err
+
+	m := r.Meta()
+	return []any{
+		r.DatabaseKey(),
+		formatArg,
+		valueArg,
+		m.Created,
+		m.Modified,
+		m.Expires,
+		m.Deleted,
+		m.IsSecret(),
+		m.IsCrownJewel(),
+	}, nil
 }

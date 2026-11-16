@@ -201,7 +201,14 @@ func (q *Queue) packetHandler(ctx context.Context) func(nfqueue.Attribute) int {
 		case <-ctx.Done():
 			return 0
 		case <-time.After(time.Second):
-			log.Warningf("nfqueue: failed to queue packet (%s since it was handed over by the kernel)", time.Since(pkt.Info().SeenAt))
+			// The packet did not make it into the handler queue, so no handler
+			// will ever see it and set a verdict. Drop it now instead of letting
+			// it wait in the kernel queue until the verdict timeout.
+			log.Warningf("nfqueue: failed to queue packet %s (%s since it was handed over by the kernel), dropping", pkt.ID(), time.Since(pkt.Info().SeenAt))
+			if err := pkt.Drop(); err != nil {
+				log.Warningf("nfqueue: failed to drop unqueued packet %s: %s", pkt.ID(), err)
+			}
+			return 0
 		}
 
 		go func() {

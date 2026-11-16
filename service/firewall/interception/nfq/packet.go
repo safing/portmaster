@@ -56,6 +56,9 @@ func markToString(mark int) string {
 	return "unknown"
 }
 
+// errVerdictAlreadySet is returned when a verdict was already applied to the packet.
+var errVerdictAlreadySet = errors.New("verdict already set")
+
 // packet implements the packet.Packet interface.
 type packet struct {
 	pmpacket.Base
@@ -74,6 +77,12 @@ func (pkt *packet) LoadPacketData() error {
 	return nil
 }
 
+// VerdictSet returns whether a verdict was already applied (or is being
+// applied) to the packet, e.g. the default-drop after the verdict timeout.
+func (pkt *packet) VerdictSet() bool {
+	return pkt.verdictPending.IsSet()
+}
+
 // TODO(ppacher): revisit the following behavior:
 //
 //	The legacy implementation of nfqueue (and the interception) module
@@ -90,7 +99,7 @@ func (pkt *packet) mark(mark int) (err error) {
 		return pkt.setMark(mark)
 	}
 
-	return errors.New("verdict already set")
+	return errVerdictAlreadySet
 }
 
 func (pkt *packet) setMark(mark int) error {

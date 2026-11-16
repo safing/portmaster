@@ -46,15 +46,34 @@ func findPID(uid, inode int) (pid int) {
 		return socket.UndefinedProcessID
 	}
 
-	// Look through the PIDs in reverse order, because higher/newer PIDs will be more likely to
-	// be searched for.
-	for j := len(pids) - 1; j >= 0; j-- {
-		if pidHasSocket(pids[j], socketName) {
-			return pids[j]
-		}
+	// The cache and the single-flight below only help when the same socket is
+	// looked up again and again. That happens when one socket carries many
+	// connections, e.g. a torrent client talking to hundreds of peers through
+	// one UDP socket, or a server accepting connections on its listening
+	// socket. Every new connection of such a socket needs the owner, and the
+	// socket table forgets the PID on every refresh. A socket with a single
+	// connection is looked up once and simply scans.
+
+	// Reuse the owner found by an earlier scan, if it is still running.
+	if pid, ok := getCachedSocketOwner(uid, inode, pids); ok {
+		return pid
 	}
 
-	return socket.UndefinedProcessID
+	// Run at most one scan per socket at a time. If another lookup is already
+	// scanning for this socket, wait for its result instead of walking /proc
+	// again. A failed scan is shared too; the caller retries anyway.
+	result, _, _ := socketScans.Do(socketName, func() (any, error) {
+		// Look through the PIDs in reverse order, because higher/newer PIDs will be more likely to
+		// be searched for.
+		for j := len(pids) - 1; j >= 0; j-- {
+			if pidHasSocket(pids[j], socketName) {
+				cacheSocketOwner(uid, inode, pids[j])
+				return pids[j], nil
+			}
+		}
+		return socket.UndefinedProcessID, nil
+	})
+	return result.(int) //nolint:forcetypeassert // Can only be an int.
 }
 
 func pidHasSocket(pid int, socketName string) bool {

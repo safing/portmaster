@@ -39,6 +39,11 @@ func (pkt *Packet) InfoOnly() bool {
 	return false
 }
 
+// VerdictSet returns whether a verdict was already applied to the packet.
+func (pkt *Packet) VerdictSet() bool {
+	return pkt.verdictSet.IsSet()
+}
+
 // ExpectInfo returns whether the next packet is expected to be informational only.
 func (pkt *Packet) ExpectInfo() bool {
 	return false

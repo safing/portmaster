@@ -153,6 +153,44 @@ func getLocalAddr(network string) net.Addr {
 	return nil
 }
 
+// Network names used with the local port hooks.
+const (
+	networkUDP = "udp"
+	networkTCP = "tcp"
+)
+
+// LocalPortHooks are supplied by the firewall so that the resolver can
+// attribute its own connections to Portmaster before the first packet leaves.
+type LocalPortHooks struct {
+	// Authorize pre-authenticates the given local port for one connection.
+	Authorize func(network string, port uint16)
+	// Release drops a pre-authentication that was not used, because the
+	// connection could not be established. If unusable is set, the port could
+	// not be bound and is skipped by future port selection for a while.
+	Release func(network string, port uint16, unusable bool)
+}
+
+var localPortHooks LocalPortHooks
+
+// SetLocalPortHooks supplies the resolver with hooks to pre-authenticate local ports.
+func SetLocalPortHooks(hooks LocalPortHooks) {
+	if localPortHooks.Authorize == nil && localPortHooks.Release == nil {
+		localPortHooks = hooks
+	}
+}
+
+func authorizeLocalPort(network string, port uint16) {
+	if localPortHooks.Authorize != nil {
+		localPortHooks.Authorize(network, port)
+	}
+}
+
+func releaseLocalPort(network string, port uint16, unusable bool) {
+	if localPortHooks.Release != nil {
+		localPortHooks.Release(network, port, unusable)
+	}
+}
+
 var (
 	failingResolverNotification     *notifications.Notification
 	failingResolverNotificationSet  = abool.New()
@@ -288,4 +326,5 @@ type instance interface {
 	NetEnv() *netenv.NetEnv
 	Config() *config.Config
 	GetEventSPNConnected() *mgr.EventMgr[struct{}]
+	ShuttingDown() <-chan struct{}
 }

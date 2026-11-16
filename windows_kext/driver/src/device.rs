@@ -1,5 +1,5 @@
 use alloc::string::String;
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use num_traits::FromPrimitive;
 use protocol::{command::CommandType, info::Info};
 use smoltcp::wire::{IpAddress, IpProtocol, Ipv4Address, Ipv6Address};
@@ -39,6 +39,9 @@ pub struct Device {
     /// Written once on IRP_MJ_CREATE, cleared on IRP_MJ_CLEANUP.
     /// AtomicU32 gives lock-free reads in callouts with zero overhead.
     pub(crate) owner_pid: AtomicU32,
+    /// Set once the shutdown command was received. From then on user space no
+    /// longer reads events, so the callouts must not wait for verdicts anymore.
+    shutting_down: AtomicBool,
 }
 
 impl Device {
@@ -63,6 +66,7 @@ impl Device {
             network_allocator: NetworkAllocator::new(),
             bandwidth_stats: Bandwidth::new(),
             owner_pid: AtomicU32::new(0),
+            shutting_down: AtomicBool::new(false),
         })
     }
 
@@ -70,6 +74,11 @@ impl Device {
     pub fn is_owner_pid(&self, pid: u32) -> bool {
         let p = self.owner_pid.load(Ordering::Acquire);
         p != 0 && p == pid
+    }
+
+    /// Returns whether the shutdown command was received.
+    pub fn is_shutting_down(&self) -> bool {
+        self.shutting_down.load(Ordering::Acquire)
     }
 
     /// Cleanup is called just before drop.
@@ -310,6 +319,12 @@ impl Device {
     }
 
     pub fn shutdown(&mut self) {
+        // Stop the callouts from pending new packets first. The callouts stay
+        // registered until the driver is unloaded, which happens only after
+        // user space has stopped reading events. Anything pended after this
+        // point would never receive a verdict.
+        self.shutting_down.store(true, Ordering::Release);
+
         // End blocking operations from the queue. This will end pending read requests.
         self.event_queue.rundown();
 
@@ -349,6 +364,11 @@ impl Device {
 
 impl Drop for Device {
     fn drop(&mut self) {
+        // Safety net for an unload without a preceding shutdown command: a
+        // pended operation that is dropped unresolved stays pended forever.
+        // The callouts are still registered here, the filter engine is dropped
+        // after this body. Idempotent when shutdown() already ran.
+        self.shutdown();
         _ = logger::flush();
         // dbg!("Device Context drop called.");
     }

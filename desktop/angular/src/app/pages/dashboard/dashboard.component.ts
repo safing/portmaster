@@ -1,6 +1,7 @@
 import { KeyValue } from "@angular/common";
 import { AfterContentInit, AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, OnInit, QueryList, TrackByFunction, ViewChild, ViewChildren, forwardRef, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { Router } from "@angular/router";
 import { AppProfileService, BandwidthChartResult, ChartResult, Database, FeatureID, Netquery, PortapiService, SPNService, UserProfile, Verdict } from "@safing/portmaster-api";
 import { SfngDialogService, SfngTabGroupComponent } from "@safing/ui";
 import { Observable, catchError, filter, interval, map, repeat, retry, startWith, throwError } from "rxjs";
@@ -66,6 +67,7 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly dialog = inject(SfngDialogService);
   private readonly portapi = inject(PortapiService)
+  private readonly router = inject(Router);
 
   resizeObserver!: ResizeObserver;
 
@@ -84,7 +86,12 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
   bandwidthBarData: BandwidthBarData[] = [];
 
   readonly bandwidthBarConfig: CircularBarChartConfig<BandwidthBarData> = {
-    stack: 'profile_name',
+    // Stack by the profile ID, not the name: names are not unique (two
+    // different apps can share one) and the chart throws on duplicate
+    // stack keys, which left the widget empty. The query groups by the
+    // profile ID only, so the chart gets exactly one row per app and
+    // series. The name is looked up for the labels below.
+    stack: d => d.profile,
     seriesKey: 'series',
     seriesLabel: d => {
       if (d === 'sent') {
@@ -108,17 +115,19 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
     },
     formatValue: (stack, series, value, data) => {
       const bytes = new BytesPipe().transform
-      return `${stack}\nSent: ${bytes(data?.sent)}\nReceived: ${bytes(data?.received)}`
+      return `${data?.profile_name || stack}\nSent: ${bytes(data?.sent)}\nReceived: ${bytes(data?.received)}`
     },
     formatStack: (sel, data) => {
       const bytes = new BytesPipe().transform
+      // The stack key is the profile ID, see stack above.
+      const rowOf = (profile: string) => data.find(result => result.profile === profile)
 
       return sel
         .call(sel => {
           sel.append("text")
             .attr("dy", "0")
             .attr("y", "0")
-            .text(d => d)
+            .text(d => rowOf(d)?.profile_name || d)
         })
         .call(sel => {
           sel.append("text")
@@ -126,11 +135,22 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
             .attr("dy", "0.8rem")
             .style("font-size", "0.6rem")
             .text(d => {
-              const first = data.find(result => result.profile_name === d);
+              const first = rowOf(d);
               return `${bytes(first?.sent)} / ${bytes(first?.received)}`
             })
         })
     }
+  }
+
+  /** Opens the app page of the profile clicked in the top consumers chart. */
+  openProfile(profile: string) {
+    // The stack key of the chart is the profile key "source/id".
+    const sep = profile.indexOf('/');
+    if (sep <= 0 || sep === profile.length - 1) {
+      return;
+    }
+
+    this.router.navigate(['/app', profile.slice(0, sep), profile.slice(sep + 1)]);
   }
 
   bwChartConfig = DefaultBandwidthChartConfig;
@@ -289,7 +309,11 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
               }
             },
           ],
-          groupBy: ['profile', 'profile_name'],
+          // Group by the profile ID only. Connections store the profile name
+          // they were created with, so after a rename one app has rows with
+          // two names. Grouping by the name as well would return two rows
+          // for that app, and the chart throws on duplicate stack keys.
+          groupBy: ['profile'],
         },
 
         profileCount: {

@@ -3,7 +3,9 @@ use crate::device;
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicPtr, Ordering};
 use num_traits::FromPrimitive;
-use wdk::irp_helpers::{CleanupRequest, CreateRequest, DeviceControlRequest, ReadRequest, WriteRequest};
+use wdk::irp_helpers::{
+    CleanupRequest, CloseRequest, CreateRequest, DeviceControlRequest, ReadRequest, WriteRequest,
+};
 use wdk::{err, info, interface};
 use windows_sys::Wdk::Foundation::{DEVICE_OBJECT, DRIVER_OBJECT, IRP};
 use windows_sys::Win32::Foundation::{NTSTATUS, STATUS_SUCCESS};
@@ -48,9 +50,17 @@ pub extern "system" fn driver_entry(
     };
 
     // Set driver functions.
+    //
+    // These overwrite the dispatch entries that WdfDriverCreate installed.
+    // CREATE, CLEANUP and CLOSE must all be taken over together: WDF counts
+    // open handles on CREATE and CLOSE and destroys the control device when
+    // the count reaches zero. Handling CREATE here but leaving CLOSE to WDF
+    // let the count underflow on the first close and bugchecked on the next
+    // request that reached WDF (#2271).
     driver.set_driver_unload(Some(driver_unload));
     driver.set_create_fn(Some(driver_create));
     driver.set_cleanup_fn(Some(driver_cleanup));
+    driver.set_close_fn(Some(driver_close));
     driver.set_read_fn(Some(driver_read));
     driver.set_write_fn(Some(driver_write));
     driver.set_device_control_fn(Some(device_control));
@@ -115,6 +125,19 @@ unsafe extern "system" fn driver_cleanup(
     }
     cleanup_request.complete();
     cleanup_request.get_status()
+}
+
+/// driver_close is triggered when the last reference to a file object is
+/// released, after driver_cleanup. Nothing to do besides completing the
+/// request; see the comment at the dispatch registration in driver_entry for
+/// why it must not be left to WDF.
+unsafe extern "system" fn driver_close(
+    _device_object: *const DEVICE_OBJECT,
+    irp: *mut IRP,
+) -> NTSTATUS {
+    let mut close_request = CloseRequest::new(irp.as_mut().unwrap());
+    close_request.complete();
+    close_request.get_status()
 }
 
 // driver_read event triggered from user-space on file.Read.

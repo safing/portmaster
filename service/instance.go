@@ -66,6 +66,7 @@ type Instance struct {
 
 	binDir  string
 	dataDir string
+	logDir  string
 
 	exitCode atomic.Int32
 
@@ -141,6 +142,7 @@ func New(svcCfg *ServiceConfig) (*Instance, error) { //nolint:maintidx
 	instance := &Instance{
 		binDir:  svcCfg.BinDir,
 		dataDir: svcCfg.DataDir,
+		logDir:  svcCfg.LogDir,
 	}
 	instance.ctx, instance.cancelCtx = context.WithCancel(context.Background())
 	instance.shutdownCtx, instance.cancelShutdownCtx = context.WithCancel(context.Background())
@@ -427,6 +429,11 @@ func (i *Instance) BinDir() string {
 // This directory is expected to be read/writeable.
 func (i *Instance) DataDir() string {
 	return i.dataDir
+}
+
+// LogDir returns the directory for log files.
+func (i *Instance) LogDir() string {
+	return i.logDir
 }
 
 // Database returns the database module.

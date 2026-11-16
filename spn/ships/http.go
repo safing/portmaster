@@ -14,6 +14,9 @@ import (
 	"github.com/safing/portmaster/spn/hub"
 )
 
+// httpHandshakeTimeout bounds the HTTP upgrade handshake after connecting.
+const httpHandshakeTimeout = 30 * time.Second
+
 // HTTPShip is a ship that uses HTTP.
 type HTTPShip struct {
 	ShipBase
@@ -86,6 +89,31 @@ func launchHTTPShip(ctx context.Context, transport *hub.Transport, ip net.IP) (S
 		return nil, fmt.Errorf("failed to connect: %w", err)
 	}
 
+	// Close the connection if the handshake fails.
+	var success bool
+	defer func() {
+		if !success {
+			_ = conn.Close()
+		}
+	}()
+
+	// Writing the request and reading the response do not respect ctx, and
+	// keep-alive is disabled. A peer that accepts the connection but never
+	// answers would block us forever, so bound the handshake with a deadline
+	// and abort it when ctx is done.
+	deadline := time.Now().Add(httpHandshakeTimeout)
+	if ctxDeadline, ok := ctx.Deadline(); ok && ctxDeadline.Before(deadline) {
+		deadline = ctxDeadline
+	}
+	err = conn.SetDeadline(deadline)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set handshake deadline: %w", err)
+	}
+	stopAbortOnDone := context.AfterFunc(ctx, func() {
+		_ = conn.Close()
+	})
+	defer stopAbortOnDone()
+
 	// Send HTTP request.
 	err = request.Write(conn)
 	if err != nil {
@@ -114,6 +142,16 @@ func launchHTTPShip(ctx context.Context, transport *hub.Transport, ip net.IP) (S
 		return nil, fmt.Errorf("internal error: unsupported http transport variant: %d", variant)
 	}
 
+	// Handshake is complete: stop aborting on ctx and lift the deadline, as the
+	// connection is now used by the ship.
+	if !stopAbortOnDone() {
+		return nil, fmt.Errorf("handshake aborted: %w", ctx.Err())
+	}
+	err = conn.SetDeadline(time.Time{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to clear handshake deadline: %w", err)
+	}
+
 	// Create ship.
 	ship := &HTTPShip{
 		ShipBase: ShipBase{
@@ -127,6 +165,7 @@ func launchHTTPShip(ctx context.Context, transport *hub.Transport, ip net.IP) (S
 	// Init and return.
 	ship.calculateLoadSize(ip, nil, TCPHeaderMTUSize)
 	ship.initBase()
+	success = true
 	return ship, nil
 }
 

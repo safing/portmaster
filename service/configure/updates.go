@@ -35,15 +35,35 @@ var (
 
 	// BinarySigningTrustStore is an in-memory trust store with the signing keys.
 	BinarySigningTrustStore = jess.NewMemTrustStore()
+
+	// IntelSigningKeys holds the intel index signing keys in text format.
+	// They must never be the code signing keys above: an intel key may only
+	// be able to forge intel data, never binaries.
+	IntelSigningKeys = []string{
+		// Safing Intel Signing Key #1
+		"recipient:public-ed25519-key:safing-intel-signing-key-1:cS43veLU6cSnMwJbhE7E47UZwxfNTF8wk8cgDxMPTgR4UJ3UWicduzNQqSJ3QAz5McRvJ9g5TcdgboCAkvbtxE2FEfJbPtnuZ47gSGq8AeRnvuh8SgMj3NKZdR7Z42oHJwTUQqcqyPTGFuiNR3v34Emp3HfVajSqBxKZLYY8MNwE3JFzKAPPSdnvJahuwgL7JiSSJzn3vvUufz3ur9D1DgbrEAG65hWpDducUyuek1FHFoNUWCDQMCdWZRbeCEYMsLvBFj",
+		// Safing Intel Signing Key #2
+		"recipient:public-ed25519-key:safing-intel-signing-key-2:cS43veLU6cSnMwJbhE7E47RfsLPWsRSdGtaVnQwK36uwW6ncnR9vqRYHcXqoHFJjdsvBzBtmh47gfSVyPp9y78kc79TKAGsKbptUyvKJneTXj26gYnvuYdzfVEbqN5bm29ahv2B2T5qoQ6NyUjPzwv657fVcGf4GVhHrUMa33Xh7SU133RXR6K8HCa3YbMbk59LjYGZRZvAquuz9AmfraXZpGpkQRgbovVNf12TM3mdLQcVso9JP6UbKA3rMCwivdusb9F",
+	}
+
+	// IntelSigningTrustStore is an in-memory trust store with the intel signing keys.
+	IntelSigningTrustStore = jess.NewMemTrustStore()
 )
 
 func init() {
-	for _, signingKey := range BinarySigningKeys {
+	loadSigningKeys(BinarySigningTrustStore, BinarySigningKeys)
+	loadSigningKeys(IntelSigningTrustStore, IntelSigningKeys)
+}
+
+// loadSigningKeys parses keys and stores them in trustStore.
+// It panics on any error, because the keys are compiled in.
+func loadSigningKeys(trustStore *jess.MemTrustStore, keys []string) {
+	for _, signingKey := range keys {
 		rcpt, err := jess.RecipientFromTextFormat(signingKey)
 		if err != nil {
 			panic(err)
 		}
-		err = BinarySigningTrustStore.StoreSignet(rcpt)
+		err = trustStore.StoreSignet(rcpt)
 		if err != nil {
 			panic(err)
 		}

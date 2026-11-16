@@ -15,12 +15,19 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
+	"github.com/safing/portmaster/service/network/netutils"
 )
 
 const (
 	tcpConnectionEstablishmentTimeout = 3 * time.Second
 	tcpWriteTimeout                   = 2 * time.Second
 	heartbeatTimeout                  = 5 * time.Second
+
+	// localBindAttempts is how often connecting is retried with another
+	// pre-authenticated local port when the port cannot be bound. Attempts
+	// are instant, as a bind fails synchronously, and each failed port is
+	// remembered, so the retries are cheap.
+	localBindAttempts = 5
 )
 
 // TCPResolver is a resolver using just a single tcp connection with pipelining.
@@ -114,6 +121,7 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 	if tr.resolverConn != nil && tr.resolverConn.abandoned.IsNotSet() {
 		existingConn = tr.resolverConn
 	}
+	seenInstanceID := tr.resolverConnInstanceID
 	tr.Unlock()
 
 	// Check if we have a resolver.
@@ -140,18 +148,35 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		}
 	}
 
-	// Create a new if no active one is available.
-
-	// Refresh the dialer in order to set an authenticated local address.
-	tr.dnsClient.Dialer = &net.Dialer{
-		LocalAddr: getLocalAddr("tcp"),
-		Timeout:   tcpConnectionEstablishmentTimeout,
-		KeepAlive: defaultClientTTL,
+	// Do not dial a new upstream connection once the instance has started
+	// shutting down. The instance shuts down before this module does, and
+	// once interception has stopped a new connection could be pended by the
+	// kernel extension and never complete (#2104). Existing connections are
+	// still used above.
+	select {
+	case <-module.instance.ShuttingDown():
+		return nil, ErrShuttingDown
+	default:
 	}
 
-	// Connect to server.
-	conn, err := tr.dnsClient.Dial(tr.resolver.ServerAddress)
+	// Create a new if no active one is available.
+	conn, err := tr.dial(ctx)
 	if err != nil {
+		// Nothing left the host if the local port could not be bound. Do not
+		// count this against the resolver or the network.
+		if errors.Is(err, ErrLocalBind) {
+			// Concurrent queries dial at the same time. Use the connection
+			// another one has created in the meantime, if there is one.
+			tr.Lock()
+			newConn := tr.resolverConn
+			newInstanceID := tr.resolverConnInstanceID
+			tr.Unlock()
+			if newConn != nil && newInstanceID != seenInstanceID && newConn.abandoned.IsNotSet() {
+				return newConn, nil
+			}
+			return nil, err
+		}
+
 		// Hint network environment at failed connection.
 		netenv.ReportFailedConnection()
 
@@ -267,6 +292,59 @@ func (tr *TCPResolver) ForceReconnect(ctx context.Context) {
 	tr.resolverConn.abandoned.Set()
 
 	log.Tracer(ctx).Tracef("resolver: marked %s for reconnecting", tr.resolver)
+}
+
+// dial connects to the resolver from a pre-authenticated local port, so that
+// the firewall attributes the connection to Portmaster itself. A port that
+// cannot be bound, e.g. because the OS reserved it, is released, marked as
+// unusable and another port is tried.
+func (tr *TCPResolver) dial(ctx context.Context) (*dns.Conn, error) {
+	var lastErr error
+	for attempt := 1; attempt <= localBindAttempts; attempt++ {
+		localAddr := getLocalAddr(networkTCP)
+
+		// Dial with a copy of the client: the shared one may be in use by
+		// other goroutines and must not be changed.
+		dnsClient := *tr.dnsClient
+		dnsClient.Dialer = &net.Dialer{
+			LocalAddr: localAddr,
+			Timeout:   tcpConnectionEstablishmentTimeout,
+			KeepAlive: defaultClientTTL,
+		}
+
+		// The pre-authenticated port, if there is one. The first packet
+		// consumes the pre-authentication: after a successful dial it is
+		// already gone. Release it in every case, so it cannot linger and be
+		// used by another process when no packet was sent or intercepted.
+		var localPort uint16
+		if tcpAddr, ok := localAddr.(*net.TCPAddr); ok && tcpAddr != nil {
+			localPort = uint16(tcpAddr.Port) //nolint:gosec // Ports of net.Addr are within the uint16 range.
+		}
+
+		conn, err := dnsClient.DialContext(ctx, tr.resolver.ServerAddress)
+		if err == nil {
+			if localPort != 0 {
+				releaseLocalPort(networkTCP, localPort, false)
+			}
+			return conn, nil
+		}
+
+		bindFailed := netutils.IsLocalBindError(err)
+		if localPort != 0 {
+			releaseLocalPort(networkTCP, localPort, bindFailed)
+		}
+		if !bindFailed {
+			return nil, err
+		}
+
+		lastErr = err
+		log.Debugf(
+			"resolver: failed to bind local port for connection to %s (attempt %d of %d): %s",
+			tr.resolver.Info.DescriptiveName(), attempt, localBindAttempts, err,
+		)
+	}
+
+	return nil, fmt.Errorf("%w for connection to %s: %w", ErrLocalBind, tr.resolver.Info.DescriptiveName(), lastErr)
 }
 
 // shutdown cleanly shuts down the resolver connection.

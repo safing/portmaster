@@ -36,6 +36,10 @@ var (
 	ErrFailure = errors.New("query failed")
 	// ErrContinue is returned when the resolver has no answer, and the next resolver should be asked.
 	ErrContinue = errors.New("resolver has no answer")
+	// ErrLocalBind is returned when the local port for a connection to the
+	// resolver could not be bound. The query never left the host, so this
+	// wraps ErrContinue: the next resolver is asked and no failure is counted.
+	ErrLocalBind = fmt.Errorf("%w: failed to bind local port", ErrContinue)
 	// ErrShuttingDown is returned when the resolver is shutting down.
 	ErrShuttingDown = errors.New("resolver is shutting down")
 
@@ -411,22 +415,32 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 		}
 	}()
 
+	// Ask failing resolvers last, but still ask them: asking a failing resolver
+	// is better than answering nothing, and an answer clears its failing state.
+	resolvers = orderResolvers(resolvers)
+	// answered is set once a resolver answered, even with "not found". Some
+	// scopes continue to the next resolver after "not found". A failing resolver
+	// is skipped then: its timeout would replace "not found" with a failure.
+	var answered bool
+
 	// start resolving
 	for _, resolver := range resolvers {
 		if module.mgr.IsDone() {
 			return nil, ErrShuttingDown
 		}
 
-		// Skip failing resolvers.
-		if resolver.Conn.IsFailing() {
-			log.Tracer(ctx).Tracef("resolver: skipping resolver %s, because it is failing", resolver)
-			continue
-		}
-
 		// Skip unreachable link-local resolvers.
 		if resolver.LinkLocalUnavailable {
 			log.Tracer(ctx).Tracef("resolver: skipping resolver %s, because it is link-local and not available", resolver)
 			continue
+		}
+
+		if resolver.Conn.IsFailing() {
+			if answered {
+				log.Tracer(ctx).Tracef("resolver: skipping failing resolver %s, because another resolver answered", resolver)
+				continue
+			}
+			log.Tracer(ctx).Tracef("resolver: asking failing resolver %s, because no resolver answered so far", resolver)
 		}
 
 		// resolve
@@ -437,6 +451,7 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 			case errors.Is(err, ErrNotFound):
 				// NXDomain, or similar
 				if tryAll {
+					answered = true
 					continue
 				}
 				return nil, err
@@ -474,6 +489,7 @@ func resolveAndCache(ctx context.Context, q *Query, oldCache *RRCache) (rrCache 
 		}
 		// Check if request succeeded and whether we should try another resolver.
 		if rrCache.RCode != dns.RcodeSuccess && tryAll {
+			answered = true
 			continue
 		}
 
