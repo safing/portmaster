@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -55,6 +56,9 @@ type (
 
 		l         sync.Mutex
 		writeConn *sqlite.Conn
+
+		// saveQuery caches the statements built by Save.
+		saveQuery atomic.Pointer[saveQuery]
 	}
 
 	// BatchExecute executes multiple queries in one transaction.
@@ -675,25 +679,17 @@ func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) err
 		return fmt.Errorf("failed to encode connection for SQL: %w", err)
 	}
 
-	columns := make([]string, 0, len(connMap))
-	placeholders := make([]string, 0, len(connMap))
-	values := make(map[string]interface{}, len(connMap))
-	updateSets := make([]string, 0, len(connMap))
-
-	// sort keys so we get a stable SQLite query that can be better cached.
-	keys := make([]string, 0, len(connMap))
-	for key := range connMap {
-		keys = append(keys, key)
+	// The statements only depend on the set of columns, which is the same for
+	// every connection. Only rebuild them if the columns changed.
+	query := db.saveQuery.Load()
+	if query == nil || !query.matches(connMap) {
+		query = newSaveQuery(connMap)
+		db.saveQuery.Store(query)
 	}
-	sort.Strings(keys)
 
-	for _, key := range keys {
-		value := connMap[key]
-
-		columns = append(columns, key)
-		placeholders = append(placeholders, ":"+key)
-		values[":"+key] = value
-		updateSets = append(updateSets, fmt.Sprintf("%s = :%s", key, key))
+	values := make(map[string]any, len(connMap))
+	for i, key := range query.columns {
+		values[query.params[i]] = connMap[key]
 	}
 
 	db.l.Lock()
@@ -714,17 +710,7 @@ func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) err
 	}
 
 	for _, dbName := range dbNames {
-		sql := fmt.Sprintf(
-			`INSERT INTO %s.connections (%s)
-				VALUES(%s)
-				ON CONFLICT(id) DO UPDATE SET
-				%s
-			`,
-			dbName,
-			strings.Join(columns, ", "),
-			strings.Join(placeholders, ", "),
-			strings.Join(updateSets, ", "),
-		)
+		sql := query.sql(dbName)
 
 		if err := sqlitex.Execute(db.writeConn, sql, &sqlitex.ExecOptions{
 			Named: values,
@@ -739,4 +725,89 @@ func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) err
 	}
 
 	return nil
+}
+
+// saveQuery holds the statements used by Database.Save for a set of columns.
+type saveQuery struct {
+	// columns holds the sorted column names.
+	columns []string
+	// params holds the named parameter for each column.
+	params []string
+
+	columnList      string
+	placeholderList string
+	updateSetList   string
+
+	liveSQL    string
+	historySQL string
+}
+
+// newSaveQuery builds the statements to save the given column map.
+func newSaveQuery(connMap map[string]any) *saveQuery {
+	columns := make([]string, 0, len(connMap))
+	placeholders := make([]string, 0, len(connMap))
+	updateSets := make([]string, 0, len(connMap))
+
+	// sort keys so we get a stable SQLite query that can be better cached.
+	keys := make([]string, 0, len(connMap))
+	for key := range connMap {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		columns = append(columns, key)
+		placeholders = append(placeholders, ":"+key)
+		updateSets = append(updateSets, fmt.Sprintf("%s = :%s", key, key))
+	}
+
+	q := &saveQuery{
+		columns:         columns,
+		params:          placeholders,
+		columnList:      strings.Join(columns, ", "),
+		placeholderList: strings.Join(placeholders, ", "),
+		updateSetList:   strings.Join(updateSets, ", "),
+	}
+	q.liveSQL = q.buildSQL(LiveDatabase)
+	q.historySQL = q.buildSQL(HistoryDatabase)
+	return q
+}
+
+// matches returns whether the query has exactly the columns of connMap.
+func (q *saveQuery) matches(connMap map[string]any) bool {
+	if len(connMap) != len(q.columns) {
+		return false
+	}
+	for _, column := range q.columns {
+		if _, ok := connMap[column]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// sql returns the statement to save to the given database.
+func (q *saveQuery) sql(dbName DatabaseName) string {
+	switch dbName {
+	case LiveDatabase:
+		return q.liveSQL
+	case HistoryDatabase:
+		return q.historySQL
+	default:
+		return q.buildSQL(dbName)
+	}
+}
+
+func (q *saveQuery) buildSQL(dbName DatabaseName) string {
+	return fmt.Sprintf(
+		`INSERT INTO %s.connections (%s)
+				VALUES(%s)
+				ON CONFLICT(id) DO UPDATE SET
+				%s
+			`,
+		dbName,
+		q.columnList,
+		q.placeholderList,
+		q.updateSetList,
+	)
 }

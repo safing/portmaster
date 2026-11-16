@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/safing/portmaster/service/netquery/orm"
@@ -120,4 +121,56 @@ func TestToParamMapConnStable(t *testing.T) {
 		require.True(t, ok, key)
 		require.Nil(t, v, key)
 	}
+}
+
+func TestSaveQuery(t *testing.T) {
+	t.Parallel()
+
+	q := newSaveQuery(map[string]any{"id": 1, "b": 2, "a": 3})
+	require.Equal(t, []string{"a", "b", "id"}, q.columns)
+	require.Equal(t, []string{":a", ":b", ":id"}, q.params)
+	require.Equal(t, `INSERT INTO main.connections (a, b, id)
+				VALUES(:a, :b, :id)
+				ON CONFLICT(id) DO UPDATE SET
+				a = :a, b = :b, id = :id
+			`, q.sql(LiveDatabase))
+	require.Equal(t, `INSERT INTO history.connections (a, b, id)
+				VALUES(:a, :b, :id)
+				ON CONFLICT(id) DO UPDATE SET
+				a = :a, b = :b, id = :id
+			`, q.sql(HistoryDatabase))
+	require.Equal(t, `INSERT INTO other.connections (a, b, id)
+				VALUES(:a, :b, :id)
+				ON CONFLICT(id) DO UPDATE SET
+				a = :a, b = :b, id = :id
+			`, q.sql("other"))
+
+	require.True(t, q.matches(map[string]any{"a": nil, "b": nil, "id": nil}))
+	require.False(t, q.matches(map[string]any{"a": nil, "b": nil}))
+	require.False(t, q.matches(map[string]any{"a": nil, "b": nil, "c": nil}))
+	require.False(t, q.matches(map[string]any{"a": nil, "b": nil, "id": nil, "c": nil}))
+	require.False(t, q.matches(map[string]any{}))
+}
+
+func TestSaveInsertAndUpdate(t *testing.T) { //nolint:paralleltest // Uses the package-level module.
+	db := newTestDatabase(t)
+	ctx := context.Background()
+
+	conn := newBenchConn()
+	conn.ID = "save-test"
+	require.NoError(t, db.Save(ctx, conn, true))
+	conn.Domain = "updated.example.com."
+	conn.Ended = nil
+	conn.Active = true
+	require.NoError(t, db.Save(ctx, conn, true))
+
+	for _, dbName := range []string{"main", "history"} {
+		assert.Equal(t, 1, countRows(t, db, "SELECT COUNT(*) AS count FROM "+dbName+".connections WHERE id = 'save-test' AND domain = 'updated.example.com.' AND ended IS NULL AND active = 1"), dbName)
+	}
+
+	// Without history, only the live database is updated.
+	conn.Domain = "live.example.com."
+	require.NoError(t, db.Save(ctx, conn, false))
+	assert.Equal(t, 1, countRows(t, db, "SELECT COUNT(*) AS count FROM main.connections WHERE domain = 'live.example.com.'"))
+	assert.Equal(t, 0, countRows(t, db, "SELECT COUNT(*) AS count FROM history.connections WHERE domain = 'live.example.com.'"))
 }
