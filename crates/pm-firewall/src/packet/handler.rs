@@ -1,7 +1,6 @@
 //! Port of Go `service/firewall/packet_handler.go`: the per-connection handler
 //! chain and the verdict logic.
 
-use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
@@ -9,21 +8,21 @@ use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 use pm_interception::Verdict as PktVerdict;
 use pm_netstate::{ip_scope, IpScope, UNDEFINED_PROCESS_ID};
 use pm_network::{
-    canonical_ip, protocol, Connection, Network, ProfileLookup, SharedConnection, Verdict,
+    canonical_ip, protocol, Connection, Network, SharedConnection, Verdict,
 };
 use pm_profile::options::CFG_OPTION_SPLIT_TUN_USE_KEY;
 
 use super::env::{BandwidthSink, ConntrackControl, LayeredProfileLookup, PacketEnv};
-use super::queued::QueuedPacket;
+use super::queued::{IcmpType, QueuedPacket};
 use crate::bypass::looks_like_outgoing_dns_request;
 use crate::deciders::NO_REASON_OPTION_KEY;
 use crate::master::decide_on_connection;
+use super::pid_hints::PidHints;
 use crate::preauth::PreAuthPorts;
 
 const SYSTEM_INTEGRATION_CHECK_DST: Ipv4Addr = Ipv4Addr::new(127, 65, 67, 75);
 /// Go `packet.AnyHostInternalProtocol61`, used by the system integration check.
 const SYSTEM_INTEGRATION_CHECK_PROTOCOL: u8 = 61;
-const PID_HINT_MAX_ENTRIES: usize = 4096;
 /// Ports of encrypted protocols; Go marks these connections as encrypted.
 const ENCRYPTED_PORTS: [u16; 6] = [22, 443, 465, 853, 993, 995];
 
@@ -63,51 +62,45 @@ pub struct MatcherAlreadySet;
 
 type NameserverMatcher = Box<dyn Fn(IpAddr) -> bool + Send + Sync>;
 
-/// Handles the packets of connections. All methods are synchronous and may
-/// block on socket table lookups; call them from blocking workers.
-pub struct PacketHandler {
+/// The shared state and the handler chain of the packet handler. Not used
+/// directly: [`super::PacketHandler`] dereferences to it for the non-dispatch
+/// API (stats, resets, bandwidth).
+pub struct HandlerCore {
     pub(super) network: Arc<Network>,
     pub(super) env: Arc<dyn PacketEnv>,
-    profiles: Arc<dyn LayeredProfileLookup>,
+    pub(super) profiles: Arc<dyn LayeredProfileLookup>,
     preauth: Arc<PreAuthPorts>,
     pub(super) conntrack: Arc<dyn ConntrackControl>,
     pub(super) bandwidth: Option<Arc<dyn BandwidthSink>>,
     nameserver_matcher: OnceLock<NameserverMatcher>,
-    handlers: Mutex<HashMap<String, Handler>>,
-    pid_hints: Mutex<HashMap<String, i32>>,
+    pub(super) pid_hints: PidHints,
     counters: Counters,
 }
 
-fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+pub(super) fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-impl PacketHandler {
-    pub fn new(
+impl HandlerCore {
+    pub(super) fn new(
         network: Arc<Network>,
         env: Arc<dyn PacketEnv>,
         profiles: Arc<dyn LayeredProfileLookup>,
         preauth: Arc<PreAuthPorts>,
         conntrack: Arc<dyn ConntrackControl>,
-    ) -> PacketHandler {
-        PacketHandler {
+        bandwidth: Option<Arc<dyn BandwidthSink>>,
+    ) -> HandlerCore {
+        HandlerCore {
             network,
             env,
             profiles,
             preauth,
             conntrack,
-            bandwidth: None,
+            bandwidth,
             nameserver_matcher: OnceLock::new(),
-            handlers: Mutex::new(HashMap::new()),
-            pid_hints: Mutex::new(HashMap::new()),
+            pid_hints: PidHints::new(),
             counters: Counters::default(),
         }
-    }
-
-    #[must_use]
-    pub fn with_bandwidth_sink(mut self, sink: Arc<dyn BandwidthSink>) -> PacketHandler {
-        self.bandwidth = Some(sink);
-        self
     }
 
     /// Go `SetNameserverIPMatcher`. Can only be set once.
@@ -139,103 +132,9 @@ impl PacketHandler {
         }
     }
 
-    /// Number of connections with a firewall handler.
-    pub fn tracked_handlers(&self) -> usize {
-        locked(&self.handlers).len()
-    }
-
-    /// Forgets the handlers of connections that are not in the store anymore.
-    /// Call it from the cleaner tick.
-    pub fn prune_handlers(&self) {
-        let ids: Vec<String> = locked(&self.handlers).keys().cloned().collect();
-        for id in ids {
-            if self.network.get_connection(&id).is_none() {
-                locked(&self.handlers).remove(&id);
-            }
-        }
-    }
-
-    /// Go `handlePacket`.
-    pub fn handle_packet(&self, pkt: &dyn QueuedPacket) {
-        // A packet that already has a verdict (e.g. the default drop after the
-        // timeout) cannot be influenced anymore.
-        if pkt.verdict_set() {
-            return;
-        }
-
-        let id = pkt.connection_id();
-        if let Some(shared) = self.network.get_connection(&id) {
-            self.handle_on_connection(&shared, pkt);
-            return;
-        }
-
-        // Info-only packets can never complete a connection. Only keep the
-        // process attribution for the first real packet.
-        if pkt.info_only() {
-            self.save_pid_hint(&id, pkt.info().pid);
-            return;
-        }
-
-        let mut info = pkt.info().clone();
-        if info.pid == UNDEFINED_PROCESS_ID {
-            if let Some(pid) = locked(&self.pid_hints).remove(&id) {
-                info.pid = pid;
-            }
-        }
-        let shared = self.network.new_incomplete_connection(&info);
-        {
-            let mut conn = locked(&shared);
-            conn.profiles = Arc::clone(&self.profiles) as Arc<dyn ProfileLookup>;
-            locked(&self.handlers).insert(conn.id.clone(), Handler::FastTrack);
-        }
-        self.handle_on_connection(&shared, pkt);
-    }
-
-    fn save_pid_hint(&self, id: &str, pid: i32) {
-        if pid == UNDEFINED_PROCESS_ID {
-            return;
-        }
-        let mut hints = locked(&self.pid_hints);
-        if hints.len() >= PID_HINT_MAX_ENTRIES {
-            hints.clear();
-        }
-        hints.insert(id.to_string(), pid);
-    }
-
-    /// Go `HandlePacket` plus `packetHandlerHandleConn`: runs the handler of
-    /// the connection under its lock.
-    fn handle_on_connection(&self, shared: &SharedConnection, pkt: &dyn QueuedPacket) {
-        let mut conn = locked(shared);
-        conn.last_seen = self.network.env().clock.now();
-
-        // Skip packets that received a verdict while waiting for the lock.
-        if pkt.verdict_set() {
-            return;
-        }
-
-        let current = locked(&self.handlers).get(&conn.id).copied();
-        let mut state = current;
-        self.run_handler(shared, &mut conn, pkt, &mut state);
-        if state != current {
-            let mut handlers = locked(&self.handlers);
-            match state {
-                Some(handler) => {
-                    handlers.insert(conn.id.clone(), handler);
-                }
-                None => {
-                    handlers.remove(&conn.id);
-                }
-            }
-        }
-
-        // Go only pushes changes for connections that have a handler.
-        if current.is_some() && conn.save_when_finished {
-            conn.save_when_finished = false;
-            self.network.save_locked(shared, &mut conn);
-        }
-    }
-
-    fn run_handler(
+    /// Runs the connection's handler on a packet, with the connection locked
+    /// by the caller.
+    pub(super) fn run_handler(
         &self,
         shared: &SharedConnection,
         conn: &mut Connection,
@@ -291,10 +190,11 @@ impl PacketHandler {
 
         match meta.protocol {
             protocol::ICMP | protocol::ICMPV6 => {
-                let Some(icmp_type) = pkt.icmp_type() else {
+                let icmp = pkt.icmp_type();
+                if icmp == IcmpType::LoadFailed {
                     tracing::trace!("filter: failed to load ICMP packet data");
                     return (Verdict::Accept, true);
-                };
+                }
 
                 // A listener needs to see all packets, so no permanent accept.
                 if self.env.submit_icmp(pkt) {
@@ -304,7 +204,7 @@ impl PacketHandler {
 
                 // Echo requests and replies are handled regularly, everything
                 // else is system business.
-                if is_echo(meta.protocol, icmp_type) {
+                if matches!(icmp, IcmpType::Type(t) if is_echo(meta.protocol, t)) {
                     return undecided;
                 }
                 tracing::trace!("filter: fast-track accepting ICMP/v6");
@@ -731,11 +631,12 @@ impl PacketHandler {
     }
 
     fn icmp_filter_handler(&self, conn: &mut Connection, pkt: &dyn QueuedPacket) {
-        let Some(icmp_type) = pkt.icmp_type() else {
+        let icmp = pkt.icmp_type();
+        if icmp == IcmpType::LoadFailed {
             tracing::debug!("filter: failed to load ICMP packet data");
             self.issue_verdict(conn, pkt, Verdict::Drop, false);
             return;
-        };
+        }
 
         // Submit to the ICMP listener.
         if self.env.submit_icmp(pkt) {
@@ -745,7 +646,8 @@ impl PacketHandler {
 
         // Echo requests and replies are handled regularly, other ICMP packets
         // are considered system business.
-        if !is_echo(pkt.info().protocol, icmp_type) {
+        // Like Go, a packet without ICMP layer continues as an echo packet.
+        if matches!(icmp, IcmpType::Type(t) if !is_echo(pkt.info().protocol, t)) {
             self.issue_verdict(conn, pkt, Verdict::Accept, false);
             return;
         }

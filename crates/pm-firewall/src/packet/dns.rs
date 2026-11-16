@@ -8,10 +8,10 @@ use pm_resolver::model::{SERVER_SOURCE_FIREWALL, SERVER_TYPE_FIREWALL};
 use pm_resolver::scopes::INTERNAL_SPECIAL_USE_DOMAIN;
 use pm_resolver::{Query, RRCache, ResolverInfo};
 
-use super::handler::PacketHandler;
+use super::handler::HandlerCore;
 use super::queued::QueuedPacket;
 
-impl PacketHandler {
+impl HandlerCore {
     pub(super) fn inspect_dns_packet(
         &self,
         shared: &SharedConnection,

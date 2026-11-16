@@ -7,9 +7,9 @@ use std::io;
 use pm_network::{Connection, ConnectionType, SharedConnection};
 
 use super::env::ConnectionTuple;
-use super::handler::PacketHandler;
+use super::handler::HandlerCore;
 
-impl PacketHandler {
+impl HandlerCore {
     /// Re-evaluates one (re-attributed) IP or DNS connection.
     pub fn reset_single_connection_verdict(&self, conn_id: &str) {
         let shared = self

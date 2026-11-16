@@ -2,7 +2,7 @@
 
 use std::sync::TryLockError;
 
-use super::handler::PacketHandler;
+use super::handler::HandlerCore;
 
 /// How the byte counts of an update are interpreted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,7 +22,7 @@ pub struct BandwidthUpdate {
     pub method: BandwidthMethod,
 }
 
-impl PacketHandler {
+impl HandlerCore {
     /// Applies a bandwidth update to the connection and forwards the delta to
     /// the sink. Connections that are locked are skipped, like in Go.
     pub fn update_bandwidth(&self, update: &BandwidthUpdate) {
