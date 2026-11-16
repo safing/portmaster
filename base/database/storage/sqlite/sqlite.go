@@ -14,8 +14,9 @@ import (
 	migrate "github.com/rubenv/sql-migrate"
 	sqldblogger "github.com/simukti/sqldb-logger"
 	"github.com/stephenafamo/bob"
-	"github.com/stephenafamo/bob/dialect/sqlite"
+	"github.com/stephenafamo/bob/dialect/sqlite/dialect"
 	"github.com/stephenafamo/bob/dialect/sqlite/im"
+	"github.com/stephenafamo/bob/dialect/sqlite/sm"
 	"github.com/stephenafamo/bob/dialect/sqlite/um"
 	_ "modernc.org/sqlite"
 
@@ -33,6 +34,9 @@ import (
 var (
 	ErrQueryTimeout = errors.New("query timeout")
 )
+
+// queryPageSize is the number of rows a query loads from the database at once.
+const queryPageSize = 100
 
 // SQLite storage.
 type SQLite struct {
@@ -307,57 +311,77 @@ func (db *SQLite) queryExecutor(queryIter *iterator.Iterator, q *query.Query, lo
 	db.wg.Add(1)
 	defer db.wg.Done()
 
-	// Build query.
-	var recordQuery *sqlite.ViewQuery[*models.Record, models.RecordSlice]
-	if q.DatabaseKeyPrefix() != "" {
-		recordQuery = models.Records.View.Query(
-			models.SelectWhere.Records.Key.Like(q.DatabaseKeyPrefix() + "%"),
-		)
-	} else {
-		recordQuery = models.Records.View.Query()
-	}
+	var (
+		err       error
+		lastKey   string
+		firstPage = true
+		page      models.RecordSlice
+	)
 
-	// Get cursor to go over all records in the query.
-	cursor, err := models.RecordsQuery.Cursor(recordQuery, db.ctx, db.bob)
-	if err != nil {
-		queryIter.Finish(err)
-		return
-	}
-	defer func() {
-		_ = cursor.Close()
-	}()
-
-recordsLoop:
-	for cursor.Next() {
-		// Get next record
-		r, cErr := cursor.Get()
-		if cErr != nil {
-			err = fmt.Errorf("cursor error: %w", cErr)
-			break recordsLoop
+	// Load the records page by page (keyset pagination over the primary key).
+	// Each page is fully loaded before it is handed to the consumer, so that
+	// the single database connection is not held while waiting for the
+	// consumer. Otherwise, all other database operations - including any the
+	// consumer itself does while iterating - would block until the query ends.
+pagesLoop:
+	for {
+		mods := []bob.Mod[*dialect.SelectQuery]{
+			sm.OrderBy(models.Records.Columns.Key).Asc(),
+			sm.Limit(queryPageSize),
 		}
+		if q.DatabaseKeyPrefix() != "" {
+			mods = append(mods, models.SelectWhere.Records.Key.Like(q.DatabaseKeyPrefix()+"%"))
+		}
+		if !firstPage {
+			mods = append(mods, models.SelectWhere.Records.Key.GT(lastKey))
+		}
+		firstPage = false
+		page, err = models.Records.View.Query(mods...).All(db.ctx, db.bob)
+		if err != nil {
+			err = fmt.Errorf("failed to load records: %w", err)
+			break pagesLoop
+		}
+		if len(page) == 0 {
+			break pagesLoop
+		}
+		lastKey = page[len(page)-1].Key
 
+		var done bool
+		done, err = db.feedQueryPage(queryIter, q, page, local, internal)
+		if done || err != nil || len(page) < queryPageSize {
+			break pagesLoop
+		}
+	}
+
+	queryIter.Finish(err)
+}
+
+// feedQueryPage sends the matching records of the given page to the query
+// iterator. It returns whether the consumer is done or an error.
+func (db *SQLite) feedQueryPage(queryIter *iterator.Iterator, q *query.Query, page models.RecordSlice, local, internal bool) (done bool, err error) {
+	for _, r := range page {
 		// Check if key matches.
 		if !q.MatchesKey(r.Key) {
-			continue recordsLoop
+			continue
 		}
 
 		// Check Meta.
 		m := getMeta(r)
 		if !m.CheckValidity() ||
 			!m.CheckPermission(local, internal) {
-			continue recordsLoop
+			continue
 		}
 
 		// Check Data.
 		if q.HasWhereCondition() {
 			if r.Format.IsNull() || r.Value.IsNull() {
-				continue recordsLoop
+				continue
 			}
 
 			jsonData := string(r.Value.GetOrZero())
 			jsonAccess := accessor.NewJSONAccessor(&jsonData)
 			if !q.MatchesAccessor(jsonAccess) {
-				continue recordsLoop
+				continue
 			}
 		}
 
@@ -372,22 +396,20 @@ recordsLoop:
 
 		select {
 		case <-queryIter.Done:
-			break recordsLoop
+			return true, nil
 		case queryIter.Next <- matched:
 		default:
 			select {
 			case <-queryIter.Done:
-				break recordsLoop
+				return true, nil
 			case queryIter.Next <- matched:
 			case <-time.After(1 * time.Second):
-				err = ErrQueryTimeout
-				break recordsLoop
+				return true, ErrQueryTimeout
 			}
 		}
-
 	}
 
-	queryIter.Finish(err)
+	return false, nil
 }
 
 // Purge deletes all records that match the given query. It returns the number of successful deletes and an error.
