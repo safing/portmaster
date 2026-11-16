@@ -75,6 +75,7 @@
       "error": false,
       "level": "INF",
       "msg": "simple",
+      "rdata_hex": "0673696d706c65",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -90,6 +91,7 @@
       "error": false,
       "level": "INF",
       "msg": "with spaces and: colon",
+      "rdata_hex": "16776974682073706163657320616e643a20636f6c6f6e",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -105,6 +107,7 @@
       "error": false,
       "level": "INF",
       "msg": "semi;colon",
+      "rdata_hex": "0a73656d693b636f6c6f6e",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -125,6 +128,7 @@
       "error": false,
       "level": "INF",
       "msg": "back\\slash",
+      "rdata_hex": "096261636b736c617368",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -140,6 +144,7 @@
       "error": false,
       "level": "INF",
       "msg": "tab\there",
+      "rdata_hex": "087461620968657265",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -155,6 +160,7 @@
       "error": false,
       "level": "INF",
       "msg": "unicode ключ",
+      "rdata_hex": "10756e69636f646520d0bad0bbd18ed187",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -170,6 +176,7 @@
       "error": false,
       "level": "INF",
       "msg": "",
+      "rdata_hex": "00",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -185,6 +192,7 @@
       "error": false,
       "level": "INF",
       "msg": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "rdata_hex": "ff7878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878782d787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -201,6 +209,7 @@
       "error": false,
       "level": "INF",
       "msg": "percent %s",
+      "rdata_hex": "0a70657263656e74202573",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -216,6 +225,7 @@
       "error": false,
       "level": "INF",
       "msg": "line\nbreak",
+      "rdata_hex": "0a6c696e650a627265616b",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -231,6 +241,7 @@
       "error": false,
       "level": "INF",
       "msg": "cr\rx",
+      "rdata_hex": "0463720d78",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -251,6 +262,7 @@
       "error": false,
       "level": "INF",
       "msg": "esc\\\"quote",
+      "rdata_hex": "096573632271756f7465",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -266,6 +278,7 @@
       "error": false,
       "level": "INF",
       "msg": "dec\\065",
+      "rdata_hex": "0464656341",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -281,6 +294,7 @@
       "error": false,
       "level": "INF",
       "msg": "nul\u0000byte",
+      "rdata_hex": "086e756c0062797465",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -296,6 +310,7 @@
       "error": false,
       "level": "INF",
       "msg": "del",
+      "rdata_hex": "0464656c7f",
       "rr": {
         "class": "IN",
         "name": "inf.portmaster.",
@@ -311,6 +326,7 @@
       "error": false,
       "level": "ERR",
       "msg": "simple",
+      "rdata_hex": "0673696d706c65",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -326,6 +342,7 @@
       "error": false,
       "level": "ERR",
       "msg": "with spaces and: colon",
+      "rdata_hex": "16776974682073706163657320616e643a20636f6c6f6e",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -341,6 +358,7 @@
       "error": false,
       "level": "ERR",
       "msg": "semi;colon",
+      "rdata_hex": "0a73656d693b636f6c6f6e",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -361,6 +379,7 @@
       "error": false,
       "level": "ERR",
       "msg": "back\\slash",
+      "rdata_hex": "096261636b736c617368",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -376,6 +395,7 @@
       "error": false,
       "level": "ERR",
       "msg": "tab\there",
+      "rdata_hex": "087461620968657265",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -391,6 +411,7 @@
       "error": false,
       "level": "ERR",
       "msg": "unicode ключ",
+      "rdata_hex": "10756e69636f646520d0bad0bbd18ed187",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -406,6 +427,7 @@
       "error": false,
       "level": "ERR",
       "msg": "",
+      "rdata_hex": "00",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -421,6 +443,7 @@
       "error": false,
       "level": "ERR",
       "msg": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "rdata_hex": "ff7878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878782d787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -437,6 +460,7 @@
       "error": false,
       "level": "ERR",
       "msg": "percent %s",
+      "rdata_hex": "0a70657263656e74202573",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -452,6 +476,7 @@
       "error": false,
       "level": "ERR",
       "msg": "line\nbreak",
+      "rdata_hex": "0a6c696e650a627265616b",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -467,6 +492,7 @@
       "error": false,
       "level": "ERR",
       "msg": "cr\rx",
+      "rdata_hex": "0463720d78",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -487,6 +513,7 @@
       "error": false,
       "level": "ERR",
       "msg": "esc\\\"quote",
+      "rdata_hex": "096573632271756f7465",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -502,6 +529,7 @@
       "error": false,
       "level": "ERR",
       "msg": "dec\\065",
+      "rdata_hex": "0464656341",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -517,6 +545,7 @@
       "error": false,
       "level": "ERR",
       "msg": "nul\u0000byte",
+      "rdata_hex": "086e756c0062797465",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",
@@ -532,6 +561,7 @@
       "error": false,
       "level": "ERR",
       "msg": "del",
+      "rdata_hex": "0464656c7f",
       "rr": {
         "class": "IN",
         "name": "err.portmaster.",

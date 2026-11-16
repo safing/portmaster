@@ -31,6 +31,7 @@ pub trait ServerEnv: Send + Sync {
 pub struct SystemEnv {
     network_service: Arc<dyn Fn() -> bool + Send + Sync>,
     network_changed: AtomicBool,
+    hostname: String,
 }
 
 impl SystemEnv {
@@ -39,6 +40,7 @@ impl SystemEnv {
         SystemEnv {
             network_service: Arc::new(network_service),
             network_changed: AtomicBool::new(false),
+            hostname: read_hostname(),
         }
     }
 
@@ -50,17 +52,7 @@ impl SystemEnv {
 
 impl ServerEnv for SystemEnv {
     fn hostname(&self) -> String {
-        let name = std::fs::read_to_string("/proc/sys/kernel/hostname")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .or_else(|| std::env::var("HOSTNAME").ok())
-            .or_else(|| std::env::var("COMPUTERNAME").ok())
-            .unwrap_or_default();
-        if name.is_empty() {
-            tracing::warn!("nameserver: failed to get hostname");
-        }
-        format!("{name}.")
+        self.hostname.clone()
     }
 
     /// An IP is this device's if a socket can be bound to it. Loopback is
@@ -87,4 +79,19 @@ impl ServerEnv for SystemEnv {
     fn take_network_changed(&self) -> bool {
         self.network_changed.swap(false, Ordering::SeqCst)
     }
+}
+
+/// Reads the hostname once, with a trailing dot, like Go does in `start`.
+fn read_hostname() -> String {
+    let name = std::fs::read_to_string("/proc/sys/kernel/hostname")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .or_else(|| std::env::var("HOSTNAME").ok())
+        .or_else(|| std::env::var("COMPUTERNAME").ok())
+        .unwrap_or_default();
+    if name.is_empty() {
+        tracing::warn!("nameserver: failed to get hostname");
+    }
+    format!("{name}.")
 }

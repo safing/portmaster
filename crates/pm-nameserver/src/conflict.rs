@@ -16,15 +16,13 @@ pub struct ConflictingProcess {
 impl ConflictingProcess {
     /// The description used in the notification.
     ///
-    /// Like Go, the executable is only added to a non-empty name: without a
-    /// name the description stays empty.
+    /// Like Go, the executable is added to a non-empty name even when empty
+    /// (`name ()`); without a name the description stays empty.
     pub fn description(&self) -> String {
         if self.name.is_empty() {
             String::new()
-        } else if !self.exe.is_empty() {
-            format!("{} ({})", self.name, self.exe)
         } else {
-            self.name.clone()
+            format!("{} ({})", self.name, self.exe)
         }
     }
 }
@@ -187,5 +185,10 @@ mod tests {
             exe: "/x/a".into(),
         };
         assert_eq!(p.description(), "");
+        let p = ConflictingProcess {
+            name: "a".into(),
+            exe: String::new(),
+        };
+        assert_eq!(p.description(), "a ()");
     }
 }

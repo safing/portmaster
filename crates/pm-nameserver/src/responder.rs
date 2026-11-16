@@ -51,44 +51,60 @@ impl Level {
 #[error("failed to parse record: {0}")]
 pub struct MessageRecordError(String);
 
-/// Checks the message with the rules of the zone file parser Go builds the
-/// record with: an unescaped quote ends the string early, and a trailing
-/// backslash escapes the closing quote.
-fn check_zone_quoting(msg: &str) -> Result<(), MessageRecordError> {
-    let mut chars = msg.chars();
-    while let Some(c) = chars.next() {
-        match c {
-            '\\' => {
-                if chars.next().is_none() {
-                    return Err(MessageRecordError(
-                        "unterminated quoted string".to_string(),
-                    ));
+/// Decodes the message like the zone file parser Go builds the record with:
+/// `\X` stands for `X` and `\DDD` for the byte with that decimal value. An
+/// unescaped quote ends the string early, and a trailing backslash escapes
+/// the closing quote; both are errors.
+fn decode_zone_text(msg: &str) -> Result<Vec<u8>, MessageRecordError> {
+    let bytes = msg.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\\' => {
+                let Some(&next) = bytes.get(i + 1) else {
+                    return Err(MessageRecordError("unterminated quoted string".to_string()));
+                };
+                if next.is_ascii_digit() {
+                    let value = bytes
+                        .get(i + 1..i + 4)
+                        .filter(|d| d.iter().all(u8::is_ascii_digit))
+                        .map(|d| d.iter().fold(0u32, |acc, c| acc * 10 + u32::from(c - b'0')))
+                        .and_then(|v| u8::try_from(v).ok())
+                        .ok_or_else(|| MessageRecordError("bad escape".to_string()))?;
+                    out.push(value);
+                    i += 4;
+                } else {
+                    out.push(next);
+                    i += 2;
                 }
             }
-            '"' => {
+            b'"' => {
                 return Err(MessageRecordError(
                     "unexpected data after quoted string".to_string(),
                 ));
             }
-            _ => {}
+            b => {
+                out.push(b);
+                i += 1;
+            }
         }
     }
-    Ok(())
+    Ok(out)
 }
 
 /// Creates an informational resource record for the extra section of a reply,
 /// like Go `nsutil.MakeMessageRecord`. The record is a TXT record named
 /// `<level>.portmaster.` with a TTL of 0.
 pub fn make_message_record(level: Level, msg: &str) -> Result<Record, MessageRecordError> {
-    check_zone_quoting(msg)?;
+    let decoded = decode_zone_text(msg)?;
     let name = Name::from_str(&format!("{}.portmaster.", level.name()))
         .map_err(|e| MessageRecordError(e.to_string()))?;
     // Go splits long strings into chunks of 255 bytes.
-    let bytes = msg.as_bytes();
-    let chunks: Vec<&[u8]> = if bytes.is_empty() {
+    let chunks: Vec<&[u8]> = if decoded.is_empty() {
         vec![&[][..]]
     } else {
-        bytes.chunks(255).collect()
+        decoded.chunks(255).collect()
     };
     Ok(Record::from_rdata(name, 0, RData::TXT(TXT::from_bytes(chunks))))
 }
@@ -289,6 +305,31 @@ pub fn format_go_duration(total_secs: i64) -> String {
     }
 }
 
+/// Formats milliseconds like Go `time.Duration.String` of a duration rounded
+/// to milliseconds (e.g. `1.4s`, `2m0.5s`, `250ms`).
+pub fn format_go_duration_ms(total_ms: u64) -> String {
+    if total_ms == 0 {
+        return "0s".to_string();
+    }
+    if total_ms < 1000 {
+        return format!("{total_ms}ms");
+    }
+    let (h, m) = (total_ms / 3_600_000, (total_ms % 3_600_000) / 60_000);
+    let (s, ms) = ((total_ms % 60_000) / 1000, total_ms % 1000);
+    let mut secs = s.to_string();
+    if ms > 0 {
+        secs.push('.');
+        secs.push_str(format!("{ms:03}").trim_end_matches('0'));
+    }
+    if h > 0 {
+        format!("{h}h{m}m{secs}s")
+    } else if m > 0 {
+        format!("{m}m{secs}s")
+    } else {
+        format!("{secs}s")
+    }
+}
+
 /// Provides the informational records of a resolved query, like Go
 /// `RRCache.GetExtraRRs`.
 pub struct RrCacheExtras<'a>(pub &'a RRCache);
@@ -448,4 +489,20 @@ pub fn rcode_to_string(rcode: u16) -> &'static str {
 /// The question type as text, like Go `dns.Type.String`.
 pub fn question_text(qtype: RecordType) -> String {
     qtype_string(qtype)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn durations_format_like_go() {
+        assert_eq!(format_go_duration_ms(0), "0s");
+        assert_eq!(format_go_duration_ms(250), "250ms");
+        assert_eq!(format_go_duration_ms(1400), "1.4s");
+        assert_eq!(format_go_duration_ms(29_123), "29.123s");
+        assert_eq!(format_go_duration_ms(30_000), "30s");
+        assert_eq!(format_go_duration_ms(120_500), "2m0.5s");
+        assert_eq!(format_go_duration_ms(3_600_000), "1h0m0s");
+    }
 }

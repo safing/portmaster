@@ -247,17 +247,13 @@ fn message_records_match_go() {
         let RData::TXT(txt) = &record.data else {
             panic!("not TXT");
         };
-        let strings: Vec<String> = txt
-            .txt_data
-            .iter()
-            .map(|d| String::from_utf8_lossy(d).into_owned())
-            .collect();
-        let want_strings: Vec<String> = want["txt"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|s| s.as_str().unwrap().to_string())
-            .collect();
-        assert_eq!(strings, want_strings, "{msg:?}");
+        // Compare the wire form of the rdata, which is what clients receive.
+        let mut rdata = Vec::new();
+        for string in txt.txt_data.iter() {
+            rdata.push(string.len() as u8);
+            rdata.extend_from_slice(string);
+        }
+        let hex: String = rdata.iter().map(|b| format!("{b:02x}")).collect();
+        assert_eq!(hex, case["rdata_hex"].as_str().unwrap(), "{msg:?}");
     }
 }
