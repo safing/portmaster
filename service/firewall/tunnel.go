@@ -182,7 +182,7 @@ func DeriveTunnelOptions(lp *profile.LayeredProfile, proc *process.Process, dest
 	// If the current home node is not trusted, then upgrade at least to two hops.
 	if routingProfile.MinHops < 2 {
 		homeNode, _ := navigator.Main.GetHome()
-		if homeNode != nil && !homeNode.State.Has(navigator.StateTrusted) {
+		if homeNode != nil && !homeNode.GetState().Has(navigator.StateTrusted) {
 			tunnelOpts.RoutingProfile = navigator.RoutingProfileDoubleHopID
 		}
 	}
