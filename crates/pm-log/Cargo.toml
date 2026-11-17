@@ -6,6 +6,7 @@ description = "Port of Go base/log: severity levels, writers, context tracers an
 license.workspace = true
 
 [dependencies]
+pm-winplatform = { path = "../pm-winplatform" }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 

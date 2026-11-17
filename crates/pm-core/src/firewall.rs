@@ -912,6 +912,19 @@ impl Firewall {
         *guard = None;
         Ok(())
     }
+
+    /// Non-Windows, non-Linux stub: native interception is not available.
+    #[cfg(all(not(target_os = "linux"), not(windows)))]
+    pub fn start(&self) -> anyhow::Result<()> {
+        tracing::info!("filter: native interception is not available on this platform");
+        Ok(())
+    }
+
+    /// Non-Windows, non-Linux stub: native interception is not available.
+    #[cfg(all(not(target_os = "linux"), not(windows)))]
+    pub async fn stop(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(target_os = "linux")]

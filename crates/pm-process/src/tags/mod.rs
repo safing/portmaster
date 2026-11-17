@@ -5,11 +5,19 @@
 //! [`register_default_tag_handlers`] to attach all of them to a
 //! [`ProcessCache`], mirroring the Go `init()` functions.
 
-pub mod appimage;
-pub mod flatpak;
-pub mod interpreter;
 pub mod net;
+#[cfg(not(windows))]
+pub mod appimage;
+#[cfg(not(windows))]
+pub mod flatpak;
+#[cfg(not(windows))]
+pub mod interpreter;
+#[cfg(not(windows))]
 pub mod snap;
+#[cfg(windows)]
+pub mod svchost;
+#[cfg(windows)]
+pub mod winstore;
 
 use std::sync::Arc;
 
@@ -22,10 +30,21 @@ use crate::ProcessCache;
 /// significant for `CreateProfile` in Go. The Rust `TagHandler` trait has no
 /// `CreateProfile` callback, but the order is kept for deterministic tags.
 pub fn register_default_tag_handlers(cache: &ProcessCache) -> Result<()> {
-    cache.register_tag_handler(Arc::new(appimage::AppImageHandler::default()))?;
-    cache.register_tag_handler(Arc::new(flatpak::FlatpakHandler))?;
-    cache.register_tag_handler(Arc::new(interpreter::InterpHandler))?;
-    cache.register_tag_handler(Arc::new(net::NetworkHandler))?;
-    cache.register_tag_handler(Arc::new(snap::SnapHandler))?;
+    // Windows only has the network, svchost and Windows Store handlers, like
+    // Go's build-tag selection in `service/process/tags`.
+    #[cfg(windows)]
+    {
+        cache.register_tag_handler(Arc::new(net::NetworkHandler))?;
+        cache.register_tag_handler(Arc::new(svchost::SvchostHandler))?;
+        cache.register_tag_handler(Arc::new(winstore::WinStoreHandler))?;
+    }
+    #[cfg(not(windows))]
+    {
+        cache.register_tag_handler(Arc::new(appimage::AppImageHandler::default()))?;
+        cache.register_tag_handler(Arc::new(flatpak::FlatpakHandler))?;
+        cache.register_tag_handler(Arc::new(interpreter::InterpHandler))?;
+        cache.register_tag_handler(Arc::new(net::NetworkHandler))?;
+        cache.register_tag_handler(Arc::new(snap::SnapHandler))?;
+    }
     Ok(())
 }

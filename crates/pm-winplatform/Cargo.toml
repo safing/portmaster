@@ -1,0 +1,21 @@
+[package]
+name = "pm-winplatform"
+version = "0.1.0"
+edition.workspace = true
+description = "Windows platform integrations for the Portmaster core (iphlpapi, ETW, OS details, binmeta)"
+license.workspace = true
+
+[dependencies]
+pm-netstate = { path = "../pm-netstate" }
+sha1.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+# This crate intentionally uses a small, audited amount of `unsafe` for
+# Windows FFI calls. It does NOT inherit `[lints] workspace = true`, which is
+# how Cargo opts a member out of the workspace-wide `unsafe_code = forbid`
+# (`workspace = false` is not valid in Cargo's `[lints]` table). It sets
+# `unsafe_code = "deny"` itself and re-enables unsafe only on the concrete
+# extern modules under `#[cfg(windows)]`.
+[lints.rust]
+unsafe_code = "deny"

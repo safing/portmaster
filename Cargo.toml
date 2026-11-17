@@ -47,6 +47,7 @@ members = [
     "crates/pm-log",
     "crates/pm-xray",
     "crates/pm-winkext",
+    "crates/pm-winplatform",
 ]
 
 [workspace.package]

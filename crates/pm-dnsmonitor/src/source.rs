@@ -6,6 +6,7 @@
 
 use std::collections::VecDeque;
 use std::io;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[cfg(unix)]
@@ -17,8 +18,6 @@ use std::io::{BufRead, BufReader, Write};
 use std::net::Shutdown;
 #[cfg(unix)]
 use std::os::unix::net::UnixStream;
-#[cfg(unix)]
-use std::path::PathBuf;
 
 /// Unix socket of the systemd-resolved query monitor (Go
 /// `io.systemd.Resolve.Monitor`).
@@ -165,19 +164,13 @@ impl DnsEventSource for SystemdVarlinkSource {
     }
 }
 
-/// Non-Unix placeholder. The systemd-resolved varlink monitor does not exist
-/// outside Unix, so this source always reports itself unavailable. Keeping the
-/// type on all platforms lets the rest of the core build unchanged.
+/// Non-Unix stub for the systemd-resolved varlink source.
+///
+/// The systemd monitor does not exist outside Unix, so this source is always
+/// unavailable. It keeps the public API available for cross-compilation.
 #[cfg(not(unix))]
-pub struct SystemdVarlinkSource;
-
-#[cfg(not(unix))]
-impl SystemdVarlinkSource {
-    /// No-op constructor; the varlink monitor is never available off Unix.
-    #[must_use]
-    pub fn new() -> Self {
-        Self
-    }
+pub struct SystemdVarlinkSource {
+    path: PathBuf,
 }
 
 #[cfg(not(unix))]
@@ -188,13 +181,31 @@ impl Default for SystemdVarlinkSource {
 }
 
 #[cfg(not(unix))]
+impl SystemdVarlinkSource {
+    /// Uses the standard systemd-resolved monitor socket path.
+    pub fn new() -> SystemdVarlinkSource {
+        Self::with_path(DEFAULT_SYSTEMD_SOCKET)
+    }
+
+    /// Uses a custom socket path.
+    pub fn with_path(path: impl Into<PathBuf>) -> SystemdVarlinkSource {
+        SystemdVarlinkSource { path: path.into() }
+    }
+
+    /// Returns the configured socket path.
+    pub fn path(&self) -> &std::path::Path {
+        &self.path
+    }
+}
+
+#[cfg(not(unix))]
 impl DnsEventSource for SystemdVarlinkSource {
     fn subscribe(&mut self) -> Result<(), SourceError> {
-        Err(SourceError::Unavailable(DEFAULT_SYSTEMD_SOCKET.into()))
+        Err(SourceError::Unavailable(self.path.display().to_string()))
     }
 
     fn recv(&mut self) -> Result<Option<String>, SourceError> {
-        Ok(None)
+        Err(SourceError::Varlink("not subscribed".into()))
     }
 }
 

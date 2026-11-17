@@ -22,3 +22,4 @@ pub mod control;
 
 pub mod broadcasts;
 pub mod interop;
+pub mod win_integration;

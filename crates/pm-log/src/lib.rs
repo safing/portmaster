@@ -45,9 +45,33 @@ pub use tracing_layer::{install as install_tracing, PmLogLayer};
 pub use writer::{clean_old_logs, LogWriter, Rotation, Sink};
 
 /// Arrow used in formatted lines, matching Go's Unix build (`▶`).
+#[cfg(not(windows))]
 pub const RIGHT_ARROW: &str = "▶";
 /// Arrow used in EOF banners, matching Go's Unix build (`◀`).
+#[cfg(not(windows))]
 pub const LEFT_ARROW: &str = "◀";
+/// Arrow used in formatted lines on Windows, matching Go's `formatting_windows.go`.
+#[cfg(windows)]
+pub const RIGHT_ARROW: &str = ">";
+/// Arrow used in EOF banners on Windows, matching Go's `formatting_windows.go`.
+#[cfg(windows)]
+pub const LEFT_ARROW: &str = "<";
+
+/// Whether ANSI color escapes should be emitted on the current platform.
+///
+/// On Windows this enables virtual terminal processing on the console (Go's
+/// `osdetail.EnableColorSupport`); elsewhere colors are always enabled, like
+/// Go's Unix build.
+#[cfg(not(windows))]
+pub fn color_supported() -> bool {
+    true
+}
+
+/// Windows implementation of [`color_supported`].
+#[cfg(windows)]
+pub fn color_supported() -> bool {
+    pm_winplatform::osdetail::enable_color_support()
+}
 
 /// Formats and logs a trace message.
 #[macro_export]
