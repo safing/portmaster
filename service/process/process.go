@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	processInfo "github.com/shirou/gopsutil/process"
@@ -67,7 +68,10 @@ type Process struct {
 	// PrimaryProfileID holds the scoped ID of the primary profile.
 	PrimaryProfileID string
 	// profile holds the layered profile based on the primary profile.
-	profile *profile.LayeredProfile
+	// It is reassigned by RefetchProfile while the process is in use, so it is
+	// atomic to allow lock-free reads via Profile(). Writers still hold the
+	// process lock to update it together with PrimaryProfileID.
+	profile atomic.Pointer[profile.LayeredProfile]
 
 	// Mutable attributes.
 
@@ -94,7 +98,7 @@ func (p *Process) Profile() *profile.LayeredProfile {
 		return nil
 	}
 
-	return p.profile
+	return p.profile.Load()
 }
 
 // Leader returns the process group leader that is attached to the process.

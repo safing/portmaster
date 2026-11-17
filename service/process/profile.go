@@ -20,7 +20,7 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	defer p.Unlock()
 
 	// Check if profile is already loaded.
-	if p.profile != nil {
+	if p.profile.Load() != nil {
 		log.Tracer(ctx).Trace("process: profile already loaded")
 		return
 	}
@@ -36,7 +36,7 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 
 	// Assign profile to process.
 	p.PrimaryProfileID = localProfile.ScopedID()
-	p.profile = localProfile.LayeredProfile()
+	p.profile.Store(localProfile.LayeredProfile())
 
 	return true, nil
 }
@@ -54,7 +54,7 @@ func (p *Process) RefetchProfile(ctx context.Context) error {
 
 	// Assign profile to process.
 	p.PrimaryProfileID = localProfile.ScopedID()
-	p.profile = localProfile.LayeredProfile()
+	p.profile.Store(localProfile.LayeredProfile())
 
 	return nil
 }
