@@ -55,21 +55,79 @@ pub const CFG_XRAY_INBOUND_PORT: &str = "xray/inboundPort";
 pub const CFG_XRAY_INBOUND_PROTOCOL: &str = "xray/inboundProtocol";
 /// Port of the local gRPC API inbound exposing Xray's StatsService. 0 disables it.
 pub const CFG_XRAY_STATS_PORT: &str = "xray/statsPort";
+/// Primary Xray binary setting under xray namespace.
+pub const CFG_XRAY_BINARY_NAMESPACED: &str = "xray/binary";
 /// Binary name looked up in the bin directory and PATH.
 pub const XRAY_BINARY_NAME: &str = "xray-rust";
 
+fn xray_binary_options() -> Vec<pm_config::PossibleValue> {
+    vec![
+        pm_config::PossibleValue {
+            name: "v2rayN Binary (/opt/v2rayn-bin/bin/xray/xray)".to_string(),
+            description: "Embedded v2rayN Xray core binary".to_string(),
+            value: Value::String("/opt/v2rayn-bin/bin/xray/xray".to_string()),
+        },
+        pm_config::PossibleValue {
+            name: "Auto-detect (System / PATH)".to_string(),
+            description: "Automatically detect Xray binary in /opt/v2rayn-bin, PATH or bin directory".to_string(),
+            value: Value::String(String::new()),
+        },
+        pm_config::PossibleValue {
+            name: "System binary (/usr/bin/xray)".to_string(),
+            description: "Standard system binary in /usr/bin/xray".to_string(),
+            value: Value::String("/usr/bin/xray".to_string()),
+        },
+        pm_config::PossibleValue {
+            name: "Local binary (/usr/local/bin/xray)".to_string(),
+            description: "Locally installed binary in /usr/local/bin/xray".to_string(),
+            value: Value::String("/usr/local/bin/xray".to_string()),
+        },
+        pm_config::PossibleValue {
+            name: "xray-rust".to_string(),
+            description: "Dedicated xray-rust binary".to_string(),
+            value: Value::String("xray-rust".to_string()),
+        },
+        pm_config::PossibleValue {
+            name: "xray (PATH)".to_string(),
+            description: "Standard xray binary in PATH".to_string(),
+            value: Value::String("xray".to_string()),
+        },
+    ]
+}
+
 /// Registers the Xray configuration options.
 pub fn register_options(config: &Config) -> pm_config::Result<()> {
+    let default_binary = if Path::new("/opt/v2rayn-bin/bin/xray/xray").is_file() {
+        "/opt/v2rayn-bin/bin/xray/xray".to_string()
+    } else {
+        String::new()
+    };
+
     config.register(
         ConfigOption::new(
             "Xray Binary",
             CFG_XRAY_BINARY,
-            "Path to the xray-rust binary. Empty uses the binary directory or PATH.",
+            "Path to the Xray binary. Select a pre-installed binary or auto-detect.",
             pm_config::OPT_TYPE_STRING,
-            Value::String(String::new()),
+            Value::String(default_binary.clone()),
         )
-        .with_expertise_level(pm_config::EXPERTISE_LEVEL_DEVELOPER)
-        .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("Development")),
+        .with_expertise_level(pm_config::EXPERTISE_LEVEL_USER)
+        .with_possible_values(xray_binary_options())
+        .with_annotation(pm_config::DISPLAY_HINT_ANNOTATION, json!(pm_config::DISPLAY_HINT_ONE_OF))
+        .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("General")),
+    )?;
+    config.register(
+        ConfigOption::new(
+            "Xray Binary",
+            CFG_XRAY_BINARY_NAMESPACED,
+            "Path to the Xray binary. Select a pre-installed binary or auto-detect.",
+            pm_config::OPT_TYPE_STRING,
+            Value::String(default_binary),
+        )
+        .with_expertise_level(pm_config::EXPERTISE_LEVEL_USER)
+        .with_possible_values(xray_binary_options())
+        .with_annotation(pm_config::DISPLAY_HINT_ANNOTATION, json!(pm_config::DISPLAY_HINT_ONE_OF))
+        .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("General")),
     )?;
     config.register(
         ConfigOption::new(
@@ -79,6 +137,7 @@ pub fn register_options(config: &Config) -> pm_config::Result<()> {
             pm_config::OPT_TYPE_BOOL,
             Value::Bool(false),
         )
+        .with_expertise_level(pm_config::EXPERTISE_LEVEL_USER)
         .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("General")),
     )?;
     config.register(
@@ -136,9 +195,22 @@ fn resolve_binary(configured: &str, bin_dir: &Path) -> Option<String> {
         }
         return exists_in_path(configured).then(|| configured.to_string());
     }
+    const KNOWN_PATHS: &[&str] = &[
+        "/opt/v2rayn-bin/bin/xray/xray",
+        "/usr/bin/xray",
+        "/usr/local/bin/xray",
+    ];
+    for &known in KNOWN_PATHS {
+        if Path::new(known).is_file() {
+            return Some(known.to_string());
+        }
+    }
     let candidate = bin_dir.join(XRAY_BINARY_NAME);
     if candidate.is_file() {
         return Some(candidate.to_string_lossy().into_owned());
+    }
+    if exists_in_path("xray") {
+        return Some("xray".to_string());
     }
     exists_in_path(XRAY_BINARY_NAME).then(|| XRAY_BINARY_NAME.to_string())
 }
@@ -176,7 +248,14 @@ impl Xray {
         bin_dir: PathBuf,
     ) -> Arc<Xray> {
         let enabled = config.get_as_bool(CFG_XRAY_ENABLE, false)();
-        let configured_binary = config.get_as_string(CFG_XRAY_BINARY, "")();
+        let configured_binary = {
+            let b = config.get_as_string(CFG_XRAY_BINARY_NAMESPACED, "")();
+            if b.is_empty() {
+                config.get_as_string(CFG_XRAY_BINARY, "")()
+            } else {
+                b
+            }
+        };
         let binary = resolve_binary(&configured_binary, &bin_dir).unwrap_or_default();
         let inbound_port = config
             .get_as_int(CFG_XRAY_INBOUND_PORT, i64::from(DEFAULT_INBOUND_PORT))()
