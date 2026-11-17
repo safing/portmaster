@@ -40,7 +40,7 @@ export class FeatureCardComponent implements OnChanges, OnDestroy {
       this.configValueSubscription.unsubscribe();
       this.configValueSubscription = Subscription.EMPTY;
 
-      if (!!this.feature?.ConfigKey) {
+      if (this.feature?.ConfigKey) {
         this.configValueSubscription =
           this.configService.watch<BoolSetting>(this.feature!.ConfigKey)
             .subscribe(value => {
