@@ -609,6 +609,7 @@ impl Service {
                 compat: Arc::clone(&compat),
                 interop: Arc::clone(&interop),
                 verdict_enabled: Arc::clone(&verdict_enabled),
+                notifications: Arc::clone(&notifications),
                 packet_metrics_file: options.packet_metrics_file.clone(),
             },
         )?);

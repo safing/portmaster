@@ -20,7 +20,8 @@ use pm_firewall::packet::{
 #[cfg(target_os = "linux")]
 use pm_firewall::packet::NfqPacket;
 use pm_firewall::{
-    CustomLists, FirewallEnv, LocalNetwork, MulticastRequest, ServiceCustomLists, SplitTunnelEnv,
+    create_prompt, endpoint_rule, CustomLists, FirewallEnv, LocalNetwork, MulticastRequest,
+    PromptEnv, PromptProfile, ServiceCustomLists, SplitTunnelEnv, CANCEL_PROMPT,
 };
 use pm_splittun::{SplitTunnelEnvAdapter, SplitTunnelProfiles};
 use pm_netenv::OnlineStatus;
@@ -184,6 +185,100 @@ impl CoreProfiles {
     }
 }
 
+/// Production implementation of the firewall prompt environment.
+///
+/// The prompt notification is created synchronously from the packet path, like
+/// Go's `createPrompt`; the async wait for an answer (and applying the verdict
+/// back to the connection) stays in `pm_firewall::prompt` and is left to the
+/// notification/action handler. The public `FirewallEnv::prompt` hook cannot
+/// await, so we create the notification and let the UI response save the rule
+/// via the action handler, matching Go's timeout semantics.
+pub struct CorePromptEnv {
+    config: Arc<Config>,
+    notifications: Arc<pm_notifications::Notifications>,
+    profiles: Arc<CoreProfiles>,
+}
+
+impl CorePromptEnv {
+    pub fn new(
+        config: Arc<Config>,
+        notifications: Arc<pm_notifications::Notifications>,
+        profiles: Arc<CoreProfiles>,
+    ) -> Arc<CorePromptEnv> {
+        Arc::new(CorePromptEnv {
+            config,
+            notifications,
+            profiles,
+        })
+    }
+}
+
+static PROMPT_SAVING_LOCK: RwLock<()> = RwLock::new(());
+
+impl PromptEnv for CorePromptEnv {
+    fn ask_timeout(&self) -> i64 {
+        self.config
+            .get_as_int("filter/askTimeout", 60)()
+            .max(1)
+    }
+
+    fn ask_with_system_notifications(&self) -> bool {
+        self.config
+            .get_as_bool("filter/askWithSystemNotifications", true)()
+    }
+
+    fn notifications(&self) -> Arc<pm_notifications::Notifications> {
+        Arc::clone(&self.notifications)
+    }
+
+    fn local_profile(&self, conn: &pm_network::Connection) -> Option<PromptProfile> {
+        let process = conn.process.as_ref()?;
+        let info = self.profiles.local_profile(process)?;
+        let full = self.profiles.store().get(&info.id).ok()?;
+        Some(PromptProfile {
+            source: info.source,
+            id: info.id,
+            name: info.name,
+            linked_path: if full.presentation_path.is_empty() {
+                full.linked_path
+            } else {
+                full.presentation_path
+            },
+        })
+    }
+
+    fn save_response(
+        &self,
+        profile_id: &str,
+        domain: &str,
+        ip: Option<IpAddr>,
+        action: &str,
+    ) -> Result<(), String> {
+        if action == CANCEL_PROMPT {
+            return Ok(());
+        }
+        let _guard = PROMPT_SAVING_LOCK
+            .write()
+            .unwrap_or_else(|error| error.into_inner());
+        let (rule, is_service) = endpoint_rule(domain, ip, action)?;
+        // Reload the profile to avoid overwriting concurrent changes.
+        let mut profile = self
+            .profiles
+            .store()
+            .get(profile_id)
+            .map_err(|error| format!("load profile {profile_id}: {error}"))?;
+        if is_service {
+            profile.add_service_endpoint(&rule);
+        } else {
+            profile.add_endpoint(&rule);
+        }
+        self.profiles
+            .store()
+            .save(&profile)
+            .map_err(|error| format!("save profile {profile_id}: {error}"))
+    }
+}
+
 impl ProfileLookup for CoreProfiles {
     fn local_profile(&self, process: &Process) -> Option<LocalProfileInfo> {
         let layered = self.layered_for(process)?;
@@ -273,6 +368,8 @@ pub struct CoreFirewallEnv {
     /// Interoperability verdicts, registered lazily by the interop module.
     interop: Arc<pm_interop::Interop>,
     verdict_enabled: Arc<AtomicBool>,
+    /// Prompts the user about connections whose default action is "ask".
+    prompt_env: Arc<CorePromptEnv>,
     /// Traffic inspectors run from the packet verdict handler (Go
     /// `service/firewall/inspection`).
     inspectors: Arc<InspectorRegistry>,
@@ -294,6 +391,7 @@ impl CoreFirewallEnv {
         compat: Arc<pm_compat::Compat>,
         interop: Arc<pm_interop::Interop>,
         verdict_enabled: Arc<AtomicBool>,
+        prompt_env: Arc<CorePromptEnv>,
     ) -> CoreFirewallEnv {
         let api_endpoint = local_addr.ip().is_loopback().then(|| (local_addr.ip(), local_addr.port()));
 
@@ -317,6 +415,7 @@ impl CoreFirewallEnv {
             ),
             interop,
             verdict_enabled,
+            prompt_env,
             inspectors: Arc::new(InspectorRegistry::new()),
         }
     }
@@ -431,8 +530,17 @@ impl FirewallEnv for CoreFirewallEnv {
     }
 
     fn prompt(&self, conn: &mut pm_network::Connection) {
-        // The interactive prompt needs an async wait; the synchronous firewall
-        // hook currently returns the same verdict Go gives after its timeout.
+        // Create a real interactive prompt notification (Go `createPrompt`):
+        // the user can respond from the UI, and the action handler persists the
+        // resulting endpoint rule to the profile. The hook is synchronous, so
+        // — exactly like Go after its decision timeout — the current packet is
+        // denied with the "waiting" reason; the saved rule applies to the next
+        // connection. The async wait inside `pm_firewall::prompt` is only used
+        // by tests, which run with a tokio runtime.
+        if let Some(handle) = create_prompt(conn, Arc::clone(&self.prompt_env) as Arc<dyn PromptEnv>)
+        {
+            conn.set_prompt(handle);
+        }
         conn.deny(
             "prompting in progress, please respond to prompt",
             "filter/defaultAction",
@@ -591,6 +699,8 @@ pub struct FirewallDeps<'a> {
     pub interop: Arc<pm_interop::Interop>,
     /// Lazily set by the interop module when it registers its verdict handler.
     pub verdict_enabled: Arc<AtomicBool>,
+    /// Notification registry used to create interactive filter prompts.
+    pub notifications: Arc<pm_notifications::Notifications>,
     /// Optional file for packet verdict metrics.
     pub packet_metrics_file: Option<std::path::PathBuf>,
 }
@@ -638,10 +748,16 @@ impl Firewall {
             compat,
             interop,
             verdict_enabled,
+            notifications,
             packet_metrics_file,
         } = deps;
 
         let custom_lists = ServiceCustomLists::new(custom_lists);
+        let prompt_env = CorePromptEnv::new(
+            Arc::clone(&config),
+            Arc::clone(&notifications),
+            Arc::clone(&profiles),
+        );
         let env = Arc::new(CoreFirewallEnv::new(
             &config,
             local_addr,
@@ -654,6 +770,7 @@ impl Firewall {
             compat,
             interop,
             verdict_enabled,
+            prompt_env,
         ));
 
         let process_cache =

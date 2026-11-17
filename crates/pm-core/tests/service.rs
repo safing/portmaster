@@ -299,7 +299,8 @@ async fn core_serves_api_and_database() {
         .iter()
         .any(|info| info.name == "network"));
 
-    // The synchronous prompt hook returns the Go timeout verdict.
+    // The synchronous prompt hook returns the Go timeout verdict; without a
+    // process/entity there is no profile to create a notification for.
     use pm_firewall::FirewallEnv;
     let mut conn = pm_network::Connection::default();
     firewall.env.prompt(&mut conn);
