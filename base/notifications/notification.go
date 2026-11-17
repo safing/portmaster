@@ -291,18 +291,6 @@ func (n *Notification) Save() {
 // save saves the notification to the internal storage. It locks the
 // notification, so it must not be locked when save is called.
 func (n *Notification) save(pushUpdate bool) {
-	var id string
-
-	// Save notification after pre-save processing.
-	defer func() {
-		if id != "" {
-			// Lock and save to notification storage.
-			notsLock.Lock()
-			defer notsLock.Unlock()
-			nots[id] = n
-		}
-	}()
-
 	// We do not access EventData here, so it is enough to just lock the
 	// notification itself.
 	n.lock.Lock()
@@ -314,6 +302,12 @@ func (n *Notification) save(pushUpdate bool) {
 		return
 	}
 
+	// Never resurrect a deleted notification, eg. when a pending save of a
+	// user response races with a deletion by the cleaner or an action function.
+	if meta := n.Meta(); meta != nil && meta.IsDeleted() {
+		return
+	}
+
 	// Derive EventID from Message if not given.
 	if n.EventID == "" {
 		n.EventID = fmt.Sprintf(
@@ -321,9 +315,6 @@ func (n *Notification) save(pushUpdate bool) {
 			utils.DerivedInstanceUUID(n.Message).String(),
 		)
 	}
-
-	// Save ID for deletion
-	id = n.EventID
 
 	// Generate random GUID if not set.
 	if n.GUID == "" {
@@ -348,6 +339,14 @@ func (n *Notification) save(pushUpdate bool) {
 
 	// Update meta data.
 	n.UpdateMeta()
+
+	// Save to notification storage while still holding the notification lock,
+	// so that a concurrent delete cannot be undone.
+	func() {
+		notsLock.Lock()
+		defer notsLock.Unlock()
+		nots[n.EventID] = n
+	}()
 
 	// Push update via the database system if needed.
 	if pushUpdate {
@@ -424,16 +423,6 @@ func (n *Notification) Delete() {
 // delete deletes the notification from the internal storage. It locks the
 // notification, so it must not be locked when delete is called.
 func (n *Notification) delete(pushUpdate bool) {
-	var id string
-
-	// Delete notification after processing deletion.
-	defer func() {
-		// Lock and delete from notification storage.
-		notsLock.Lock()
-		defer notsLock.Unlock()
-		delete(nots, id)
-	}()
-
 	// We do not access EventData here, so it is enough to just lock the
 	// notification itself.
 	n.lock.Lock()
@@ -444,11 +433,16 @@ func (n *Notification) delete(pushUpdate bool) {
 		return
 	}
 
-	// Save ID for deletion
-	id = n.EventID
-
 	// Mark notification as deleted.
 	n.Meta().Delete()
+
+	// Delete from notification storage while still holding the notification
+	// lock, so that it is consistent with the deleted flag checked by save.
+	func() {
+		notsLock.Lock()
+		defer notsLock.Unlock()
+		delete(nots, n.EventID)
+	}()
 
 	// Close expiry channel if available.
 	if n.expiredTrigger != nil {
