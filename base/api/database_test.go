@@ -206,3 +206,41 @@ func TestDatabaseWebsocketWriteTimeout(t *testing.T) { //nolint:paralleltest // 
 		}
 	}
 }
+
+// TestDatabaseAPIInsertWithoutAccessor checks that inserting into a record
+// that does not provide an accessor (eg. a wrapped non-JSON record) is
+// rejected instead of panicking. Database API operations run in their own
+// goroutines, so a panic there crashes the whole process.
+func TestDatabaseAPIInsertWithoutAccessor(t *testing.T) {
+	t.Parallel()
+	initTestDatabase(t)
+
+	replies := make(chan string, 100)
+	api := &DatabaseAPI{
+		shutdownSignal: make(chan struct{}),
+		shuttingDown:   abool.NewBool(false),
+		db:             database.NewInterface(nil),
+		sendBytes: func(data []byte) {
+			replies <- string(data)
+		},
+	}
+
+	// Store a CBOR record (format identifier "C") through the API.
+	api.handlePut([]byte("1"), "api-test:insert-cbor", []byte("C\xa0"), false)
+	if reply := <-replies; reply != "1|success" {
+		t.Fatalf("unexpected reply: %s", reply)
+	}
+
+	// Try to insert a value into it.
+	func() {
+		defer func() {
+			if v := recover(); v != nil {
+				t.Fatalf("insert panicked: %v", v)
+			}
+		}()
+		api.handleInsert([]byte("2"), "api-test:insert-cbor", []byte(`{"a":1}`))
+	}()
+	if reply := <-replies; !strings.HasPrefix(reply, "2|error|") {
+		t.Fatalf("unexpected reply: %s", reply)
+	}
+}

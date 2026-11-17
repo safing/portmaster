@@ -642,6 +642,12 @@ func (api *DatabaseAPI) handleInsert(opID []byte, key string, data []byte) {
 	// It must be unlocked again before saving, as Put locks it itself.
 	r.Lock()
 	acc := r.GetAccessor(r)
+	if acc == nil {
+		// Eg. wrapped records in a format other than JSON have no accessor.
+		r.Unlock()
+		api.send(opID, dbMsgTypeError, "record does not support inserting values", nil)
+		return
+	}
 
 	result := gjson.ParseBytes(data)
 	anythingPresent := false
