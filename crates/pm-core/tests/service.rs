@@ -509,6 +509,77 @@ async fn config_file_controls_api_keys_and_address() {
     service.shutdown().unwrap();
 }
 
+#[tokio::test]
+async fn api_keys_update_at_runtime_from_config() {
+    let data_dir = temp_dir("api-keys-runtime");
+    std::fs::create_dir_all(&data_dir).unwrap();
+    std::fs::write(
+        data_dir.join("config.json"),
+        r#"{
+  "core": {
+    "listenAddress": "127.0.0.1:0",
+    "apiKeys": ["old-key?read=admin&write=admin"]
+  }
+}"#,
+    )
+    .unwrap();
+
+    let mut options = test_options(&data_dir);
+    options.dev_mode = false;
+    let service = Arc::new(Service::start(&options).await.unwrap());
+    let address = service.local_addr();
+    let server = tokio::spawn(Arc::clone(&service).run());
+
+    // The startup key is accepted.
+    let response = http_get(
+        address,
+        "/api/database/v1",
+        "Authorization: Bearer old-key\r\n",
+    )
+    .await;
+    assert!(
+        response.starts_with("HTTP/1.1 400") || response.starts_with("HTTP/1.1 426"),
+        "{response}"
+    );
+
+    // Change the keys at runtime; the refresher task must reparse them.
+    service
+        .config
+        .set_config_option(
+            "core/apiKeys",
+            serde_json::json!(["new-key?read=admin&write=admin"]),
+        )
+        .unwrap();
+
+    // Poll briefly: the config-change notification is delivered asynchronously.
+    let mut accepted = false;
+    for _ in 0..40 {
+        let response = http_get(
+            address,
+            "/api/database/v1",
+            "Authorization: Bearer new-key\r\n",
+        )
+        .await;
+        if response.starts_with("HTTP/1.1 400") || response.starts_with("HTTP/1.1 426") {
+            accepted = true;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+    }
+    assert!(accepted, "new key was not accepted after config change");
+
+    let response = http_get(
+        address,
+        "/api/database/v1",
+        "Authorization: Bearer old-key\r\n",
+    )
+    .await;
+    assert!(response.starts_with("HTTP/1.1 403"), "{response}");
+
+    server.abort();
+    service.shutdown().unwrap();
+}
+
 fn dns_query(name: &str, qtype: u16) -> Vec<u8> {
     let mut packet = vec![0x12, 0x34, 0x01, 0x00, 0, 1, 0, 0, 0, 0, 0, 0];
     for label in name.trim_end_matches('.').split('.') {

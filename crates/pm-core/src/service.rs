@@ -803,6 +803,7 @@ impl Service {
     /// Serves the API until the process is asked to stop.
     pub async fn run(self: Arc<Self>) -> anyhow::Result<()> {
         let api = Arc::clone(&self.api);
+        let api_for_keys = Arc::clone(&self.api);
         let databases = Arc::clone(&self.databases);
         let listener = self
             .listener
@@ -840,6 +841,10 @@ impl Service {
                 if let Err(error) = profile_config.refresh() {
                     tracing::warn!(%error, "profile: some global settings are invalid");
                 }
+                // Like Go's EventConfigChange callback "update API keys":
+                // reparse core/apiKeys on every config change so keys added or
+                // removed via the settings UI take effect without a restart.
+                api_for_keys.update_api_keys(&config.get_as_string_array(CFG_API_KEYS, &[])());
                 firewall_env.refresh_options(&config);
                 if let Err(error) = firewall_profiles.refresh() {
                     tracing::warn!(%error, "profile: failed to reload local profiles");
