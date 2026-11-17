@@ -215,6 +215,9 @@ type hopCheck struct {
 	expansion *docks.ExpansionTerminal
 	authOp    *access.AuthorizeOp
 	pingOp    *PingOp
+
+	// expansionInUse is set when the new expansion was taken into use.
+	expansionInUse bool
 }
 
 func establishRoute(route *navigator.Route) (dstPin *navigator.Pin, dstTerminal terminal.Terminal, err error) {
@@ -255,6 +258,19 @@ func establishRoute(route *navigator.Route) (dstPin *navigator.Pin, dstTerminal 
 
 	// Build path and save created paths.
 	hopChecks := make([]*hopCheck, 0, len(route.Path)-1)
+	// If building the route fails, abandon all new expansions that were not
+	// taken into use. Nothing else references them, so they would otherwise
+	// linger until their idle timeout.
+	defer func() {
+		if err == nil {
+			return
+		}
+		for _, check := range hopChecks {
+			if check.authOp != nil && !check.expansionInUse {
+				check.expansion.Abandon(nil)
+			}
+		}
+	}()
 	for i, hop := range route.Path[1:] {
 		// Check if we already have a connection to the Hub.
 		activeTerminal := hop.Pin().GetActiveTerminal()
@@ -337,6 +353,7 @@ func establishRoute(route *navigator.Route) (dstPin *navigator.Pin, dstTerminal 
 				Terminal: check.expansion,
 				Route:    check.route,
 			})
+			check.expansionInUse = true
 			check.expansion.MarkReachable()
 			log.Infof("spn/crew: added conn to %s via %s", check.pin, check.route)
 
