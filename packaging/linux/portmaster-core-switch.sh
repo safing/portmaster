@@ -4,8 +4,13 @@
 # is taken before every switch.
 set -euo pipefail
 
+# Source of the Leptos/WASM pilot assets, resolved relative to this script.
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+PILOT_WEB=${PILOT_WEB:-${SCRIPT_DIR}/../../pilot/leptos/web}
+
 BIN_DIR=/usr/lib/portmaster
 DATA_DIR=/var/lib/portmaster
+PILOT_DEST_DIR=${DATA_DIR}/pilot-web
 UNIT=portmaster.service
 DROPIN_DIR=/etc/systemd/system/${UNIT}.d
 DROPIN=${DROPIN_DIR}/50-rust-core.conf
@@ -196,6 +201,14 @@ ui)
 		fi
 		;;
 	rust)
+		# The core serves the pilot from <data-dir>/pilot-web/. Copy the built
+		# WASM/JS/HTML assets there, otherwise the page loads but its resources 404.
+		if [[ ! -f ${PILOT_WEB}/index.html || ! -f ${PILOT_WEB}/pm_leptos_pilot.js ]]; then
+			echo "pilot assets not found in ${PILOT_WEB}; build them with pilot/leptos/build.sh" >&2
+			exit 1
+		fi
+		mkdir -p "${PILOT_DEST_DIR}"
+		cp -a "${PILOT_WEB}/." "${PILOT_DEST_DIR}/"
 		mkdir -p "${DROPIN_DIR}"
 		cat >"${UI_DROPIN}" <<UIOUF
 [Service]
