@@ -111,6 +111,10 @@ func ParseLayer3(packetData []byte, pktBase *Base) (err error) {
 	if len(packetData) == 0 {
 		return errors.New("empty packet")
 	}
+	// Hide any spare capacity of the buffer from the decoders: as we decode
+	// without copying, some gopacket decoders would otherwise read past the end
+	// of the packet into the rest of the buffer instead of failing.
+	packetData = packetData[:len(packetData):len(packetData)]
 
 	pktBase.layer3Data = packetData
 
@@ -161,6 +165,10 @@ func ParseLayer4(packetData []byte, pktBase *Base) (err error) {
 	if len(packetData) == 0 {
 		return errors.New("empty packet")
 	}
+	// Hide any spare capacity of the buffer from the decoders: as we decode
+	// without copying, some gopacket decoders would otherwise read past the end
+	// of the packet into the rest of the buffer instead of failing.
+	packetData = packetData[:len(packetData):len(packetData)]
 
 	var layer gopacket.LayerType
 	switch pktBase.info.Protocol {
