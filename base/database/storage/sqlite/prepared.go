@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/stephenafamo/bob"
@@ -50,8 +51,9 @@ func (db *SQLite) buildUpsert(rows int) (string, error) {
 	return rawQuery, nil
 }
 
-// PutMany stores many records in the database.
-func (db *SQLite) putManyWithPreparedStmts() (chan<- record.Record, <-chan error) {
+// putManyWithPreparedStmts stores many records in the database. The batch is
+// rolled back if abort is done before the batch channel is closed.
+func (db *SQLite) putManyWithPreparedStmts(abort context.Context) (chan<- record.Record, <-chan error) {
 	batch := make(chan record.Record, 100)
 	errs := make(chan error, 1)
 
@@ -110,6 +112,13 @@ func (db *SQLite) putManyWithPreparedStmts() (chan<- record.Record, <-chan error
 					args = args[:0]
 					pending = 0
 				} else {
+					// Also check for an abort when the batch channel was
+					// closed, as it is closed right after the abort.
+					if abort.Err() != nil {
+						err = batchAbortedErr(abort)
+						break writeBatch
+					}
+
 					// Write the remaining records with a statement of matching size.
 					if pending > 0 {
 						var remainderUpsert string
@@ -127,6 +136,10 @@ func (db *SQLite) putManyWithPreparedStmts() (chan<- record.Record, <-chan error
 					errs <- tx.Commit(db.ctx)
 					return
 				}
+
+			case <-abort.Done():
+				err = batchAbortedErr(abort)
+				break writeBatch
 
 			case <-db.ctx.Done():
 				err = db.shuttingDownErr()

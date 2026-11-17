@@ -156,25 +156,8 @@ func (c *Controller) Put(r record.Record) (err error) {
 // PutMany stores many records in the database. It does not
 // process any hooks or update subscriptions. Use with care!
 func (c *Controller) PutMany() (chan<- record.Record, <-chan error) {
-	if shuttingDown.IsSet() {
-		errs := make(chan error, 1)
-		errs <- ErrShuttingDown
-		return make(chan record.Record), errs
-	}
-
-	if c.ReadOnly() {
-		errs := make(chan error, 1)
-		errs <- ErrReadOnly
-		return make(chan record.Record), errs
-	}
-
-	if batcher, ok := c.storage.(storage.Batcher); ok {
-		return batcher.PutMany(c.shadowDelete)
-	}
-
-	errs := make(chan error, 1)
-	errs <- ErrNotImplemented
-	return make(chan record.Record), errs
+	batch, errs, _ := c.putMany(context.Background())
+	return batch, errs
 }
 
 // Query executes the given query on the database.
@@ -281,6 +264,37 @@ func (c *Controller) PurgeOlderThan(ctx context.Context, prefix string, purgeBef
 // Shutdown shuts down the storage.
 func (c *Controller) Shutdown() error {
 	return c.storage.Shutdown()
+}
+
+// putMany is like PutMany, but uses storage.AbortableBatcher if the storage
+// implements it. It then reports the batch as abortable: if abort is done
+// before the batch channel is closed, the storage does not store the batch.
+// Other storages ignore abort.
+func (c *Controller) putMany(abort context.Context) (batch chan<- record.Record, errs <-chan error, abortable bool) {
+	failed := func(err error) (chan<- record.Record, <-chan error, bool) {
+		errs := make(chan error, 1)
+		errs <- err
+		return make(chan record.Record), errs, false
+	}
+
+	if shuttingDown.IsSet() {
+		return failed(ErrShuttingDown)
+	}
+
+	if c.ReadOnly() {
+		return failed(ErrReadOnly)
+	}
+
+	switch batcher := c.storage.(type) {
+	case storage.AbortableBatcher:
+		batch, errs = batcher.PutManyAbortable(abort, c.shadowDelete)
+		return batch, errs, true
+	case storage.Batcher:
+		batch, errs = batcher.PutMany(c.shadowDelete)
+		return batch, errs, false
+	}
+
+	return failed(ErrNotImplemented)
 }
 
 // notifySubscribers notifies all subscribers that are interested

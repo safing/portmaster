@@ -14,6 +14,7 @@ import (
 	"github.com/safing/portmaster/base/database/iterator"
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/database/storage"
 )
 
 const (
@@ -360,10 +361,16 @@ func (i *Interface) PutNew(r record.Record) (err error) {
 // Use with care.
 //
 // Calling put with nil finishes the batch and returns its result. If put is
-// not called for one second, the batch is closed: the records submitted
-// before (put returned nil) are still handed to the storage, which commits
-// them, and the batch then fails with an error that says whether they were
-// stored. A timed out batch is thus not rolled back.
+// not called for one second, the batch is aborted and fails with an error
+// that says whether the records submitted before (put returned nil) were
+// stored:
+//   - Storages that implement storage.AbortableBatcher (sqlite, bbolt) discard
+//     the batch: none of its records are stored. With these storages a batch
+//     is thus stored completely if put(nil) returns nil, and not at all
+//     otherwise.
+//   - Other storages cannot abort a batch: the records submitted before are
+//     still handed to the storage, which stores them. A timed out batch is
+//     then not rolled back.
 func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 	interfaceBatch := make(chan record.Record, 100)
 
@@ -390,7 +397,10 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 	}
 
 	// start database access
-	dbBatch, errs := db.PutMany()
+	// Cancelling abortBatch before closing dbBatch aborts the batch, if the
+	// storage supports it (abortable).
+	abortBatch, cancelBatch := context.WithCancelCause(context.Background())
+	dbBatch, errs, abortable := db.putMany(abortBatch)
 	finished := abool.New()
 	// The proxy is the only reader of errs. It sets result to the final error
 	// of the batch and then closes done when it exits.
@@ -408,6 +418,9 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 	// interface options proxy
 	go func() {
 		defer close(done)
+		// Release the abort context. All paths have closed dbBatch and
+		// received the result of the storage by now, so this aborts nothing.
+		defer cancelBatch(nil)
 		var forwarded int
 		// forward passes r on to the storage. If the storage stopped processing
 		// the batch, it sets result and returns false.
@@ -465,9 +478,15 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 					}
 				}
 
-				// Closing the batch channel makes the storage commit the
-				// records passed on so far. Wait for the outcome, so that the
+				// The batch is incomplete, unless the caller finished it just
+				// now. Abort it before closing the batch channel, so that the
+				// storage discards it. A storage that cannot abort a batch
+				// commits the records passed on so far when the batch channel
+				// is closed. Wait for the outcome in both cases, so that the
 				// caller learns whether they were stored.
+				if abortable && !finishing {
+					cancelBatch(errPutManyTimeout)
+				}
 				close(dbBatch)
 				result = putManyTimeoutError(<-errs, forwarded, finishing)
 				return
@@ -539,12 +558,19 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 
 // putManyTimeoutError returns the result of a batch that was closed because of
 // the idle timeout. storageErr is the result of the storage for the forwarded
-// records passed on before. If the caller had finished the batch already
+// records passed on before, which is storage.ErrBatchAborted if the storage
+// discarded them. If the caller had finished the batch already
 // (finishing), the storage result is returned as is.
 func putManyTimeoutError(storageErr error, forwarded int, finishing bool) error {
 	switch {
 	case finishing:
 		return storageErr
+	case errors.Is(storageErr, storage.ErrBatchAborted):
+		// The storage discarded the batch.
+		if forwarded == 0 {
+			return errPutManyTimeout
+		}
+		return fmt.Errorf("%w; the %d records submitted before were not stored: %w", errPutManyTimeout, forwarded, storage.ErrBatchAborted)
 	case storageErr != nil:
 		return fmt.Errorf("%w; storing the %d records submitted before failed: %w", errPutManyTimeout, forwarded, storageErr)
 	case forwarded == 0:

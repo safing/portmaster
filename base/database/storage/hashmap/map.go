@@ -66,6 +66,11 @@ func (hm *HashMap) Put(r record.Record) (record.Record, error) {
 }
 
 // PutMany stores many records in the database.
+// Every record is stored as soon as it is received, so a batch is not atomic
+// and cannot be rolled back. The hashmap therefore does not implement
+// storage.AbortableBatcher on purpose: when a batch is aborted (see
+// database.Interface.PutMany), the records passed on before stay stored, and
+// the batch result says so.
 func (hm *HashMap) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error) {
 	hm.dbLock.Lock()
 	defer hm.dbLock.Unlock()

@@ -140,11 +140,19 @@ func (b *BBolt) Put(r record.Record) (record.Record, error) {
 // either all or none of them are stored and a slow producer does not block
 // other writers. Exactly one value is sent on the error channel.
 func (b *BBolt) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error) {
+	return b.PutManyAbortable(context.Background(), shadowDelete)
+}
+
+// PutManyAbortable stores many records in the database like PutMany, unless
+// abort is done before the batch channel is closed: the collected records are
+// then discarded without opening a transaction and the result wraps
+// storage.ErrBatchAborted.
+func (b *BBolt) PutManyAbortable(abort context.Context, shadowDelete bool) (chan<- record.Record, <-chan error) {
 	batch := make(chan record.Record, 100)
 	errs := make(chan error, 1)
 
 	go func() {
-		errs <- b.putMany(batch, shadowDelete)
+		errs <- b.putMany(abort, batch, shadowDelete)
 	}()
 
 	return batch, errs
@@ -533,14 +541,29 @@ type batchEntry struct {
 // transaction. It must not use DB.Batch: bbolt may run a Batch function more
 // than once (when it is combined with a failing one, or when it fails itself),
 // and the records of the channel can only be consumed once.
-func (b *BBolt) putMany(batch <-chan record.Record, shadowDelete bool) error {
+// If abort is done before the batch channel is closed, nothing is written.
+func (b *BBolt) putMany(abort context.Context, batch <-chan record.Record, shadowDelete bool) error {
 	var entries []batchEntry
-	for r := range batch {
-		entry, err := prepareBatchEntry(r, shadowDelete)
-		if err != nil {
-			return err
+collect:
+	for {
+		select {
+		case r, ok := <-batch:
+			if !ok {
+				break collect
+			}
+			entry, err := prepareBatchEntry(r, shadowDelete)
+			if err != nil {
+				return err
+			}
+			entries = append(entries, entry)
+		case <-abort.Done():
+			break collect
 		}
-		entries = append(entries, entry)
+	}
+	// Also check for an abort when the batch channel was closed, as it is
+	// closed right after the abort.
+	if abort.Err() != nil {
+		return fmt.Errorf("%w: %w", storage.ErrBatchAborted, context.Cause(abort))
 	}
 	if len(entries) == 0 {
 		return nil

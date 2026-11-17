@@ -241,12 +241,19 @@ func (db *SQLite) putRecord(r record.Record, tx *bob.Tx) (record.Record, error) 
 
 // PutMany stores many records in the database.
 func (db *SQLite) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error) {
+	return db.PutManyAbortable(context.Background(), shadowDelete)
+}
+
+// PutManyAbortable stores many records in the database like PutMany, unless
+// abort is done before the batch channel is closed: the transaction of the
+// batch is then rolled back and the result wraps storage.ErrBatchAborted.
+func (db *SQLite) PutManyAbortable(abort context.Context, shadowDelete bool) (chan<- record.Record, <-chan error) {
 	db.wg.Add(1)
 	defer db.wg.Done()
 
 	// Check if we should use prepared statement optimized inserting.
 	if UsePreparedStatements {
-		return db.putManyWithPreparedStmts()
+		return db.putManyWithPreparedStmts(abort)
 	}
 
 	batch := make(chan record.Record, 100)
@@ -276,10 +283,21 @@ func (db *SQLite) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error
 						break writeBatch
 					}
 				} else {
+					// Also check for an abort when the batch channel was
+					// closed, as it is closed right after the abort.
+					if abort.Err() != nil {
+						err = batchAbortedErr(abort)
+						break writeBatch
+					}
+
 					// Finalize transcation.
 					errs <- tx.Commit(db.ctx)
 					return
 				}
+
+			case <-abort.Done():
+				err = batchAbortedErr(abort)
+				break writeBatch
 
 			case <-db.ctx.Done():
 				err = db.shuttingDownErr()
@@ -572,6 +590,12 @@ func (db *SQLite) Shutdown() error {
 // database is shutting down.
 func (db *SQLite) shuttingDownErr() error {
 	return fmt.Errorf("%w: %w", errShuttingDown, db.ctx.Err())
+}
+
+// batchAbortedErr returns the error for a batch that was aborted by its
+// caller.
+func batchAbortedErr(abort context.Context) error {
+	return fmt.Errorf("%w: %w", storage.ErrBatchAborted, context.Cause(abort))
 }
 
 // rollbackBatch rolls back the transaction of an aborted batch.
