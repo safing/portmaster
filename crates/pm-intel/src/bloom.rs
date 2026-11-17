@@ -84,6 +84,18 @@ impl Ring {
         self.hash
     }
 
+    /// Returns the approximate element capacity of the filter.
+    ///
+    /// The capacity report shows elements instead of the raw bit count: with
+    /// `m` bits and `k` hash rounds that is `m / k`, rounded to the nearest
+    /// element.
+    pub fn capacity(&self) -> u64 {
+        if self.hash == 0 {
+            return 0;
+        }
+        (self.size as f64 / self.hash as f64).round() as u64
+    }
+
     /// Returns the bit array.
     pub fn bits(&self) -> &[u8] {
         &self.bits
@@ -351,21 +363,21 @@ impl ScopedBloom {
         }
     }
 
-    /// Returns the values added per filter next to its capacity.
+    /// Returns the values added per filter next to its element capacity.
     pub fn capacity_report(&self) -> String {
         let added = |scope: &str| self.added.get(scope).copied().unwrap_or(0);
         format!(
             "domain={}/{} asn={}/{} country={}/{} ipv4={}/{} ipv6={}/{}",
             added("domain"),
-            self.domain.size(),
+            self.domain.capacity(),
             added("asn"),
-            self.asn.size(),
+            self.asn.capacity(),
             added("country"),
-            self.country.size(),
+            self.country.capacity(),
             added("ipv4"),
-            self.ipv4.size(),
+            self.ipv4.capacity(),
             added("ipv6"),
-            self.ipv6.size(),
+            self.ipv6.capacity(),
         )
     }
 
@@ -442,6 +454,15 @@ mod tests {
     }
 
     #[test]
+    fn capacity_is_element_capacity_not_bit_count() {
+        let ring = Ring::init(2_000_000, BF_FALSE_POSITIVE_RATE).unwrap();
+        assert_eq!(ring.size(), 28_755_176);
+        assert_eq!(ring.hash_rounds(), 10);
+        // 28_755_176 bits / 10 hashes, rounded to the nearest element.
+        assert_eq!(ring.capacity(), 2_875_518);
+    }
+
+    #[test]
     fn membership_and_reset() {
         let mut ring = Ring::init(100, 0.01).unwrap();
         assert!(!ring.test(b"value"));
@@ -467,8 +488,10 @@ mod tests {
         assert!(bloom.test("unknown", "anything"));
 
         let report = bloom.capacity_report();
-        assert!(report.starts_with("domain=2/"), "{report}");
-        assert!(report.contains("ipv4=1/"), "{report}");
+        assert_eq!(
+            report, "domain=2/144 asn=0/14 country=0/7 ipv4=1/29 ipv6=0/29",
+            "{report}"
+        );
 
         let other = ScopedBloom::with_sizes(100, 10, 5, 20, 20);
         bloom.replace_with(other);

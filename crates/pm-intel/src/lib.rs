@@ -10,8 +10,11 @@
 //! * The bloom filters are byte-compatible with `github.com/tannerryan/ring`
 //!   (MurmurHash3 x64 128, four-hash scheme, serialization with version 1), so
 //!   filters cached by the Go core can be loaded.
-//! * The DSDL decoder only supports JSON entries; the Go code accepts any DSD
-//!   format with a complex structure. Filterlist files use JSON.
+//! * The DSDL decoder supports the structural DSD formats implemented by
+//!   `pm-dsd` (JSON, CBOR and MessagePack). Unsupported or undecodable entries
+//!   are skipped with a warning instead of failing the whole update; Go's
+//!   `dsd.LoadAsFormat` also accepts BSON, GenCode and YAML. Filterlist files
+//!   use JSON.
 //! * The filterlists index, the updater, `service/updates` integration and the
 //!   module lifecycle are not ported yet. [`FilterLists::store_entry`] writes
 //!   records one by one instead of batching by 1000.
