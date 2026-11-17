@@ -107,42 +107,48 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 				return
 			}
 
-			func() {
-				conn.Lock()
-				defer conn.Unlock()
-
-				if !conn.DataIsComplete() {
-					return
-				}
-
-				model, err := convertConnection(conn)
-				if err != nil {
-					log.Errorf("netquery: failed to convert connection %s to sqlite model: %s", conn.ID, err)
-
-					return
-				}
-
-				// DEBUG:
-				// log.Tracef("netquery: updating connection %s", conn.ID)
-
-				// Save to netquery database.
-				// Do not include internal connections in history.
-				if err := mng.store.Save(ctx, *model, conn.HistoryEnabled); err != nil {
-					log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)
-					return
-				}
-
-				// we clone the record metadata from the connection
-				// into the new model so the portbase/database layer
-				// can handle NEW/UPDATE correctly.
-				cloned := conn.Meta().Duplicate()
-
-				// push an update for the connection
-				if err := mng.pushConnUpdate(ctx, *cloned, *model); err != nil {
-					log.Errorf("netquery: failed to push update for conn %s via database system: %s", conn.ID, err)
-				}
-			}()
+			mng.handleConnection(ctx, conn)
 		}
+	}
+}
+
+// handleConnection persists a new or updated connection and pushes the update
+// to the database subscribers.
+func (mng *Manager) handleConnection(ctx context.Context, conn *network.Connection) {
+	conn.Lock()
+	defer conn.Unlock()
+
+	if !conn.DataIsComplete() {
+		return
+	}
+
+	model, err := convertConnection(conn)
+	if err != nil {
+		log.Errorf("netquery: failed to convert connection %s to sqlite model: %s", conn.ID, err)
+
+		return
+	}
+
+	// DEBUG:
+	// log.Tracef("netquery: updating connection %s", conn.ID)
+
+	// Save to netquery database.
+	// Do not include internal connections in history.
+	err = mng.store.Save(ctx, *model, conn.HistoryEnabled)
+	if err != nil {
+		log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)
+		return
+	}
+
+	// we clone the record metadata from the connection
+	// into the new model so the portbase/database layer
+	// can handle NEW/UPDATE correctly.
+	cloned := conn.Meta().Duplicate()
+
+	// push an update for the connection
+	err = mng.pushConnUpdate(ctx, *cloned, *model)
+	if err != nil {
+		log.Errorf("netquery: failed to push update for conn %s via database system: %s", conn.ID, err)
 	}
 }
 

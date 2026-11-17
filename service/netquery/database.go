@@ -687,9 +687,12 @@ func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) err
 		db.saveQuery.Store(query)
 	}
 
-	values := make(map[string]any, len(connMap))
+	// Bind the values by position, in the order of the columns. Binding them
+	// by name makes sqlitex look up the name of every parameter of the
+	// statement in SQLite for every execution.
+	values := make([]any, len(query.columns))
 	for i, key := range query.columns {
-		values[query.params[i]] = connMap[key]
+		values[i] = connMap[key]
 	}
 
 	db.l.Lock()
@@ -713,7 +716,7 @@ func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) err
 		sql := query.sql(dbName)
 
 		if err := sqlitex.Execute(db.writeConn, sql, &sqlitex.ExecOptions{
-			Named: values,
+			Args: values,
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				log.Errorf("netquery: got result statement with %d columns", stmt.ColumnCount())
 				return nil
@@ -731,8 +734,6 @@ func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) err
 type saveQuery struct {
 	// columns holds the sorted column names.
 	columns []string
-	// params holds the named parameter for each column.
-	params []string
 
 	columnList      string
 	placeholderList string
@@ -757,13 +758,15 @@ func newSaveQuery(connMap map[string]any) *saveQuery {
 
 	for _, key := range keys {
 		columns = append(columns, key)
-		placeholders = append(placeholders, ":"+key)
-		updateSets = append(updateSets, fmt.Sprintf("%s = :%s", key, key))
+		// The values are bound by position: one parameter per column, in
+		// the order of the columns. An update sets the values of the row that
+		// could not be inserted.
+		placeholders = append(placeholders, "?")
+		updateSets = append(updateSets, fmt.Sprintf("%s = excluded.%s", key, key))
 	}
 
 	q := &saveQuery{
 		columns:         columns,
-		params:          placeholders,
 		columnList:      strings.Join(columns, ", "),
 		placeholderList: strings.Join(placeholders, ", "),
 		updateSetList:   strings.Join(updateSets, ", "),

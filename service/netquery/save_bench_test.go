@@ -15,6 +15,9 @@ import (
 	"github.com/safing/portmaster/service/network/netutils"
 )
 
+// benchDomain is the domain of the benchmark connections.
+const benchDomain = "www.example.com."
+
 // benchSkipFields are the fields Database.Save does not encode.
 var benchSkipFields = []string{"bytes_received", "bytes_sent"}
 
@@ -35,7 +38,7 @@ func newBenchConn() Conn {
 		LocalPort:       51234,
 		RemoteIP:        "93.184.216.34",
 		RemotePort:      443,
-		Domain:          "www.example.com.",
+		Domain:          benchDomain,
 		Country:         "US",
 		ASN:             15133,
 		ASOwner:         "Edgecast Inc.",
@@ -128,21 +131,20 @@ func TestSaveQuery(t *testing.T) {
 
 	q := newSaveQuery(map[string]any{"id": 1, "b": 2, "a": 3})
 	require.Equal(t, []string{"a", "b", "id"}, q.columns)
-	require.Equal(t, []string{":a", ":b", ":id"}, q.params)
 	require.Equal(t, `INSERT INTO main.connections (a, b, id)
-				VALUES(:a, :b, :id)
+				VALUES(?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
-				a = :a, b = :b, id = :id
+				a = excluded.a, b = excluded.b, id = excluded.id
 			`, q.sql(LiveDatabase))
 	require.Equal(t, `INSERT INTO history.connections (a, b, id)
-				VALUES(:a, :b, :id)
+				VALUES(?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
-				a = :a, b = :b, id = :id
+				a = excluded.a, b = excluded.b, id = excluded.id
 			`, q.sql(HistoryDatabase))
 	require.Equal(t, `INSERT INTO other.connections (a, b, id)
-				VALUES(:a, :b, :id)
+				VALUES(?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
-				a = :a, b = :b, id = :id
+				a = excluded.a, b = excluded.b, id = excluded.id
 			`, q.sql("other"))
 
 	require.True(t, q.matches(map[string]any{"a": nil, "b": nil, "id": nil}))
