@@ -18,8 +18,11 @@ func setTestModule(t *testing.T) *mgr.Manager {
 	m := mgr.New("sluice-test")
 	module = &SluiceModule{mgr: m}
 	t.Cleanup(func() {
-		m.Cancel()
 		stopAllSluices()
+		m.Cancel()
+		if !m.WaitForWorkers(5 * time.Second) {
+			t.Error("sluice workers did not stop")
+		}
 	})
 	return m
 }
@@ -57,9 +60,9 @@ func TestSluiceStopBeforeListen(t *testing.T) { //nolint:paralleltest // Uses gl
 	}
 }
 
-func testConnInfo(ipVersion packet.IPVersion, proto packet.IPProtocol, localIP net.IP, localPort uint16) *network.Connection {
+func testConnInfo(proto packet.IPProtocol, localIP net.IP, localPort uint16) *network.Connection {
 	return &network.Connection{
-		IPVersion:  ipVersion,
+		IPVersion:  packet.IPv4,
 		IPProtocol: proto,
 		LocalIP:    localIP,
 		LocalPort:  localPort,
@@ -82,7 +85,7 @@ func TestExpiredRequestIsNotUsed(t *testing.T) {
 	noop := func(*network.Connection, net.Conn) {}
 
 	stale := &Request{
-		ConnInfo:   testConnInfo(packet.IPv4, packet.UDP, localIP, 40000),
+		ConnInfo:   testConnInfo(packet.UDP, localIP, 40000),
 		CallbackFn: noop,
 		Expires:    time.Now().Add(-time.Second),
 	}
@@ -100,7 +103,7 @@ func TestExpiredRequestIsNotUsed(t *testing.T) {
 	// Re-add the stale one and check that a new request replaces it.
 	s.pendingRequests[key] = stale
 	fresh := &Request{
-		ConnInfo:   testConnInfo(packet.IPv4, packet.UDP, localIP, 40000),
+		ConnInfo:   testConnInfo(packet.UDP, localIP, 40000),
 		CallbackFn: noop,
 	}
 	err = s.AwaitRequest(fresh)
