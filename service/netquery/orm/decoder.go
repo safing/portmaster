@@ -3,6 +3,7 @@ package orm
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -328,6 +329,12 @@ func decodeBasic() DecodeFunc {
 					t.Set(reflect.ValueOf(result))
 
 					result = t.Interface()
+				}
+
+				// An empty json.RawMessage is not valid JSON and fails to
+				// encode, so return it as null instead.
+				if raw, ok := result.(json.RawMessage); ok && len(raw) == 0 {
+					result = json.RawMessage(nil)
 				}
 			}()
 		}
