@@ -137,9 +137,14 @@ func TestRollbackReportsAndKeepsUnrestoredFile(t *testing.T) {
 	updater, downloader, installedDir := newRollbackTestUpdater(t, nil)
 
 	// Give the old file distinct content to tell it apart from the new one.
-	const name = "portmaster-core"
+	const name = rollbackTestExecutable
 	const oldContent = "old:portmaster-core"
 	err := os.WriteFile(filepath.Join(installedDir, name), []byte(oldContent), 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// It is executable, which the restore must keep (only checked on Unix).
+	err = os.Chmod(filepath.Join(installedDir, name), 0o755) //nolint:gosec // An executable of the installed version.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,5 +214,12 @@ func TestRollbackReportsAndKeepsUnrestoredFile(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join(installedDir, name))
 	if err != nil || string(content) != oldContent {
 		t.Errorf("old file not restored by the next upgrade: %q, %v", content, err)
+	}
+	info, err := os.Stat(filepath.Join(installedDir, name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !onWindows && info.Mode().Perm() != 0o755 {
+		t.Errorf("old file not restored with its permissions by the next upgrade: %v", info.Mode())
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -125,7 +126,7 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) (installedFiles []str
 			// Otherwise, move file to purge dir.
 			src := filepath.Join(u.cfg.Directory, file.Name())
 			dst := filepath.Join(u.cfg.PurgeDirectory, file.Name())
-			err := u.moveFile(src, dst, "", utils.PublicReadPermission)
+			err := u.moveInstalledFile(src, dst)
 			if err != nil {
 				return nil, fmt.Errorf("failed to move current file %s to purge dir: %w", file.Name(), err)
 			}
@@ -162,15 +163,36 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) (installedFiles []str
 	return installedFiles, nil
 }
 
+// onWindows is true if file permissions are ACLs instead of Unix modes.
+const onWindows = runtime.GOOS == "windows"
+
 // renameFile is os.Rename. Tests replace it to exercise the copy fallback of moveFile.
 var renameFile = os.Rename
 
 // moveFile moves a file and falls back to copying if it fails.
+// The moved file gets filePermission.
 func (u *Updater) moveFile(currentPath, newPath string, sha256sum string, filePermission utils.FSPermission) error {
+	return u.moveFileWithPermission(currentPath, newPath, sha256sum, filePermission, false)
+}
+
+// moveInstalledFile moves a file of the installed version between the main and
+// the purge directory. On Unix, the file keeps its permissions, so that a
+// rollback restores them: e.g. an executable must stay executable.
+// On Windows, it gets PublicReadPermission like before, which grants the same
+// ACLs as PublicReadExecPermission there.
+func (u *Updater) moveInstalledFile(currentPath, newPath string) error {
+	return u.moveFileWithPermission(currentPath, newPath, "", utils.PublicReadPermission, !onWindows)
+}
+
+func (u *Updater) moveFileWithPermission(currentPath, newPath string, sha256sum string, filePermission utils.FSPermission, keepUnixMode bool) error {
 	// Try to simply move file.
 	err := renameFile(currentPath, newPath)
 	if err == nil {
 		// Moving was successful, return.
+		if keepUnixMode {
+			// The file kept its permissions.
+			return nil
+		}
 		// A moved directory (of the old version) keeps its permissions: file
 		// permissions would make its contents inaccessible.
 		info, statErr := os.Lstat(newPath)
@@ -181,10 +203,27 @@ func (u *Updater) moveFile(currentPath, newPath string, sha256sum string, filePe
 	}
 	log.Tracef("updates/%s: failed to move to %q, falling back to copy+delete: %s", u.cfg.Name, newPath, err)
 
+	// The copy must get the permissions of the source.
+	var srcInfo os.FileInfo
+	if keepUnixMode {
+		srcInfo, err = os.Stat(currentPath)
+		if err != nil {
+			return fmt.Errorf("move failed, copy+delete fallback failed: %w", err)
+		}
+	}
+
 	// Copy and check the checksum while we are at it.
 	err = copyAndCheckSHA256Sum(currentPath, newPath, sha256sum, filePermission)
 	if err != nil {
 		return fmt.Errorf("move failed, copy+delete fallback failed: %w", err)
+	}
+	if keepUnixMode {
+		err = os.Chmod(newPath, srcInfo.Mode().Perm())
+		if err != nil {
+			// The source is still in place: remove the copy and keep the source.
+			_ = os.Remove(newPath)
+			return fmt.Errorf("move failed, copy+delete fallback failed to set permissions: %w", err)
+		}
 	}
 
 	// Complete the move: the source must not remain, e.g. an old file in the main directory.
@@ -231,7 +270,7 @@ func (u *Updater) recoverFromFailedUpgrade(installedFiles []string) error {
 				}
 			}
 		}
-		err := u.moveFile(purgedFile, activeFile, "", utils.PublicReadPermission)
+		err := u.moveInstalledFile(purgedFile, activeFile)
 		if err != nil {
 			// Continue to recover as many files as possible, but report the
 			// failure: the file is only in the purge directory now.

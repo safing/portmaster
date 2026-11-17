@@ -14,6 +14,9 @@ const (
 	rollbackTestName  = "Test"
 	rollbackTestIndex = "index.json"
 
+	// rollbackTestExecutable is an executable file of both versions.
+	rollbackTestExecutable = "portmaster-core"
+
 	// rollbackTestIgnored is a file of both versions that tests add to Config.Ignore.
 	rollbackTestIgnored = "portmaster"
 )
@@ -265,4 +268,78 @@ func TestRollbackRestoresDirectoryReplacedByArtifact(t *testing.T) {
 		t.Fatalf("directory not restored with its permissions: %v, %v", info, err)
 	}
 	compareSnapshots(t, before, snapshotDir(t, installedDir))
+}
+
+// snapshotModes returns the permissions of all files below dir (relative path -> mode).
+func snapshotModes(t *testing.T, dir string) map[string]fs.FileMode {
+	t.Helper()
+
+	modes := make(map[string]fs.FileMode)
+	err := fs.WalkDir(os.DirFS(dir), ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || path == "." {
+			return err
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		modes[path] = info.Mode().Perm()
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return modes
+}
+
+//nolint:paralleltest // Replaces the package-level renameFile.
+func TestRollbackRestoresFilePermissions(t *testing.T) {
+	if onWindows {
+		t.Skip("file permissions are ACLs on Windows")
+	}
+
+	for _, tc := range []struct {
+		name   string
+		rename func(oldpath, newpath string) error
+	}{
+		{name: "rename", rename: os.Rename},
+		{name: "copy fallback", rename: failRename},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			updater, downloader, installedDir := newRollbackTestUpdater(t, nil)
+
+			// The old version has an executable and a non-executable file.
+			for name, mode := range map[string]fs.FileMode{
+				rollbackTestExecutable: 0o755,
+				"assets.zip":           0o644,
+			} {
+				err := os.Chmod(filepath.Join(installedDir, name), mode)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			before := snapshotModes(t, installedDir)
+
+			// Make the upgrade fail midway: the last artifact is missing in the download dir.
+			last := downloader.index.Artifacts[len(downloader.index.Artifacts)-1].Filename
+			err := os.Remove(filepath.Join(updater.cfg.DownloadDirectory, last))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			renameFile = tc.rename
+			defer func() { renameFile = os.Rename }()
+
+			err = updater.upgrade(downloader, true)
+			if err == nil || strings.Contains(err.Error(), "including recovery") {
+				t.Fatalf("expected upgrade to fail with a successful recovery, got: %v", err)
+			}
+			after := snapshotModes(t, installedDir)
+			for name, mode := range before {
+				if after[name] != mode {
+					t.Errorf("%s: permissions %v before upgrade, %v after rollback", name, mode, after[name])
+				}
+			}
+		})
+	}
 }
