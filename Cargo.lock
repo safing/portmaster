@@ -1987,6 +1987,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
+ "socket2",
  "thiserror",
  "tokio",
  "tokio-test",

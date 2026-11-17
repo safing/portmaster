@@ -3,9 +3,13 @@ pub mod socks4;
 pub mod socks5;
 
 use std::io;
+use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use url::Url;
+
+use crate::binding::LocalBinding;
+use crate::dial::{connect_tcp, resolve_peers};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UpstreamScheme {
@@ -79,19 +83,42 @@ impl UpstreamProxy {
         })
     }
 
+    /// Resolves the proxy address and connects, without a local binding.
     pub async fn dial_and_handshake(
         &self,
         target_host: &str,
         target_port: u16,
         timeout: Duration,
     ) -> io::Result<TcpStream> {
-        let proxy_addr = format!("{}:{}", self.host, self.port);
-        let dial_fut = TcpStream::connect(&proxy_addr);
-        let mut stream = tokio::time::timeout(timeout, dial_fut)
-            .await
-            .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "proxy dial timeout"))??;
+        let peers = resolve_peers(&self.host, self.port, timeout).await?;
+        let mut last_error = None;
+        for proxy_addr in peers {
+            match self
+                .dial_and_handshake_to(proxy_addr, target_host, target_port, None, timeout)
+                .await
+            {
+                Ok(stream) => return Ok(stream),
+                Err(error) => last_error = Some(error),
+            }
+        }
+        Err(last_error.unwrap_or_else(|| {
+            io::Error::new(io::ErrorKind::NotFound, "proxy host has no addresses")
+        }))
+    }
 
-        let host_to_send = self.target_host_override.as_deref().unwrap_or(target_host);
+    /// Connects to an already-resolved proxy address and performs the
+    /// handshake. `binding` applies the selected local IP/interface to the
+    /// socket that connects to the proxy server.
+    pub async fn dial_and_handshake_to(
+        &self,
+        proxy_addr: SocketAddr,
+        target_host: &str,
+        target_port: u16,
+        binding: Option<&LocalBinding>,
+        timeout: Duration,
+    ) -> io::Result<TcpStream> {
+        let mut stream = connect_tcp(proxy_addr, binding, timeout).await?;
+        let host_to_send = self.host_to_send(target_host);
 
         let handshake_fut = async {
             match self.scheme {
@@ -139,5 +166,63 @@ impl UpstreamProxy {
             .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "proxy handshake timeout"))??;
 
         Ok(stream)
+    }
+
+    /// Returns the destination host to send in the proxy handshake.
+    ///
+    /// The domain override taken from the connection is only used for schemes
+    /// that actually send a hostname, and only when it is a valid hostname.
+    /// All other schemes receive the destination IP. This mirrors Go
+    /// `UpstreamProxy.dial` and keeps untrusted domains out of the HTTP CONNECT
+    /// request line (CRLF injection).
+    fn host_to_send<'a>(&'a self, target_host: &'a str) -> &'a str {
+        if self.scheme.sends_hostname() {
+            if let Some(override_host) = &self.target_host_override {
+                let candidate = override_host.as_str();
+                let trimmed = candidate.strip_suffix('.').unwrap_or(candidate);
+                if is_valid_hostname(trimmed) {
+                    return trimmed;
+                }
+            }
+        }
+        target_host
+    }
+}
+
+/// Reports whether `s` is a plausible DNS hostname that can be safely embedded
+/// in any proxy protocol request, like Go `isValidHostname`.
+fn is_valid_hostname(s: &str) -> bool {
+    if s.is_empty() || s.len() > 253 {
+        return false;
+    }
+    s.bytes()
+        .all(|c| c.is_ascii_alphanumeric() || c == b'.' || c == b'-' || c == b'_')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hostname_validation_matches_go() {
+        assert!(is_valid_hostname("example.com"));
+        assert!(is_valid_hostname("a-b_c.example.org"));
+        assert!(!is_valid_hostname(""));
+        assert!(!is_valid_hostname("bad host"));
+        assert!(!is_valid_hostname("evil\r\nHost: attacker"));
+        assert!(!is_valid_hostname(&"a".repeat(254)));
+    }
+
+    #[test]
+    fn override_is_honored_only_for_hostname_schemes() {
+        let mut proxy = UpstreamProxy::parse("socks5://127.0.0.1:1080").unwrap();
+        proxy.target_host_override = Some("example.com".to_string());
+        assert_eq!(proxy.host_to_send("1.1.1.1"), "1.1.1.1");
+
+        proxy.scheme = UpstreamScheme::Socks5h;
+        assert_eq!(proxy.host_to_send("1.1.1.1"), "example.com");
+
+        proxy.target_host_override = Some("bad host\r\n".to_string());
+        assert_eq!(proxy.host_to_send("1.1.1.1"), "1.1.1.1");
     }
 }

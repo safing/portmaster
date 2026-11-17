@@ -6,7 +6,8 @@
 
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use pm_network::version;
@@ -67,7 +68,14 @@ pub struct PendingRequest {
 /// Known-pending requests, keyed by `local IP:port`.
 #[derive(Debug, Default)]
 pub struct RequestQueue {
-    pending: Mutex<HashMap<String, PendingRequest>>,
+    /// Shared with the deferred cleanup task so it can sweep without keeping
+    /// the whole queue alive.
+    pending: Arc<Mutex<HashMap<String, PendingRequest>>>,
+    /// Guards against spawning more than one cleanup task, like Go's
+    /// `cleanupScheduled` atomic.
+    cleanup_scheduled: Arc<AtomicBool>,
+    /// Cancels the cleanup task when the module shuts down.
+    cleanup_token: CancellationToken,
 }
 
 impl RequestQueue {
@@ -183,6 +191,10 @@ impl RequestQueue {
                 expires_at: Instant::now() + PENDING_REQUEST_TTL,
             },
         );
+        drop(pending);
+
+        // Sweep expired entries in the background, like Go `scheduleCleanup`.
+        self.spawn_cleanup(self.cleanup_token.clone());
 
         let context = SplitTunContext {
             interface: binding.interface.clone().unwrap_or_default(),
@@ -247,23 +259,54 @@ impl RequestQueue {
         self.len() == 0
     }
 
-    /// Spawns the deferred cleanup task, like Go `scheduleCleanup`.
+    /// Schedules the deferred cleanup task, like Go `scheduleCleanup`.
     ///
-    /// The task exits when the token is cancelled; it reschedules itself while
-    /// requests remain.
-    pub fn spawn_cleanup(self: &std::sync::Arc<Self>, token: CancellationToken) {
-        let queue = std::sync::Arc::clone(self);
-        tokio::spawn(async move {
+    /// Only one cleanup task runs at a time. It wakes after
+    /// `PENDING_REQUEST_TTL + 1s`, sweeps expired entries and keeps running
+    /// while requests remain. Cancelling `token` stops it early. Scheduling is
+    /// skipped when no Tokio runtime is active (e.g. in synchronous tests).
+    pub fn spawn_cleanup(&self, token: CancellationToken) {
+        if self
+            .cleanup_scheduled
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
+        {
+            return; // already scheduled; that task will sweep our entry too
+        }
+
+        let Ok(handle) = tokio::runtime::Handle::try_current() else {
+            self.cleanup_scheduled.store(false, Ordering::SeqCst);
+            return;
+        };
+
+        let pending = Arc::clone(&self.pending);
+        let scheduled = Arc::clone(&self.cleanup_scheduled);
+        let _ = handle.spawn(async move {
             loop {
                 let sleep = PENDING_REQUEST_TTL + Duration::from_secs(1);
-                tokio::select! {
-                    () = token.cancelled() => return,
-                    () = tokio::time::sleep(sleep) => {}
+                let cancelled = tokio::select! {
+                    () = token.cancelled() => true,
+                    () = tokio::time::sleep(sleep) => false,
+                };
+                if cancelled {
+                    scheduled.store(false, Ordering::SeqCst);
+                    return;
                 }
 
-                queue.sweep();
-                if queue.is_empty() {
-                    return;
+                let now = Instant::now();
+                {
+                    let mut pending = pending
+                        .lock()
+                        .unwrap_or_else(|error| error.into_inner());
+                    pending.retain(|_, request| request.expires_at > now);
+
+                    if pending.is_empty() {
+                        // Clear the guard while still holding the lock: a
+                        // concurrent registration then either is seen here or
+                        // gets to schedule a fresh task after the reset.
+                        scheduled.store(false, Ordering::SeqCst);
+                        return;
+                    }
                 }
             }
         });
