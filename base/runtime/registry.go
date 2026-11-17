@@ -295,9 +295,11 @@ func (r *Registry) collectProviderByPrefix(prefix string) []*keyedValueProvider 
 	r.l.RLock()
 	defer r.l.RUnlock()
 
-	// if there's a LongestPrefix provider that's the only one
-	// we need to ask
-	if _, p, ok := r.providers.LongestPrefix(prefix); ok {
+	// if there's a LongestPrefix provider that is registered for a
+	// prefix (not a single key) it covers the whole query and is the
+	// only one we need to ask. Providers for single keys only match
+	// that exact key and must not hide providers below the query prefix.
+	if key, p, ok := r.providers.LongestPrefix(prefix); ok && isPrefixKey(key) {
 		return []*keyedValueProvider{p.(*keyedValueProvider)} //nolint:forcetypeassert
 	}
 
