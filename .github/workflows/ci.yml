@@ -1,0 +1,182 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - development
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - development
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust-core-linux:
+    name: Rust Core (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run Cargo tests
+        run: cargo test --workspace
+
+      - name: Build release binary
+        run: cargo build --release -p pm-core --bin portmaster-core-rs
+
+      - name: Package Linux artifact
+        run: |
+          mkdir -p dist
+          cp target/release/portmaster-core-rs dist/portmaster-core-rs-linux-amd64
+          chmod +x dist/portmaster-core-rs-linux-amd64
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: portmaster-core-rs-linux-amd64
+          path: dist/portmaster-core-rs-linux-amd64
+
+  rust-core-windows:
+    name: Rust Core (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release -p pm-core --bin portmaster-core-rs
+
+      - name: Package Windows artifact
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/release/portmaster-core-rs.exe dist/portmaster-core-rs-windows-amd64.exe
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: portmaster-core-rs-windows-amd64
+          path: dist/portmaster-core-rs-windows-amd64.exe
+
+  go-core:
+    name: Go Core (Linux & Windows)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '^1.26'
+          cache: true
+
+      - name: Build Go core Linux
+        run: |
+          mkdir -p dist
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/portmaster-core-go-linux-amd64 ./cmds/portmaster-core
+
+      - name: Build Go core Windows
+        run: |
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/portmaster-core-go-windows-amd64.exe ./cmds/portmaster-core
+
+      - name: Upload Go artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: portmaster-core-go
+          path: dist/portmaster-core-go*
+
+  angular-ui:
+    name: Angular UI Bundle
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop/angular
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: desktop/angular/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build shared libraries
+        run: npm run build-libs
+
+      - name: Build Angular app
+        run: npx ng build --configuration production --base-href /ui/modules/portmaster/ portmaster
+
+      - name: Package portmaster.zip
+        run: |
+          cd dist
+          zip -r ../../../portmaster.zip .
+
+      - name: Upload UI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: portmaster-ui
+          path: portmaster.zip
+
+  release:
+    name: Publish Release Assets
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [rust-core-linux, rust-core-windows, go-core, angular-ui]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Prepare release files and checksums
+        run: |
+          mkdir -p dist
+          cp release-artifacts/portmaster-core-rs-linux-amd64 dist/portmaster-core-rs
+          chmod +x dist/portmaster-core-rs
+          cp release-artifacts/portmaster-core-rs-windows-amd64.exe dist/portmaster-core-rs.exe
+          cp release-artifacts/portmaster-core-go-linux-amd64 dist/portmaster-core-go
+          chmod +x dist/portmaster-core-go
+          cp release-artifacts/portmaster-core-go-windows-amd64.exe dist/portmaster-core-go.exe
+          cp release-artifacts/portmaster.zip dist/portmaster.zip
+          cd dist
+          sum="shasum -a 256"; command -v sha256sum >/dev/null && sum=sha256sum
+          for f in *; do
+            if [ -f "$f" ]; then
+              $sum "$f" > "$f.sha256"
+            fi
+          done
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          draft: false
+          prerelease: false

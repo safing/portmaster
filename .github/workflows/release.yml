@@ -13,6 +13,7 @@ on:
 jobs:
   release-prep:
     name: Prep
+    if: github.repository == 'safing/portmaster'
     runs-on: ubuntu-latest
     steps:
     - uses: earthly/actions-setup@43211c7a0eae5344d6d79fb4aaf209c8f8866203 # v1
