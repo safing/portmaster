@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -109,6 +110,8 @@ func TestServeConcurrentWithUpgradeLock(t *testing.T) {
 				default:
 				}
 				serveTestRequest(ui)
+				// Let the upgrade lock loop run, also with GOMAXPROCS=1.
+				runtime.Gosched()
 			}
 		})
 	}

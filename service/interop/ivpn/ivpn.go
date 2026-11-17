@@ -1,13 +1,16 @@
 package ivpn
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"sync/atomic"
 	"time"
 
 	"github.com/ivpn/desktop-app/daemon/protocol/ivpnclient"
 	"github.com/safing/portmaster/base/info"
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/firewall/interception"
 	"github.com/safing/portmaster/service/mgr"
@@ -130,7 +133,13 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	}
 
 	servicePort, _, err := ivpnclient.GetConnectionPortInfo()
-	if err != nil {
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		// The IVPN client is not installed: its connection info (registry key
+		// or file) does not exist. This is the common case, not an error.
+		log.Debugf("interop/ivpn: client not installed: %s", err)
+		return nil
+	case err != nil:
 		return err
 	}
 	// Save ServicePort.

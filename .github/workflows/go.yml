@@ -4,6 +4,11 @@ on:
   push:
     paths:
       - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Earthfile'
+      - '.golangci.yml'
+      - '.github/workflows/go.yml'
       - 'cmds/**'
       - 'runtime/**'
       - 'service/**'
@@ -19,6 +24,11 @@ on:
   pull_request:
     paths:
       - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Earthfile'
+      - '.golangci.yml'
+      - '.github/workflows/go.yml'
       - 'cmds/**'
       - 'runtime/**'
       - 'service/**'
@@ -44,7 +54,7 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
       with:
-        go-version: '^1.26'
+        go-version: '^1.27'
         cache: false
 
     # For pull requests, new issues are determined via git against the merge
@@ -54,7 +64,7 @@ jobs:
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
       with:
-        version: v2.12.2
+        version: v2.15.0
         only-new-issues: ${{ github.event_name != 'pull_request' }}
         args: -c ./.golangci.yml --timeout 15m ${{ github.event_name == 'pull_request' && format('--new-from-merge-base=origin/{0}', github.base_ref) || '' }}
 
