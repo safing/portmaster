@@ -319,14 +319,38 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 
 	}
 
-	// Check with firewall again after resolving.
+	// Check with firewall again after resolving and reply.
+	rrCache, err = replyResolved(ctx, reply, conn, q, rrCache, originalQuestion.Name, nonStandardQuestionFormat)
+	return err
+}
+
+// replyResolved checks the resolved response with the firewall and replies to
+// the request. It returns the response that was sent, if any, so that it can be
+// attached to the connection.
+func replyResolved(
+	ctx context.Context,
+	reply func(responder nsutil.Responder, rrProviders ...nsutil.RRProvider) error,
+	conn *network.Connection,
+	q *resolver.Query,
+	rrCache *resolver.RRCache,
+	originalName string,
+	nonStandardQuestionFormat bool,
+) (*resolver.RRCache, error) {
+	tracer := log.Tracer(ctx)
+
 	tracer.Trace("nameserver: deciding on resolved dns")
 	rrCache = firewall.FilterResolvedDNS(ctx, conn, q, rrCache)
+	if rrCache == nil {
+		// The firewall could not decide on the response, eg. because the
+		// process has no profile.
+		tracer.Warningf("nameserver: firewall returned no response for %s", q.ID())
+		return nil, reply(nsutil.ServerFailure(internalError + "failed to filter response"))
+	}
 
 	// Check again if there is a responder from the firewall.
 	if responder, ok := conn.Reason.Context.(nsutil.Responder); ok {
 		tracer.Infof("nameserver: handing over request for %s to special filter responder: %s", q.ID(), conn.Reason.Msg)
-		return reply(responder)
+		return rrCache, reply(responder)
 	}
 
 	// Check if there is a Verdict to act upon.
@@ -339,12 +363,12 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 			conn.Process(),
 			conn.Reason.Msg,
 		)
-		return reply(conn, conn, rrCache)
+		return rrCache, reply(conn, conn, rrCache)
 	}
 
 	// Revert back to non-standard question format, if we had to convert.
 	if nonStandardQuestionFormat {
-		rrCache.ReplaceAnswerNames(originalQuestion.Name)
+		rrCache.ReplaceAnswerNames(originalName)
 	}
 
 	// Reply with successful response.
@@ -360,7 +384,7 @@ func handleRequest(ctx context.Context, w dns.ResponseWriter, request *dns.Msg) 
 		q.ID(),
 		conn.Process(),
 	)
-	return reply(rrCache, conn, rrCache)
+	return rrCache, reply(rrCache, conn, rrCache)
 }
 
 func checkAlternativeCaches(ctx context.Context, q *resolver.Query) *resolver.RRCache {

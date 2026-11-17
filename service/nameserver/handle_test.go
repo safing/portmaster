@@ -11,6 +11,10 @@ import (
 	"github.com/miekg/dns"
 
 	"github.com/safing/portmaster/base/metrics"
+	"github.com/safing/portmaster/service/intel"
+	"github.com/safing/portmaster/service/nameserver/nsutil"
+	"github.com/safing/portmaster/service/network"
+	"github.com/safing/portmaster/service/resolver"
 )
 
 var registerTestMetricsOnce sync.Once
@@ -107,5 +111,52 @@ func TestHandleRequestEarlyReplies(t *testing.T) {
 				t.Fatalf("failed to pack reply: %s", err)
 			}
 		})
+	}
+}
+
+// TestReplyResolvedWithoutProfile tests that a resolved response is answered
+// with a server failure when the firewall cannot decide on it, because the
+// process has no profile. This happens when the profile could not be loaded and
+// the connection was accepted without a profile, eg. because the privacy
+// filter is disabled or an external verdict handler accepted it.
+func TestReplyResolvedWithoutProfile(t *testing.T) {
+	t.Parallel()
+	setupHandleRequestTest(t)
+
+	for _, nonStandard := range []bool{false, true} {
+		request := new(dns.Msg)
+		request.SetQuestion("Example.org.", dns.TypeA)
+		w := &testResponseWriter{}
+		reply := func(responder nsutil.Responder, rrProviders ...nsutil.RRProvider) error {
+			return sendResponse(context.Background(), w, request, responder, rrProviders...)
+		}
+
+		// Connection without process and profile, accepted by the privacy filter.
+		conn := &network.Connection{
+			Entity:  &intel.Entity{},
+			Verdict: network.VerdictAccept,
+		}
+		q := &resolver.Query{FQDN: "example.org.", QType: dns.Type(dns.TypeA)}
+		rrCache := &resolver.RRCache{
+			Domain:   q.FQDN,
+			Question: q.QType,
+			RCode:    dns.RcodeSuccess,
+			Answer: []dns.RR{&dns.A{
+				Hdr: dns.RR_Header{Name: q.FQDN, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60},
+				A:   net.IPv4(192, 0, 2, 1),
+			}},
+			Resolver: &resolver.ResolverInfo{Type: resolver.ServerTypeDNS},
+		}
+
+		sent, err := replyResolved(context.Background(), reply, conn, q, rrCache, "Example.org.", nonStandard)
+		if err != nil {
+			t.Fatalf("replyResolved failed: %s", err)
+		}
+		if sent != nil {
+			t.Fatalf("expected no response to be attached to the connection, got %+v", sent)
+		}
+		if len(w.written) != 1 || w.written[0].Rcode != dns.RcodeServerFailure {
+			t.Fatalf("expected one server failure reply, got %v", w.written)
+		}
 	}
 }
