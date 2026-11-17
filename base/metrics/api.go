@@ -97,6 +97,10 @@ func WriteMetrics(w io.Writer, permission api.Permission, expertiseLevel config.
 	}
 }
 
+// maxPushErrorBodySize is the maximum amount of bytes read from an error
+// response when pushing metrics.
+const maxPushErrorBodySize = 4096
+
 func writeMetricsTo(ctx context.Context, url string) error {
 	// First, collect metrics into buffer.
 	buf := &bytes.Buffer{}
@@ -129,7 +133,8 @@ func writeMetricsTo(ctx context.Context, url string) error {
 	}
 
 	// Get and return error.
-	body, _ := io.ReadAll(resp.Body)
+	// Limit the read, as the body is only used for the error message.
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxPushErrorBodySize))
 	return fmt.Errorf(
 		"got %s while writing metrics to %s: %s",
 		resp.Status,
