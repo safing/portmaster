@@ -4,7 +4,9 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
 )
@@ -95,4 +97,108 @@ func TestErrorNotificationClearedByNextPause(t *testing.T) {
 	c.updateStatesAndNotify()
 
 	assertNoPauseLeftovers(t, c)
+}
+
+type controlTestInstance struct {
+	cfg          *config.Config
+	interception *mgr.GroupModule
+}
+
+func (i *controlTestInstance) Config() *config.Config              { return i.cfg }
+func (i *controlTestInstance) InterceptionGroup() *mgr.GroupModule { return i.interception }
+func (i *controlTestInstance) SPNGroup() *mgr.ExtendedGroup        { return mgr.NewExtendedGroup() }
+func (i *controlTestInstance) IsShuttingDown() bool                { return false }
+
+type configTestInstance struct {
+	dataDir string
+}
+
+func (i *configTestInstance) DataDir() string                  { return i.dataDir }
+func (i *configTestInstance) SetCmdLineOperation(func() error) {}
+
+var (
+	testConfig          *config.Config
+	testConfigSetupOnce sync.Once
+)
+
+func newTestControlWithInstance(t *testing.T) *Control {
+	t.Helper()
+
+	c := newTestControl(t)
+	testConfigSetupOnce.Do(func() {
+		var err error
+		testConfig, err = config.New(&configTestInstance{dataDir: t.TempDir()})
+		if err != nil {
+			t.Fatalf("failed to create config module: %s", err)
+		}
+	})
+	c.instance = &controlTestInstance{
+		cfg:          testConfig,
+		interception: mgr.NewGroupModule("Interception"),
+	}
+	return c
+}
+
+// TestSupersededResumeWorkerDoesNotResume checks that a resume worker whose
+// timer fired while another pause request held the lock and replaced it does
+// not resume afterwards, undoing the new pause.
+//
+//nolint:paralleltest // Uses the global notification storage and config.
+func TestSupersededResumeWorkerDoesNotResume(t *testing.T) {
+	c := newTestControlWithInstance(t)
+	defer c.mgr.Cancel()
+
+	// Pause for a short time.
+	err := c.pause(20*time.Millisecond, false)
+	if err != nil {
+		t.Fatalf("pause failed: %s", err)
+	}
+
+	// Simulate a second pause request that holds the lock while the first
+	// resume timer fires, and then replaces the resume worker.
+	c.locker.Lock()
+	time.Sleep(100 * time.Millisecond) // Let the old resume worker block on the lock.
+	c.stopResumeWorker()
+	c.startResumeWorker(time.Hour)
+	c.locker.Unlock()
+
+	// Give the old resume worker the chance to (wrongly) resume.
+	time.Sleep(50 * time.Millisecond)
+
+	c.locker.Lock()
+	paused := c.pauseInfo.Interception
+	c.stopResumeWorker()
+	c.pauseInfo.Interception = false
+	c.updateStatesAndNotify()
+	c.locker.Unlock()
+
+	if !paused {
+		t.Fatal("superseded resume worker resumed although a new pause was requested")
+	}
+}
+
+// TestResumeWorkerResumesAfterDuration checks that a pause still ends
+// automatically after its duration.
+//
+//nolint:paralleltest // Uses the global notification storage and config.
+func TestResumeWorkerResumesAfterDuration(t *testing.T) {
+	c := newTestControlWithInstance(t)
+	defer c.mgr.Cancel()
+
+	err := c.pause(20*time.Millisecond, false)
+	if err != nil {
+		t.Fatalf("pause failed: %s", err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		c.locker.Lock()
+		paused := c.pauseInfo.Interception
+		c.locker.Unlock()
+		if !paused {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatal("pause did not end after its duration")
 }

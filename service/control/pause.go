@@ -90,14 +90,26 @@ func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
 	return nil
 }
 
-func (c *Control) resume() (retErr error) {
+func (c *Control) resume() error {
+	_, err := c.doResume(nil)
+	return err
+}
+
+// doResume resumes normal operation. If called from a resume worker (wc is
+// set), it does nothing and reports superseded if that worker was stopped
+// (e.g. replaced by a new pause request) while waiting for the lock.
+func (c *Control) doResume(wc *mgr.WorkerCtx) (superseded bool, retErr error) {
 	if c.instance.IsShuttingDown() {
 		c.mgr.Debug("Cannot resume: system is shutting down")
-		return nil
+		return false, nil
 	}
 
 	c.locker.Lock()
 	defer c.locker.Unlock()
+
+	if wc != nil && wc.IsDone() {
+		return true, nil
+	}
 
 	defer func() {
 		if retErr != nil {
@@ -112,7 +124,7 @@ func (c *Control) resume() (retErr error) {
 
 	if c.pauseInfo.Interception {
 		if err := c.instance.InterceptionGroup().Start(); err != nil {
-			return err
+			return false, err
 		}
 		c.mgr.Info("interception resumed")
 		c.pauseInfo.Interception = false
@@ -129,7 +141,7 @@ func (c *Control) resume() (retErr error) {
 		c.pauseInfo.SPN = false
 	}
 
-	return nil
+	return false, nil
 }
 
 // stopResumeWorker stops any existing resume worker.
@@ -191,7 +203,11 @@ func (c *Control) startResumeWorker(duration time.Duration) {
 
 		// Time to resume
 		wc.Info("Resuming...")
-		err := c.resume()
+		superseded, err := c.doResume(wc)
+		if superseded {
+			wc.Info("Resume canceled, pause was changed meanwhile.")
+			return nil
+		}
 		if err == nil {
 			n := &notifications.Notification{
 				EventID:      "control:resumed",
