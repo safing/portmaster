@@ -33,6 +33,7 @@ type Entity struct {
 	reverseResolveEnabled bool
 	resolveSubDomainLists bool
 	checkCNAMEs           bool
+	publicSuffixICANN     bool // See publicSuffix.
 
 	// IP is the IP address of the connection. If domain is
 	// set, IP has been resolved by following all CNAMEs.
@@ -95,6 +96,13 @@ type Entity struct {
 
 	// ListsError holds an error message if fetching the lists failed.
 	ListsError string
+
+	// publicSuffix and publicSuffixICANN hold the result of
+	// publicsuffix.PublicSuffix(publicSuffixOf), if publicSuffix is set. The
+	// public suffix of the domain is needed for the lists and the domain
+	// heuristics. The domain may change, see getPublicSuffix.
+	publicSuffixOf string
+	publicSuffix   string
 
 	// we only load each data above at most once
 	fetchLocationOnce   sync.Once
@@ -234,6 +242,28 @@ func (e *Entity) GetDomain(ctx context.Context, mayUseReverseDomain bool) (strin
 		return "", false
 	}
 	return e.Domain, true
+}
+
+// EffectiveTLDPlusOne returns publicsuffix.EffectiveTLDPlusOne of the domain
+// of the entity without the trailing dots, and whether it is valid. The public
+// suffix of the domain is looked up only once for the lists and this.
+func (e *Entity) EffectiveTLDPlusOne() (string, bool) {
+	// Same as publicsuffix.EffectiveTLDPlusOne, which returns an error instead
+	// of false.
+	domain := strings.TrimRight(e.Domain, ".")
+	if strings.HasPrefix(domain, ".") || strings.HasSuffix(domain, ".") || strings.Contains(domain, "..") {
+		return "", false
+	}
+
+	suffix, _ := e.getPublicSuffix(domain)
+	if len(domain) <= len(suffix) {
+		return "", false
+	}
+	i := len(domain) - len(suffix) - 1
+	if domain[i] != '.' {
+		return "", false
+	}
+	return domain[1+strings.LastIndexByte(domain[:i], '.'):], true
 }
 
 // GetIP returns the IP and whether it is set.
@@ -378,8 +408,16 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 
 		var domains []string
 		if e.resolveSubDomainLists {
-			for _, domain := range domainsToInspect {
-				subdomains := splitDomain(domain)
+			for i, domain := range domainsToInspect {
+				var subdomains []string
+				if i == 0 {
+					// Use the public suffix of the domain from the entity.
+					d := strings.TrimSuffix(domain, ".")
+					suffix, icann := e.getPublicSuffix(d)
+					subdomains = splitDomainWithSuffix(domain, d, suffix, icann)
+				} else {
+					subdomains = splitDomain(domain)
+				}
 				domains = append(domains, subdomains...)
 			}
 		} else {
@@ -412,6 +450,12 @@ func splitDomain(domain string) []string {
 	// Get suffix.
 	d := strings.TrimSuffix(domain, ".")
 	suffix, icann := publicsuffix.PublicSuffix(d)
+	return splitDomainWithSuffix(domain, d, suffix, icann)
+}
+
+// splitDomainWithSuffix is splitDomain with the domain without the trailing
+// dot d and the result of publicsuffix.PublicSuffix(d).
+func splitDomainWithSuffix(domain, d, suffix string, icann bool) []string {
 	if suffix == d {
 		return []string{domain}
 	}
@@ -623,6 +667,16 @@ func (e *Entity) ListBlockReason() ListBlockReason {
 	}
 
 	return blockedBy
+}
+
+// getPublicSuffix returns publicsuffix.PublicSuffix(d). The result is kept
+// for the last d, which is the domain of the entity.
+func (e *Entity) getPublicSuffix(d string) (suffix string, icann bool) {
+	if e.publicSuffixOf != d || e.publicSuffix == "" {
+		e.publicSuffix, e.publicSuffixICANN = publicsuffix.PublicSuffix(d)
+		e.publicSuffixOf = d
+	}
+	return e.publicSuffix, e.publicSuffixICANN
 }
 
 func mergeStringList(a, b []string) []string {
