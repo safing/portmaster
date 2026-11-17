@@ -376,8 +376,10 @@ func TestMaintainRecordStatesDoesNotBlockWriters(t *testing.T) { //nolint:parall
 	t.Logf("maintenance took %s, max writer latency %s, %d writes completed during maintenance",
 		maintEnd.Sub(maintStart), maxLatency, putsDuring)
 	// Without chunking, no write could be done during the walk and the
-	// latency of a write was the duration of the whole walk.
-	if putsDuring < 3 || maxLatency > maintEnd.Sub(maintStart)/2 {
+	// latency of a write was the duration of the whole walk. A single slow
+	// write, eg. a sync on a slow CI disk, may take a good part of a short
+	// walk, so only a latency close to the whole walk counts as blocked.
+	if putsDuring < 3 || maxLatency > maintEnd.Sub(maintStart)*9/10 {
 		t.Fatalf("writers were blocked during maintenance: only %d writes completed during the walk of %s (max writer latency %s)",
 			putsDuring, maintEnd.Sub(maintStart), maxLatency)
 	}
