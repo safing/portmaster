@@ -29,16 +29,96 @@ use pm_network::{
     Environment, LocalProfileInfo, Network, ProcessResolver, ProfileLookup, SharedConnection,
     SystemProcessResolver,
 };
-use pm_process::{ProcReader, Process, ProcessCache};
+use pm_process::{
+    ProcReader, Process, ProcessCache, SYSTEM_PROCESS_ID, UNIDENTIFIED_PROCESS_ID,
+    UNSOLICITED_PROCESS_ID,
+};
 use pm_profile::{
-    Fingerprint, GlobalProfileConfig, LayeredProfile, Profile, ProfileStore,
-    FINGERPRINT_OPERATION_EQUALS, FINGERPRINT_TYPE_PATH, SOURCE_LOCAL, UNIDENTIFIED_PROFILE_ID,
+    create_special_profile, Fingerprint, GlobalProfileConfig, LayeredProfile,
+    Profile, ProfileStore, SYSTEM_PROFILE_ID, SYSTEM_RESOLVER_PROFILE_ID,
+    UNIDENTIFIED_PROFILE_ID, FINGERPRINT_OPERATION_EQUALS, FINGERPRINT_TYPE_PATH,
+    FINGERPRINT_TYPE_TAG, PORTMASTER_PROFILE_ID, SOURCE_LOCAL,
 };
 use pm_resolver::ipinfo::IpInfoStore;
 use pm_resolver::ResolverService;
 #[cfg(target_os = "linux")]
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
+
+/// Returns the fixed profile ID for special processes, like Go
+/// `Process.getSpecialProfileID`. UI/notifier parent-walk detection is not
+/// available in the Rust process model, so only PID- and path-based specials
+/// are handled here.
+fn special_profile_id_for(process: &Process) -> Option<&'static str> {
+    if process.pid == UNIDENTIFIED_PROCESS_ID {
+        return Some(UNIDENTIFIED_PROFILE_ID);
+    }
+    if process.pid == UNSOLICITED_PROCESS_ID {
+        return Some(pm_profile::UNSOLICITED_PROFILE_ID);
+    }
+    if process.pid == SYSTEM_PROCESS_ID {
+        return Some(SYSTEM_PROFILE_ID);
+    }
+    if process.pid == std::process::id() as i32 {
+        return Some(PORTMASTER_PROFILE_ID);
+    }
+    // System resolver paths, from Go `service/process/profile.go`.
+    const RESOLVER_PATHS: &[&str] = &[
+        "/lib/systemd/systemd-resolved",
+        "/usr/lib/systemd/systemd-resolved",
+        "/lib64/systemd/systemd-resolved",
+        "/usr/lib64/systemd/systemd-resolved",
+        "/usr/bin/nscd",
+        "/usr/sbin/nscd",
+        "/usr/bin/dnsmasq",
+        "/usr/sbin/dnsmasq",
+    ];
+    if RESOLVER_PATHS.contains(&process.path.as_str()) {
+        return Some(SYSTEM_RESOLVER_PROFILE_ID);
+    }
+    None
+}
+
+/// Builds a stable, tag-fingerprint-based profile for packaged apps and
+/// interpreters, like Go `Process.CreateProfileCallback`. Returns `None` when
+/// the process carries no profile-defining tag.
+fn tag_profile_for(process: &Process) -> Option<Profile> {
+    let md = process.matching_data();
+    // Order mirrors Go's tag registry: appimage, flatpak, interpreter, snap.
+    let (key, value) = [
+        "app-image-path",
+        "app-image-mount-id",
+        "flatpak-id",
+        "python-script",
+        "shell-script",
+        "perl-script",
+        "ruby-script",
+        "nodejs-script",
+        "snap-name",
+        "ip",
+    ]
+    .into_iter()
+    .find_map(|key| md.tags().iter().find(|tag| tag.key == key).map(|t| (key, t.value.clone())))?;
+    let path = md.path().to_string();
+    let name = if value.is_empty() {
+        pm_profile::binmeta::generate_binary_name_from_path(&path)
+    } else {
+        value.clone()
+    };
+    Some(Profile::new(Profile {
+        source: SOURCE_LOCAL.to_string(),
+        name,
+        presentation_path: path.clone(),
+        use_presentation_path: !path.is_empty(),
+        fingerprints: vec![Fingerprint::new(
+            FINGERPRINT_TYPE_TAG,
+            key,
+            FINGERPRINT_OPERATION_EQUALS,
+            &value,
+        )],
+        ..Profile::default()
+    }))
+}
 
 /// Profiles of the local source and their layered views, keyed by process key.
 pub struct CoreProfiles {
@@ -95,6 +175,43 @@ impl CoreProfiles {
         }
 
         let md = process.matching_data();
+
+        // Special processes get a fixed-ID profile (Go `getSpecialProfileID`
+        // + `GetLocalProfile`). Load the persisted one or create it.
+        if let Some(special_id) = special_profile_id_for(process) {
+            let existing = self.store.get(special_id).ok()
+               .or_else(|| {
+                    create_special_profile(special_id, md.path()).inspect(|profile| {
+                        let _ = self.store.save(profile);
+                        self.profiles
+                            .write()
+                            .unwrap_or_else(|error| error.into_inner())
+                            .push(profile.clone());
+                    })
+                });
+            if let Some(profile) = existing {
+                let scoped_id = pm_profile::make_scoped_id(&profile.source, &profile.id);
+                if let Some(cache) = self
+                    .process_cache
+                    .read()
+                    .unwrap_or_else(|error| error.into_inner())
+                    .as_ref()
+                {
+                    cache.set_primary_profile(process.pid, &scoped_id);
+                }
+                let layered = Arc::new(LayeredProfile::new(
+                    Arc::new(profile),
+                    &self.config,
+                    &self.global,
+                ));
+                self.layered
+                    .write()
+                    .unwrap_or_else(|error| error.into_inner())
+                    .insert(key, Arc::clone(&layered));
+                return Some(layered);
+            }
+        }
+
         let existing = {
             let profiles = self
                 .profiles
@@ -105,6 +222,19 @@ impl CoreProfiles {
         let matching = match existing {
             Some(profile) => profile,
             None => {
+                // Packaged apps and interpreters get a stable tag fingerprint
+                // (Go `CreateProfileCallback`), before the generic path fallback.
+                if let Some(created) = tag_profile_for(process) {
+                    if let Err(error) = self.store.save(&created) {
+                        tracing::warn!(%error, "profile: failed to save tag profile");
+                    } else {
+                        self.profiles
+                            .write()
+                            .unwrap_or_else(|error| error.into_inner())
+                            .push(created.clone());
+                    }
+                    created
+                } else {
                 // Go creates and persists a default profile for unidentified
                 // processes. Without this the UI never sees new apps and
                 // their connections never get history_enabled.
@@ -136,6 +266,7 @@ impl CoreProfiles {
                         .push(created.clone());
                 }
                 created
+                }
             }
         };
         let scoped_id = pm_profile::make_scoped_id(&matching.source, &matching.id);

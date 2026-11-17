@@ -30,6 +30,7 @@ pub mod options;
 pub mod migrations;
 mod profile;
 mod proxy_url;
+pub mod special;
 mod store;
 
 /// Binary metadata helpers, port of Go `service/profile/binmeta`.
@@ -67,6 +68,7 @@ pub use profile::{
     DEFAULT_ACTION_NOT_SET, DEFAULT_ACTION_PERMIT, DEFAULT_ACTION_PERMIT_VALUE,
 };
 pub use proxy_url::validate_upstream_proxy_url;
+pub use special::create_special_profile;
 pub use store::{encode_profile, Error as StoreError, ProfileStore};
 
 /// Profile source: local, editable profiles.

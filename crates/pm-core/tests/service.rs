@@ -686,7 +686,9 @@ async fn app_profile_returns_the_callers_profile() {
 
     let service = Arc::new(Service::start(&options).await.unwrap());
 
-    // Add a local profile matching the calling test binary.
+    // Add a local profile for the calling process. Because the service runs in
+    // this same test process, the caller is the core itself and gets the fixed
+    // `_portmaster` special profile (Go `getSpecialProfileID` → ownPID).
     let store = pm_profile::ProfileStore::new(service.databases.interface(
         pm_database::Options {
             local: true,
@@ -695,15 +697,10 @@ async fn app_profile_returns_the_callers_profile() {
         },
     ));
     let profile = pm_profile::Profile::new(pm_profile::Profile {
-        id: "test-profile".to_string(),
+        id: pm_profile::PORTMASTER_PROFILE_ID.to_string(),
         source: "local".to_string(),
         name: "Test Profile".to_string(),
-        fingerprints: vec![pm_profile::Fingerprint::new(
-            pm_profile::FINGERPRINT_TYPE_PATH,
-            "",
-            pm_profile::FINGERPRINT_OPERATION_EQUALS,
-            exe.to_string_lossy().as_ref(),
-        )],
+        presentation_path: exe.to_string_lossy().to_string(),
         ..pm_profile::Profile::default()
     });
     store.save(&profile).expect("save profile");
@@ -715,7 +712,7 @@ async fn app_profile_returns_the_callers_profile() {
     assert!(response.starts_with("HTTP/1.1 200"), "{response}");
     let body = response.split("\r\n\r\n").nth(1).unwrap();
     let profile: serde_json::Value = serde_json::from_str(body).unwrap();
-    assert_eq!(profile["profile"], "test-profile");
+    assert_eq!(profile["profile"], pm_profile::PORTMASTER_PROFILE_ID);
     assert_eq!(profile["source"], "local");
     assert_eq!(profile["name"], "Test Profile");
 
