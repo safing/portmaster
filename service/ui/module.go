@@ -1,10 +1,12 @@
 package ui
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/log"
@@ -18,7 +20,7 @@ type UI struct {
 	mgr      *mgr.Manager
 	instance instance
 
-	archives     map[string]*zipfs.FileSystem
+	archives     map[string]*archive
 	archivesLock sync.RWMutex
 
 	upgradeLock atomic.Bool
@@ -31,7 +33,7 @@ func New(instance instance) (*UI, error) {
 		mgr:      m,
 		instance: instance,
 
-		archives: make(map[string]*zipfs.FileSystem),
+		archives: make(map[string]*archive),
 	}
 
 	if err := ui.registerAPIEndpoints(); err != nil {
@@ -78,24 +80,89 @@ func (ui *UI) Stop() error {
 	return nil
 }
 
+// archive is an opened UI archive with the number of files that are currently
+// being served from it.
+type archive struct {
+	fs *zipfs.FileSystem
+
+	// inUse counts the files opened from the archive that are not closed yet.
+	// The archive must not be closed while files are read from it: on Windows,
+	// closing a file while it is being read concurrently can block forever
+	// (Go 1.26, golang/go#77404).
+	inUse sync.WaitGroup
+}
+
+// open opens a file from the archive. The caller must hold the archives lock,
+// so that the archive is not retired at the same time.
+func (a *archive) open(archiveName, path string) (file http.File, servedPath string, status int, err error) {
+	a.inUse.Add(1)
+	file, servedPath, status, err = openFileFromArchive(archiveName, a.fs, path)
+	if err != nil {
+		a.inUse.Done()
+		return nil, servedPath, status, err
+	}
+	return &archiveFile{File: file, done: a.inUse.Done}, servedPath, status, nil
+}
+
+// archiveFile is a file opened from an archive, which releases the archive
+// when closed.
+type archiveFile struct {
+	http.File
+
+	done     func()
+	doneOnce sync.Once
+}
+
+// Close closes the file and releases the archive.
+func (f *archiveFile) Close() error {
+	err := f.File.Close()
+	f.doneOnce.Do(f.done)
+	return err
+}
+
+// archiveCloseWait is how long CloseArchives waits for files that are still
+// being served before it leaves closing the archive to the background.
+var archiveCloseWait = 30 * time.Second
+
 // CloseArchives closes all open archives.
+// Archives are removed from the cache immediately, but each one is only
+// closed once all files served from it are closed. CloseArchives waits for
+// that for a limited time and then leaves closing to the background.
 func (ui *UI) CloseArchives() {
 	if ui == nil {
 		return
 	}
 
+	// Remove archives from the cache, so that no new files are opened from
+	// them. Do not wait for them while holding the lock, so that requests
+	// are not blocked.
 	ui.archivesLock.Lock()
-	defer ui.archivesLock.Unlock()
+	retired := make([]*archive, 0, len(ui.archives))
+	for _, a := range ui.archives {
+		retired = append(retired, a)
+	}
+	clear(ui.archives)
+	ui.archivesLock.Unlock()
 
-	// Close archives.
-	for _, archive := range ui.archives {
-		if err := archive.Close(); err != nil {
-			ui.mgr.Warn("failed to close ui archive", "err", err)
+	deadline := time.After(archiveCloseWait)
+	for _, a := range retired {
+		released := make(chan struct{})
+		go func() {
+			a.inUse.Wait()
+			close(released)
+		}()
+
+		select {
+		case <-released:
+			ui.closeArchive(a)
+		case <-deadline:
+			ui.mgr.Warn("ui archive still in use, closing it when released")
+			go func() {
+				<-released
+				ui.closeArchive(a)
+			}()
 		}
 	}
-
-	// Reset map.
-	clear(ui.archives)
 }
 
 // EnableUpgradeLock enables the upgrade lock and closes all open archives.
@@ -121,4 +188,11 @@ type instance interface {
 	DataDir() string
 	API() *api.API
 	GetBinaryUpdateFile(name string) (path string, err error)
+}
+
+func (ui *UI) closeArchive(a *archive) {
+	err := a.fs.Close()
+	if err != nil {
+		ui.mgr.Warn("failed to close ui archive", "err", err)
+	}
 }
