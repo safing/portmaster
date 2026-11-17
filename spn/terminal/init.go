@@ -6,6 +6,7 @@ import (
 	"github.com/safing/jess"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/hub"
+	"github.com/safing/portmaster/spn/peerdsd"
 	"github.com/safing/structures/container"
 	"github.com/safing/structures/dsd"
 	"github.com/safing/structures/varint"
@@ -52,7 +53,7 @@ func ParseTerminalOpts(c *container.Container) (*TerminalOpts, *Error) {
 
 	// Parse init message.
 	initMsg := &TerminalOpts{}
-	_, err = dsd.Load(c.CompileData(), initMsg)
+	_, err = peerdsd.Load(c.CompileData(), initMsg)
 	if err != nil {
 		return nil, ErrMalformedData.With("failed to parse init message: %w", err)
 	}

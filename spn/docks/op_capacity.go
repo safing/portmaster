@@ -9,6 +9,7 @@ import (
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/spn/peerdsd"
 	"github.com/safing/portmaster/spn/terminal"
 	"github.com/safing/structures/container"
 	"github.com/safing/structures/dsd"
@@ -133,7 +134,7 @@ func startCapacityTestOp(t terminal.Terminal, opID uint32, data *container.Conta
 
 	// Parse options.
 	opts := &CapacityTestOptions{}
-	_, err := dsd.Load(data.CompileData(), opts)
+	_, err := peerdsd.Load(data.CompileData(), opts)
 	if err != nil {
 		capacityTestRunning.UnSet()
 		return nil, terminal.ErrMalformedData.With("failed to parse options: %w", err)

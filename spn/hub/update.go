@@ -12,6 +12,7 @@ import (
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/network/netutils"
+	"github.com/safing/portmaster/spn/peerdsd"
 	"github.com/safing/structures/container"
 	"github.com/safing/structures/dsd"
 	"github.com/safing/structures/varint"
@@ -76,6 +77,11 @@ func SignHubMsg(msg []byte, env *jess.Envelope, enableTofu bool) ([]byte, error)
 // provided hub or the local database. If TOFU is enabled, the signature is
 // always accepted, if valid.
 func OpenHubMsg(hub *Hub, data []byte, mapName string, tofu bool) (msg []byte, sendingHub *Hub, known bool, err error) {
+	// jess.LetterFromDSD uses dsd.Load, which decompresses without limit.
+	err = peerdsd.CheckFormat(data)
+	if err != nil {
+		return nil, nil, false, fmt.Errorf("malformed letter: %w", err)
+	}
 	letter, err := jess.LetterFromDSD(data)
 	if err != nil {
 		return nil, nil, false, fmt.Errorf("malformed letter: %w", err)
@@ -219,7 +225,7 @@ func ApplyAnnouncement(existingHub *Hub, data []byte, mapName string, scope Scop
 
 	// parse
 	announcement = &Announcement{}
-	_, err = dsd.Load(msg, announcement)
+	_, err = peerdsd.Load(msg, announcement)
 	if err != nil {
 		return //nolint:nakedret
 	}
@@ -398,7 +404,7 @@ func ApplyStatus(existingHub *Hub, data []byte, mapName string, scope Scope, sel
 
 	// parse
 	status := &Status{}
-	_, err = dsd.Load(msg, status)
+	_, err = peerdsd.Load(msg, status)
 	if err != nil {
 		return //nolint:nakedret
 	}

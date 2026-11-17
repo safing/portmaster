@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/safing/portmaster/base/rng"
+	"github.com/safing/portmaster/spn/peerdsd"
 	"github.com/safing/portmaster/spn/terminal"
 	"github.com/safing/structures/container"
 	"github.com/safing/structures/dsd"
@@ -87,7 +88,7 @@ func (op *PingOp) Deliver(msg *terminal.Msg) *terminal.Error {
 
 	// Parse response.
 	response := &PingOpResponse{}
-	_, err := dsd.Load(msg.Data.CompileData(), response)
+	_, err := peerdsd.Load(msg.Data.CompileData(), response)
 	if err != nil {
 		return terminal.ErrMalformedData.With("failed to parse ping response: %w", err)
 	}
@@ -103,7 +104,7 @@ func (op *PingOp) Deliver(msg *terminal.Msg) *terminal.Error {
 func startPingOp(t terminal.Terminal, opID uint32, data *container.Container) (terminal.Operation, *terminal.Error) {
 	// Parse request.
 	request := &PingOpRequest{}
-	_, err := dsd.Load(data.CompileData(), request)
+	_, err := peerdsd.Load(data.CompileData(), request)
 	if err != nil {
 		return nil, terminal.ErrMalformedData.With("failed to parse ping request: %w", err)
 	}

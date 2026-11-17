@@ -13,6 +13,7 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/rot256/pblind"
 
+	"github.com/safing/portmaster/spn/peerdsd"
 	"github.com/safing/structures/container"
 	"github.com/safing/structures/dsd"
 )
@@ -35,7 +36,7 @@ func (pbt *PBlindToken) Pack() ([]byte, error) {
 func UnpackPBlindToken(token []byte) (*PBlindToken, error) {
 	t := &PBlindToken{}
 
-	_, err := dsd.Load(token, t)
+	_, err := peerdsd.Load(token, t)
 	if err != nil {
 		return nil, err
 	}

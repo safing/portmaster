@@ -15,6 +15,7 @@ import (
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/spn/conf"
+	"github.com/safing/portmaster/spn/peerdsd"
 	"github.com/safing/portmaster/spn/terminal"
 	"github.com/safing/structures/container"
 	"github.com/safing/structures/dsd"
@@ -176,7 +177,7 @@ func startConnectOp(t terminal.Terminal, opID uint32, data *container.Container)
 
 	// Parse connect request.
 	request := &ConnectRequest{}
-	_, err := dsd.Load(data.CompileData(), request)
+	_, err := peerdsd.Load(data.CompileData(), request)
 	if err != nil {
 		connectOpCntError.Inc() // More like a protocol/system error than a bad request.
 		return nil, terminal.ErrMalformedData.With("failed to parse connect request: %w", err)

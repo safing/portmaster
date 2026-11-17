@@ -6,6 +6,7 @@ import (
 
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/conf"
+	"github.com/safing/portmaster/spn/peerdsd"
 	"github.com/safing/portmaster/spn/terminal"
 	"github.com/safing/structures/container"
 	"github.com/safing/structures/dsd"
@@ -115,7 +116,7 @@ func runSyncStateOp(t terminal.Terminal, opID uint32, data *container.Container)
 
 	// Load message.
 	syncState := &SyncStateMessage{}
-	_, err := dsd.Load(data.CompileData(), syncState)
+	_, err := peerdsd.Load(data.CompileData(), syncState)
 	if err != nil {
 		return nil, terminal.ErrMalformedData.With("failed to load sync state message: %w", err)
 	}
