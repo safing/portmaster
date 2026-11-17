@@ -1,0 +1,18 @@
+[package]
+name = "pm-winkext"
+version = "0.1.0"
+edition.workspace = true
+description = "Windows kernel-extension (kext) interception backend of the Portmaster core"
+license.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+# The workspace root uses `unsafe_code = "forbid"`, which cannot be overridden
+# by a local `#[allow]`. This crate needs a handful of tightly scoped FFI calls
+# in Windows-only modules, so it deliberately does NOT inherit the workspace
+# lint table (there is no `[lints] workspace = true` here) and uses `deny`
+# instead. Concrete `#[allow(unsafe_code)]` attributes are placed only on the
+# Windows FFI modules.
+[lints.rust]
+unsafe_code = "deny"

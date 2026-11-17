@@ -13,9 +13,11 @@ use std::sync::{Arc, Mutex, RwLock};
 use pm_config::Config;
 use pm_firewall::inspection::InspectorRegistry;
 use pm_firewall::packet::{
-    BandwidthSink, ConntrackControl, ExternalVerdict, LayeredProfileLookup, NfqPacket, PacketEnv,
+    BandwidthSink, ConntrackControl, ExternalVerdict, LayeredProfileLookup, PacketEnv,
     PacketHandler, QueuedPacket, SystemConntrack,
 };
+#[cfg(target_os = "linux")]
+use pm_firewall::packet::NfqPacket;
 use pm_firewall::{
     CustomLists, FirewallEnv, LocalNetwork, MulticastRequest, ServiceCustomLists, SplitTunnelEnv,
 };
@@ -32,6 +34,7 @@ use pm_profile::{
 };
 use pm_resolver::ipinfo::IpInfoStore;
 use pm_resolver::ResolverService;
+#[cfg(target_os = "linux")]
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -548,6 +551,13 @@ pub struct Firewall {
     subscription: Mutex<Option<pm_database::Subscription>>,
     started: AtomicBool,
     metrics_enabled: bool,
+    /// Windows kernel-extension backend (kept alive between start/stop).
+    #[cfg(windows)]
+    winkext: Mutex<Option<pm_winkext::Kext>>,
+    /// Location of the prebuilt driver `.sys` file. The Rust build never
+    /// compiles the driver itself.
+    #[cfg(windows)]
+    winkext_path: std::path::PathBuf,
 }
 
 impl Firewall {
@@ -656,6 +666,10 @@ impl Firewall {
             metrics_enabled: packet_metrics_file.is_some(),
             cancel: CancellationToken::new(),
             tasks: Mutex::new(Vec::new()),
+            #[cfg(windows)]
+            winkext: Mutex::new(None),
+            #[cfg(windows)]
+            winkext_path: data_dir.join("portmaster-kext.sys"),
             subscription: Mutex::new(Some(
                 databases
                     .interface(pm_database::Options {
@@ -833,6 +847,69 @@ impl Firewall {
                 tracing::warn!(%error, "filter: failed to clean up IPv6 iptables");
             }
         }
+        Ok(())
+    }
+
+    /// Starts interception through the Windows kernel extension.
+    ///
+    /// The driver binary is expected to already be present in the data
+    /// directory; this crate only installs the service and talks to the
+    /// device. `pm-winkext` selects the v1 (ioctl) or v2 (command stream)
+    /// protocol from the version reported by the driver.
+    ///
+    /// TODO: feed received verdict requests/infos into [`Self::handler`] via a
+    /// Windows `QueuedPacket` adapter; only the driver lifecycle is wired up
+    /// here so far.
+    #[cfg(windows)]
+    pub fn start(&self) -> anyhow::Result<()> {
+        if !self.env.filter_enabled() {
+            tracing::info!("filter: privacy filter is disabled");
+            return Ok(());
+        }
+        if self.started.swap(true, Ordering::SeqCst) {
+            return Ok(());
+        }
+
+        let mut kext = pm_winkext::Kext::new();
+        kext.init(&self.winkext_path);
+        match kext.start() {
+            Ok(version) => {
+                tracing::info!(
+                    %version,
+                    backend = ?kext.backend(),
+                    "filter: windows kext driver started"
+                );
+            }
+            Err(error) => {
+                self.started.store(false, Ordering::SeqCst);
+                return Err(anyhow::anyhow!("start windows kext: {error}"));
+            }
+        }
+
+        let mut guard = self
+            .winkext
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        *guard = Some(kext);
+        Ok(())
+    }
+
+    /// Stops interception and removes the Windows driver service.
+    #[cfg(windows)]
+    pub async fn stop(&self) -> anyhow::Result<()> {
+        if !self.started.swap(false, Ordering::SeqCst) {
+            return Ok(());
+        }
+        let mut guard = self
+            .winkext
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        if let Some(kext) = guard.as_mut() {
+            if let Err(error) = kext.stop() {
+                tracing::warn!(%error, "filter: failed to stop windows kext cleanly");
+            }
+        }
+        *guard = None;
         Ok(())
     }
 }
