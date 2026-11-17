@@ -214,11 +214,22 @@ func queryLocked(f ct.Family, filter ct.FilterAttr) ([]ct.Con, error) {
 }
 
 // deleteLocked deletes a conntrack entry. Deleting is idempotent, so it is
-// retried once on a desynchronized handle (the retry reports ENOENT if the
-// kernel did execute the first attempt). nfctLock must be held.
+// retried once on a desynchronized handle. nfctLock must be held.
+//
+// The kernel may have executed the first attempt before its reply was lost
+// (ENOBUFS) or left unread (mismatched sequence), so ENOENT on the retry
+// cannot be told apart from an entry that did not exist. Either way the entry
+// is gone, so ENOENT on the retry counts as success. ENOENT on the first
+// attempt is still returned.
 func deleteLocked(f ct.Family, connection ct.Con) error {
+	retry := false
 	return withNFCTLocked(func(h conntrackHandle) error {
-		return h.Delete(ct.Conntrack, f, connection)
+		err := h.Delete(ct.Conntrack, f, connection)
+		if retry && errors.Is(err, syscall.ENOENT) {
+			return nil
+		}
+		retry = true
+		return err
 	})
 }
 

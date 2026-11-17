@@ -371,3 +371,44 @@ func TestConntrackReopenFailure(t *testing.T) {
 		t.Errorf("handle must not be reopened after teardown, got %d opens", n)
 	}
 }
+
+// TestConntrackRetriedDeleteENOENT checks that ENOENT on the retry of a
+// delete is not reported as a failure: the kernel may have executed the first
+// attempt before its reply was lost or left behind, so the entry is gone
+// either way. ENOENT on a first attempt is still reported (see
+// TestConntrackBenignErrorKeepsHandle).
+//
+//nolint:paralleltest // Modifies the package-level conntrack handle.
+func TestConntrackRetriedDeleteENOENT(t *testing.T) {
+	// The kernel deleted the entry, but its ACK was lost (ENOBUFS); the
+	// entry is no longer in the table when the delete is retried.
+	broken := &fakeHandle{deleteErr: errFakeENOBUFS}
+	fresh := &fakeHandle{}
+	opener := installFakeConntrack(t, broken, fresh)
+
+	err := DeleteMarkedConnection(testConnection())
+	if err != nil {
+		t.Errorf("retried delete that found no entry reported a failure: %s", err)
+	}
+	if opener.count() != 1 || broken.deletes != 1 || fresh.deletes != 1 {
+		t.Errorf("expected one reopen and one retry: opens=%d deletes=%d,%d",
+			opener.count(), broken.deletes, fresh.deletes)
+	}
+	// ENOENT on the first attempt of the next delete is still an error.
+	err = DeleteMarkedConnection(testConnection())
+	if !errors.Is(err, syscall.ENOENT) {
+		t.Errorf("first-attempt ENOENT: expected ENOENT, got %v", err)
+	}
+
+	// The same applies to the deletes of DeleteAllMarkedConnection: the
+	// queried entry counts as deleted. Later queries go to the empty
+	// reopened handle.
+	broken2 := &fakeHandle{entries: []ct.Con{testEntry()}, deleteErr: errFakeSeqMismatch}
+	installFakeConntrack(t, broken2, &fakeHandle{})
+	nfctLock.Lock()
+	deleted := deleteMarkedConnections(ct.IPv4)
+	nfctLock.Unlock()
+	if deleted != 1 {
+		t.Errorf("expected 1 deleted entry, got %d", deleted)
+	}
+}
