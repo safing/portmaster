@@ -17,7 +17,7 @@ type Endpoint interface {
 }
 
 // EndpointBase provides general functions for implementing an Endpoint to reduce boilerplate.
-type EndpointBase struct { //nolint:maligned // TODO
+type EndpointBase struct {
 	Protocol  uint8
 	StartPort uint16
 	EndPort   uint16

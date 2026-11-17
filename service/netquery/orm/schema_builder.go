@@ -45,7 +45,7 @@ type (
 	}
 
 	// ColumnDef defines a SQL column.
-	ColumnDef struct { //nolint:maligned
+	ColumnDef struct {
 		Name          string
 		Nullable      bool
 		Type          sqlite.ColumnType

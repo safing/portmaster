@@ -28,8 +28,6 @@ const (
 // Collection of Query and Matcher types.
 // NOTE: whenever adding support for new operators make sure
 // to update UnmarshalJSON as well.
-//
-//nolint:golint
 type (
 	Query map[string][]Matcher
 

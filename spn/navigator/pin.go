@@ -16,7 +16,7 @@ import (
 )
 
 // Pin represents a Hub on a Map.
-type Pin struct { //nolint:maligned
+type Pin struct {
 	// Hub Information
 	Hub        *hub.Hub
 	EntityV4   *intel.Entity

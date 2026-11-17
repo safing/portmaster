@@ -76,7 +76,7 @@ type (
 	//
 	// Use ConvertConnection from this package to convert a network.Connection to this
 	// representation.
-	Conn struct { //nolint:maligned
+	Conn struct {
 		// ID is a device-unique identifier for the connection. It is built
 		// from network.Connection by hashing the connection ID and the start
 		// time. We cannot just use the network.Connection.ID because it is only unique

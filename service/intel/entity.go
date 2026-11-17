@@ -21,7 +21,7 @@ import (
 // functions performs locking. The caller MUST ENSURE
 // proper locking and synchronization when accessing
 // any properties of Entity.
-type Entity struct { //nolint:maligned
+type Entity struct {
 	sync.Mutex
 
 	// lists exist for most entity information and

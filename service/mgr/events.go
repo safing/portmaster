@@ -1,4 +1,3 @@
-//nolint:structcheck,golint // TODO: Seems broken for generics.
 package mgr
 
 import (

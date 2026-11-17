@@ -47,7 +47,7 @@ const (
 )
 
 // Notification represents a notification that is to be delivered to the user.
-type Notification struct { //nolint:maligned
+type Notification struct {
 	record.Base
 	// EventID is used to identify a specific notification. It consists of
 	// the module name and a per-module unique event id.

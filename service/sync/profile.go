@@ -18,7 +18,7 @@ import (
 )
 
 // ProfileExport holds an export of a profile.
-type ProfileExport struct { //nolint:maligned
+type ProfileExport struct {
 	Type Type `json:"type" yaml:"type"`
 
 	// Identification

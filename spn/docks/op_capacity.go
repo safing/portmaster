@@ -37,7 +37,7 @@ var (
 )
 
 // CapacityTestOp is used for capacity test operations.
-type CapacityTestOp struct { //nolint:maligned
+type CapacityTestOp struct {
 	terminal.OperationBase
 
 	opts *CapacityTestOptions

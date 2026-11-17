@@ -46,7 +46,7 @@ const (
 )
 
 // Hub represents a network node in the SPN.
-type Hub struct { //nolint:maligned
+type Hub struct {
 	sync.Mutex
 	record.Base
 

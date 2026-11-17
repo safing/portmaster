@@ -15,7 +15,7 @@ import (
 
 type providedExchKeyScheme struct {
 	id            string
-	securityLevel int //nolint:structcheck // TODO
+	securityLevel int
 	tool          *tools.Tool
 }
 

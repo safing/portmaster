@@ -28,7 +28,7 @@ type SetupResponse struct {
 }
 
 // TokenRequest is a token request.
-type TokenRequest struct { //nolint:golint // Be explicit.
+type TokenRequest struct {
 	SessionID string                           `json:"ID,omitempty"`
 	PBlind    map[string]*PBlindTokenRequest   `json:"PB,omitempty"`
 	Scramble  map[string]*ScrambleTokenRequest `json:"S,omitempty"`

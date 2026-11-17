@@ -45,7 +45,7 @@ type Intel struct {
 }
 
 // HubIntel holds Hub-related data.
-type HubIntel struct { //nolint:golint
+type HubIntel struct {
 	// Trusted specifies if the Hub is specially designated for more sensitive tasks, such as handling unencrypted traffic.
 	Trusted bool
 

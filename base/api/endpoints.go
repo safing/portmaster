@@ -21,7 +21,7 @@ import (
 // Endpoint describes an API Endpoint.
 // Path and at least one permission are required.
 // As is exactly one function.
-type Endpoint struct { //nolint:maligned
+type Endpoint struct {
 	// Name is the human reabable name of the endpoint.
 	Name string
 	// Description is the human readable description and documentation of the endpoint.
