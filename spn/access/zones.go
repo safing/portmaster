@@ -104,7 +104,7 @@ func InitializeZones() error {
 
 func initializeTestZone() error {
 	// Safeguard checks if we should really enable the test zone.
-	if !strings.HasSuffix(os.Args[0], ".test") {
+	if !strings.HasSuffix(os.Args[0], ".test") && !strings.HasSuffix(os.Args[0], ".test.exe") {
 		return errors.New("tried to enable test mode, but no test binary was detected")
 	}
 	if token.RegistrySize() > 0 {
