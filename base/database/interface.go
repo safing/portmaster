@@ -20,6 +20,13 @@ const (
 	getDBFromKey = ""
 )
 
+// PutMany batch errors.
+var (
+	errPutManyTimeout        = errors.New("timeout: putmany unused for too long")
+	errBatchClosed           = errors.New("batch is closed")
+	errBatchStoppedByStorage = errors.New("storage stopped processing the batch")
+)
+
 // Interface provides a method to access the database with attached options.
 type Interface struct {
 	options *Options
@@ -379,53 +386,77 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 	// start database access
 	dbBatch, errs := db.PutMany()
 	finished := abool.New()
-	var internalErr error
+	// The proxy is the only reader of errs. It sets result to the final error
+	// of the batch and then closes done when it exits.
+	done := make(chan struct{})
+	var result error
 
 	// interface options proxy
 	go func() {
-		defer close(dbBatch) // signify that we are finished
+		defer close(done)
 		for {
 			select {
 			case r := <-interfaceBatch:
 				// finished?
 				if r == nil {
+					close(dbBatch) // signify that we are finished
+					result = <-errs
 					return
 				}
 				// apply options
 				i.options.Apply(r)
-				// pass along
-				dbBatch <- r
+				// pass along, unless the storage stopped processing the batch
+				select {
+				case dbBatch <- r:
+				case err := <-errs:
+					close(dbBatch)
+					result = storageStoppedError(err)
+					return
+				}
+			case err := <-errs:
+				// The storage stopped processing the batch.
+				close(dbBatch)
+				result = storageStoppedError(err)
+				return
 			case <-time.After(1 * time.Second):
 				// bail out
-				internalErr = errors.New("timeout: putmany unused for too long")
-				finished.Set()
+				close(dbBatch)
+				result = errPutManyTimeout
 				return
 			}
 		}
 	}()
 
-	return func(r record.Record) error {
-		// finished?
-		if finished.IsSet() {
-			// check for internal error
-			if internalErr != nil {
-				return internalErr
-			}
-			// check for previous error
-			select {
-			case err := <-errs:
-				return err
-			default:
-				return errors.New("batch is closed")
-			}
+	// batchClosedErr may only be called after done was closed.
+	batchClosedErr := func() error {
+		if result != nil {
+			return result
 		}
+		return errBatchClosed
+	}
 
+	return func(r record.Record) error {
 		// finish?
 		if r == nil {
-			finished.Set()
-			interfaceBatch <- nil // signify that we are finished
+			if finished.SetToIf(false, true) {
+				select {
+				case interfaceBatch <- nil: // signify that we are finished
+				case <-done:
+				}
+			}
 			// do not close, as this fn could be called again with nil.
-			return <-errs
+			<-done
+			return result
+		}
+
+		// finished?
+		select {
+		case <-done:
+			return batchClosedErr()
+		default:
+		}
+		if finished.IsSet() {
+			return errBatchClosed
 		}
 
 		// check record scope
@@ -437,10 +468,19 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 		select {
 		case interfaceBatch <- r:
 			return nil
-		case err := <-errs:
-			return err
+		case <-done:
+			return batchClosedErr()
 		}
 	}
+}
+
+// storageStoppedError returns the error for a storage that stopped processing
+// a batch before it was finished.
+func storageStoppedError(err error) error {
+	if err != nil {
+		return err
+	}
+	return errBatchStoppedByStorage
 }
 
 // SetAbsoluteExpiry sets an absolute record expiry.
