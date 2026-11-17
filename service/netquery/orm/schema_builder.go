@@ -61,8 +61,12 @@ type (
 
 // GetColumnDef returns the column definition with the given name.
 func (ts TableSchema) GetColumnDef(name string) *ColumnDef {
-	for _, def := range ts.Columns {
-		if def.Name == name {
+	// Index into the slice instead of ranging by value: the range variable
+	// escapes through the returned pointer, so it would be heap-allocated
+	// for every visited column. Only the match is copied.
+	for i := range ts.Columns {
+		if ts.Columns[i].Name == name {
+			def := ts.Columns[i]
 			return &def
 		}
 	}
