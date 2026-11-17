@@ -81,6 +81,7 @@ func (db *SQLite) putManyWithPreparedStmts() (chan<- record.Record, <-chan error
 		// Arguments of the records collected for the next statement.
 		args := make([]any, 0, upsertRowsPerStatement*len(recordColumns))
 		pending := 0
+		var err error
 
 		// Read all put records.
 	writeBatch:
@@ -89,9 +90,9 @@ func (db *SQLite) putManyWithPreparedStmts() (chan<- record.Record, <-chan error
 			case r := <-batch:
 				if r != nil {
 					// Collect record and write when a full statement is reached.
-					recordArgs, err := upsertArgs(r)
+					var recordArgs []any
+					recordArgs, err = upsertArgs(r)
 					if err != nil {
-						errs <- err
 						break writeBatch
 					}
 					args = append(args, recordArgs...)
@@ -102,7 +103,6 @@ func (db *SQLite) putManyWithPreparedStmts() (chan<- record.Record, <-chan error
 
 					_, err = preparedStmt.ExecContext(db.ctx, args...)
 					if err != nil {
-						errs <- err
 						break writeBatch
 					}
 					args = args[:0]
@@ -110,14 +110,13 @@ func (db *SQLite) putManyWithPreparedStmts() (chan<- record.Record, <-chan error
 				} else {
 					// Write the remaining records with a statement of matching size.
 					if pending > 0 {
-						remainderUpsert, err := db.buildUpsert(pending)
+						var remainderUpsert string
+						remainderUpsert, err = db.buildUpsert(pending)
 						if err != nil {
-							errs <- err
 							break writeBatch
 						}
 						_, err = tx.ExecContext(db.ctx, remainderUpsert, args...)
 						if err != nil {
-							errs <- err
 							break writeBatch
 						}
 					}
@@ -128,12 +127,15 @@ func (db *SQLite) putManyWithPreparedStmts() (chan<- record.Record, <-chan error
 				}
 
 			case <-db.ctx.Done():
+				err = db.shuttingDownErr()
 				break writeBatch
 			}
 		}
 
-		// Rollback transaction.
-		errs <- tx.Rollback(db.ctx)
+		// Rollback transaction and report why the batch was aborted.
+		// Exactly one value must be sent on errs.
+		db.rollbackBatch(tx)
+		errs <- err
 	}()
 
 	return batch, errs

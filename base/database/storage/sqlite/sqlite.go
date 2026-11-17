@@ -33,6 +33,8 @@ import (
 // Errors.
 var (
 	ErrQueryTimeout = errors.New("query timeout")
+
+	errShuttingDown = errors.New("database is shutting down")
 )
 
 // queryPageSize is the number of rows a query loads from the database at once.
@@ -252,6 +254,8 @@ func (db *SQLite) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error
 
 	// start handler
 	go func() {
+		var err error
+
 		// Read all put records.
 	writeBatch:
 		for {
@@ -259,9 +263,8 @@ func (db *SQLite) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error
 			case r := <-batch:
 				if r != nil {
 					// Write record.
-					_, err := db.putRecord(r, &tx)
+					_, err = db.putRecord(r, &tx)
 					if err != nil {
-						errs <- err
 						break writeBatch
 					}
 				} else {
@@ -271,12 +274,15 @@ func (db *SQLite) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error
 				}
 
 			case <-db.ctx.Done():
+				err = db.shuttingDownErr()
 				break writeBatch
 			}
 		}
 
-		// Rollback transaction.
-		errs <- tx.Rollback(db.ctx)
+		// Rollback transaction and report why the batch was aborted.
+		// Exactly one value must be sent on errs.
+		db.rollbackBatch(tx)
+		errs <- err
 	}()
 
 	return batch, errs
@@ -549,6 +555,21 @@ func (db *SQLite) Shutdown() error {
 	db.cancelCtx()
 
 	return db.bob.Close()
+}
+
+// shuttingDownErr returns the error for a batch that was aborted because the
+// database is shutting down.
+func (db *SQLite) shuttingDownErr() error {
+	return fmt.Errorf("%w: %w", errShuttingDown, db.ctx.Err())
+}
+
+// rollbackBatch rolls back the transaction of an aborted batch.
+func (db *SQLite) rollbackBatch(tx bob.Tx) {
+	// The transaction is already rolled back when the context was canceled.
+	err := tx.Rollback(db.ctx)
+	if err != nil && !errors.Is(err, sql.ErrTxDone) {
+		log.Warningf("database/sqlite: failed to roll back aborted batch of %s database: %s", db.name, err)
+	}
 }
 
 // feedQueryPage sends the matching records of the given page to the query
