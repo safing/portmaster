@@ -30,7 +30,14 @@ import (
 	"github.com/safing/portmaster/spn/captain"
 )
 
-var errInvalidReadPermission = errors.New("invalid read permission")
+var (
+	errInvalidReadPermission = errors.New("invalid read permission")
+	errAppAccessDenied       = errors.New("access denied")
+	errAppAuthTimeout        = errors.New("timeout")
+)
+
+// appAuthAllowActionID is the notification action ID to authorize an app.
+const appAuthAllowActionID = "allow"
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
@@ -402,7 +409,7 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 		Expires:      time.Now().Add(time.Minute).Unix(),
 		AvailableActions: []*notifications.Action{
 			{
-				ID:   "allow",
+				ID:   appAuthAllowActionID,
 				Text: "Authorize",
 			},
 			{
@@ -412,15 +419,43 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 		},
 	}
 
-	ch := make(chan string)
-
 	validUntil := time.Now().Add(ttl)
 
-	n.SetActionFunction(func(ctx context.Context, n *notifications.Notification) error {
+	ch, actionFn := newAppAuthorization(readPermStr, writePermStr, validUntil)
+	n.SetActionFunction(actionFn)
+
+	n.Save()
+
+	select {
+	case key := <-ch:
+		if len(key) == 0 {
+			return nil, errAppAccessDenied
+		}
+
+		return map[string]any{
+			"key":        key,
+			"validUntil": validUntil,
+		}, nil
+	case <-ar.Context().Done():
+		return nil, errAppAuthTimeout
+	}
+}
+
+// newAppAuthorization returns the notification action function for an app
+// authorization prompt and the channel on which it reports the result: the new
+// API key if the user allowed access, or a closed channel otherwise.
+func newAppAuthorization(readPermStr, writePermStr string, validUntil time.Time) (<-chan string, notifications.NotificationActionFn) {
+	// The channel is buffered, as the requester may have gone away (request
+	// canceled or timed out) by the time the user responds. An unbuffered send
+	// would then block the action function forever while it holds the
+	// notification lock, which also blocks the notification cleaner.
+	ch := make(chan string, 1)
+
+	return ch, func(ctx context.Context, n *notifications.Notification) error {
 		n.Lock()
 		defer n.Unlock()
 
-		if n.SelectedActionID != "allow" {
+		if n.SelectedActionID != appAuthAllowActionID {
 			close(ch)
 			return nil
 		}
@@ -449,21 +484,5 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 		ch <- newKeyHex
 
 		return nil
-	})
-
-	n.Save()
-
-	select {
-	case key := <-ch:
-		if len(key) == 0 {
-			return nil, errors.New("access denied")
-		}
-
-		return map[string]interface{}{
-			"key":        key,
-			"validUntil": validUntil,
-		}, nil
-	case <-ar.Context().Done():
-		return nil, errors.New("timeout")
 	}
 }
