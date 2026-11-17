@@ -99,7 +99,7 @@ func OpenHubMsg(hub *Hub, data []byte, mapName string, tofu bool) (msg []byte, s
 	}
 
 	// check signature signer ID
-	if seal.ID == "" {
+	if seal == nil || seal.ID == "" {
 		return nil, nil, false, errors.New("signature is missing signer ID")
 	}
 
@@ -147,7 +147,7 @@ func OpenHubMsg(hub *Hub, data []byte, mapName string, tofu bool) (msg []byte, s
 		}
 
 		// check ID integrity
-		if !verifyHubID(seal.ID, seal.Scheme, pubkey.Value) {
+		if pubkey == nil || !verifyHubID(seal.ID, seal.Scheme, pubkey.Value) {
 			return nil, nil, false, fmt.Errorf("ID integrity of %s violated with new key", seal.ID)
 		}
 
