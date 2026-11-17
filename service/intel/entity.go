@@ -405,6 +405,9 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 	})
 }
 
+// splitDomain returns the domain and all its parent domains up to, but
+// excluding, the public suffix. A public suffix that is not an ICANN TLD is
+// included.
 func splitDomain(domain string) []string {
 	// Get suffix.
 	d := strings.TrimSuffix(domain, ".")
@@ -413,6 +416,43 @@ func splitDomain(domain string) []string {
 		return []string{domain}
 	}
 
+	// All domains to return are a suffix of the fully qualified domain, if
+	// the labels before the public suffix are well-formed: Slice them from
+	// the domain instead of joining the labels again.
+	// This is called for every domain and CNAME of every new connection.
+	subdomains := d[:len(d)-len(suffix)]
+	if !strings.HasSuffix(d, suffix) ||
+		!strings.HasSuffix(subdomains, ".") ||
+		strings.HasPrefix(subdomains, ".") ||
+		strings.Contains(subdomains, "..") {
+		return splitIrregularDomain(d, suffix, icann)
+	}
+	fqdn := domain
+	if len(fqdn) == len(d) {
+		fqdn += "."
+	}
+
+	domains := make([]string, 0, strings.Count(subdomains, ".")+1)
+	start := 0
+	for i := range len(subdomains) {
+		if subdomains[i] == '.' {
+			domains = append(domains, fqdn[start:])
+			start = i + 1
+		}
+	}
+
+	// If the suffix is not a real TLD, but a public suffix, add it to the list.
+	if !icann {
+		domains = append(domains, fqdn[len(subdomains):])
+	}
+
+	return domains
+}
+
+// splitIrregularDomain is the general implementation of splitDomain, which
+// also handles domains with empty labels. d is the domain without the
+// trailing dot.
+func splitIrregularDomain(d, suffix string, icann bool) []string {
 	// Split all subdomain into labels.
 	labels := strings.FieldsFunc(d[:len(d)-len(suffix)], func(r rune) bool {
 		return r == '.'

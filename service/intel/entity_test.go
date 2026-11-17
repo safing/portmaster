@@ -3,9 +3,11 @@ package intel
 import (
 	"context"
 	"net"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/publicsuffix"
 )
 
 var splitDomainTestCases = [][]string{
@@ -31,6 +33,58 @@ func TestSplitDomain(t *testing.T) {
 	for _, testCase := range splitDomainTestCases {
 		splitted := splitDomain(testCase[0])
 		assert.Equal(t, testCase, splitted, "result must match")
+	}
+}
+
+// TestSplitDomainMatchesGeneralImplementation checks that slicing the parent
+// domains from the domain returns exactly what joining the labels returns,
+// also for irregular domains.
+func TestSplitDomainMatchesGeneralImplementation(t *testing.T) {
+	t.Parallel()
+
+	labels := []string{"", "a", "www", "example", "com", "co", "uk", "googleapis", "blogspot", "xn--bcher-kva", "ck", "*", "!www", "compute", "amazonaws", "cn", "local", "1", "EXAMPLE", "Com"}
+	domains := make([]string, 0, 110000)
+	for _, l1 := range labels {
+		domains = append(domains, l1)
+		for _, l2 := range labels {
+			domains = append(domains, l1+"."+l2)
+			for _, l3 := range labels {
+				domains = append(domains, l1+"."+l2+"."+l3)
+				for _, l4 := range []string{"", "com", "uk", "ck", "cn", "www"} {
+					domains = append(domains, l1+"."+l2+"."+l3+"."+l4)
+					domains = append(domains, "sub.domain."+l1+"."+l2+"."+l3+"."+l4)
+				}
+			}
+		}
+	}
+
+	var sliced int
+	for _, domain := range domains {
+		for _, domain := range []string{domain, domain + ".", domain + "..", "." + domain} {
+			d := strings.TrimSuffix(domain, ".")
+			suffix, icann := publicsuffix.PublicSuffix(d)
+			expected := []string{domain}
+			if suffix != d {
+				expected = splitIrregularDomain(d, suffix, icann)
+			}
+
+			splitted := splitDomain(domain)
+			if !assert.Equal(t, expected, splitted, "domain %q", domain) {
+				return
+			}
+			if len(splitted) > 1 {
+				sliced++
+			}
+		}
+	}
+	assert.Greater(t, sliced, 10000)
+}
+
+func BenchmarkSplitDomain(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		splitDomain("www.example.com.")
+		splitDomain("edge-12.eu-west-1.cdn.example.co.uk.")
 	}
 }
 
