@@ -1032,6 +1032,7 @@ func packetHandler(w *mgr.WorkerCtx) error {
 }
 
 func bandwidthUpdateHandler(w *mgr.WorkerCtx) error {
+	pending := newPendingBandwidth()
 	for {
 		select {
 		case <-w.Done():
@@ -1040,7 +1041,7 @@ func bandwidthUpdateHandler(w *mgr.WorkerCtx) error {
 			if bwUpdate != nil {
 				// DEBUG:
 				// log.Debugf("filter: bandwidth update: %s", bwUpdate)
-				updateBandwidth(w.Ctx(), bwUpdate)
+				updateBandwidth(w.Ctx(), pending, bwUpdate, time.Now())
 			} else {
 				return errors.New("received nil bandwidth update from interception")
 			}
@@ -1048,14 +1049,18 @@ func bandwidthUpdateHandler(w *mgr.WorkerCtx) error {
 	}
 }
 
-func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
+func updateBandwidth(ctx context.Context, pending *pendingBandwidth, bwUpdate *packet.BandwidthUpdate, now time.Time) {
 	// Check if update makes sense.
 	if bwUpdate.BytesReceived == 0 && bwUpdate.BytesSent == 0 {
 		return
 	}
 
 	// Get connection.
+	// Additive updates of unknown connections are held for a short time and
+	// added to the next update of the connection, as their bytes would be
+	// lost otherwise.
 	conn, ok := network.GetConnection(bwUpdate.ConnID)
+	bwUpdate = pending.resolve(bwUpdate, ok, now)
 	if !ok {
 		return
 	}
