@@ -281,7 +281,7 @@ impl RequestQueue {
 
         let pending = Arc::clone(&self.pending);
         let scheduled = Arc::clone(&self.cleanup_scheduled);
-        let _ = handle.spawn(async move {
+        let _task = handle.spawn(async move {
             loop {
                 let sleep = PENDING_REQUEST_TTL + Duration::from_secs(1);
                 let cancelled = tokio::select! {

@@ -349,7 +349,7 @@ impl NetEnv {
         // A portal can disappear while the status number stays the same; its
         // notification still has to be deleted in that case (Go separates the
         // captive portal notification from the online status notification).
-        let portal_removed = had_portal && portal.as_ref().map_or(true, |p| p.url.is_empty());
+        let portal_removed = had_portal && portal.as_ref().is_none_or(|p| p.url.is_empty());
         if !changed && !portal_removed {
             return false;
         }
