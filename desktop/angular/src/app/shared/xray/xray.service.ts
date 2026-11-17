@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Inject, Injectable } from '@angular/core';
 import { PORTMASTER_HTTP_API_ENDPOINT } from '@safing/portmaster-api';
-import { BehaviorSubject, Observable, switchMap, tap } from 'rxjs';
+import { BehaviorSubject, Observable, shareReplay, switchMap, tap } from 'rxjs';
 import { XrayNode, XrayStatus, XraySubscription } from './xray.types';
 
 /**
@@ -30,6 +30,9 @@ export class XrayService {
 
   readonly status$: Observable<XrayStatus> = this.reload$.pipe(
     switchMap(() => this.http.get<XrayStatus>(`${this.basePath}/status`)),
+    // The page subscribes to status$ in both the template and ngOnInit;
+    // share the HTTP result instead of issuing two requests per refresh.
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
 
   constructor(

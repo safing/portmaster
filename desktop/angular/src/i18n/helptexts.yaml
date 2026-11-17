@@ -376,3 +376,15 @@ spn:
 process-tags:
   title: Process Tags
   content: Tags holds special metadata of processes and are gathered by Portmaster. You can use these tags in fingerprints to better match processes, which would otherwise be a lot more difficult or impossible to match correctly.
+
+navXray:
+  title: VPN Connections (Xray)
+  content: |
+    Manage subscriptions and servers here. Pick a country on the map or connect to a single node from a subscription.
+  nextKey: navSettings
+
+navNotifications:
+  title: Notifications
+  content: |
+    Alerts from Portmaster are shown here. Open a notification to see its details or choose an action.
+  nextKey: navXray
