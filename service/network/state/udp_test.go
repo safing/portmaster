@@ -155,3 +155,37 @@ func TestMakeUDPStateKey(t *testing.T) {
 		}
 	}
 }
+
+// TestUDPDualStackLookupUsesOwnTableAge checks that the first try of a lookup
+// decides by the age of the dual-stack table itself whether it has to be
+// updated, and not by the age of the UDP4 table.
+func TestUDPDualStackLookupUsesOwnTableAge(t *testing.T) {
+	t.Parallel()
+
+	udp4, udp6, _ := newDualStackTestTables()
+
+	// Count the fetches of the dual-stack table and do not limit them.
+	var fetches int
+	binds := udp6.getCurrentTables()
+	udp6.fetchLimiter = utils.NewCallLimiter2(0)
+	udp6.fetchTable = func() ([]*socket.BindInfo, error) {
+		fetches++
+		return binds, nil
+	}
+
+	// The packet was seen after the dual-stack table was updated, but before
+	// the UDP4 table was.
+	pkt := udp4TestPacket(false)
+	udp4.lastUpdateAt.Store(pkt.SeenAt.Add(time.Second).UnixNano())
+
+	pid, _, err := udp4.lookup(pkt, true)
+	if err != nil {
+		t.Fatalf("lookup failed: %s", err)
+	}
+	if pid != 4242 {
+		t.Fatalf("unexpected pid %d", pid)
+	}
+	if fetches != 0 {
+		t.Fatalf("dual-stack table was fetched %d times, although it is newer than the packet", fetches)
+	}
+}

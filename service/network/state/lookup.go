@@ -212,7 +212,7 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 		}
 
 		// Get or update tables.
-		if i == 1 && pktInfo.SeenAt.UnixNano() >= table.lastUpdateAt.Load() {
+		if i == 1 && pktInfo.SeenAt.UnixNano() >= table.dualStack.lastUpdateAt.Load() {
 			dualStackBinds = table.dualStack.getCurrentTables()
 		} else {
 			dualStackBinds = table.dualStack.updateTables()

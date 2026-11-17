@@ -21,7 +21,7 @@ type udpTable struct {
 	binds []*socket.BindInfo
 	lock  sync.RWMutex
 
-	// lastUpdateAt stores the time when the tables where last updated as unix nanoseconds.
+	// lastUpdateAt stores the time when the tables were last updated as unix nanoseconds.
 	lastUpdateAt atomic.Int64
 	// lastFetchAttemptAt stores the time of the last attempt to update the
 	// tables as unix nanoseconds, regardless of whether it succeeded.
