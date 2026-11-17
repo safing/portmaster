@@ -240,19 +240,12 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		// Nothing left the host if the local port could not be bound. Do not
 		// count this against the resolver or the network.
 		if errors.Is(err, ErrLocalBind) {
-			tr.Lock()
 			// Do not share this failure: queries waiting for this dial try
 			// other local ports themselves.
+			tr.Lock()
 			tr.dialCount++
 			tr.dialErr = nil
-			// Concurrent queries dial at the same time. Use the connection
-			// another one has created in the meantime, if there is one.
-			newConn := tr.resolverConn
-			newInstanceID := tr.resolverConnInstanceID
 			tr.Unlock()
-			if newConn != nil && newInstanceID != seenInstanceID && newConn.abandoned.IsNotSet() {
-				return newConn, nil
-			}
 			return nil, err
 		}
 

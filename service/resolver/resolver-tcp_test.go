@@ -65,9 +65,12 @@ func TestTCPResolverDialGivesUpOnBindErrors(t *testing.T) { //nolint:paralleltes
 	}
 }
 
-// TestTCPResolverUsesConcurrentConnOnBindError checks that a connection
-// created by a concurrent query while binding fails is used instead of
-// reporting the bind error.
+// TestTCPResolverUsesConcurrentConnOnBindError checks that the bind error is
+// passed on, and that a query waiting for a concurrent query to establish a
+// connection uses that connection instead of failing to bind a port itself.
+//
+// A connection can only be created while holding the dial slot, so it cannot
+// appear while a query that holds the slot is binding.
 func TestTCPResolverUsesConcurrentConnOnBindError(t *testing.T) { //nolint:paralleltest // Replaces the package-level hooks.
 	bt := newTCPBindTest(t)
 	bt.usePorts(bt.heldPort)
@@ -79,30 +82,48 @@ func TestTCPResolverUsesConcurrentConnOnBindError(t *testing.T) { //nolint:paral
 		t.Errorf("expected ErrLocalBind, got: %v", err)
 	}
 
-	// Simulate a concurrent query that creates a connection while this one
-	// fails to bind: set the connection from within the port selection, which
-	// runs after getOrCreateResolverConn has noted the current connection.
+	// Simulate a concurrent query that holds the dial slot and creates a
+	// connection while this one waits for the slot.
 	concurrentConn := &tcpResolverConn{
 		abandoned: abool.New(),
 		heartbeat: make(chan struct{}),
 	}
-	selectPort := localAddrFactory
-	localAddrFactory = func(network string) net.Addr {
-		tr.Lock()
-		if tr.resolverConn == nil {
-			tr.resolverConnInstanceID++
-			concurrentConn.id = tr.resolverConnInstanceID
-			tr.resolverConn = concurrentConn
+	// Answer alive checks, in case the connection is already set when the
+	// query looks for one.
+	stopHeartbeat := make(chan struct{})
+	defer close(stopHeartbeat)
+	go func() {
+		for {
+			select {
+			case <-concurrentConn.heartbeat:
+			case <-stopHeartbeat:
+				return
+			}
 		}
-		tr.Unlock()
-		return selectPort(network)
+	}()
+	tr.dialSlot <- struct{}{}
+	type result struct {
+		conn *tcpResolverConn
+		err  error
 	}
+	results := make(chan result, 1)
+	go func() {
+		conn, err := tr.getOrCreateResolverConn(t.Context())
+		results <- result{conn, err}
+	}()
+	time.Sleep(50 * time.Millisecond)
+	tr.Lock()
+	tr.resolverConnInstanceID++
+	concurrentConn.id = tr.resolverConnInstanceID
+	tr.resolverConn = concurrentConn
+	tr.Unlock()
+	<-tr.dialSlot
 
-	resolverConn, err := tr.getOrCreateResolverConn(t.Context())
-	if err != nil {
-		t.Fatalf("expected the concurrently created connection, got error: %s", err)
+	res := <-results
+	if res.err != nil {
+		t.Fatalf("expected the concurrently created connection, got error: %s", res.err)
 	}
-	if resolverConn != concurrentConn {
+	if res.conn != concurrentConn {
 		t.Error("expected the concurrently created connection to be returned")
 	}
 }
