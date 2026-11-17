@@ -509,7 +509,6 @@ func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 	defer trc.shutdown()
 
 	// Set up variables.
-	var readyToRecycle bool
 	ttl := trc.ttl
 	if ttl <= 0 {
 		ttl = defaultClientTTL
@@ -532,11 +531,10 @@ func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 			return nil
 
 		case <-ttlTimer:
-			// Recycle the connection after the TTL is reached.
-			readyToRecycle = true
-			// Stop handing out this connection to new queries, so that it
-			// drains and the next query creates a new one. Otherwise a busy
-			// connection that always has a query in flight is never recycled.
+			// Recycle the connection after the TTL is reached: stop handing
+			// it out to new queries, so that it drains and the next query
+			// creates a new one. Otherwise a busy connection that always has a
+			// query in flight is never recycled.
 			trc.abandoned.Set()
 			// Send dummy response to trigger the check.
 			select {
@@ -582,9 +580,10 @@ func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 				trc.handleQueryResponse(msg)
 			}
 
-			// If we are ready to recycle and we have no in-flight queries, we can
-			// shutdown the connection and create a new one for the next query.
-			if readyToRecycle || trc.abandoned.IsSet() {
+			// If the connection is abandoned (e.g. its TTL is reached) and we
+			// have no in-flight queries, we can shutdown the connection. The
+			// next query creates a new one.
+			if trc.abandoned.IsSet() {
 				if len(trc.inFlightQueries) == 0 {
 					log.Debugf("resolver: recycling connection to %s", trc.resolverInfo.DescriptiveName())
 					return nil
@@ -596,7 +595,7 @@ func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 			// has given up already.
 			trc.pruneInFlightQueries()
 
-			if readyToRecycle || trc.abandoned.IsSet() {
+			if trc.abandoned.IsSet() {
 				if len(trc.inFlightQueries) == 0 {
 					log.Debugf("resolver: recycling connection to %s", trc.resolverInfo.DescriptiveName())
 					return nil
