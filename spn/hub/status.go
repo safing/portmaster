@@ -210,6 +210,8 @@ func (l *Lane) Equal(other *Lane) bool {
 	return true
 }
 
+var errEmptyEntry = errors.New("empty entry")
+
 // validateFormatting check if all values conform to the basic format.
 func (s *Status) validateFormatting() error {
 	// public keys
@@ -219,6 +221,9 @@ func (s *Status) validateFormatting() error {
 	for keyID, key := range s.Keys {
 		if err := checkStringFormat("Keys#ID", keyID, 255); err != nil {
 			return err
+		}
+		if key == nil {
+			return fmt.Errorf("field Keys: %w for %q", errEmptyEntry, keyID)
 		}
 		if err := checkStringFormat("Keys.Scheme", key.Scheme, 255); err != nil {
 			return err
@@ -233,6 +238,9 @@ func (s *Status) validateFormatting() error {
 		return fmt.Errorf("field Lanes with array/slice length of %d exceeds max length of %d", len(s.Lanes), 255)
 	}
 	for _, lanes := range s.Lanes {
+		if lanes == nil {
+			return fmt.Errorf("field Lanes: %w", errEmptyEntry)
+		}
 		if err := checkStringFormat("Lanes.ID", lanes.ID, 255); err != nil {
 			return err
 		}
