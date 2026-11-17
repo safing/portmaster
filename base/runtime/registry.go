@@ -73,6 +73,16 @@ func (r *Registry) DatabaseName() string {
 	return r.dbName
 }
 
+// HasSubscribers returns whether a record pushed with the given key (without
+// the database name) could be received by a database subscriber. Records
+// that are expensive to create do not need to be pushed otherwise.
+func (r *Registry) HasSubscribers(key string) bool {
+	r.l.RLock()
+	defer r.l.RUnlock()
+
+	return r.dbController.HasSubscribers(key)
+}
+
 // InjectAsDatabase injects the registry as the storage
 // database for name.
 func (r *Registry) InjectAsDatabase(name string) error {

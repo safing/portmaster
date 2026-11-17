@@ -167,6 +167,12 @@ func snapshotConnection(conn *network.Connection) (model *Conn, meta *record.Met
 }
 
 func (mng *Manager) pushConnUpdate(_ context.Context, meta record.Meta, conn Conn) error {
+	// A push only notifies the current subscribers: do not marshal the
+	// connection if there is nobody to receive it.
+	if !mng.runtimeReg.HasSubscribers(mng.pushPrefix + conn.ID) {
+		return nil
+	}
+
 	blob, err := json.Marshal(conn)
 	if err != nil {
 		return fmt.Errorf("failed to marshal connection: %w", err)

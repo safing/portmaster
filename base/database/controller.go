@@ -187,6 +187,27 @@ func (c *Controller) PushUpdate(r record.Record) {
 	}
 }
 
+// HasSubscribers returns whether there is a subscription that could receive
+// an update of the record with the given database key (the key without the
+// database name). It does not check permissions or query conditions, so it
+// may report subscribers that will not receive a specific record.
+// Use it to skip creating a record for PushUpdate that nobody would receive.
+func (c *Controller) HasSubscribers(dbKey string) bool {
+	if c == nil || shuttingDown.IsSet() {
+		return false
+	}
+
+	c.subscriptionLock.RLock()
+	defer c.subscriptionLock.RUnlock()
+
+	for _, sub := range c.subscriptions {
+		if sub.q.MatchesKey(dbKey) {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Controller) addSubscription(sub *Subscription) {
 	if shuttingDown.IsSet() {
 		return
