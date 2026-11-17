@@ -168,6 +168,12 @@ func TestEndpointFormat(t *testing.T) {
 	testFormat(t, "+ *has.prefix.*", true)
 	testFormat(t, "+ .sub.and.prefix.*", false)
 	testFormat(t, "+ *.sub..and.prefix.*", false)
+
+	// Comments must not leave too few fields behind.
+	testFormat(t, "+ #", false)
+	testFormat(t, "- # comment", false)
+	testFormat(t, "# just a comment", false)
+	testFormat(t, "+ * # comment", true)
 }
 
 func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO

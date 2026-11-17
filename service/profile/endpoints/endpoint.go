@@ -236,6 +236,10 @@ func parseEndpoint(value string) (endpoint Endpoint, err error) {
 			break
 		}
 	}
+	// All parsers access the first two fields.
+	if len(fields) < 2 {
+		return nil, invalidDefinitionError(fields, "missing permission prefix or entity")
+	}
 
 	// any
 	if endpoint, err = parseTypeAny(fields); endpoint != nil || err != nil {
