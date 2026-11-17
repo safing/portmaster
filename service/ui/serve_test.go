@@ -179,3 +179,74 @@ func TestConcurrentArchiveLoadDoesNotLeak(t *testing.T) {
 	ui.CloseArchives()
 	assert.Equal(t, 0, countOpenFDs(t, ti.zipPath), "all opened archives must be closed by CloseArchives")
 }
+
+// writeTestZip writes a zip archive with the given entries to a new file.
+// Entry names ending in "/" are directory entries.
+func writeTestZip(t *testing.T, entries map[string]string) string {
+	t.Helper()
+
+	zipPath := filepath.Join(t.TempDir(), "portmaster.zip")
+	f, err := os.Create(zipPath)
+	require.NoError(t, err)
+	zw := zip.NewWriter(f)
+	for name, content := range entries {
+		w, err := zw.Create(name)
+		require.NoError(t, err)
+		_, err = w.Write([]byte(content))
+		require.NoError(t, err)
+	}
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+	return zipPath
+}
+
+func serveTestPath(ui *UI, resPath string) *httptest.ResponseRecorder {
+	r := httptest.NewRequest(http.MethodGet, "/ui/modules/portmaster/"+resPath, nil)
+	r = r.WithContext(context.WithValue(r.Context(), api.RequestContextKey, &api.Request{
+		Request: r,
+		URLVars: map[string]string{"moduleName": "portmaster", "resPath": resPath},
+	}))
+	w := httptest.NewRecorder()
+	(&archiveServer{ui: ui}).ServeHTTP(w, r)
+	return w
+}
+
+// TestServeDirectoryEntry checks that a path naming a directory in the archive
+// is handled like a non-existent path instead of returning an empty 200.
+func TestServeDirectoryEntry(t *testing.T) {
+	t.Parallel()
+
+	t.Run("fallback to index", func(t *testing.T) {
+		t.Parallel()
+
+		ui, ti := newTestUI(t)
+		ti.zipPath = writeTestZip(t, map[string]string{
+			"index.html":    "<html>index</html>",
+			"assets/":       "",
+			"assets/app.js": "console.log(1)",
+		})
+
+		missing := serveTestPath(ui, "does-not-exist")
+		require.Equal(t, http.StatusOK, missing.Code)
+
+		w := serveTestPath(ui, "assets")
+		assert.Equal(t, missing.Code, w.Code)
+		assert.Equal(t, "<html>index</html>", w.Body.String())
+	})
+
+	t.Run("not found without index", func(t *testing.T) {
+		t.Parallel()
+
+		ui, ti := newTestUI(t)
+		ti.zipPath = writeTestZip(t, map[string]string{
+			"assets/":       "",
+			"assets/app.js": "console.log(1)",
+		})
+
+		missing := serveTestPath(ui, "does-not-exist")
+		require.Equal(t, http.StatusNotFound, missing.Code)
+
+		w := serveTestPath(ui, "assets")
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+}

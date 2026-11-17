@@ -176,6 +176,14 @@ func ServeFileFromArchive(w http.ResponseWriter, r *http.Request, archiveName st
 // the index.html if the path does not exist.
 func openFileFromArchive(archiveName string, archiveFS *zipfs.FileSystem, path string) (file http.File, servedPath string, status int, err error) {
 	readCloser, err := archiveFS.Open(path)
+	if err == nil {
+		// Directories cannot be served, handle them like missing files.
+		info, statErr := readCloser.Stat()
+		if statErr == nil && info.IsDir() {
+			_ = readCloser.Close()
+			err = fs.ErrNotExist
+		}
+	}
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			// Check if there is a base index.html file we can serve instead.
