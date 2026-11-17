@@ -100,19 +100,13 @@ func start() error {
 		})
 
 	// reload after config change
-	prevNameservers := strings.Join(configuredNameServers(), " ")
 	module.instance.Config().EventConfigChange.AddCallback(
 		"update nameservers",
-		func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
-			newNameservers := strings.Join(configuredNameServers(), " ")
-			if newNameservers != prevNameservers {
-				prevNameservers = newNameservers
-
-				loadResolvers()
-				log.Debug("resolver: reloaded nameservers due to config change")
-			}
-			return false, nil
-		})
+		newNameserverConfigChangeHandler(
+			func() []string { return configuredNameServers() },
+			loadResolvers,
+		),
+	)
 
 	// Check failing resolvers regularly and when the network changes.
 	module.failingResolverWorkerMgr = module.mgr.NewWorkerMgr("check failing resolvers", checkFailingResolvers, nil)
@@ -330,4 +324,30 @@ type instance interface {
 	Config() *config.Config
 	GetEventSPNConnected() *mgr.EventMgr[struct{}]
 	ShuttingDown() <-chan struct{}
+}
+
+// newNameserverConfigChangeHandler returns a config change callback that calls
+// reload when the configured nameservers (as returned by getNameservers)
+// changed since the last reload.
+// Event callbacks run concurrently, so the check and the reload are serialized:
+// otherwise a callback that read an older config could store it as the last
+// state after a newer callback already reloaded, and a later change back to
+// that older value would then be skipped.
+func newNameserverConfigChangeHandler(getNameservers func() []string, reload func()) mgr.EventCallbackFunc[struct{}] {
+	var lock sync.Mutex
+	prevNameservers := strings.Join(getNameservers(), " ")
+
+	return func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
+		lock.Lock()
+		defer lock.Unlock()
+
+		newNameservers := strings.Join(getNameservers(), " ")
+		if newNameservers != prevNameservers {
+			prevNameservers = newNameservers
+
+			reload()
+			log.Debug("resolver: reloaded nameservers due to config change")
+		}
+		return false, nil
+	}
 }
