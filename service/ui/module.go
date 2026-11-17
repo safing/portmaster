@@ -78,21 +78,6 @@ func (ui *UI) Stop() error {
 	return nil
 }
 
-func (ui *UI) getArchive(name string) (archive *zipfs.FileSystem, ok bool) {
-	ui.archivesLock.RLock()
-	defer ui.archivesLock.RUnlock()
-
-	archive, ok = ui.archives[name]
-	return
-}
-
-func (ui *UI) setArchive(name string, archive *zipfs.FileSystem) {
-	ui.archivesLock.Lock()
-	defer ui.archivesLock.Unlock()
-
-	ui.archives[name] = archive
-}
-
 // CloseArchives closes all open archives.
 func (ui *UI) CloseArchives() {
 	if ui == nil {
