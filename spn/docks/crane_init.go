@@ -244,7 +244,7 @@ handling:
 			}
 
 			// Set up encryption.
-			letter, err := jess.LetterFromWire(container.New(request.CompileData()))
+			letter, err := terminal.LetterFromWire(container.New(request.CompileData()))
 			if err != nil {
 				return terminal.ErrMalformedData.With("failed to unpack initial packet: %w", err)
 			}

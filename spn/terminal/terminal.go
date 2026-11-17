@@ -574,7 +574,7 @@ func (t *TerminalBase) decrypt(c *container.Container) (*container.Container, *E
 	t.jessionLock.Lock()
 	defer t.jessionLock.Unlock()
 
-	letter, err := jess.LetterFromWire(c)
+	letter, err := LetterFromWire(c)
 	if err != nil {
 		return nil, ErrMalformedData.With("failed to parse letter: %w", err)
 	}

@@ -414,7 +414,7 @@ func (crane *Crane) decrypt(shipment *container.Container) (decrypted *container
 	crane.jessionLock.Lock()
 	defer crane.jessionLock.Unlock()
 
-	letter, err := jess.LetterFromWire(shipment)
+	letter, err := terminal.LetterFromWire(shipment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse letter: %w", err)
 	}
