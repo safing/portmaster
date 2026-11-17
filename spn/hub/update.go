@@ -520,7 +520,14 @@ func createHubID(scheme string, pubkey []byte) string {
 // encoded digest length matches the available data. lhash allocates the
 // encoded length before checking it, so a short attacker-supplied ID could
 // otherwise make it allocate terabytes and crash the process.
+//
+// It also limits the length of the encoded hash, as decoding base58 takes
+// quadratic time: decoding a 16000 character ID, which fits into a single
+// message, takes about 80ms of CPU time.
 func labeledHashFromBase58(encoded string) (*lhash.LabeledHash, error) {
+	if len(encoded) > maxEncodedLabeledHashLength {
+		return nil, errLabeledHashTooLong
+	}
 	raw, err := base58.Decode(encoded)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode base58: %w", err)
@@ -543,7 +550,15 @@ func labeledHashFromBase58(encoded string) (*lhash.LabeledHash, error) {
 	return lhash.Load(raw)
 }
 
-var errInvalidDigestLength = errors.New("labeled hash has invalid digest length")
+// maxEncodedLabeledHashLength is the maximum length of a base58 encoded
+// labeled hash. The biggest supported digest (512 bits) is encoded in 91
+// characters.
+const maxEncodedLabeledHashLength = 256
+
+var (
+	errInvalidDigestLength = errors.New("labeled hash has invalid digest length")
+	errLabeledHashTooLong  = errors.New("encoded labeled hash is too long")
+)
 
 func verifyHubID(id string, scheme string, pubkey []byte) (ok bool) {
 	// load labeled hash from ID

@@ -1,11 +1,14 @@
 package hub
 
 import (
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/mr-tron/base58"
 
 	"github.com/safing/jess"
+	"github.com/safing/jess/lhash"
 	"github.com/safing/structures/dsd"
 	"github.com/safing/structures/varint"
 )
@@ -62,5 +65,38 @@ func TestHubIDWithHugeDigestLength(t *testing.T) {
 	_, id, _, err := ParseBootstrapHub("tcp://1.2.3.4:17#" + public.ID)
 	if err != nil || id != public.ID {
 		t.Fatalf("valid bootstrap hub rejected: %s", err)
+	}
+}
+
+// TestLabeledHashFromBase58LimitsLength checks that overlong IDs are rejected
+// before they are decoded, as decoding base58 takes quadratic time.
+func TestLabeledHashFromBase58LimitsLength(t *testing.T) {
+	t.Parallel()
+
+	_, err := labeledHashFromBase58(strings.Repeat("z", maxEncodedLabeledHashLength+1))
+	if !errors.Is(err, errLabeledHashTooLong) {
+		t.Errorf("expected errLabeledHashTooLong, got %v", err)
+	}
+	if verifyHubID(strings.Repeat("z", 16000), "Ed25519", []byte{1}) {
+		t.Error("overlong hub ID verified")
+	}
+
+	// The biggest digests are within the limit.
+	for _, alg := range []lhash.Algorithm{lhash.SHA2_512, lhash.SHA3_512, lhash.BLAKE2b_512, lhash.BLAKE2b_256} {
+		encoded := lhash.Digest(alg, []byte("data")).Base58()
+		if len(encoded) > 91 {
+			t.Errorf("unexpected encoded length %d", len(encoded))
+		}
+		_, err := labeledHashFromBase58(encoded)
+		if err != nil {
+			t.Errorf("failed to load %s: %s", alg, err)
+		}
+	}
+}
+
+func BenchmarkVerifyHubIDOverlong(b *testing.B) {
+	id := strings.Repeat("z", 16000)
+	for range b.N {
+		verifyHubID(id, "Ed25519", make([]byte, 32))
 	}
 }
