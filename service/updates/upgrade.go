@@ -81,7 +81,7 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) (installedFiles []str
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("read current directory: %w", err)
 		}
-		err := utils.EnsureDirectory(u.cfg.PurgeDirectory, utils.PublicReadExecPermission)
+		err := utils.EnsureDirectory(u.cfg.Directory, utils.PublicReadExecPermission)
 		if err != nil {
 			return nil, fmt.Errorf("create current directory: %w", err)
 		}
