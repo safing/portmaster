@@ -213,6 +213,7 @@ impl PacketEnv for TestEnv {
 struct FakeConntrack {
     deleted: Mutex<Vec<ConnectionTuple>>,
     all_calls: Mutex<Vec<bool>>,
+    unmarked_calls: Mutex<Vec<bool>>,
 }
 
 impl ConntrackControl for FakeConntrack {
@@ -222,6 +223,10 @@ impl ConntrackControl for FakeConntrack {
     }
     fn delete_all_marked(&self, ipv6: bool) -> std::io::Result<usize> {
         self.all_calls.lock().unwrap().push(ipv6);
+        Ok(0)
+    }
+    fn delete_unmarked(&self, ipv6: bool) -> std::io::Result<usize> {
+        self.unmarked_calls.lock().unwrap().push(ipv6);
         Ok(0)
     }
 }

@@ -9,6 +9,7 @@
 use std::net::IpAddr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
+use std::time::Duration;
 
 use pm_config::Config;
 use pm_firewall::inspection::InspectorRegistry;
@@ -816,16 +817,35 @@ impl Firewall {
         }
 
         use pm_interception::iptables::{self, Cmd};
-        iptables::activate(&Cmd::v4(), iptables::V4_RULES, iptables::ONCE, iptables::V4_CHAINS)
-            .map_err(|error| anyhow::anyhow!("activate IPv4 iptables: {error}"))?;
-        if self.env.ipv6_enabled() {
-            iptables::activate(
+        if let Err(error) =
+            iptables::activate(&Cmd::v4(), iptables::V4_RULES, iptables::ONCE, iptables::V4_CHAINS)
+        {
+            self.started.store(false, Ordering::SeqCst);
+            return Err(anyhow::anyhow!("activate IPv4 iptables: {error}"));
+        }
+        let ipv6 = self.env.ipv6_enabled();
+        if ipv6 {
+            if let Err(error) = iptables::activate(
                 &Cmd::v6(),
                 iptables::V6_RULES,
                 iptables::ONCE,
                 iptables::V6_CHAINS,
-            )
-            .map_err(|error| anyhow::anyhow!("activate IPv6 iptables: {error}"))?;
+            ) {
+                iptables::deactivate(&Cmd::v4(), iptables::ONCE, iptables::V4_CHAINS)
+                    .map_err(|e| anyhow::anyhow!("deactivate IPv4 iptables after failure: {e}"))?;
+                self.started.store(false, Ordering::SeqCst);
+                return Err(anyhow::anyhow!("activate IPv6 iptables: {error}"));
+            }
+        }
+
+        // Like Go's activateNfqueueFirewall: drop stale verdict-marked entries
+        // and force flows that bypassed Portmaster while stopped to be
+        // re-evaluated. Errors are non-fatal (Go ignores them too).
+        if let Err(error) = self.conntrack.delete_all_marked(ipv6) {
+            tracing::warn!(%error, "filter: failed to delete marked conntrack entries");
+        }
+        if let Err(error) = self.conntrack.delete_unmarked(ipv6) {
+            tracing::warn!(%error, "filter: failed to delete unmarked conntrack entries");
         }
 
         let (tx, mut rx) = mpsc::channel::<pm_interception::queue::QueuedPacket>(1024);
@@ -888,11 +908,33 @@ impl Firewall {
             }
         };
 
+        // Like Go's `ensureJumpRulesAtTop`, move Portmaster's jump rules back
+        // to position 1 a few times after startup: other services (Docker,
+        // etc.) may have inserted ACCEPT rules above them, which would let
+        // traffic bypass the filter. Cumulative delays 5s/10s/30s.
+        let ensure_rules = {
+            let cancel = self.cancel.clone();
+            tokio::spawn(async move {
+                for delay in [5u64, 10, 30] {
+                    let mut remaining = delay;
+                    while remaining > 0 {
+                        let step = remaining.min(5);
+                        tokio::select! {
+                            () = cancel.cancelled() => return,
+                            _ = tokio::time::sleep(Duration::from_secs(step)) => {}
+                        }
+                        remaining -= step;
+                    }
+                    ensure_jump_rules_at_top(ipv6);
+                }
+            })
+        };
+
         let mut tasks = self
             .tasks
             .lock()
             .unwrap_or_else(|error| error.into_inner());
-        tasks.extend([dispatch, stop]);
+        tasks.extend([dispatch, stop, ensure_rules]);
         if let Some(task) = metrics_writer {
             tasks.push(task);
         }
@@ -921,6 +963,11 @@ impl Firewall {
             if let Err(error) = iptables::deactivate(&Cmd::v6(), iptables::ONCE, iptables::V6_CHAINS) {
                 tracing::warn!(%error, "filter: failed to clean up IPv6 iptables");
             }
+        }
+        // Go `DeactivateNfqueueFirewall` also drops stale marked entries so
+        // verdicts do not survive a pause/unclean shutdown.
+        if let Err(error) = self.conntrack.delete_all_marked(self.env.ipv6_enabled()) {
+            tracing::warn!(%error, "filter: failed to delete marked conntrack entries on stop");
         }
         Ok(())
     }
@@ -1005,4 +1052,28 @@ impl Firewall {
 #[cfg(target_os = "linux")]
 fn is_root() -> bool {
     nix::unistd::geteuid().is_root()
+}
+
+/// Moves Portmaster's iptables jump rules back to the top of their chains if
+/// another service inserted rules above them. Go `ensureJumpRulesAtTop`.
+#[cfg(target_os = "linux")]
+fn ensure_jump_rules_at_top(ipv6: bool) {
+    use pm_interception::iptables::{self, Cmd};
+    let mut moved = Vec::new();
+    match iptables::reinsert_displaced(&Cmd::v4(), iptables::ONCE) {
+        Ok(rules) => moved.extend(rules),
+        Err(error) => tracing::warn!(%error, "filter: failed to reinsert IPv4 jump rules"),
+    }
+    if ipv6 {
+        match iptables::reinsert_displaced(&Cmd::v6(), iptables::ONCE) {
+            Ok(rules) => moved.extend(rules),
+            Err(error) => tracing::warn!(%error, "filter: failed to reinsert IPv6 jump rules"),
+        }
+    }
+    if !moved.is_empty() {
+        tracing::warn!(
+            rules = ?moved,
+            "filter: reinserted displaced iptables jump rules at top of chains"
+        );
+    }
 }

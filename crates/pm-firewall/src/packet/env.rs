@@ -132,6 +132,10 @@ pub trait ConntrackControl: Send + Sync {
     fn delete_connection(&self, tuple: &ConnectionTuple) -> io::Result<()>;
     /// Deletes all entries with permanent verdict marks and returns how many.
     fn delete_all_marked(&self, ipv6: bool) -> io::Result<usize>;
+    /// Deletes non-loopback unmarked entries so that flows which bypassed
+    /// Portmaster while it was stopped are re-evaluated (Go
+    /// `nfq.DeleteUnmarkedConnections`). This disconnects those flows.
+    fn delete_unmarked(&self, ipv6: bool) -> io::Result<usize>;
 }
 
 /// [`ConntrackControl`] backed by ctnetlink; needs CAP_NET_ADMIN.
@@ -176,6 +180,24 @@ impl ConntrackControl for SystemConntrack {
             }
             if let Some(err) = err {
                 tracing::debug!("nfq: error deleting ipv4 conntrack entries: {err}");
+            }
+            Ok(deleted)
+        })
+    }
+
+    fn delete_unmarked(&self, ipv6: bool) -> io::Result<usize> {
+        use pm_interception::conntrack::Family;
+        self.with(|ct| {
+            let (mut deleted, err) = ct.delete_unmarked(Family::V4);
+            if ipv6 {
+                let (more, err6) = ct.delete_unmarked(Family::V6);
+                deleted += more;
+                if let Some(err) = err6 {
+                    tracing::debug!("nfq: error deleting ipv6 unmarked conntrack entries: {err}");
+                }
+            }
+            if let Some(err) = err {
+                tracing::debug!("nfq: error deleting ipv4 unmarked conntrack entries: {err}");
             }
             Ok(deleted)
         })
