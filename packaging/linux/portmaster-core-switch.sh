@@ -49,6 +49,20 @@ restart() {
 	systemctl --no-pager --lines=5 status "${UNIT}" || true
 }
 
+wait_ready() {
+	local i
+	for i in $(seq 1 10); do
+		if curl -fsS --max-time 2 http://127.0.0.1:817/api/v1/ready >/dev/null 2>&1; then
+			echo "ready: $(curl -fsS --max-time 2 http://127.0.0.1:817/api/v1/ready)"
+			return 0
+		fi
+		sleep 1
+	done
+	echo "WARNING: Rust core did not become ready; check: journalctl -u ${UNIT} -n 50" >&2
+	echo "Roll back with: sudo $0 go" >&2
+	return 1
+}
+
 cmd=${1:-}
 case ${cmd} in
 status)
@@ -73,7 +87,11 @@ rust)
 		exit 1
 	fi
 	if [[ ${yes} -ne 1 ]]; then
-		echo "The Rust core does not filter traffic yet (no packet interception)."
+		cat <<EOF
+The Rust core now supports packet interception (iptables/nfqueue) and needs root
+privileges via the existing systemd unit. UI and data formats are compatible;
+config.json and the core database are backed up before switching.
+EOF
 		read -r -p "Switch anyway? [y/N] " answer
 		[[ ${answer} == [yY] ]] || exit 1
 	fi
@@ -85,6 +103,7 @@ ExecStart=
 ExecStart=${RUST_BIN} --bin-dir=${BIN_DIR} --data-dir=${DATA_DIR} --log-dir=${DATA_DIR}/log
 EOF
 	restart
+	wait_ready
 	;;
 go)
 	need_root "$@"
