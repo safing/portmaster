@@ -590,8 +590,9 @@ func TestTCPResolverAbandonsConnWithFailedHeartbeat(t *testing.T) {
 type tcpTestServer struct {
 	port uint16
 
-	lock  sync.Mutex
-	conns []net.Conn
+	lock     sync.Mutex
+	conns    []net.Conn
+	accepted int
 }
 
 func newTCPTestServer(t *testing.T) *tcpTestServer {
@@ -608,6 +609,7 @@ func newTCPTestServer(t *testing.T) *tcpTestServer {
 			}
 			s.lock.Lock()
 			s.conns = append(s.conns, conn)
+			s.accepted++
 			s.lock.Unlock()
 			go s.serve(&dns.Conn{Conn: conn})
 		}
@@ -654,4 +656,94 @@ func (s *tcpTestServer) closeConns() {
 		_ = conn.Close()
 	}
 	s.conns = nil
+}
+
+// acceptedConns returns how many connections the server accepted so far.
+func (s *tcpTestServer) acceptedConns() int {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.accepted
+}
+
+// TestTCPResolverConcurrentReconnectDialsOnce checks that concurrent queries
+// that find the connection broken establish a single new connection that
+// they all use, instead of each dialing its own and orphaning all but the
+// last one.
+func TestTCPResolverConcurrentReconnectDialsOnce(t *testing.T) {
+	t.Parallel()
+
+	server := newTCPTestServer(t)
+	tr := NewTCPResolver(server.resolver())
+
+	// Establish a connection with a first query.
+	_, err := tr.Query(t.Context(), &Query{FQDN: "first.example.", QType: dns.Type(dns.TypeA), NoCaching: true})
+	if err != nil {
+		t.Fatalf("first query failed: %s", err)
+	}
+	tr.Lock()
+	brokenConn := tr.resolverConn
+	tr.Unlock()
+
+	// Break the connection on the server side and wait for the handler to stop.
+	server.closeConns()
+	select {
+	case <-brokenConn.stopped:
+	case <-time.After(5 * time.Second):
+		t.Fatal("connection did not stop after the server closed it")
+	}
+
+	// Query concurrently.
+	const queries = 20
+	start := make(chan struct{})
+	errs := make(chan error, queries)
+	for i := range queries {
+		go func() {
+			<-start
+			_, err := tr.Query(t.Context(), &Query{
+				FQDN:      "q" + strconv.Itoa(i) + ".example.",
+				QType:     dns.Type(dns.TypeA),
+				NoCaching: true,
+			})
+			errs <- err
+		}()
+	}
+	close(start)
+	for range queries {
+		err := <-errs
+		if err != nil {
+			t.Errorf("concurrent query failed: %s", err)
+		}
+	}
+
+	// Exactly one new connection must have been established.
+	if got := server.acceptedConns(); got != 2 {
+		t.Errorf("expected 1 new connection for %d concurrent queries, got %d", queries, got-1)
+	}
+}
+
+// TestTCPResolverWaitForDialHonorsContext checks that a query waiting for
+// another query to establish a connection gives up when its context ends.
+func TestTCPResolverWaitForDialHonorsContext(t *testing.T) {
+	t.Parallel()
+
+	server := newTCPTestServer(t)
+	tr := NewTCPResolver(server.resolver())
+
+	// Simulate a dial in progress by another query.
+	tr.dialSlot <- struct{}{}
+	defer func() { <-tr.dialSlot }()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	_, err := tr.Query(ctx, &Query{FQDN: "waiting.example.", QType: dns.Type(dns.TypeA), NoCaching: true})
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("expected context deadline error, got: %v", err)
+	}
+	if took := time.Since(started); took > time.Second {
+		t.Errorf("waiting query gave up only after %s", took)
+	}
+	if got := server.acceptedConns(); got != 0 {
+		t.Errorf("expected no connection, got %d", got)
+	}
 }

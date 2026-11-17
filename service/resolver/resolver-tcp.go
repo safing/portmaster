@@ -43,6 +43,10 @@ type TCPResolver struct {
 	// heartbeatTimeout defines how long the connection may take to respond
 	// to an alive check before it is replaced.
 	heartbeatTimeout time.Duration
+	// dialSlot is held while a new connection is established, so that
+	// concurrent queries share one new connection instead of each dialing
+	// their own. It is a channel, so that waiting can be canceled.
+	dialSlot chan struct{}
 }
 
 // tcpResolverConn represents a single connection to an upstream DNS server.
@@ -114,6 +118,7 @@ func NewTCPResolver(resolver *Resolver) *TCPResolver {
 			WriteTimeout: tcpWriteTimeout,
 		},
 		heartbeatTimeout: heartbeatTimeout,
+		dialSlot:         make(chan struct{}, 1),
 	}
 	newResolver.BasicResolverConn.init()
 	return newResolver
@@ -168,6 +173,31 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 			return nil, ErrShuttingDown
 		default:
 		}
+	}
+
+	// Establish only one new connection at a time. Concurrent queries wait
+	// for it and use it.
+	select {
+	case tr.dialSlot <- struct{}{}:
+		defer func() { <-tr.dialSlot }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-module.mgr.Done():
+		return nil, ErrShuttingDown
+	}
+
+	// Use the connection another query created while this one was waiting.
+	tr.Lock()
+	if tr.resolverConn != nil &&
+		tr.resolverConnInstanceID != seenInstanceID &&
+		tr.resolverConn.abandoned.IsNotSet() {
+		existingConn = tr.resolverConn
+	} else {
+		existingConn = nil
+	}
+	tr.Unlock()
+	if existingConn != nil {
+		return existingConn, nil
 	}
 
 	// Do not dial a new upstream connection once the instance has started
