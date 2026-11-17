@@ -190,12 +190,22 @@ func (op *CounterOp) HandleStop(err *Error) (errorToSend *Error) {
 
 		if op.ClientCounter < op.opts.ClientCountTo ||
 			op.ServerCounter < op.opts.ServerCountTo {
-			op.Error = fmt.Errorf(
+			notFinished := fmt.Errorf(
 				"counter op %d: %w (%d<-%d %d->%d)",
 				op.id, errCounterNotFinished,
 				op.opts.ClientCountTo, op.ClientCounter,
 				op.ServerCounter, op.opts.ServerCountTo,
 			)
+			// Keep the reason the operation stopped early, such as a failed
+			// send, instead of only reporting that counting did not finish.
+			switch {
+			case op.Error != nil:
+				op.Error = fmt.Errorf("%w: %w", notFinished, op.Error)
+			case err != nil && !err.IsOK():
+				op.Error = fmt.Errorf("%w: stopped with: %w", notFinished, err)
+			default:
+				op.Error = notFinished
+			}
 		}
 	}()
 
