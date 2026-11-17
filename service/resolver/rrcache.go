@@ -16,8 +16,6 @@ import (
 // RRCache is a single-use structure to hold a DNS response.
 // Persistence is handled through NameRecords because of a limitation of the
 // underlying dns library.
-//
-//nolint:maligned
 type RRCache struct {
 	// Respnse Header
 	Domain   string

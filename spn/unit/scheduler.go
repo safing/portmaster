@@ -24,7 +24,7 @@ const (
 
 // Scheduler creates and schedules units.
 // Must be created using NewScheduler().
-type Scheduler struct { //nolint:maligned
+type Scheduler struct {
 	// Configuration.
 	config SchedulerConfig
 

@@ -51,9 +51,6 @@ linters:
     generated: lax
     rules:
       - linters:
-          - golint
-        text: a blank import .*
-      - linters:
           - staticcheck
         text: 'ST1000: at least one file in a package should have a package comment.*'
     paths:

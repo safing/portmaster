@@ -190,7 +190,7 @@ func TestQueryBuilder(t *testing.T) { //nolint:tparallel
 			},
 			"",
 			nil,
-			fmt.Errorf("1 error occurred:\n\t* column forbiddenField is not allowed\n\n"), //nolint:golint
+			fmt.Errorf("1 error occurred:\n\t* column forbiddenField is not allowed\n\n"), //nolint:err113 // expected error text of the query under test
 		},
 		{
 			"Complex example",

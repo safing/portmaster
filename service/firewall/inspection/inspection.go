@@ -7,7 +7,6 @@ import (
 	"github.com/safing/portmaster/service/network/packet"
 )
 
-//nolint:golint,stylecheck
 const (
 	DO_NOTHING uint8 = iota
 	BLOCK_PACKET

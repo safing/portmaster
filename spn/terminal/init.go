@@ -27,7 +27,7 @@ const (
 )
 
 // TerminalOpts holds configuration for the terminal.
-type TerminalOpts struct { //nolint:golint,maligned // TODO: Rename.
+type TerminalOpts struct {
 	Version uint8  `json:"-"`
 	Encrypt bool   `json:"e,omitempty"`
 	Padding uint16 `json:"p,omitempty"`

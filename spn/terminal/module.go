@@ -13,7 +13,7 @@ import (
 )
 
 // TerminalModule is the command multiplexing module.
-type TerminalModule struct { //nolint:golint
+type TerminalModule struct {
 	mgr      *mgr.Manager
 	instance instance
 }

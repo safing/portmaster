@@ -25,7 +25,7 @@ const (
 )
 
 // Terminal represents a terminal.
-type Terminal interface { //nolint:golint // Being explicit is helpful here.
+type Terminal interface {
 	// ID returns the terminal ID.
 	ID() uint32
 	// Ctx returns the terminal context.
@@ -69,7 +69,7 @@ type Terminal interface { //nolint:golint // Being explicit is helpful here.
 }
 
 // TerminalBase contains the basic functions of a terminal.
-type TerminalBase struct { //nolint:golint,maligned // Being explicit is helpful here.
+type TerminalBase struct {
 	// TODO: Fix maligned.
 	Terminal // Interface check.
 

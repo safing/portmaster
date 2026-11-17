@@ -16,7 +16,7 @@ import (
 const CounterOpType string = "debug/count"
 
 // CounterOp sends increasing numbers on both sides.
-type CounterOp struct { //nolint:maligned
+type CounterOp struct {
 	OperationBase
 
 	wg     sync.WaitGroup

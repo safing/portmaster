@@ -77,7 +77,7 @@ const (
 
 // Connection describes a distinct physical network connection
 // identified by the IP/Port pair.
-type Connection struct { //nolint:maligned // TODO: fix alignment
+type Connection struct {
 	record.Base
 	sync.Mutex
 

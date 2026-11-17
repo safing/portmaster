@@ -113,7 +113,7 @@ func GetDNSRequestConnection(packetInfo *packet.Info) (conn *Connection, ok bool
 }
 
 // deleteDNSRequestConnection removes a connection from the dns request connections.
-func deleteDNSRequestConnection(packetInfo *packet.Info) { //nolint:unused,deadcode
+func deleteDNSRequestConnection(packetInfo *packet.Info) { //nolint:unused
 	dnsRequestConnectionsLock.Lock()
 	defer dnsRequestConnectionsLock.Unlock()
 

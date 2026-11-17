@@ -21,7 +21,7 @@ var (
 	_ storage.Purger    = &SQLite{}
 )
 
-type TestRecord struct { //nolint:maligned
+type TestRecord struct {
 	record.Base
 	sync.Mutex
 	S    string

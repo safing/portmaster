@@ -20,7 +20,7 @@ var (
 	_ storage.Purger    = &BBolt{}
 )
 
-type TestRecord struct { //nolint:maligned
+type TestRecord struct {
 	record.Base
 	sync.Mutex
 	S    string
