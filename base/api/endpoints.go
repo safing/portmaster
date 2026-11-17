@@ -504,17 +504,26 @@ func (e *Endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// maxRequestBodySize is the maximum accepted size of a request body.
+const maxRequestBodySize = 20000000 // 20MB
+
 func readBody(w http.ResponseWriter, r *http.Request) (inputData []byte, ok bool) {
 	// Check for too long content in order to prevent death.
-	if r.ContentLength > 20000000 { // 20MB
+	if r.ContentLength > maxRequestBodySize {
 		http.Error(w, "too much input data", http.StatusRequestEntityTooLarge)
 		return nil, false
 	}
 
 	// Read and close body.
-	inputData, err := io.ReadAll(r.Body)
+	// The declared content length may be missing (eg. with chunked transfer
+	// encoding), so also limit the actual amount of data read.
+	inputData, err := io.ReadAll(io.LimitReader(r.Body, maxRequestBodySize+1))
 	if err != nil {
 		http.Error(w, "failed to read body"+err.Error(), http.StatusInternalServerError)
+		return nil, false
+	}
+	if len(inputData) > maxRequestBodySize {
+		http.Error(w, "too much input data", http.StatusRequestEntityTooLarge)
 		return nil, false
 	}
 	return inputData, true
