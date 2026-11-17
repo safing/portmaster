@@ -15,6 +15,8 @@ type LogWriter struct {
 	writeLock sync.Mutex
 	isStdout  bool
 	file      *os.File
+	// closed is set when the file is closed. Guarded by writeLock.
+	closed bool
 }
 
 // NewStdoutWriter creates a new log writer thet will write to the stdout.
@@ -53,6 +55,10 @@ func (l *LogWriter) Write(buf []byte) (int, error) {
 	if !l.isStdout {
 		l.writeLock.Lock()
 		defer l.writeLock.Unlock()
+
+		if l.closed {
+			return 0, os.ErrClosed
+		}
 	}
 
 	return l.file.Write(buf)
@@ -68,6 +74,10 @@ func (l *LogWriter) WriteMessage(msg Message, duplicates uint64) {
 	if !l.isStdout {
 		l.writeLock.Lock()
 		defer l.writeLock.Unlock()
+
+		if l.closed {
+			return
+		}
 	}
 
 	fmt.Fprintln(l.file, formatLine(msg.(*logLine), duplicates, l.isStdout))
@@ -79,10 +89,24 @@ func (l *LogWriter) IsStdout() bool {
 }
 
 // Close closes the writer.
+// It takes the write lock, so that the file is never closed while it is
+// written to: on Windows, closing a file during a concurrent write can block
+// forever (Go 1.26, golang/go#77404), which would keep the process from
+// exiting. Writes after Close are dropped.
 func (l *LogWriter) Close() {
-	if l != nil && !l.isStdout {
-		_ = l.file.Close()
+	if l == nil || l.isStdout {
+		return
 	}
+
+	l.writeLock.Lock()
+	defer l.writeLock.Unlock()
+
+	if l.closed {
+		return
+	}
+	l.closed = true
+	_ = l.file.Sync()
+	_ = l.file.Close()
 }
 
 // CleanOldLogs deletes all log files in given directory that are older than the given threshold.

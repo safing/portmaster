@@ -9,6 +9,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/miekg/dns"
 	"github.com/safing/portmaster/service/mgr"
@@ -17,7 +18,9 @@ import (
 )
 
 type Listener struct {
-	etw *ETWSession
+	// etw is set once the integration DLL is loaded, which may happen after
+	// the module started, from another goroutine.
+	etw atomic.Pointer[ETWSession]
 }
 
 func newListener(module *DNSMonitor) (*Listener, error) {
@@ -41,35 +44,39 @@ func newListener(module *DNSMonitor) (*Listener, error) {
 }
 
 func initializeSessions(module *DNSMonitor, listener *Listener) error {
-	var err error
-	listener.etw, err = NewSession(module.instance.OSIntegration().GetETWInterface(), listener.processEvent)
+	etw, err := NewSession(module.instance.OSIntegration().GetETWInterface(), listener.processEvent)
 	if err != nil {
 		return err
 	}
+	listener.etw.Store(etw)
 	// Start listener
 	module.mgr.Go("etw-dns-event-listener", func(w *mgr.WorkerCtx) error {
-		return listener.etw.StartTrace()
+		return etw.StartTrace()
 	})
 	return nil
 }
 
 func (l *Listener) flush() error {
-	if l.etw == nil {
+	etw := l.etw.Load()
+	if etw == nil {
 		return fmt.Errorf("etw not initialized")
 	}
-	return l.etw.FlushTrace()
+	return etw.FlushTrace()
 }
 
 func (l *Listener) stop() error {
 	if l == nil {
 		return fmt.Errorf("listener is nil")
 	}
-	if l.etw == nil {
-		return fmt.Errorf("invalid etw session")
+	etw := l.etw.Load()
+	if etw == nil {
+		// The session was never started, eg. because the integration DLL could
+		// not be loaded. There is nothing to stop.
+		return nil
 	}
 	// Stop and destroy trace. Destroy should be called even if stop fails for some reason.
-	err := l.etw.StopTrace()
-	err2 := l.etw.DestroySession()
+	err := etw.StopTrace()
+	err2 := etw.DestroySession()
 
 	if err != nil {
 		return fmt.Errorf("StopTrace failed: %w", err)
