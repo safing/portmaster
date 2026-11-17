@@ -114,10 +114,21 @@ func (s *Sluice) init() error {
 }
 
 func (s *Sluice) abandon() {
+	pending := s.abandonLocked()
+
+	// Notify pending requests outside of the sluice lock, as the callback
+	// locks the connection and AwaitRequest is called with the connection
+	// lock held.
+	for _, r := range pending {
+		r.CallbackFn(r.ConnInfo, nil)
+	}
+}
+
+func (s *Sluice) abandonLocked() []*Request {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if s.abandoned {
-		return
+		return nil
 	}
 	s.abandoned = true
 
@@ -129,11 +140,13 @@ func (s *Sluice) abandon() {
 		_ = s.listener.Close()
 	}
 
-	// Notify pending requests.
+	// Take pending requests.
+	pending := make([]*Request, 0, len(s.pendingRequests))
 	for i, r := range s.pendingRequests {
-		r.CallbackFn(r.ConnInfo, nil)
+		pending = append(pending, r)
 		delete(s.pendingRequests, i)
 	}
+	return pending
 }
 
 func (s *Sluice) handleConnection(conn net.Conn) {

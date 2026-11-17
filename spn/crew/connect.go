@@ -28,7 +28,9 @@ func HandleSluiceRequest(connInfo *network.Connection, conn net.Conn) {
 	if conn == nil {
 		log.Debugf("spn/crew: closing tunnel for %s before starting because of shutdown", connInfo)
 
-		// This is called within the connInfo lock.
+		// The sluice calls this without holding the connInfo lock.
+		connInfo.Lock()
+		defer connInfo.Unlock()
 		connInfo.Failed("tunnel entry closed", "")
 		connInfo.SaveWhenFinished()
 		return
