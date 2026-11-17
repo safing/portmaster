@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"syscall"
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/utils"
@@ -32,17 +33,19 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 		defer u.instance.UI().DisableUpgradeLock()
 	}
 
-	// A previous rollback could not restore all files: they are still in the
-	// purge directory, which the upgrade resets. Retry to restore them first.
-	if u.recoveryFailed {
-		_, err := os.Stat(u.cfg.PurgeDirectory)
-		if err == nil {
-			err = u.recoverFromFailedUpgrade(nil)
-			if err != nil {
-				return fmt.Errorf("cannot upgrade: files of a failed rollback in %s cannot be restored: %w", u.cfg.PurgeDirectory, err)
-			}
+	// A previous upgrade was not committed (its rollback failed, or the process
+	// stopped during it): files of the installed version are still in the purge
+	// directory, which the upgrade resets. Restore them first.
+	if u.hasUpgradeMarker() {
+		err := u.recoverFromFailedUpgrade(nil)
+		if err != nil {
+			return fmt.Errorf("cannot upgrade: files of a failed upgrade in %s cannot be restored: %w", u.cfg.PurgeDirectory, err)
 		}
-		u.recoveryFailed = false
+		// The restored index is the active one now.
+		index, err := LoadIndex(filepath.Join(u.cfg.Directory, u.cfg.IndexFile), u.cfg.Platform, u.cfg.Verify)
+		if err == nil {
+			u.index = index
+		}
 	}
 
 	// Execute the upgrade.
@@ -55,7 +58,12 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 	}
 
 	if upgradeError == nil {
-		return nil
+		// Commit the upgrade: from now on, the purge directory holds only the
+		// previous version, which must not be restored anymore.
+		upgradeError = u.removeUpgradeMarker()
+		if upgradeError == nil {
+			return nil
+		}
 	}
 
 	// Attempt to recover from failed upgrade.
@@ -67,8 +75,8 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 		return fmt.Errorf("upgrade failed, but recovery was successful: %w", upgradeError)
 	}
 
-	// Recovery failed too.
-	u.recoveryFailed = true
+	// Recovery failed too. The upgrade marker stays, so that the files are
+	// restored on the next start or before the next upgrade.
 	return fmt.Errorf("upgrade (including recovery) failed: %w (recovery: %w)", upgradeError, recoveryErr)
 }
 
@@ -85,6 +93,11 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) (installedFiles []str
 	err = utils.EnsureDirectory(u.cfg.PurgeDirectory, utils.PublicReadExecPermission)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create purge directory: %w", err)
+	}
+	// Mark the purge directory before it receives files of the installed version.
+	err = u.writeUpgradeMarker()
+	if err != nil {
+		return nil, err
 	}
 
 	// Move current version files into purge folder.
@@ -117,6 +130,11 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) (installedFiles []str
 				if _, replaced := newFiles[file.Name()]; !replaced || file.IsDir() {
 					continue
 				}
+			}
+			// A file with the name of the marker is no artifact (see
+			// validateArtifactFilename) and would replace the marker.
+			if isUpgradeMarker(file.Name()) {
+				continue
 			}
 			// ignore PurgeDirectory itself
 			if strings.EqualFold(u.cfg.PurgeDirectory, filepath.Join(u.cfg.Directory, file.Name())) {
@@ -246,6 +264,9 @@ func (u *Updater) recoverFromFailedUpgrade(installedFiles []string) error {
 	if err != nil {
 		return err
 	}
+	files = slices.DeleteFunc(files, func(file os.DirEntry) bool {
+		return isUpgradeMarker(file.Name())
+	})
 
 	// Remember which files had an old counterpart.
 	purged := make(map[string]struct{}, len(files))
@@ -293,7 +314,84 @@ func (u *Updater) recoverFromFailedUpgrade(installedFiles []string) error {
 		}
 	}
 
-	return errors.Join(restoreErrs...)
+	if len(restoreErrs) > 0 {
+		return errors.Join(restoreErrs...)
+	}
+
+	// All files of the installed version are back in the main directory.
+	return u.removeUpgradeMarker()
+}
+
+// upgradeMarkerName is the name of the upgrade marker in the purge directory.
+// The marker exists while the upgrade is not committed: from before the
+// installed version is moved to the purge directory until the new version is
+// completely installed, or until the installed version is completely
+// restored. While it exists, the purge directory holds files of the installed
+// version: they are restored on start and before the next upgrade, instead of
+// being deleted. It survives a restart, unlike state in memory.
+//
+// Phases of an upgrade and what the marker means for them:
+//   - Crash while moving the installed version to the purge directory: the
+//     restore moves the purged files back, the installed version is complete.
+//   - Crash while moving the new version in: the restore moves the installed
+//     version back over the new files. Files that only the new version has are
+//     left in the main directory, as the installed files are not recorded.
+//   - Failed rollback: the marker stays and the restore is retried; until it
+//     succeeds, upgrades are refused and the purge directory is kept.
+//   - Successful upgrade: the marker is removed as the last step of the
+//     upgrade, after the post-upgrade commands, so a restart afterwards does
+//     not restore (downgrade to) the previous version that stays in the purge
+//     directory. A crash right before the removal leaves the marker: the
+//     upgrade is then not committed and the restart rolls it back, which
+//     restores the complete previous version. If the marker cannot be
+//     removed, the upgrade fails and is rolled back.
+//
+// The name and its prefix are rejected as artifact filenames, so the marker
+// cannot collide with an artifact.
+const upgradeMarkerName = "portmaster-upgrade-uncommitted.marker"
+
+// isUpgradeMarker reports whether name is the upgrade marker or its temporary file.
+func isUpgradeMarker(name string) bool {
+	return strings.HasPrefix(strings.ToLower(name), upgradeMarkerName)
+}
+
+func (u *Updater) upgradeMarkerPath() string {
+	return filepath.Join(u.cfg.PurgeDirectory, upgradeMarkerName)
+}
+
+// hasUpgradeMarker reports whether the purge directory holds files of an
+// upgrade that was not committed. If that cannot be determined, it reports
+// true, so that the files are not deleted. A purge directory that does not
+// exist or is not a directory has no marker.
+func (u *Updater) hasUpgradeMarker() bool {
+	_, err := os.Lstat(u.upgradeMarkerPath())
+	return !errors.Is(err, os.ErrNotExist) && !errors.Is(err, syscall.ENOTDIR)
+}
+
+// writeUpgradeMarker atomically creates the upgrade marker.
+func (u *Updater) writeUpgradeMarker() error {
+	path := u.upgradeMarkerPath()
+	tmpPath := path + ".tmp"
+	content := "The upgrade of " + u.cfg.Name + " is not committed: the files in this directory belong to the installed version and are restored on the next start or upgrade.\n"
+	err := os.WriteFile(tmpPath, []byte(content), 0o600)
+	if err == nil {
+		err = os.Rename(tmpPath, path)
+	}
+	if err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("failed to write upgrade marker: %w", err)
+	}
+	return nil
+}
+
+// removeUpgradeMarker removes the upgrade marker, which commits the state of
+// the main directory.
+func (u *Updater) removeUpgradeMarker() error {
+	err := os.Remove(u.upgradeMarkerPath())
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("failed to remove upgrade marker: %w", err)
+	}
+	return nil
 }
 
 func (u *Updater) cleanupAfterUpgrade() error {

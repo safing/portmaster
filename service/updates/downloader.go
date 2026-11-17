@@ -104,8 +104,8 @@ func (d *Downloader) gatherExistingFiles(dir string) error {
 			return err
 		}
 
-		// Skip folders.
-		if entry.IsDir() {
+		// Skip folders and the upgrade marker.
+		if entry.IsDir() || isUpgradeMarker(entry.Name()) {
 			return nil
 		}
 

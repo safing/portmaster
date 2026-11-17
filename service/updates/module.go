@@ -164,11 +164,6 @@ type Updater struct {
 
 	corruptedInstallation error
 
-	// recoveryFailed is set when the rollback of a failed upgrade could not
-	// restore all files: the purge directory then holds files of the installed
-	// version, which the next upgrade must not delete. Guarded by indexLock.
-	recoveryFailed bool
-
 	isUpdateRunning *abool.AtomicBool
 	started         *abool.AtomicBool
 	configureLock   sync.Mutex
@@ -206,6 +201,17 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 	// Create Workers.
 	module.updateCheckWorkerMgr = m.NewWorkerMgr("update checker", module.updateCheckWorker, nil)
 	module.upgradeWorkerMgr = m.NewWorkerMgr("upgrader", module.upgradeWorker, nil)
+
+	// Restore the installed version, if an upgrade was not committed. Its
+	// index is loaded below.
+	if module.hasUpgradeMarker() {
+		err := module.recoverFromFailedUpgrade(nil)
+		if err != nil {
+			log.Errorf("updates/%s: failed to restore files of a failed upgrade from %s: %s", cfg.Name, cfg.PurgeDirectory, err)
+		} else {
+			log.Warningf("updates/%s: restored files of a failed upgrade from %s", cfg.Name, cfg.PurgeDirectory)
+		}
+	}
 
 	// Load index.
 	index, err := LoadIndex(filepath.Join(cfg.Directory, cfg.IndexFile), cfg.Platform, cfg.Verify)
