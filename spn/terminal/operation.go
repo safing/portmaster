@@ -197,6 +197,12 @@ func (t *TerminalBase) StartOperation(op Operation, initData *container.Containe
 	err := op.Send(msg, timeout)
 	if err != nil {
 		msg.Finish()
+
+		// The init msg was not sent, so the operation was never started. Remove
+		// it from the active operations immediately, as no reply will ever end
+		// it, and stop it so that it can clean up.
+		t.DeleteActiveOp(op.ID())
+		t.StopOperation(op, err)
 	}
 	return err
 }
