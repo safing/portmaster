@@ -2,6 +2,7 @@ package profile
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -27,8 +28,13 @@ type LayeredProfile struct {
 
 	securityLevel *uint32
 
-	// These functions give layered access to configuration options and require
-	// the layered profile to be read locked.
+	// optionState is the state the wrapped config options below are derived
+	// from. It is replaced, never changed, while the layered profile is write
+	// locked, so the options can be used without locking the layered profile.
+	optionState atomic.Pointer[layeredOptionState]
+
+	// These functions give layered access to configuration options. They do
+	// not require the layered profile to be locked.
 
 	// TODO(ppacher): we need JSON tags here so the layeredProfile can be exposed
 	// via the API. If we ever switch away from JSON to something else supported
@@ -52,6 +58,13 @@ type LayeredProfile struct {
 	KeepHistory         config.IntOption    `json:"-"`
 	UseSplitTun         config.BoolOption   `json:"-"`
 	SplitTunInterface   config.StringOption `json:"-"`
+}
+
+// layeredOptionState is an immutable snapshot of the revision and the layers
+// of a layered profile.
+type layeredOptionState struct {
+	revisionCounter uint64
+	layers          []*Profile
 }
 
 // NewLayeredProfile returns a new layered profile based on the given local profile.
@@ -142,6 +155,7 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 
 	lp.LayerIDs = append(lp.LayerIDs, localProfile.ScopedID())
 	lp.layers = append(lp.layers, localProfile)
+	lp.publishOptionState()
 
 	// TODO: Load additional profiles.
 
@@ -212,6 +226,7 @@ func (lp *LayeredProfile) increaseRevisionCounter(lock bool) (revisionCounter ui
 
 	// Increase the revision counter.
 	lp.RevisionCounter++
+	lp.publishOptionState()
 	// Push the increased counter to the UI.
 	pushLayeredProfile(lp)
 
@@ -467,12 +482,15 @@ func (lp *LayeredProfile) wrapBoolOption(configKey string, globalConfig config.B
 		defer refreshLock.Unlock()
 
 		// Check if we need to refresh the value.
-		if revCnt != lp.RevisionCounter {
-			revCnt = lp.RevisionCounter
+		// Use the published state, as the caller might not hold a lock on
+		// the layered profile.
+		state := lp.optionState.Load()
+		if revCnt != state.revisionCounter {
+			revCnt = state.revisionCounter
 
 			// Go through all layers to find an active value.
 			found := false
-			for _, layer := range lp.layers {
+			for _, layer := range state.layers {
 				layerValue, ok := layer.configPerspective.GetAsBool(configKey)
 				if ok {
 					found = true
@@ -499,12 +517,15 @@ func (lp *LayeredProfile) wrapIntOption(configKey string, globalConfig config.In
 		defer refreshLock.Unlock()
 
 		// Check if we need to refresh the value.
-		if revCnt != lp.RevisionCounter {
-			revCnt = lp.RevisionCounter
+		// Use the published state, as the caller might not hold a lock on
+		// the layered profile.
+		state := lp.optionState.Load()
+		if revCnt != state.revisionCounter {
+			revCnt = state.revisionCounter
 
 			// Go through all layers to find an active value.
 			found := false
-			for _, layer := range lp.layers {
+			for _, layer := range state.layers {
 				layerValue, ok := layer.configPerspective.GetAsInt(configKey)
 				if ok {
 					found = true
@@ -545,12 +566,15 @@ func (lp *LayeredProfile) wrapStringOption(configKey string, globalConfig config
 		defer refreshLock.Unlock()
 
 		// Check if we need to refresh the value.
-		if revCnt != lp.RevisionCounter {
-			revCnt = lp.RevisionCounter
+		// Use the published state, as the caller might not hold a lock on
+		// the layered profile.
+		state := lp.optionState.Load()
+		if revCnt != state.revisionCounter {
+			revCnt = state.revisionCounter
 
 			// Go through all layers to find an active value.
 			found := false
-			for _, layer := range lp.layers {
+			for _, layer := range state.layers {
 				layerValue, ok := layer.configPerspective.GetAsString(configKey)
 				if ok {
 					found = true
@@ -565,4 +589,14 @@ func (lp *LayeredProfile) wrapStringOption(configKey string, globalConfig config
 
 		return value
 	}
+}
+
+// publishOptionState makes the current revision and layers available to the
+// wrapped config options. The layered profile must be write locked, or not
+// yet be shared.
+func (lp *LayeredProfile) publishOptionState() {
+	lp.optionState.Store(&layeredOptionState{
+		revisionCounter: lp.RevisionCounter,
+		layers:          slices.Clone(lp.layers),
+	})
 }
