@@ -257,7 +257,18 @@ Ledger исполнения (git-ignored): `.superpowers/sdd/M0-foundation/progr
   (`dns_response_check=false`), пока в nameserver не подключена подстановка случайного ответа —
   раньше он всегда падал с `failed to receive test response: no such host`, создавая ложное
   уведомление о несовместимости и уводя онлайн-статус в Offline (что блокирует DNS для всех
-  доменов, кроме тестовых): объяснение «инета на половину» на Rust-ядре. UDP-прокси: per-session `CancellationToken` +
+  доменов, кроме тестовых): объяснение «инета на половину» на Rust-ядре.
+- Live-логи 2026-11-17 (сняты с `/var/lib/portmaster/log/`, диагноз): все симптомы пользователя
+  (Other Connections, отсутствующие иконки, пустая история, self-check #3, «opencode не работает»)
+  воспроизводились на **Go-ядре**, которое не смогло загрузить eBPF: `ebpf: failed to load ebpf object:
+  ... parsing .BTF header: header contains non-zero trailer`, 5 попыток, `giving up`. Без eBPF
+  connection listener атрибуция идёт только через procfs → PID не находится → всё в Other
+  Connections → нет path → нет иконок/истории. Это проблема Go-бинарника с конкретным ядром
+  **не Rust-порт** (в Rust eBPF не используется, атрибуция через nfqueue+procfs). DNS в тех же
+  логах резолвил `opencode.ai` успешно (`resolver: async query ... succeeded`). UI rust (коммит
+  `7362c26c`): `ui rust` ставил только `PORTMASTER_UI_TYPE=rust`, но не копировал ассеты в
+  `<data-dir>/pilot-web/` — страница грузилась, но WASM/JS/HTML отдавались с 404 (причина
+  «ошибки в UI при rust+rust»). Теперь скрипт копирует `pilot/leptos/web/*`. UDP-прокси: per-session `CancellationToken` +
   `EgressGuard`, relay останавливается при eviction и не обновляет новую сессию того же пира
   (регрессионный тест). `core/apiKeys` перечитываются из конфига при каждом изменении (как Go
   `EventConfigChange`), регрессионный тест. Xray: `plugin`/`pluginOpts` Shadowsocks больше не
