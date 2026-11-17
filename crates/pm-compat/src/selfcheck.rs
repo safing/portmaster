@@ -82,6 +82,11 @@ pub struct SelfcheckConfig {
     pub dns_query_interception: bool,
     /// Go `module.instance.Resolver().IsDisabled()`.
     pub resolver_disabled: bool,
+    /// Whether step 3 can actually check the response. Go makes the nameserver
+    /// answer the test query with a random IP; that hook is not wired into the
+    /// Rust nameserver yet, so the check is skipped to avoid false failures
+    /// (and a self-inflicted Offline status that blocks DNS for every domain).
+    pub dns_response_check: bool,
     pub integration_wait: Duration,
     pub dns_wait: Duration,
 }
@@ -91,6 +96,7 @@ impl Default for SelfcheckConfig {
         SelfcheckConfig {
             dns_query_interception: true,
             resolver_disabled: false,
+            dns_response_check: false,
             integration_wait: DEFAULT_WAIT,
             dns_wait: DEFAULT_WAIT,
         }
@@ -244,8 +250,12 @@ pub fn selfcheck(probe: &dyn Probe, config: &SelfcheckConfig) -> Result<(), Self
         }
     }
 
-    // Step 3: when the resolver is disabled its response cannot be checked.
-    if config.resolver_disabled {
+    // Step 3: when the resolver is disabled, or when the nameserver cannot
+    // substitute the random test answer (not wired up in this port yet), the
+    // response cannot be checked. Go returns success here; we do the same so a
+    // missing hook does not report a false incompatibility or, worse, drive the
+    // online monitor to Offline and block DNS for every other domain.
+    if config.resolver_disabled || !config.dns_response_check {
         return Ok(());
     }
 
@@ -605,9 +615,13 @@ mod tests {
 
     #[test]
     fn step_three_failures_are_compatibility_issues() {
+        let config = SelfcheckConfig {
+            dns_response_check: true,
+            ..SelfcheckConfig::default()
+        };
         let mut probe = Scripted::success();
         probe.result = Some(DnsResult::LookupError("no such host".into()));
-        let error = selfcheck(&probe, &SelfcheckConfig::default()).unwrap_err();
+        let error = selfcheck(&probe, &config).unwrap_err();
         assert_eq!(error.issue, Some(SystemIssueKind::SystemCompatibility));
         assert_eq!(
             error.message,
@@ -616,7 +630,7 @@ mod tests {
 
         let mut probe = Scripted::success();
         probe.result = None;
-        let error = selfcheck(&probe, &SelfcheckConfig::default()).unwrap_err();
+        let error = selfcheck(&probe, &config).unwrap_err();
         assert_eq!(
             error.message,
             "self-check #3: dns integration check failed: did not receive test response after 45s"
@@ -624,11 +638,20 @@ mod tests {
 
         let mut probe = Scripted::success();
         probe.result = Some(DnsResult::Answer(Some([127, 9, 9, 9])));
-        let error = selfcheck(&probe, &SelfcheckConfig::default()).unwrap_err();
+        let error = selfcheck(&probe, &config).unwrap_err();
         assert_eq!(
             error.message,
             "self-check #3: dns integration check failed: received unmatching response \"127.9.9.9\""
         );
+    }
+
+    #[test]
+    fn step_three_is_skipped_when_answer_hook_is_unavailable() {
+        // Without the random-answer hook wired into the nameserver (the current
+        // port), a LookupError must NOT become a false incompatibility/Offline.
+        let mut probe = Scripted::success();
+        probe.result = Some(DnsResult::LookupError("no such host".into()));
+        selfcheck(&probe, &SelfcheckConfig::default()).unwrap();
     }
 
     #[test]
