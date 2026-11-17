@@ -64,9 +64,11 @@ func (s *Sluice) AwaitRequest(r *Request) error {
 	defer s.lock.Unlock()
 
 	// Check if a pending request already exists for this local address.
+	// Expired requests are only cleaned up when a connection is accepted, so
+	// replace them here instead of blocking new requests for the address.
 	key := net.JoinHostPort(r.ConnInfo.LocalIP.String(), strconv.Itoa(int(r.ConnInfo.LocalPort)))
-	_, exists := s.pendingRequests[key]
-	if exists {
+	existing, exists := s.pendingRequests[key]
+	if exists && !time.Now().After(existing.Expires) {
 		return fmt.Errorf("a pending request for %s already exists", key)
 	}
 
@@ -80,10 +82,16 @@ func (s *Sluice) getRequest(address string) (r *Request, ok bool) {
 	defer s.lock.Unlock()
 
 	r, ok = s.pendingRequests[address]
-	if ok {
-		delete(s.pendingRequests, address)
+	if !ok {
+		return nil, false
 	}
-	return
+	delete(s.pendingRequests, address)
+
+	// Do not hand connections to expired requests.
+	if time.Now().After(r.Expires) {
+		return nil, false
+	}
+	return r, true
 }
 
 func (s *Sluice) init() error {
