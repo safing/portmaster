@@ -94,20 +94,18 @@ fn hysteria2_outbound_matches_xray_rs_shape() {
 }
 
 #[test]
-fn shadowsocks_plugin_options_are_preserved() {
+fn shadowsocks_plugin_options_are_dropped_for_xray_rs() {
+    // xray-rs rejects `plugin`/`pluginOpts` in Shadowsocks settings via
+    // reject_unknown_fields, so the generator must omit them. The parser still
+    // keeps the values (useful for diagnostics), but they must not reach the
+    // generated config or the binary would refuse to start.
     let links = decode_payload(EXTENDED).unwrap();
     let obfs = generate_config(&node(&links[2]), 1080, InboundProtocol::Socks).unwrap();
-    assert_eq!(obfs["outbounds"][0]["settings"]["plugin"], "obfs-local");
-    assert_eq!(
-        obfs["outbounds"][0]["settings"]["pluginOpts"],
-        "obfs=http;obfs-host=www.example.com"
-    );
+    assert!(obfs["outbounds"][0]["settings"]["plugin"].is_null());
+    assert!(obfs["outbounds"][0]["settings"]["pluginOpts"].is_null());
     let v2 = generate_config(&node(&links[3]), 1080, InboundProtocol::Socks).unwrap();
-    assert_eq!(v2["outbounds"][0]["settings"]["plugin"], "v2ray-plugin");
-    assert_eq!(
-        v2["outbounds"][0]["settings"]["pluginOpts"],
-        "mode=websocket;path=/ws;host=cdn.example.com;tls"
-    );
+    assert!(v2["outbounds"][0]["settings"]["plugin"].is_null());
+    assert!(v2["outbounds"][0]["settings"]["pluginOpts"].is_null());
 }
 
 #[test]

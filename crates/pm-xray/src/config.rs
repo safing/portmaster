@@ -228,10 +228,15 @@ fn outbound_settings(profile: &ParsedProfile) -> Result<Value> {
             settings.insert("method".into(), json!(profile.method));
             settings.insert("password".into(), json!(profile.password));
             if !profile.plugin.is_empty() {
-                settings.insert("plugin".into(), json!(profile.plugin));
-                if !profile.plugin_opts.is_empty() {
-                    settings.insert("pluginOpts".into(), json!(profile.plugin_opts));
-                }
+                // xray-rs has no Shadowsocks plugin support (obfs-local,
+                // v2ray-plugin, ...): these settings are rejected by
+                // `reject_unknown_fields` and the config would not load at
+                // all. Drop them so the node still connects, but warn that a
+                // server requiring the plugin will likely carry no traffic.
+                tracing::warn!(
+                    plugin = %profile.plugin,
+                    "xray: Shadowsocks obfs plugin is unsupported by xray-rs; connecting without it may fail"
+                );
             }
             Value::Object(settings)
         }
