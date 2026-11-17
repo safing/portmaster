@@ -19,9 +19,12 @@ const (
 )
 
 // Exists checks if the given connection is present in the system state tables.
+//
+// The tables are searched linearly. This is cheap compared to fetching the
+// tables: 500 checks against tables with 2000 sockets each take about 0.5ms
+// (BenchmarkExistsCleanerRun), so the connection cleaner does not need lookup
+// maps for its checks.
 func Exists(pktInfo *packet.Info, now time.Time) (exists bool) {
-	// TODO: create lookup maps before running a flurry of Exists() checks.
-
 	switch {
 	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.TCP:
 		return tcp4Table.exists(pktInfo, now)

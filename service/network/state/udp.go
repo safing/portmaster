@@ -191,7 +191,7 @@ func (table *udpTable) getDirection(
 func (table *udpTable) cleanStates(now time.Time) {
 	// compute thresholds
 	threshold := now.Add(-UDPConnStateTTL)
-	shortThreshhold := now.Add(-UDPConnStateShortenedTTL)
+	shortThreshold := now.Add(-UDPConnStateShortenedTTL)
 
 	// make lookup map of all active keys
 	bindKeys := make(map[string]struct{})
@@ -223,7 +223,7 @@ func (table *udpTable) cleanStates(now time.Time) {
 			// if there are too many clean more aggressively
 			if len(bindMap) > AggressiveCleaningThreshold {
 				for remoteKey, udpConnState := range bindMap {
-					if udpConnState.lastSeen.Before(shortThreshhold) {
+					if udpConnState.lastSeen.Before(shortThreshold) {
 						delete(bindMap, remoteKey)
 					}
 				}
