@@ -333,9 +333,7 @@ func establishRoute(route *navigator.Route) (dstPin *navigator.Pin, dstTerminal 
 
 				default:
 					// Authentication was aborted.
-					if tErr != nil {
-						tErr = terminal.ErrUnknownError
-					}
+					tErr = abortedAuthError(tErr)
 					log.Warningf("spn/crew: auth to %s aborted with %s", check.pin.Hub, tErr)
 					return nil, nil, tErr.Wrap("authentication to %s aborted: %w", check.pin.Hub, tErr)
 				}
@@ -394,6 +392,18 @@ func establishRoute(route *navigator.Route) (dstPin *navigator.Pin, dstTerminal 
 
 	// Return last hop.
 	return previousHop, previousTerminal, nil
+}
+
+// abortedAuthError returns the error to report for an aborted authentication.
+// The result of an operation that was stopped without an error is nil. As a
+// nil *terminal.Error stays nil when wrapped and turns into a non-nil error
+// interface with a nil pointer when returned as an error, it must be replaced
+// with an actual error.
+func abortedAuthError(tErr *terminal.Error) *terminal.Error {
+	if tErr == nil {
+		return terminal.ErrUnknownError
+	}
+	return tErr
 }
 
 func expand(fromTerminal terminal.Terminal, from, to *navigator.Pin) (expansion *docks.ExpansionTerminal, authOp *access.AuthorizeOp, tErr *terminal.Error) {
