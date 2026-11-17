@@ -213,66 +213,34 @@ func (b *BBolt) Injected() bool {
 }
 
 // MaintainRecordStates maintains records states in the database.
-func (b *BBolt) MaintainRecordStates(ctx context.Context, purgeDeletedBefore time.Time, shadowDelete bool) error { //nolint:gocognit
+// The records are processed in chunks of maintenanceChunkSize records, each
+// in its own write transaction, so that other writers are not blocked for the
+// whole walk. If the context is cancelled, the already processed chunks stay
+// committed and the context error is returned.
+func (b *BBolt) MaintainRecordStates(ctx context.Context, purgeDeletedBefore time.Time, shadowDelete bool) error {
 	now := time.Now().Unix()
 	purgeThreshold := purgeDeletedBefore.Unix()
 
-	return b.db.Update(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket(bucketName)
-		// Create a cursor for iteration.
-		c := bucket.Cursor()
-		for key, value := c.First(); key != nil; key, value = c.Next() {
-			// check if context is cancelled
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-			}
-
-			// wrap value
-			wrapper, err := record.NewRawWrapper(b.name, string(key), value)
-			if err != nil {
-				return err
-			}
-
-			// check if we need to do maintenance
-			meta := wrapper.Meta()
-			switch {
-			case meta.Deleted == 0 && meta.Expires > 0 && meta.Expires < now:
-				if shadowDelete {
-					// mark as deleted
-					meta.Deleted = meta.Expires
-					deleted, err := wrapper.MarshalRecord(wrapper)
-					if err != nil {
-						return err
-					}
-					err = bucket.Put(key, deleted)
-					if err != nil {
-						return err
-					}
-
-					// Cursor repositioning is required after modifying data.
-					// While the documentation states that this is also required after a
-					// delete, this actually makes the cursor skip a record with the
-					// following c.Next() call of the loop.
-					// Docs/Issue: https://github.com/boltdb/bolt/issues/426#issuecomment-141982984
-					c.Seek(key)
-
-					continue
-				}
-
-				// Immediately delete expired entries if shadowDelete is disabled.
-				fallthrough
-			case meta.Deleted > 0 && (!shadowDelete || meta.Deleted < purgeThreshold):
-				// delete from storage
-				err = c.Delete()
-				if err != nil {
-					return err
-				}
-			}
+	var startKey []byte
+	for {
+		// Check if the context is cancelled.
+		err := ctx.Err()
+		if err != nil {
+			return err
 		}
-		return nil
-	})
+
+		err = b.db.Update(func(tx *bbolt.Tx) error {
+			var txErr error
+			startKey, txErr = b.maintainRecordStatesChunk(tx.Bucket(bucketName), startKey, now, purgeThreshold, shadowDelete)
+			return txErr
+		})
+		if err != nil && !errors.Is(err, errNothingToMaintain) {
+			return err
+		}
+		if startKey == nil {
+			return nil
+		}
+	}
 }
 
 // Purge deletes all records that match the given query. It returns the number of successful deletes and an error.
@@ -370,6 +338,88 @@ func (b *BBolt) Purge(ctx context.Context, q *query.Query, local, internal, shad
 // Shutdown shuts down the database.
 func (b *BBolt) Shutdown() error {
 	return b.db.Close()
+}
+
+// maintenanceChunkSize is the maximum number of records MaintainRecordStates
+// processes within one write transaction. Each commit costs a sync to disk, so
+// the chunks must not be too small. A variable for tests.
+var maintenanceChunkSize = 10000
+
+// errNothingToMaintain rolls back the transaction of a chunk without changes,
+// which saves the commit and its sync to disk.
+var errNothingToMaintain = errors.New("nothing to maintain")
+
+// maintenanceChange is a change of a record found during maintenance.
+type maintenanceChange struct {
+	key  []byte
+	data []byte // nil means delete
+}
+
+// maintainRecordStatesChunk maintains up to maintenanceChunkSize records,
+// starting at the given key. It returns the key to continue at, or nil if
+// there are no more records. If no record needs to be changed, it returns
+// errNothingToMaintain, together with the key to continue at.
+func (b *BBolt) maintainRecordStatesChunk(bucket *bbolt.Bucket, startKey []byte, now, purgeThreshold int64, shadowDelete bool) (nextKey []byte, err error) {
+	// Collect the changes first and apply them after the iteration, as
+	// modifying the bucket during cursor iteration (other than with a lone
+	// Cursor.Delete) makes the cursor skip records.
+	var changes []maintenanceChange
+	c := bucket.Cursor()
+	processed := 0
+	for key, value := c.Seek(startKey); key != nil; key, value = c.Next() {
+		// Continue in a new transaction once the chunk is full.
+		if processed >= maintenanceChunkSize {
+			nextKey = bytes.Clone(key)
+			break
+		}
+		processed++
+
+		// wrap value
+		wrapper, err := record.NewRawWrapper(b.name, string(key), value)
+		if err != nil {
+			return nil, err
+		}
+
+		// check if we need to do maintenance
+		meta := wrapper.Meta()
+		switch {
+		case meta.Deleted == 0 && meta.Expires > 0 && meta.Expires < now:
+			if shadowDelete {
+				// mark as deleted
+				meta.Deleted = meta.Expires
+				deleted, err := wrapper.MarshalRecord(wrapper)
+				if err != nil {
+					return nil, err
+				}
+				changes = append(changes, maintenanceChange{key: bytes.Clone(key), data: deleted})
+				continue
+			}
+
+			// Immediately delete expired entries if shadowDelete is disabled.
+			fallthrough
+		case meta.Deleted > 0 && (!shadowDelete || meta.Deleted < purgeThreshold):
+			// delete from storage
+			changes = append(changes, maintenanceChange{key: bytes.Clone(key)})
+		}
+	}
+
+	if len(changes) == 0 {
+		return nextKey, errNothingToMaintain
+	}
+
+	// Apply the changes.
+	for _, change := range changes {
+		if change.data == nil {
+			err = bucket.Delete(change.key)
+		} else {
+			err = bucket.Put(change.key, change.data)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return nextKey, nil
 }
 
 // queryPage collects up to queryPageSize matching records, starting at the
