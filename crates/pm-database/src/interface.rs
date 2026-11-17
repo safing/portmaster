@@ -5,7 +5,7 @@ use std::sync::{Arc, Weak};
 use pm_query::Query;
 use pm_record::{Key, Meta, Record};
 use serde_json::Value as JsonValue;
-use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::mpsc::Receiver;
 
 use crate::{now, Controller, Databases, Error, Result};
 
@@ -87,7 +87,7 @@ impl Interface {
         if controller.read_only() {
             return Err(Error::ReadOnly);
         }
-        let record = controller.get(&db_key)?;
+        let record = controller.get_for_write(&db_key)?;
         if !self.options.has_access_permission(&record.meta) {
             return Err(Error::PermissionDenied);
         }
@@ -129,9 +129,12 @@ impl Interface {
         let controller = self.dbs.controller(&record.key.db)?;
 
         if !self.options.has_all_permissions() {
-            match controller.get(&record.key.key) {
-                Ok(existing) => {
-                    if !self.options.has_access_permission(&existing.meta) {
+            // Only the metadata is needed to check permissions. Use the
+            // hook-free accessor so write paths do not run read hooks, like
+            // Go's `getMeta`.
+            match controller.get_meta(&record.key.key) {
+                Ok(meta) => {
+                    if !self.options.has_access_permission(&meta) {
                         return Err(Error::PermissionDenied);
                     }
                 }
@@ -207,12 +210,17 @@ impl Interface {
 
     /// Executes a query on the database.
     pub fn query(&self, query: &Query) -> Result<Vec<Record>> {
+        // Go's `Interface.Query` calls `q.Check()` first. Without it an
+        // invalid condition would simply never match, silently returning an
+        // empty result instead of the build error.
+        let query = query.clone().check()?;
         let controller = self.dbs.controller(&query.database_name())?;
-        controller.query(query, self.options.local, self.options.internal)
+        controller.query(&query, self.options.local, self.options.internal)
     }
 
     /// Subscribes to record updates matching the query.
     pub fn subscribe(&self, query: Query) -> Result<Subscription> {
+        let query = query.check()?;
         let controller = self.dbs.controller(&query.database_name())?;
         let (id, rx) =
             controller.subscribe(query.clone(), self.options.local, self.options.internal)?;
@@ -232,7 +240,7 @@ impl Interface {
 pub struct Subscription {
     id: u64,
     query: Query,
-    rx: UnboundedReceiver<Record>,
+    rx: Receiver<Record>,
     controller: Weak<Controller>,
 }
 

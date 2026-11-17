@@ -58,7 +58,9 @@ impl Storage for ConfigStorage {
         let key = record.key.key.clone();
 
         if record.meta.is_deleted() {
-            self.config.unset_config_option(&key).map_err(map_error)?;
+            self.config
+                .set_user_value_from_db(&key, None)
+                .map_err(map_error)?;
             return self.export_record(&key);
         }
 
@@ -67,11 +69,13 @@ impl Storage for ConfigStorage {
             Some(value) if !value.is_null() => {
                 let value = typed_value(&self.config, &key, &record)?;
                 self.config
-                    .set_config_option(&key, value)
+                    .set_user_value_from_db(&key, Some(value))
                     .map_err(map_error)?;
             }
             _ => {
-                self.config.unset_config_option(&key).map_err(map_error)?;
+                self.config
+                    .set_user_value_from_db(&key, None)
+                    .map_err(map_error)?;
             }
         }
 
@@ -79,7 +83,9 @@ impl Storage for ConfigStorage {
     }
 
     fn delete(&self, key: &str) -> pm_database::Result<()> {
-        self.config.unset_config_option(key).map_err(map_error)
+        self.config
+            .set_user_value_from_db(key, None)
+            .map_err(map_error)
     }
 
     fn query(

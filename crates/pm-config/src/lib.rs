@@ -406,6 +406,17 @@ impl Config {
         self.set_value(key, Some(value), Layer::User, true, true)
     }
 
+    /// Sets or unsets the user value of an option without pushing a database
+    /// update notification.
+    ///
+    /// Writes that originate from the `config` database use this variant:
+    /// the database controller already notifies subscribers once the write
+    /// completes, so pushing here as well would deliver the update twice. This
+    /// mirrors Go's `setConfigOption(key, value, false)`.
+    pub(crate) fn set_user_value_from_db(&self, key: &str, value: Option<Value>) -> Result<()> {
+        self.set_value(key, value, Layer::User, false, true)
+    }
+
     /// Removes the user value of an option and saves the config file.
     pub fn unset_config_option(&self, key: &str) -> Result<()> {
         self.set_value(key, None, Layer::User, true, true)
