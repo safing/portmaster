@@ -14,8 +14,8 @@ mod windows_impl {
     use core::ffi::c_void;
 
     use crate::protocol::{
-        parse_info, simple_command, update_v4_command, update_v6_command, verdict_command,
-        Command, Info, KextVerdict, Version, IOCTL_VERSION,
+        parse_info, simple_command, update_v4_command, update_v6_command, verdict_command, Command,
+        Info, KextVerdict, Version, IOCTL_VERSION, MAX_INFO_SIZE,
     };
     use crate::sys::{self, Handle, Overlapped};
     use crate::{Error, Result};
@@ -51,12 +51,17 @@ mod windows_impl {
         }
 
         /// Closes the device handle (Go `KextFile.Close`).
-        pub fn close(&self) -> Result<()> {
+        ///
+        /// The handle is invalidated before returning — even when
+        /// `CloseHandle` fails — so a second close cannot double-close it.
+        pub fn close(&mut self) -> Result<()> {
             if sys::is_invalid(self.handle) {
                 return Err(Error::KextNotReady);
             }
-            // SAFETY: the handle is owned by this KextFile and still open.
-            sys::check(unsafe { sys::CloseHandle(self.handle) })
+            let handle = self.handle;
+            self.handle = sys::INVALID_HANDLE_VALUE;
+            // SAFETY: `handle` was owned by this KextFile and is still open.
+            sys::check(unsafe { sys::CloseHandle(handle) })
         }
 
         /// Reads exactly `out.len()` bytes, refilling from the driver as
@@ -167,7 +172,16 @@ mod windows_impl {
             )
         };
         if result == 0 {
-            return Err(std::io::Error::last_os_error().into());
+            let error = std::io::Error::last_os_error();
+            if error.raw_os_error() != Some(ERROR_IO_PENDING) {
+                return Err(error.into());
+            }
+            let mut transferred = 0_u32;
+            // SAFETY: `overlapped` describes the ioctl issued above and
+            // `file.handle()` is the same overlapped device handle.
+            sys::check(unsafe {
+                sys::GetOverlappedResult(file.handle(), &mut overlapped, &mut transferred, 1)
+            })?;
         }
         Ok(Version::from_bytes(data))
     }
@@ -231,6 +245,11 @@ mod windows_impl {
             return Ok(None);
         }
         let size = u32::from_le_bytes([header[1], header[2], header[3], header[4]]) as usize;
+        // Validate before allocating: a corrupt size field must not make us
+        // reserve gigabytes (the same guard `parse_info` applies).
+        if size > MAX_INFO_SIZE {
+            return Err(Error::UnexpectedInfoSize);
+        }
         let mut frame = Vec::with_capacity(5 + size);
         frame.extend_from_slice(&header);
         let mut payload = vec![0_u8; size];

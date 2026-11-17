@@ -154,9 +154,32 @@ impl Kext {
         {
             let path = self.driver_path.to_string_lossy().into_owned();
             let mut svc = service::KextService::create(DRIVER_NAME, &path)?;
-            svc.start(true)?;
-            let file = svc.open_file(v2::DEFAULT_READ_BUFFER)?;
-            let version = v2::read_version(&file)?;
+
+            // Roll back the partial start on every fallible step below so the
+            // service is never left installed/running and the device handle is
+            // never leaked when startup fails.
+            if let Err(error) = svc.start(true) {
+                let _ = svc.stop(true);
+                let _ = svc.delete();
+                return Err(error);
+            }
+            let mut file = match svc.open_file(v2::DEFAULT_READ_BUFFER) {
+                Ok(file) => file,
+                Err(error) => {
+                    let _ = svc.stop(true);
+                    let _ = svc.delete();
+                    return Err(error);
+                }
+            };
+            let version = match v2::read_version(&file) {
+                Ok(version) => version,
+                Err(error) => {
+                    let _ = file.close();
+                    let _ = svc.stop(true);
+                    let _ = svc.delete();
+                    return Err(error);
+                }
+            };
 
             self.service = Some(svc);
             self.file = Some(file);
@@ -173,9 +196,11 @@ impl Kext {
     pub fn stop(&mut self) -> Result<()> {
         #[cfg(windows)]
         {
-            if let Some(file) = self.file.as_ref() {
+            if self.file.is_some() {
                 // Best-effort, matching Go's `shutdownRequest`.
                 let _ = self.shutdown();
+            }
+            if let Some(file) = self.file.as_mut() {
                 let _ = file.close();
             }
             self.file = None;
@@ -274,7 +299,7 @@ impl Kext {
             match self.backend() {
                 Some(Backend::V1) => {
                     let id = u32::try_from(id).map_err(|_| Error::NoPacketId)?;
-                    v1::set_verdict(self.handle()?, id, verdict.as_u8() as i8)
+                    v1::set_verdict(self.handle()?, id, protocol::v1_verdict_from(verdict))
                 }
                 Some(Backend::V2) => v2::send_verdict(self.file()?, id, verdict),
                 None => Err(Error::KextNotReady),
@@ -307,7 +332,7 @@ impl Kext {
                     local_port,
                     &remote_ip,
                     remote_port,
-                    verdict.as_u8() as i8,
+                    protocol::v1_verdict_from(verdict),
                 ),
                 Some(Backend::V2) => v2::send_update_v4(
                     self.file()?,
@@ -355,7 +380,7 @@ impl Kext {
                     local_port,
                     &remote_ip,
                     remote_port,
-                    verdict.as_u8() as i8,
+                    protocol::v1_verdict_from(verdict),
                 ),
                 Some(Backend::V2) => v2::send_update_v6(
                     self.file()?,

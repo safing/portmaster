@@ -39,47 +39,51 @@ mod windows_impl {
             };
             let manager = sys::check_handle(manager)?;
 
-            let name = sys::wide(driver_name);
-            let path = sys::wide(driver_path);
+            // Keep every fallible step inside a closure so the manager handle
+            // is closed exactly once on both success and failure.
+            let result = (|| {
+                let name = sys::wide(driver_name);
+                let path = sys::wide(driver_path);
 
-            // Delete a stale service from a previous run, mirroring Go's
-            // `createKextService` / `CreateKextService`.
-            // SAFETY: `name` is NUL-terminated by `wide`; manager is valid.
-            let existing = unsafe { sys::OpenServiceW(manager, name.as_ptr(), sys::SERVICE_ALL_ACCESS) };
-            if !sys::is_invalid(existing) {
-                let mut old = Self {
-                    handle: existing,
-                    driver_name: driver_name.to_owned(),
+                // Delete a stale service from a previous run, mirroring Go's
+                // `createKextService` / `CreateKextService`.
+                // SAFETY: `name` is NUL-terminated by `wide`; manager is valid.
+                let existing =
+                    unsafe { sys::OpenServiceW(manager, name.as_ptr(), sys::SERVICE_ALL_ACCESS) };
+                if !sys::is_invalid(existing) {
+                    let mut old = Self {
+                        handle: existing,
+                        driver_name: driver_name.to_owned(),
+                    };
+                    let _ = old.stop(true);
+                    old.delete()?;
+                    old.wait_until_deleted(manager)?;
+                }
+
+                // SAFETY: all string pointers are NUL-terminated and live for
+                // the duration of the call. Null is passed for optional fields.
+                let handle = unsafe {
+                    sys::CreateServiceW(
+                        manager,
+                        name.as_ptr(),
+                        name.as_ptr(),
+                        sys::SERVICE_ALL_ACCESS,
+                        sys::SERVICE_KERNEL_DRIVER,
+                        sys::SERVICE_DEMAND_START,
+                        sys::SERVICE_ERROR_NORMAL,
+                        path.as_ptr(),
+                        std::ptr::null(),
+                        std::ptr::null_mut(),
+                        std::ptr::null(),
+                        std::ptr::null(),
+                        std::ptr::null(),
+                    )
                 };
-                let _ = old.stop(true);
-                old.delete()?;
-                old.wait_until_deleted(manager)?;
-            }
-
-            // SAFETY: all string pointers are NUL-terminated and live for the
-            // duration of the call. Null is passed for optional fields.
-            let handle = unsafe {
-                sys::CreateServiceW(
-                    manager,
-                    name.as_ptr(),
-                    name.as_ptr(),
-                    sys::SERVICE_ALL_ACCESS,
-                    sys::SERVICE_KERNEL_DRIVER,
-                    sys::SERVICE_DEMAND_START,
-                    sys::SERVICE_ERROR_NORMAL,
-                    path.as_ptr(),
-                    std::ptr::null(),
-                    std::ptr::null_mut(),
-                    std::ptr::null(),
-                    std::ptr::null(),
-                    std::ptr::null(),
-                )
-            };
-            // Close the manager handle even when CreateServiceW fails.
-            let result = sys::check_handle(handle).map(|handle| Self {
-                handle,
-                driver_name: driver_name.to_owned(),
-            });
+                sys::check_handle(handle).map(|handle| Self {
+                    handle,
+                    driver_name: driver_name.to_owned(),
+                })
+            })();
             // SAFETY: manager came from a successful OpenSCManagerW above.
             unsafe {
                 sys::CloseServiceHandle(manager);
