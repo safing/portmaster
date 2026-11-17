@@ -13,7 +13,10 @@ import (
 	"github.com/safing/portmaster/service/mgr"
 )
 
-const debugTestProfileSource = "local"
+const (
+	debugTestProfileSource = "local"
+	debugTestProfileID     = "profile-a"
+)
 
 var setupDebugTestDBOnce sync.Once
 
@@ -53,7 +56,7 @@ func newDebugTestConnection(id string) (*Connection, func()) {
 		dataComplete: abool.NewBool(true),
 		ProcessContext: ProcessContext{
 			Source:  debugTestProfileSource,
-			Profile: "profile-a",
+			Profile: debugTestProfileID,
 			PID:     1000,
 		},
 	}
@@ -101,6 +104,62 @@ func TestAddNetworkDebugDataRace(t *testing.T) { //nolint:paralleltest // Modifi
 	for range 50 {
 		di := new(debug.Info)
 		AddNetworkDebugData(di, "", "")
+	}
+	close(stop)
+	wg.Wait()
+}
+
+// TestBuildNetworkDebugInfoDataRace checks that the network debug data can
+// be formatted while connections are re-attributed to another profile.
+// Run with -race.
+func TestBuildNetworkDebugInfoDataRace(t *testing.T) {
+	t.Parallel()
+
+	testConns := make([]*Connection, 0, 10)
+	for i := range 10 {
+		testConns = append(testConns, &Connection{
+			ID:           "debug-info-race-" + strconv.Itoa(i),
+			Type:         IPConnection,
+			Entity:       &intel.Entity{},
+			Started:      int64(i),
+			dataComplete: abool.NewBool(true),
+			ProcessContext: ProcessContext{
+				Source:  debugTestProfileSource,
+				Profile: debugTestProfileID,
+				PID:     1000 + i%3,
+			},
+		})
+	}
+
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		for i := 0; ; i++ {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			for _, conn := range testConns {
+				// Like reAttributeConnection.
+				conn.Lock()
+				if i%2 == 0 {
+					conn.ProcessContext = ProcessContext{Source: debugTestProfileSource, Profile: "profile-with-a-longer-id-b", PID: conn.ProcessContext.PID}
+				} else {
+					conn.ProcessContext = ProcessContext{Source: debugTestProfileSource, Profile: debugTestProfileID, PID: conn.ProcessContext.PID}
+				}
+				conn.Unlock()
+			}
+		}
+	})
+
+	for range 50 {
+		debugConns := make([]*Connection, len(testConns))
+		copy(debugConns, testConns)
+		if buildNetworkDebugInfoData(debugConns) == "" {
+			t.Error("debug info must not be empty")
+			break
+		}
 	}
 	close(stop)
 	wg.Wait()

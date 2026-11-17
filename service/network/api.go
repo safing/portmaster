@@ -197,13 +197,29 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 }
 
 func buildNetworkDebugInfoData(debugConns []*Connection) string {
+	// Copy the sort keys while holding the connection lock, as the process
+	// context may change when a connection is re-attributed.
+	sorted := make(connectionsByGroup, 0, len(debugConns))
+	for _, conn := range debugConns {
+		conn.Lock()
+		sorted = append(sorted, connectionSortKey{
+			conn:       conn,
+			profile:    conn.ProcessContext.Profile,
+			binaryPath: conn.ProcessContext.BinaryPath,
+			pid:        conn.ProcessContext.PID,
+			started:    conn.Started,
+		})
+		conn.Unlock()
+	}
+
 	// Sort
-	sort.Sort(connectionsByGroup(debugConns))
+	sort.Sort(sorted)
 
 	// Format lines
 	var buf strings.Builder
 	currentPID := process.UndefinedProcessID
-	for _, conn := range debugConns {
+	for _, entry := range sorted {
+		conn := entry.conn
 		conn.Lock()
 
 		// Add process infomration if it differs from previous connection.
@@ -316,7 +332,17 @@ func (conn *Connection) fmtReasonProfileComponent() string {
 	return conn.Reason.Profile
 }
 
-type connectionsByGroup []*Connection
+// connectionSortKey holds a connection together with a copy of the fields it
+// is sorted by, which must only be read while holding the connection lock.
+type connectionSortKey struct {
+	conn       *Connection
+	profile    string
+	binaryPath string
+	pid        int
+	started    int64
+}
+
+type connectionsByGroup []connectionSortKey
 
 func (a connectionsByGroup) Len() int      { return len(a) }
 func (a connectionsByGroup) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
@@ -324,20 +350,20 @@ func (a connectionsByGroup) Less(i, j int) bool {
 	// Sort by:
 
 	// 1. Profile ID
-	if a[i].ProcessContext.Profile != a[j].ProcessContext.Profile {
-		return a[i].ProcessContext.Profile < a[j].ProcessContext.Profile
+	if a[i].profile != a[j].profile {
+		return a[i].profile < a[j].profile
 	}
 
 	// 2. Process Binary
-	if a[i].ProcessContext.BinaryPath != a[j].ProcessContext.BinaryPath {
-		return a[i].ProcessContext.BinaryPath < a[j].ProcessContext.BinaryPath
+	if a[i].binaryPath != a[j].binaryPath {
+		return a[i].binaryPath < a[j].binaryPath
 	}
 
 	// 3. Process ID
-	if a[i].ProcessContext.PID != a[j].ProcessContext.PID {
-		return a[i].ProcessContext.PID < a[j].ProcessContext.PID
+	if a[i].pid != a[j].pid {
+		return a[i].pid < a[j].pid
 	}
 
 	// 4. Started
-	return a[i].Started < a[j].Started
+	return a[i].started < a[j].started
 }
