@@ -66,6 +66,54 @@ var (
 // endpoint rules, none of which match: all deciders run and the default
 // action is applied.
 func BenchmarkDecideOnConnection(b *testing.B) {
+	runDecideBench(b, nil, nil, network.VerdictAccept)
+}
+
+// benchFilterListIDs are the source IDs of the filter lists that are active in
+// the profile of BenchmarkDecideOnConnectionWithLists. The default categories
+// resolve to about this many sources.
+var benchFilterListIDs = []string{
+	"TRAC-1", "TRAC-2", "TRAC-3", "TRAC-4", "TRAC-5",
+	"MAL-1", "MAL-2", "MAL-3",
+	"BAD-1", "BAD-2",
+	"UNBREAK-1", "UNBREAK-2",
+}
+
+// BenchmarkDecideOnConnectionWithLists is BenchmarkDecideOnConnection with
+// filter lists active in the profile, so that the filter list decider matches
+// the list occurrences of the entity against them.
+//
+// The filter list lookup itself is not set up: it needs the bloom filter and
+// the cache database of the filterlists module. The entity looks up its
+// domains like with lists that are not loaded yet, and the list occurrences
+// that the lookup would have found are set on the entity before the decision.
+func BenchmarkDecideOnConnectionWithLists(b *testing.B) {
+	b.Run("unlisted", func(b *testing.B) {
+		// The entity is in no filter list, like almost all entities.
+		runDecideBench(b, benchFilterListIDs, nil, network.VerdictAccept)
+	})
+	b.Run("inactive", func(b *testing.B) {
+		// The entity is only in filter lists that are not active.
+		runDecideBench(b, benchFilterListIDs, map[string][]string{
+			"example.com.": {"SOC-1", "SOC-2"},
+			"15133":        {"ASN-1"},
+		}, network.VerdictAccept)
+	})
+	b.Run("listed", func(b *testing.B) {
+		// A parent domain of the entity and its CNAME are in active filter lists.
+		runDecideBench(b, benchFilterListIDs, map[string][]string{
+			"example.com.":    {"MAL-2", "SOC-1", "TRAC-3"},
+			"e1.example.net.": {"CDN-1", "TRAC-4"},
+			"15133":           {"ASN-1"},
+		}, network.VerdictBlock)
+	})
+}
+
+// runDecideBench runs the decision benchmark with the given active filter
+// lists in the profile and the given list occurrences of the entity.
+func runDecideBench(b *testing.B, filterListIDs []string, listOccurrences map[string][]string, wantVerdict network.Verdict) {
+	b.Helper()
+
 	// The profile module registers the profile config options, which may only
 	// be done once. Start logging, as log lines are otherwise kept in waiting
 	// goroutines, and only log critical errors.
@@ -108,11 +156,22 @@ func BenchmarkDecideOnConnection(b *testing.B) {
 		Name:   "Bench",
 		Config: profileConfig,
 	})
+	if filterListIDs != nil {
+		// Resolving the filter list IDs of the config needs the list index of
+		// the filterlists module: Set the resolved IDs directly.
+		profileType := reflect.TypeFor[profile.Profile]()
+		*fieldAt[[]string](unsafe.Pointer(localProfile), unexportedFieldOffset(b, profileType, "filterListIDs")) = filterListIDs //nolint:gosec
+		*fieldAt[bool](unsafe.Pointer(localProfile), unexportedFieldOffset(b, profileType, "filterListsSet")) = true             //nolint:gosec
+	}
+	layeredProfile := profile.NewLayeredProfile(localProfile)
+	// A new layered profile needs an update for the global config, which
+	// would reset the list occurrences of the first entity.
+	layeredProfile.Update(nil, nil)
 	proc := &process.Process{Pid: 1234, Path: "/usr/lib/firefox/firefox"}
 	fieldAt[atomic.Pointer[profile.LayeredProfile]](
 		unsafe.Pointer(proc), //nolint:gosec // Test-only access to an unexported field.
 		unexportedFieldOffset(b, reflect.TypeFor[process.Process](), "profile"),
-	).Store(profile.NewLayeredProfile(localProfile))
+	).Store(layeredProfile)
 
 	connProcess := unexportedFieldOffset(b, reflect.TypeFor[network.Connection](), "process")
 	connDataComplete := unexportedFieldOffset(b, reflect.TypeFor[network.Connection](), "dataComplete")
@@ -142,6 +201,8 @@ func BenchmarkDecideOnConnection(b *testing.B) {
 				Country:  "US",
 				ASN:      15133,
 				ASOrg:    "Edgecast Inc.",
+				// Set the list occurrences the filter list lookup would find.
+				ListOccurences: listOccurrences,
 			}).Init(443),
 		}
 		// The location was already looked up when the entity was created; the
@@ -154,7 +215,7 @@ func BenchmarkDecideOnConnection(b *testing.B) {
 		decideOnConnection(ctx, conn, pkt)
 		verdict := conn.Verdict
 		conn.Unlock()
-		if verdict != network.VerdictAccept {
+		if verdict != wantVerdict {
 			b.Fatalf("unexpected verdict %s: %+v", verdict, conn.Reason)
 		}
 	}
