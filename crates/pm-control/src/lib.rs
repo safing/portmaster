@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
-use pm_notifications::{Action, ActionTypeWebhookPayload, Notification, ACTION_TYPE_WEBHOOK, TYPE_INFO, TYPE_WARNING};
+use pm_notifications::{Action, ActionTypeWebhookPayload, Notification, ACTION_TYPE_WEBHOOK, TYPE_ERROR, TYPE_INFO, TYPE_WARNING};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{watch, Mutex};
 use tokio::task::JoinHandle;
@@ -160,14 +160,9 @@ impl<E: ControlEnv> Control<E> {
 
         let mut state = self.state.lock().await;
         let outcome = self.pause_locked(&mut state, duration, only_spn).await;
+        // Like Go's deferred cleanup: always refresh the pause notification,
+        // but a failed pause is only logged - it does not raise control:error.
         self.update_states_and_notify(&mut state);
-        if let Err(error) = &outcome {
-            self.notifications.notify(Notification::error(
-                ERROR_EVENT_ID,
-                "Failed to pause",
-                &error.to_string(),
-            ));
-        }
         outcome
     }
 
@@ -228,14 +223,14 @@ impl<E: ControlEnv> Control<E> {
         let mut state = self.state.lock().await;
         stop_resume_worker(&mut state);
         let outcome = self.resume_locked(&mut state).await;
-        if let Err(error) = &outcome {
-            self.notifications.notify(Notification::error(
-                ERROR_EVENT_ID,
-                "Resume operation failed",
-                &error.to_string(),
-            ));
+        match &outcome {
+            Ok(()) => self.update_states_and_notify(&mut state),
+            // Go calls updateStatesAndNotifyError on resume failure instead of
+            // the normal state notification.
+            Err(error) => {
+                self.update_states_and_notify_error(&mut state, "Resume operation failed", error)
+            }
         }
-        self.update_states_and_notify(&mut state);
         outcome
     }
 
@@ -318,6 +313,33 @@ impl<E: ControlEnv> Control<E> {
             ..Action::default()
         });
 
+        self.notifications.notify(notification.clone());
+        state.pause_notification = Some(notification);
+    }
+
+    /// Mirrors Go `updateStatesAndNotifyError`: raise a `control:error`
+    /// notification carrying the current pause info, shown only in the app.
+    /// No normal state notification is sent on this path.
+    fn update_states_and_notify_error(
+        &self,
+        state: &mut State,
+        err_description: &str,
+        error: &Error,
+    ) {
+        let title = if err_description.is_empty() {
+            "Error"
+        } else {
+            err_description
+        };
+        let notification = Notification {
+            event_id: ERROR_EVENT_ID.to_string(),
+            type_: TYPE_ERROR,
+            title: title.to_string(),
+            message: error.to_string(),
+            show_on_system: false,
+            event_data: serde_json::to_value(&state.info).unwrap_or_default(),
+            ..Notification::default()
+        };
         self.notifications.notify(notification.clone());
         state.pause_notification = Some(notification);
     }
@@ -407,6 +429,7 @@ mod tests {
         interception_running: Arc<AtomicBool>,
         stop_calls: Arc<AtomicUsize>,
         start_calls: Arc<AtomicUsize>,
+        start_fails: Arc<AtomicBool>,
     }
 
     impl MockEnv {
@@ -418,6 +441,7 @@ mod tests {
                 interception_running: Arc::new(AtomicBool::new(true)),
                 stop_calls: Arc::new(AtomicUsize::new(0)),
                 start_calls: Arc::new(AtomicUsize::new(0)),
+                start_fails: Arc::new(AtomicBool::new(false)),
             }
         }
     }
@@ -442,6 +466,9 @@ mod tests {
             Ok(())
         }
         async fn start_interception(&self) -> Result<()> {
+            if self.start_fails.load(Ordering::SeqCst) {
+                return Err(error("cannot start interception"));
+            }
             self.start_calls.fetch_add(1, Ordering::SeqCst);
             self.interception_running.store(true, Ordering::SeqCst);
             Ok(())
@@ -576,5 +603,42 @@ mod tests {
             json,
             "{\"Interception\":false,\"SPN\":false,\"TillTime\":\"0001-01-01T00:00:00Z\"}"
         );
+    }
+
+    #[tokio::test]
+    async fn pause_error_does_not_raise_error_notification() {
+        let (control, _, notifications) = setup();
+        assert!(control.pause(Duration::ZERO, false).await.is_err());
+        assert!(notifications
+            .notified
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|n| n.event_id != ERROR_EVENT_ID));
+    }
+
+    #[tokio::test]
+    async fn resume_error_notifies_control_error_with_pause_info() {
+        let (control, env, notifications) = setup();
+        control.pause(Duration::from_secs(60), false).await.unwrap();
+        env.start_fails.store(true, Ordering::SeqCst);
+        assert!(control.resume().await.is_err());
+
+        let notification = notifications
+            .notified
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|n| n.event_id == ERROR_EVENT_ID)
+            .cloned()
+            .expect("control:error notification");
+        assert_eq!(notification.type_, TYPE_ERROR);
+        assert_eq!(notification.title, "Resume operation failed");
+        assert!(!notification.show_on_system);
+        let data: PauseInfo = serde_json::from_value(notification.event_data).unwrap();
+        assert!(data.interception);
+        // The normal state path must not run on error, so the paused
+        // notification is not deleted.
+        assert!(notifications.deleted.lock().unwrap().is_empty());
     }
 }
