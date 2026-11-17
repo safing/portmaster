@@ -67,10 +67,14 @@ func InitNFCT() error {
 	nfctLock.Lock()
 	defer nfctLock.Unlock()
 
+	// Do not leak the netlink socket of a handle that is still open.
+	if nfct != nil {
+		_ = nfct.Close()
+		nfct = nil
+	}
 	nfctReopen = false
 	h, err := openConntrack()
 	if err != nil {
-		nfct = nil
 		return err
 	}
 	nfct = h

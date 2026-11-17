@@ -338,6 +338,32 @@ func TestConntrackRetriesOnce(t *testing.T) {
 // which a later call recovers, and that teardown still wins.
 //
 //nolint:paralleltest // Modifies the package-level conntrack handle.
+func TestInitNFCTClosesPreviousHandle(t *testing.T) {
+	old := &fakeHandle{}
+	fresh := &fakeHandle{}
+	opener := installFakeConntrack(t, old, fresh)
+
+	err := InitNFCT()
+	if err != nil {
+		t.Fatalf("InitNFCT: %s", err)
+	}
+	if !old.isClosed() {
+		t.Error("InitNFCT did not close the previously open handle")
+	}
+	if fresh.isClosed() {
+		t.Error("InitNFCT closed the new handle")
+	}
+	if n := opener.count(); n != 1 {
+		t.Errorf("expected 1 open, got %d", n)
+	}
+
+	TeardownNFCT()
+	if !fresh.isClosed() {
+		t.Error("TeardownNFCT did not close the new handle")
+	}
+}
+
+//nolint:paralleltest // Modifies the package-level conntrack handle.
 func TestConntrackReopenFailure(t *testing.T) {
 	broken := &fakeHandle{deleteErr: errFakeENOBUFS}
 	fresh := &fakeHandle{entries: []ct.Con{testEntry()}}
