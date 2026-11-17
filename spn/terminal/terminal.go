@@ -739,7 +739,7 @@ func (t *TerminalBase) handleOpMsg(data *container.Container) *Error {
 func (t *TerminalBase) handlePaddingMsg(c *container.Container) {
 	padding := c.GetAll()
 	if len(padding) > 0 {
-		rngFeeder.SupplyEntropyIfNeeded(padding, len(padding))
+		getRngFeeder().SupplyEntropyIfNeeded(padding, len(padding))
 	}
 }
 

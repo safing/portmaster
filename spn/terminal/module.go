@@ -34,7 +34,10 @@ func (s *TerminalModule) Stop() error {
 }
 
 var (
-	rngFeeder *rng.Feeder = nil
+	// rngFeeder holds the current entropy feeder. It is replaced on every
+	// module start, while it may be used concurrently, so always use
+	// getRngFeeder() to access it.
+	rngFeeder atomic.Pointer[rng.Feeder]
 
 	// scheduler holds the current unit scheduler. It is replaced on every
 	// module start, while it may be used concurrently, so always use
@@ -49,7 +52,7 @@ func init() {
 }
 
 func start() error {
-	rngFeeder = rng.NewFeeder()
+	rngFeeder.Store(rng.NewFeeder())
 
 	newScheduler := unit.NewScheduler(getSchedulerConfig())
 	if debugUnitScheduling {
@@ -79,6 +82,11 @@ func StopScheduler() {
 	if s := getScheduler(); s != nil {
 		s.Stop()
 	}
+}
+
+// getRngFeeder returns the current entropy feeder.
+func getRngFeeder() *rng.Feeder {
+	return rngFeeder.Load()
 }
 
 // getScheduler returns the current unit scheduler.
