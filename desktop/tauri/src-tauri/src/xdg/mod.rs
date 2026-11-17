@@ -146,7 +146,7 @@ pub fn get_app_info(process_info: ProcessInfo) -> Result<AppInfo> {
         Err(Error::new(ErrorKind::NotFound, "failed to find app info".to_string()).into())
     } else {
         // sort matches by length
-        matches.sort_by(|a, b| a.1.cmp(&b.1));
+        matches.sort_by_key(|m| m.1);
 
         for mut info in matches {
             match get_icon_as_png_dataurl(&info.0.icon_name, 32) {

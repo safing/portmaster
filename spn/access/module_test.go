@@ -1,90 +1,63 @@
-package access
+package access_test
 
 import (
-	"fmt"
-	"os"
 	"testing"
 
-	"github.com/safing/portmaster/base/config"
-	"github.com/safing/portmaster/base/database"
-	_ "github.com/safing/portmaster/base/database/storage/hashmap"
-	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/spn/conf"
+	"github.com/safing/portmaster/spn/access"
 )
 
-type testInstance struct {
-	config *config.Config
+// TestAccessStubNoOp verifies the access stub starts and stops cleanly.
+func TestAccessStubNoOp(t *testing.T) {
+	t.Parallel()
+	a, err := access.New(nil)
+	if err != nil {
+		t.Fatalf("access.New() returned unexpected error: %v", err)
+	}
+	err = a.Start()
+	if err != nil {
+		t.Fatalf("Access.Start() returned unexpected error: %v", err)
+	}
+	err = a.Stop()
+	if err != nil {
+		t.Fatalf("Access.Stop() returned unexpected error: %v", err)
+	}
 }
 
-func (stub *testInstance) Config() *config.Config             { return stub.config }
-func (stub *testInstance) SPNGroup() *mgr.ExtendedGroup       { return nil }
-func (stub *testInstance) Stopping() bool                     { return false }
-func (stub *testInstance) IsShuttingDown() bool               { return false }
-func (stub *testInstance) SetCmdLineOperation(f func() error) {}
-func (stub *testInstance) DataDir() string                    { return _dataDir }
+// TestAccessStubNotLoggedIn verifies no account session is present.
+func TestAccessStubNotLoggedIn(t *testing.T) {
+	t.Parallel()
+	a, err := access.New(nil)
+	if err != nil {
+		t.Fatalf("access.New() returned unexpected error: %v", err)
+	}
+	if a.IsLoggedIn() {
+		t.Error("expected IsLoggedIn() to return false — account login has been removed")
+	}
+}
 
-var _dataDir string
-
-func TestMain(m *testing.M) {
-	exitCode := 1
-	defer func() {
-		if exitCode != 0 {
-			os.Exit(exitCode)
+// TestAccessStubAllFeaturesUnlocked verifies all features are available without a subscription.
+func TestAccessStubAllFeaturesUnlocked(t *testing.T) {
+	t.Parallel()
+	a, err := access.New(nil)
+	if err != nil {
+		t.Fatalf("access.New() returned unexpected error: %v", err)
+	}
+	features := []string{"bandwidth-visibility", "network-history", "spn", "filter-lists", "custom-lists"}
+	for _, f := range features {
+		if !a.HasFeature(f) {
+			t.Errorf("expected HasFeature(%q) to return true, got false", f)
 		}
-	}()
-
-	var err error
-	// Create a temporary directory for the data
-	_dataDir, err = os.MkdirTemp("", "")
-	if err != nil {
-		fmt.Printf("failed to create temporary data directory: %s", err)
-		return // Exit with error
 	}
-	defer func() { _ = os.RemoveAll(_dataDir) }()
+}
 
-	// Initialize the database module
-	err = database.Initialize(_dataDir)
+// TestAccessStubManagerIsNil verifies no background workers are spawned.
+func TestAccessStubManagerIsNil(t *testing.T) {
+	t.Parallel()
+	a, err := access.New(nil)
 	if err != nil {
-		fmt.Printf("failed to initialize database module: %s", err)
-		return // Exit with error
+		t.Fatalf("access.New() returned unexpected error: %v", err)
 	}
-	_, err = database.Register(&database.Database{
-		Name:        "core",
-		Description: "Holds core data, such as settings and profiles",
-		StorageType: "hashmap",
-	})
-	if err != nil {
-		fmt.Printf("failed to register core database: %s", err)
-		return // Exit with error
+	if a.Manager() != nil {
+		t.Error("expected Manager() to return nil for no-op stub, got non-nil")
 	}
-
-	// Initialize the instance
-	instance := &testInstance{}
-
-	instance.config, err = config.New(instance)
-	if err != nil {
-		fmt.Printf("failed to create config module: %s", err)
-		return // Exit with error
-	}
-	module, err = New(instance)
-	if err != nil {
-		fmt.Printf("failed to create access module: %s", err)
-		return // Exit with error
-	}
-
-	err = instance.config.Start()
-	if err != nil {
-		fmt.Printf("failed to start config module: %s", err)
-		return // Exit with error
-	}
-	err = module.Start()
-	if err != nil {
-		fmt.Printf("failed to start access module: %s", err)
-		return // Exit with error
-	}
-
-	conf.EnableClient(true)
-	m.Run()
-
-	exitCode = 0 // success
 }

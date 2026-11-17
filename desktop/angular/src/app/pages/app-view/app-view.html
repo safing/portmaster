@@ -1,3 +1,4 @@
+<!-- eslint-disable @angular-eslint/template/label-has-associated-control -- upstream uses <label> as static caption; kept for styling -->
 <ng-container *ngIf="!showOverview && !!appProfile">
   <!-- Header -->
   <div class="flex justify-between items-center p-4 px-12 text-xxs">
@@ -56,7 +57,7 @@
             </ng-container>
             <ng-container *ngIf="!historyAvailableSince">
               <span class="text-opacity-75 text-primary"
-                sfng-tooltip="Network History feature is available in Portmaster Plus">None</span>
+                sfng-tooltip="No network history recorded for this app yet">None</span>
             </ng-container>
           </div>
         </div>

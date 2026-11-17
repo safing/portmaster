@@ -28,7 +28,7 @@
             <a class="text-xs underline cursor-pointer text-primary" (click)="enableHistory()">Enable</a>
           </ng-container>
           <ng-container *ngIf="(canUseHistory | async) === false">
-            <a class="text-xs underline cursor-pointer text-opacity-75" href="https://safing.io/pricing/?source=Portmaster">Available in Portmaster Plus</a>
+            <span class="text-xs text-opacity-75">Network history is unavailable</span>
           </ng-container>
         </span>
       </ng-template>

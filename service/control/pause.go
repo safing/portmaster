@@ -327,39 +327,8 @@ func (c *Control) showNotification(title, message string) *notifications.Notific
 	return n
 }
 
-func (c *Control) waitSPNStopped(stopTimeout time.Duration) error {
-	var notification *notifications.Notification
-	defer func() {
-		if notification != nil {
-			notification.Delete()
-		}
-	}()
-
-	cfgSpnEnabled := config.GetAsBool("spn/enable", false)
-	startTime := time.Now()
-	isStopped, _ := c.instance.SPNGroup().IsStopped()
-	for !isStopped {
-		var err error
-
-		time.Sleep(200 * time.Millisecond)
-
-		if c.mgr.IsDone() || c.instance.IsShuttingDown() {
-			return errors.New("shutting down")
-		}
-
-		isStopped, err = c.instance.SPNGroup().IsStopped()
-		if err != nil {
-			return fmt.Errorf("failed to stop SPN: %w", err)
-		}
-		if time.Since(startTime) > stopTimeout {
-			return errors.New("timeout waiting for SPN to stop")
-		}
-		if notification == nil && time.Since(startTime) > time.Second {
-			notification = c.showNotification("Waiting for SPN to stop...", "")
-		}
-		if cfgSpnEnabled() {
-			return errors.New("SPN enabled again")
-		}
-	}
+// waitSPNStopped is kept for compatibility. portmasterpro has no SPN module,
+// so there is nothing to wait for.
+func (c *Control) waitSPNStopped(_ time.Duration) error {
 	return nil
 }

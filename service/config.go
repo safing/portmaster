@@ -135,7 +135,7 @@ func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateCo
 			IndexURLs:         svcCfg.BinariesIndexURLs,  // May be changed by config during instance startup.
 			IndexFile:         "index.json",
 			Verify:            svcCfg.VerifyBinaryUpdates,
-			AutoCheck:         true, // May be changed by config during instance startup.
+			AutoCheck:         false, // portmasterpro: upstream binary updates are opt-in; may be changed by config during instance startup.
 			AutoDownload:      false,
 			AutoApply:         false,
 			NeedsRestart:      true,
@@ -166,7 +166,7 @@ func MakeUpdateConfigs(svcCfg *ServiceConfig) (binaryUpdateConfig, intelUpdateCo
 			IndexURLs:         svcCfg.BinariesIndexURLs, // May be changed by config during instance startup.
 			IndexFile:         "index.json",
 			Verify:            svcCfg.VerifyBinaryUpdates,
-			AutoCheck:         true, // May be changed by config during instance startup.
+			AutoCheck:         false, // portmasterpro: upstream binary updates are opt-in; may be changed by config during instance startup.
 			AutoDownload:      false,
 			AutoApply:         false,
 			NeedsRestart:      true,

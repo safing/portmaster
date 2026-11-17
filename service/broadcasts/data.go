@@ -1,6 +1,7 @@
 package broadcasts
 
 import (
+	"errors"
 	"strconv"
 	"time"
 
@@ -8,8 +9,6 @@ import (
 	"github.com/safing/portmaster/service/core"
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/netenv"
-	"github.com/safing/portmaster/spn/access"
-	"github.com/safing/portmaster/spn/access/account"
 	"github.com/safing/portmaster/spn/captain"
 )
 
@@ -61,24 +60,8 @@ func collectData() interface{} {
 	// Get data about SPN status.
 	data["SPN"] = captain.GetSPNStatus()
 
-	// Get data about account.
-	userRecord, err := access.GetUser()
-	if err != nil {
-		data["Account"] = &DataError{
-			Error: err,
-		}
-	} else {
-		account := &Account{
-			UserRecord: userRecord,
-			Active:     userRecord.MayUse(""),
-			UpToDate:   userRecord.Meta().Modified > time.Now().Add(-7*24*time.Hour).Unix(),
-		}
-		// Only add feature IDs when account is active.
-		if account.Active {
-			account.FeatureIDs = userRecord.CurrentPlan.FeatureIDs
-		}
-		data["Account"] = account
-	}
+	// Account data has been removed: portmasterpro has no user accounts.
+	data["Account"] = &DataError{Error: errNoAccount}
 
 	// Time running.
 	data["UptimeHours"] = int(time.Since(portmasterStarted).Hours())
@@ -104,13 +87,8 @@ type Location struct {
 	SourceAccuracy int
 }
 
-// Account holds SPN account matching data.
-type Account struct {
-	*access.UserRecord
-	Active     bool
-	UpToDate   bool
-	FeatureIDs []account.FeatureID
-}
+// errNoAccount is reported in place of the removed SPN account data.
+var errNoAccount = errors.New("accounts have been removed from portmasterpro")
 
 // DataError represents an error getting some matching data.
 type DataError struct {

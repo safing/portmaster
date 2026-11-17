@@ -1,0 +1,111 @@
+name: No-Telemetry CI
+
+on:
+  push:
+    branches: [no-spn-no-telemetry, 'release-candidate/**']
+  pull_request:
+    branches: [development]
+
+permissions:
+  contents: read
+
+jobs:
+  full-go-build-and-test:
+    name: Full Go Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+      - name: Download modules
+        run: go mod download
+      - name: Verify go.mod / go.sum are tidy
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+      - name: Build all packages
+        run: go build ./...
+      - name: Vet all packages
+        run: go vet ./...
+      # Upstream also runs the suite with -short (see Earthfile +go-test):
+      # "long" tests require a full desktop system.
+      - name: Test all packages
+        run: go test -short -count=1 ./...
+      - name: Race check on privacy-critical packages
+        run: go test -race -short -count=1 ./service/network/... ./service/netquery/... ./service/sync/... ./spn/access/...
+
+  no-telemetry-guard:
+    name: No telemetry and no network account API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject known Safing account endpoints
+        run: |
+          ! grep -RInE 'account\.safing\.io|telemetry\.safing\.io|api\.safing\.io' service/sync spn/access
+      - name: Reject outbound HTTP clients in removed account packages
+        run: |
+          ! grep -RInE 'net/http|http\.Client|http\.NewRequest' service/sync spn/access
+      - name: Reject spn/access imports anywhere in service/
+        run: |
+          ! grep -RIn --include='*.go' '"github.com/safing/portmaster/spn/access' service
+      - name: Reject subscription gating of settings
+        run: |
+          ! grep -RIn --include='*.go' 'RequiresFeatureIDAnnotation:' service
+      - name: Ensure the obsolete login testsuite is excluded
+        run: grep -q '^//go:build ignore$' cmds/testsuite/login.go
+
+  angular-ui-build:
+    name: Angular UI Build (no account API)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop/angular
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/angular/package-lock.json
+      - name: Install
+        run: npm ci --no-audit --no-fund
+      - name: Reject account/SPN API calls in the API library
+        run: |
+          ! grep -RInE 'v1/spn/account|v1/account/features|account\.safing\.io|core:spn/account' projects/safing/portmaster-api/src
+      - name: Build libraries and UI
+        run: npm run build
+      - name: Reject account API calls in the production bundle
+        run: |
+          ! grep -lE 'v1/spn/account|v1/account/features' dist/*.js
+
+  tauri-clippy:
+    name: Tauri (Rust) clippy, no warnings
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: desktop/tauri/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            libsoup-3.0-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libgtk-3-dev
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/tauri/src-tauri -> target
+          key: clippy-linux
+      - name: Create empty UI dist so the build script is satisfied
+        run: mkdir -p ../../angular/dist/tauri-builtin
+      - name: Clippy (all targets, deny warnings)
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Reject SPN leftovers in the tray/UI shell
+        run: |
+          ! grep -rnE 'spn_toggle|set_spn_enabled|SPNStatus|models::spn' src

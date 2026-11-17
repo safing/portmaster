@@ -27,7 +27,6 @@ import (
 	"github.com/safing/portmaster/service/process"
 	"github.com/safing/portmaster/service/resolver"
 	"github.com/safing/portmaster/service/status"
-	"github.com/safing/portmaster/spn/captain"
 )
 
 var (
@@ -321,7 +320,6 @@ func debugInfo(ar *api.Request) (data []byte, err error) {
 
 	// Status Information from various modules.
 	status.AddToDebugInfo(di)
-	captain.AddToDebugInfo(di)
 	resolver.AddToDebugInfo(di)
 	config.AddToDebugInfo(di)
 

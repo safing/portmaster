@@ -3,9 +3,15 @@ name: Release Windows Installer
 # Builds the Windows x64 NSIS installer from Linux (cross-build, see BUILDING.md §7b)
 # and attaches it together with the core binaries to an existing GitHub release.
 #
-# Trigger manually with the release tag (e.g. v0.1.0-rc1). The release may still be a draft.
+# Triggers:
+#   - push of a tag v*  : creates the GitHub release (pre-release when the tag contains a '-',
+#                         e.g. v0.1.0-rc1) with notes from CHANGELOG.md and attaches the assets.
+#   - workflow_dispatch : attaches the assets to an existing release/draft for the given tag.
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
@@ -17,7 +23,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-windows-installer-${{ inputs.tag }}
+  group: release-windows-installer-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 env:
@@ -32,14 +38,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.tag || github.ref_name }}
 
       - name: Derive version from tag
         id: ver
         run: |
-          TAG="${{ inputs.tag }}"
+          TAG="${{ inputs.tag || github.ref_name }}"
+          case "$TAG" in v[0-9]*) ;; *) echo "::error::tag must look like vX.Y.Z[-pre]"; exit 1;; esac
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          case "$TAG" in *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT";; *) echo "prerelease=false" >> "$GITHUB_OUTPUT";; esac
 
       - uses: actions/setup-go@v5
         with:
@@ -140,7 +149,33 @@ jobs:
           path: release/
           retention-days: 14
 
+      - name: Create the GitHub release if it does not exist yet
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.ver.outputs.tag }}
+          VERSION: ${{ steps.ver.outputs.version }}
+          PRERELEASE: ${{ steps.ver.outputs.prerelease }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release $TAG exists, only uploading assets"; exit 0
+          fi
+          # Release notes: the CHANGELOG section for this version, or a short fallback.
+          python3 - "$VERSION" > /tmp/notes.md <<'PY'
+          import re, sys
+          v = sys.argv[1]
+          try:
+              text = open("CHANGELOG.md", encoding="utf-8").read()
+          except FileNotFoundError:
+              text = ""
+          m = re.search(r"^## \[?" + re.escape(v) + r"\]?[^\n]*\n(.*?)(?=^## |\Z)", text, re.S | re.M)
+          body = m.group(1).strip() if m else f"portmasterpro {v}. See BUILDING.md and desktop/CHANGES.md."
+          print(body)
+          PY
+          ARGS=(--repo "$GITHUB_REPOSITORY" --title "portmasterpro $VERSION" --notes-file /tmp/notes.md --verify-tag)
+          [ "$PRERELEASE" = "true" ] && ARGS+=(--prerelease)
+          gh release create "$TAG" "${ARGS[@]}"
+
       - name: Upload assets to the GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ inputs.tag }}" release/* --clobber --repo "${{ github.repository }}"
+        run: gh release upload "${{ steps.ver.outputs.tag }}" release/* --clobber --repo "${{ github.repository }}"

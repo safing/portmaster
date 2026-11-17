@@ -1,3 +1,4 @@
+<!-- eslint-disable @angular-eslint/template/label-has-associated-control -- upstream uses <label> as static caption; kept for styling -->
 <div class="w-full gap-4 p-4 dashboard-grid">
   <header class="flex flex-row items-center justify-between w-full" id="header">
     <div class="flex flex-col flex-grow text-lg font-light text-white">
@@ -25,53 +26,17 @@
     <div class="flex flex-row gap-8">
       <div class="flex flex-col text-xs leading-4">
         <span class="font-light text-secondary">
-          Your current plan is
-          <span class="font-normal text-primary">
-            {{ profile?.current_plan?.name || 'Portmaster Free' }}
-          </span>
+          Edition:
+          <span class="font-normal text-primary">portmasterpro</span>
         </span>
-
-        <span class="font-light text-secondary" *ngIf="!profile?.subscription?.next_billing_date">
-          and ends
-          <ng-container *ngIf="profile?.subscription?.ends_at; else: endsNever">
-            in
-            <span class="font-normal text-primary">
-              {{ profile?.subscription?.ends_at! | timeAgo }}
-            </span>
-          </ng-container>
-          <ng-template #endsNever>
-            never
-          </ng-template>
-        </span>
-        <span class="font-light text-secondary" *ngIf="!!profile?.subscription?.next_billing_date">
-          and auto-renews in <span class="font-normal text-primary">
-            {{ profile?.subscription?.next_billing_date! | timeAgo }}
-          </span>
+        <span class="font-light text-secondary">
+          local network history and bandwidth visibility, no account, no SPN
         </span>
       </div>
-
-      <ng-container *ngIf="!!profile && profile.state !== ''; else: loginButton">
-        <button (click)="openAccountDetails()"
-          class="text-sm font-normal text-white cursor-pointer btn bg-blue bg-opacity-80 hover:bg-opacity-100 hover:bg-blue">
-          Account Details
-        </button>
-      </ng-container>
-      <ng-template #loginButton>
-        <button (click)="openAccountDetails()"
-          class="text-sm font-normal text-white cursor-pointer btn bg-blue bg-opacity-80 hover:bg-opacity-100 hover:bg-blue">
-          Login / Subscribe
-        </button>
-      </ng-template>
     </div>
   </header>
 
 
-  <app-dashboard-widget id="features" label="Features">
-    <div class="feature-card-list">
-      <app-feature-card *ngFor="let feature of (features$ | async)" [feature]="feature" [disabled]="!feature.enabled">
-      </app-feature-card>
-    </div>
-  </app-dashboard-widget>
 
 
   <app-dashboard-widget id="stats" label="Recent Activity">
@@ -103,7 +68,7 @@
         </span>
         <span *ngIf="!featureBw"
           class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
-          Available in<br />Portmaster Plus
+          Bandwidth data not available yet
         </span>
       </div>
 
@@ -115,19 +80,10 @@
         </span>
         <span *ngIf="!featureBw"
           class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
-          Available in<br />Portmaster Plus
+          Bandwidth data not available yet
         </span>
       </div>
 
-      <div class="mini-stat" routerLink="/monitor" [queryParams]="{q: 'tunneled:true groupby:exit_node'}">
-        <!-- eslint-disable-next-line @angular-eslint/template/label-has-associated-control -- caption of a statistic, not a form control -->
-        <label routerLink="/monitor" [queryParams]="{q: 'tunneled:true groupby:exit_node'}">SPN Identities</label>
-        <span *ngIf="featureSPN">{{ activeIdentities }}</span>
-        <span *ngIf="!featureSPN"
-          class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
-          Available in<br />Portmaster Pro
-        </span>
-      </div>
     </div>
   </app-dashboard-widget>
 
@@ -140,24 +96,6 @@
         </label>
         <sfng-netquery-line-chart activeConnectionColor="text-green-300 text-opacity-70" class="w-full !h-36"
           [data]="connectionChart"></sfng-netquery-line-chart>
-      </div>
-      <div class="mini-stat" *ngIf="featureSPN">
-        <!-- eslint-disable-next-line @angular-eslint/template/label-has-associated-control -- caption of a statistic, not a form control -->
-        <label routerLink="/monitor" [queryParams]="{q: 'tunneled:true'}">
-          Connections Tunneled through SPN
-        </label>
-        <sfng-netquery-line-chart
-          [config]="{
-            series: {
-              value: {
-                lineColor: 'text-blue text-opacity-80',
-                areaColor: 'text-blue text-opacity-20',
-              }
-            }
-          }"
-          class="w-full !h-36"
-          [data]="tunneldConnectionChart">
-        </sfng-netquery-line-chart>
       </div>
     </div>
   </app-dashboard-widget>
@@ -220,7 +158,7 @@
 
     <span *ngIf="!featureBw"
       class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
-      Available in Portmaster Plus
+      Bandwidth data not available yet
     </span>
   </app-dashboard-widget>
 
@@ -229,7 +167,7 @@
 
     <span *ngIf="!featureBw"
       class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
-      Available in Portmaster Plus
+      Bandwidth data not available yet
     </span>
   </app-dashboard-widget>
 

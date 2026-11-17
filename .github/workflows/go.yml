@@ -10,6 +10,8 @@ on:
       - 'spn/**'
     branches:
       - main
+      - no-spn-no-telemetry
+      - release-candidate/**
       - development
       - v1-legacy
       - v1-legacy-develop
