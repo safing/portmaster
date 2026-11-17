@@ -6,7 +6,7 @@
 
   <div
     class="flex items-center justify-center h-full px-3 py-2 bg-gray-200 rounded-r-sm cursor-pointer hover:text-primary text-tertiary"
-    (click)="copyQuery()" [sfng-tooltip]="'nq.copyQuery' | t" snfgTooltipPosition="left">
+    (click)="copyQuery()" [sfng-tooltip]="'nq.copyQuery' | t: undefined : ('' | i18nVersion)" snfgTooltipPosition="left">
     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
       stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round"
@@ -15,14 +15,14 @@
   </div>
 
   <button class="bg-transparent hover:bg-transparent ml-2 cursor-pointer text-tertiary text-xxs hover:text-primary p-2" (click)="clearQuery()" (keyup.enter)="clearQuery()">
-    {{ 'nq.clearAll' | t }}
+    {{ 'nq.clearAll' | t: undefined : ('' | i18nVersion) }}
   </button>
 </div>
 
 <div class="flex flex-row items-center w-full gap-2">
   <sfng-netquery-searchbar [(ngModel)]="textSearch" (ngModelChange)="performSearch()" class="block w-full"
     [labels]="keyTranslation" (fieldsParsed)="onFieldsParsed($event)"></sfng-netquery-searchbar>
-  <button type="button" class="h-full rounded-r-sm btn" (click)="performSearch()">{{ 'nq.reload' | t }}</button>
+  <button type="button" class="h-full rounded-r-sm btn" (click)="performSearch()">{{ 'nq.reload' | t: undefined : ('' | i18nVersion) }}</button>
 </div>
 
 <div class="flex flex-row flex-wrap items-center w-full gap-3">
@@ -38,22 +38,22 @@
         (ngModelChange)="performSearch()" (opened)="loadSuggestion(field.key)"
         [dynamicValueTemplate]="dynamicValueTemplate" [sortBy]="sortByCount">
         <ng-container *ngIf="field.value?.loading">
-          <sfng-select-item *sfngSelectValue="null; disabled: true" class="text-secondary">{{ 'nq.loading' | t }}
+          <sfng-select-item *sfngSelectValue="null; disabled: true" class="text-secondary">{{ 'nq.loading' | t: undefined : ('' | i18nVersion) }}
           </sfng-select-item>
         </ng-container>
 
         <ng-container *ngFor="let value of field.value?.suggestions; trackBy: trackSuggestion">
           <sfng-select-item
-            *sfngSelectValue="value.Value; data:value.count, label:value.Name || (value.Value === '' ? ('common.na' | t) : value.Value)">
+            *sfngSelectValue="value.Value; data:value.count, label:value.Name || (value.Value === '' ? ('common.na' | t: undefined : ('' | i18nVersion)) : value.Value)">
             <span *ngIf="field.key === 'country' && !!value.Name" [appCountryFlags]="value.Name"></span>
             <span class="flex-grow inline-block overflow-hidden overflow-ellipsis whitespace-nowrap"
               style="max-width: 20rem; direction: rtl;">
               <span style="direction: ltr; unicode-bidi: bidi-override;">
-                {{ value.Name || ('common.na' | t) }}
+                {{ value.Name || ('common.na' | t: undefined : ('' | i18nVersion)) }}
               </span>
             </span>
             <span class="pr-3 text-xxs text-tertiary whitespace-nowrap">
-              #{{ value.count }} {{ 'nq.connectionsShort' | t }}
+              #{{ value.count }} {{ 'nq.connectionsShort' | t: undefined : ('' | i18nVersion) }}
             </span>
           </sfng-select-item>
 
@@ -66,7 +66,7 @@
           <span class="flex-grow inline-block overflow-hidden overflow-ellipsis whitespace-nowrap"
             style="max-width: 20rem; direction: rtl;">
             <span style="direction: ltr; unicode-bidi: bidi-override;">
-              {{ item.value || ('common.na' | t) }}
+              {{ item.value || ('common.na' | t: undefined : ('' | i18nVersion)) }}
             </span>
           </span>
         </sfng-select-item>
@@ -78,7 +78,7 @@
   <!-- The combinded "more" drop-down that should look like a select component -->
   <ng-template #selectTemplate>
     <button class="sfng-select" [class.active]="customDropdown.isOpen">
-      <span>{{ 'nq.more' | t }}</span>
+      <span>{{ 'nq.more' | t: undefined : ('' | i18nVersion) }}</span>
       <div class="arrow">
         <svg viewBox="0 0 24 24" class="arrow-icon">
           <g fill="none" class="inner">
@@ -93,7 +93,7 @@
     <ng-container *ngFor="let model of (models | keyvalue | combinedMenu); let last=last">
       <div class="border-gray-400 sfng-select-dropdown" [class.border-r]="!last">
         <h3 class="flex items-center gap-2 px-3 py-0.5 mb-0 border-b border-gray-300 text-xxs text-secondary">
-          {{ 'nq.filterBy' | t: {name: (model.value!.menuTitle || model.key)} }}
+          {{ 'nq.filterBy' | t: {name: (model.value!.menuTitle || model.key)}: ('' | i18nVersion) }}
           <sfng-tipup [key]="model.value!.tipupKey" *ngIf="!!model.value!.tipupKey"></sfng-tipup>
         </h3>
         <ul>
@@ -121,13 +121,13 @@
 
   <div class="flex flex-row items-center gap-2 px-2 bg-gray-300 border border-gray-300 rounded text-xxs"
     *ngIf="(canUseHistory$ | async)">
-    {{ 'nq.searchHistory' | t }}
+    {{ 'nq.searchHistory' | t: undefined : ('' | i18nVersion) }}
     <nz-range-picker [nzShowTime]="false" class="py-0" [nzRenderExtraFooter]="customTimeRange" [(ngModel)]="dateFilter"
       [nzBorderless]="true" (ngModelChange)="onDateRangeChange($event)" [nzAllowClear]="true" [nzFormat]="dateFormat">
     </nz-range-picker>
 
     <ng-template #customTimeRange>
-      <span class="py-2 uppercase text-xxs text-secondary">{{ 'nq.quickSettings' | t }}</span>
+      <span class="py-2 uppercase text-xxs text-secondary">{{ 'nq.quickSettings' | t: undefined : ('' | i18nVersion) }}</span>
       <ul class="grid grid-flow-row grid-cols-3 py-2 text-xs">
         <li tabindex="0" *ngFor="let qds of quickDateSettings" (click)="applyQuickDateSetting(qds)" (keyup.enter)="applyQuickDateSetting(qds)"
           class="cursor-pointer text-secondary hover:text-primary px-2 py-1.5 hover:bg-gray-500 hover:bg-opacity-50 rounded-md">
@@ -141,7 +141,7 @@
     <!--
       Group-By selection
     -->
-    <sfng-select mode="multi" [itemName]="'nq.groupBy' | t" [placeholder]="'nq.groupBy' | t" allowSearch="false" [(ngModel)]="groupByKeys"
+    <sfng-select mode="multi" [itemName]="'nq.groupBy' | t: undefined : ('' | i18nVersion)" [placeholder]="'nq.groupBy' | t: undefined : ('' | i18nVersion)" allowSearch="false" [(ngModel)]="groupByKeys"
       (ngModelChange)="performSearch()">
       <ng-container *ngFor="let value of allowedGroupBy">
         <sfng-select-item *sfngSelectValue="value">
@@ -153,7 +153,7 @@
     <!--
       Order-By selection
     -->
-    <sfng-select mode="multi" [itemName]="'nq.sort' | t" [placeholder]="'nq.sort' | t" allowSearch="false" [(ngModel)]="orderByKeys"
+    <sfng-select mode="multi" [itemName]="'nq.sort' | t: undefined : ('' | i18nVersion)" [placeholder]="'nq.sort' | t: undefined : ('' | i18nVersion)" allowSearch="false" [(ngModel)]="orderByKeys"
       (ngModelChange)="performSearch()">
       <ng-container *ngFor="let value of allowedOrderBy">
         <sfng-select-item *sfngSelectValue="value">
@@ -167,14 +167,14 @@
 
 <div class="relative flex-shrink-0 my-1 bg-gray-200 p-2 rounded grid" [class.grid-cols-2]="featureBw$ | async">
   <div>
-    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">{{ 'nq.connections' | t }}</h2>
+    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">{{ 'nq.connections' | t: undefined : ('' | i18nVersion) }}</h2>
     <div class="h-32">
       <sfng-netquery-line-chart [data]="connectionChartData" class="h-full" *ngIf="connectionChartData.length > 0" [@fadeIn]></sfng-netquery-line-chart>
     </div>
   </div>
 
   <div *ngIf="featureBw$ | async">
-    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">{{ 'nq.dataUsage' | t }}</h2>
+    <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">{{ 'nq.dataUsage' | t: undefined : ('' | i18nVersion) }}</h2>
     <div class="h-32">
       <sfng-netquery-line-chart [config]="bwChartConfig" [data]="bwChartData" class="h-full" *ngIf="!!bwChartData?.length" [@fadeIn]></sfng-netquery-line-chart>
     </div>
@@ -182,7 +182,7 @@
 
   <div class="absolute top-0 bottom-0 left-0 right-0 flex items-center justify-center text-secondary"
     *ngIf="loading || connectionChartData.length === 0">
-    {{ 'nq.loadingChart' | t }}
+    {{ 'nq.loadingChart' | t: undefined : ('' | i18nVersion) }}
   </div>
 </div>
 
@@ -207,7 +207,7 @@
 
         <!-- Country specific colum rendering -->
         <span class="text-primary" *ngIf="key === 'country' && !!data[key]"
-          [appCountryFlags]="data[key]">{{ data[key] || ('common.na' | t) }}</span>
+          [appCountryFlags]="data[key]">{{ data[key] || ('common.na' | t: undefined : ('' | i18nVersion)) }}</span>
 
 
         <!-- Profile specific column rendering -->
@@ -232,7 +232,7 @@
         <span style="direction: rtl" *ngIf="key !== 'domain' && key !== 'profile' && key !== 'exit_node'"
           class="overflow-hidden text-primary overflow-ellipsis">
           <span style="direction: ltr; unicode-bidi: bidi-override;">
-            {{ data[key] || ('common.na' | t) }}
+            {{ data[key] || ('common.na' | t: undefined : ('' | i18nVersion)) }}
           </span>
         </span>
 
@@ -245,9 +245,9 @@
       <div>
         <app-menu-trigger [menu]="groupedMenu"></app-menu-trigger>
         <app-menu #groupedMenu>
-          <app-menu-item (activate)="useAsFilter(data)">{{ 'nq.useAsFilter' | t }}</app-menu-item>
+          <app-menu-item (activate)="useAsFilter(data)">{{ 'nq.useAsFilter' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
           <app-menu-item *ngIf="data.__profile"
-            (activate)="router.navigate(['/app', data.__profile.Source, data.__profile.ID])">{{ 'pl.appSettings' | t }}
+            (activate)="router.navigate(['/app', data.__profile.Source, data.__profile.ID])">{{ 'pl.appSettings' | t: undefined : ('' | i18nVersion) }}
           </app-menu-item>
         </app-menu>
       </div>
@@ -271,8 +271,8 @@
 <!-- "Total connections & LastReload info "-->
 <div class="flex flex-row items-center justify-start gap-3">
 
-  <span class="text-xxs text-primary" *ngIf="!loading">{{ 'nq.results' | t: {count: totalResultCount} }}
-    <span class="text-secondary">{{ 'nq.ofTotal' | t: {count: totalConnCount} }}</span>
+  <span class="text-xxs text-primary" *ngIf="!loading">{{ 'nq.results' | t: {count: totalResultCount}: ('' | i18nVersion) }}
+    <span class="text-secondary">{{ 'nq.ofTotal' | t: {count: totalConnCount}: ('' | i18nVersion) }}</span>
   </span>
   <span class="flex-grow"></span>
 
@@ -290,7 +290,7 @@
             
             <span *ngIf="(autoReloadInterval$ | async) as interval">
               <span *ngIf="interval > 0 && interval <= 30">
-                {{ 'nq.inSec' | t: {n: interval} }}
+                {{ 'nq.inSec' | t: {n: interval}: ('' | i18nVersion) }}
               </span>
             </span>            
           </span>
@@ -300,7 +300,7 @@
             'text-yellow-300': ((lastReloadTicker|async)||0) > 60,
             'text-red-300': ((lastReloadTicker|async)||0) > 600
           }">
-          {{ 'nq.lastReload' | t }} {{ lastReload | timeAgo:(lastReloadTicker|async) }}
+          {{ 'nq.lastReload' | t: undefined : ('' | i18nVersion) }} {{ lastReload | timeAgo:(lastReloadTicker|async) }}
           </span>
 
           <svg xmlns="http://www.w3.org/2000/svg" 
@@ -340,7 +340,7 @@
               singleMode="false">
 
               <div class="flex flex-row items-center p-2 text-secondary" *ngIf="connsPaginator.total === 0">
-                {{ 'nq.allEnded' | t }}
+                {{ 'nq.allEnded' | t: undefined : ('' | i18nVersion) }}
               </div>
 
               <sfng-pagination [source]="connsPaginator" class="flex flex-col flex-grow gap-2">
@@ -380,7 +380,7 @@
         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
       </path>
     </svg>
-    {{ 'nq.loadingConnections' | t }}
+    {{ 'nq.loadingConnections' | t: undefined : ('' | i18nVersion) }}
   </div>
 </ng-template>
 
@@ -390,40 +390,40 @@
     <path
       d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
   </svg>
-  <span class="font-semibold text-primary">{{ 'nq.proTip' | t }}</span>
+  <span class="font-semibold text-primary">{{ 'nq.proTip' | t: undefined : ('' | i18nVersion) }}</span>
   <span class="flex items-center gap-1 protip">
     <ng-container *ngTemplateOutlet="proTips?.get(proTipIdx) || null"></ng-container>
   </span>
 </div>
 
 <ng-template #proTip>
-  {{ 'nq.proTip1a' | t }}
+  {{ 'nq.proTip1a' | t: undefined : ('' | i18nVersion) }}
   <pre>CTRL + Space</pre>
-  {{ 'nq.proTip1b' | t }}
+  {{ 'nq.proTip1b' | t: undefined : ('' | i18nVersion) }}
 </ng-template>
 
 <ng-template #proTip>
-  {{ 'nq.proTip2a' | t }}
-  <pre>ENTER</pre> {{ 'nq.proTip2b' | t }}
-  <pre>Shift + Enter</pre> {{ 'nq.proTip2c' | t }}
+  {{ 'nq.proTip2a' | t: undefined : ('' | i18nVersion) }}
+  <pre>ENTER</pre> {{ 'nq.proTip2b' | t: undefined : ('' | i18nVersion) }}
+  <pre>Shift + Enter</pre> {{ 'nq.proTip2c' | t: undefined : ('' | i18nVersion) }}
 </ng-template>
 
 <ng-template #proTip>
-  {{ 'nq.proTip3a' | t }}
-  <pre>Ctrl + Space</pre> {{ 'nq.proTip3b' | t }}
+  {{ 'nq.proTip3a' | t: undefined : ('' | i18nVersion) }}
+  <pre>Ctrl + Space</pre> {{ 'nq.proTip3b' | t: undefined : ('' | i18nVersion) }}
 </ng-template>
 
 <ng-template #proTip>
-  {{ 'nq.proTip4a' | t }}
-  <pre>Shift + Click</pre> {{ 'nq.proTip4b' | t }}
+  {{ 'nq.proTip4a' | t: undefined : ('' | i18nVersion) }}
+  <pre>Shift + Click</pre> {{ 'nq.proTip4b' | t: undefined : ('' | i18nVersion) }}
 </ng-template>
 
 <ng-template #proTip>
-  {{ 'nq.proTip5a' | t }}
-  <pre>Shift</pre> {{ 'nq.proTip5b' | t }}
+  {{ 'nq.proTip5a' | t: undefined : ('' | i18nVersion) }}
+  <pre>Shift</pre> {{ 'nq.proTip5b' | t: undefined : ('' | i18nVersion) }}
 </ng-template>
 
 <ng-template #proTip>
-  {{ 'nq.proTip5a' | t }}
-  <pre>CTRL</pre> {{ 'nq.proTip6' | t }}
+  {{ 'nq.proTip5a' | t: undefined : ('' | i18nVersion) }}
+  <pre>CTRL</pre> {{ 'nq.proTip6' | t: undefined : ('' | i18nVersion) }}
 </ng-template>

@@ -24,6 +24,7 @@ import { EditProfileDialog } from './../../shared/edit-profile-dialog/edit-profi
 import { coerceBooleanProperty } from '@angular/cdk/coercion';
 import { MergeProfileDialogComponent } from './merge-profile-dialog/merge-profile-dialog.component';
 import { ActionIndicatorService } from 'src/app/shared/action-indicator';
+import { I18nService } from 'src/i18n';
 import { Router } from '@angular/router';
 import {
   ImportConfig,
@@ -96,7 +97,8 @@ export class AppOverviewComponent implements OnInit, OnDestroy {
     private netquery: Netquery,
     private dialog: SfngDialogService,
     private actionIndicator: ActionIndicatorService,
-    private router: Router
+    private router: Router,
+    private i18n: I18nService
   ) { }
 
   handleProfileClick(profile: LocalAppProfile, event: MouseEvent) {
@@ -158,18 +160,18 @@ export class AppOverviewComponent implements OnInit, OnDestroy {
   deleteSelectedProfiles() {
     this.dialog
       .confirm({
-        header: 'Confirm Profile Deletion',
-        message: `Are you sure you want to delete all ${this.selectedProfileCount} selected profiles?`,
-        caption: 'Attention',
+        header: this.i18n.t('app.deleteProfilesConfirm'),
+        message: this.i18n.t('app.deleteProfilesConfirmMsg', { count: this.selectedProfileCount }),
+        caption: this.i18n.t('app.attention'),
         buttons: [
           {
             id: 'no',
-            text: 'Cancel',
+            text: this.i18n.t('common.cancel'),
             class: 'outline',
           },
           {
             id: 'yes',
-            text: 'Delete',
+            text: this.i18n.t('common.delete'),
             class: 'danger',
           },
         ],
@@ -182,16 +184,16 @@ export class AppOverviewComponent implements OnInit, OnDestroy {
         ).subscribe({
           next: () => {
             this.actionIndicator.success(
-              'Selected Profiles Delete',
-              'All selected profiles have been deleted'
+              this.i18n.t('app.profilesDeleted'),
+              this.i18n.t('app.profilesDeletedMsg')
             );
           },
           error: (err) => {
             this.actionIndicator.error(
-              'Failed To Delete Profiles',
-              `An error occured while deleting some profiles: ${this.actionIndicator.getErrorMessgae(
-                err
-              )}`
+              this.i18n.t('app.deleteProfilesFailed'),
+              this.i18n.t('app.deleteProfilesFailedMsg', {
+                error: this.actionIndicator.getErrorMessgae(err),
+              })
             );
           },
         });

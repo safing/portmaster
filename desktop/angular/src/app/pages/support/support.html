@@ -1,6 +1,6 @@
 <div class="header">
   <h4 class="breadcrumbs">
-    <span>{{ 'sup.getHelp' | t }}</span>
+    <span>{{ 'sup.getHelp' | t: undefined : ('' | i18nVersion) }}</span>
   </h4>
   <app-expertise></app-expertise>
 </div>

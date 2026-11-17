@@ -242,7 +242,9 @@ export class CircularBarChartComponent<T> implements OnInit, AfterViewInit {
 
       color = key => colorScale(key);
     } else {
-      color = key => this.config!.series![key].color
+      // Series are keyed by data, so a series that is missing from the config
+      // is perfectly legal - fall back to a neutral colour instead of crashing.
+      color = key => this.config!.series![key]?.color ?? '#ccc'
     }
 
     this.svg.select("g#chart")

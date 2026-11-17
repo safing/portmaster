@@ -3,7 +3,7 @@
   snfgTooltipPosition="right"
   [sfng-tooltip]="(interferingSettings.length > 0 || spnEnabled) ? tooltipTemplate : null">
   <span class="text-primary" [class.cursor-pointer]="interferingSettings.length > 0 || spnEnabled">
-    {{ 'app.splitTunnel' | t }}
+    {{ 'app.splitTunnel' | t: undefined : ('' | i18nVersion) }}
   </span>
 
   <sfng-toggle *ngIf="splitTunModuleEnabled === true"
@@ -12,8 +12,8 @@
 
   <span *ngIf="splitTunModuleEnabled === false"
     routerLink="/settings" [queryParams]="{setting: 'splittun/enable'}" class="cursor-pointer text-tertiary hover:underline"
-    [sfng-tooltip]="'app.enableSplitTun' | t">
-      {{ 'common.disabled' | t }}
+    [sfng-tooltip]="'app.enableSplitTun' | t: undefined : ('' | i18nVersion)">
+      {{ 'common.disabled' | t: undefined : ('' | i18nVersion) }}
   </span>
 
   <ng-template *ngIf="splitTunModuleEnabled === null">
@@ -26,10 +26,10 @@
 </div>
 
 <ng-template #tooltipTemplate>
-  {{ 'app.splitInterfering' | t }}
+  {{ 'app.splitInterfering' | t: undefined : ('' | i18nVersion) }}
   <ul class="pl-4 list-disc">
-    <li *ngIf="spnEnabled && spnFullOverride">{{ 'app.spnFullOverride' | t }}</li>
-    <li *ngIf="spnEnabled && !spnFullOverride">{{ 'app.spnPartialOverride' | t }}</li>
+    <li *ngIf="spnEnabled && spnFullOverride">{{ 'app.spnFullOverride' | t: undefined : ('' | i18nVersion) }}</li>
+    <li *ngIf="spnEnabled && !spnFullOverride">{{ 'app.spnPartialOverride' | t: undefined : ('' | i18nVersion) }}</li>
     <ng-container *ngFor="let setting of interferingSettings">
       <li class="cursor-pointer hover:underline" [routerLink]="[]"
         [queryParams]="{setting: setting.Key, tab: 'settings'}">

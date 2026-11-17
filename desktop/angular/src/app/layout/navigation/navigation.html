@@ -89,7 +89,7 @@
 
 <div class="nav-list">
   <!-- Network Activity -->
-  <div [sfng-tooltip]="'nav.monitor' | t" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
+  <div [sfng-tooltip]="'nav.monitor' | t: undefined : ('' | i18nVersion)" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
     routerLink="monitor" class="link" sfngTipUpTrigger="navMonitor" sfngTipUpPassive>
     <svg viewBox="0 0 24 24" class="monitor">
       <g fill="none">
@@ -102,7 +102,7 @@
   </div>
 
   <!-- App View -->
-  <div [sfng-tooltip]="'nav.apps' | t" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
+  <div [sfng-tooltip]="'nav.apps' | t: undefined : ('' | i18nVersion)" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
     routerLink="app" class="link" sfngTipUpTrigger="navApps" sfngTipUpPassive>
     <svg xmlns="http://www.w3.org/2000/svg" data-name="Layer 1" viewBox="0 0 24 24" class="app" fill="none">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" fill="currentColor"
@@ -113,7 +113,7 @@
   </div>
 
   <!-- SPN -->
-  <div [sfng-tooltip]="'nav.spn' | t" sfngTooltipDelay="1000" snfgTooltipPosition="right"
+  <div [sfng-tooltip]="'nav.spn' | t: undefined : ('' | i18nVersion)" sfngTooltipDelay="1000" snfgTooltipPosition="right"
     routerLinkActive="active" routerLink="spn" class="link" sfngTipUpTrigger="navMap" sfngTipUpPassive>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="spn" stroke="currentColor">
       <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -126,7 +126,7 @@
   </div>
 
   <!-- Xray subscriptions -->
-  <div [sfng-tooltip]="'nav.xray' | t" sfngTooltipDelay="1000" snfgTooltipPosition="right"
+  <div [sfng-tooltip]="'nav.xray' | t: undefined : ('' | i18nVersion)" sfngTooltipDelay="1000" snfgTooltipPosition="right"
     routerLinkActive="active" routerLink="xray" class="link" sfngTipUpTrigger="navXray" sfngTipUpPassive>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="spn" stroke="currentColor">
       <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -138,7 +138,7 @@
   </div>
 
   <!-- Global Settings -->
-  <div [sfng-tooltip]="'nav.settings' | t" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
+  <div [sfng-tooltip]="'nav.settings' | t: undefined : ('' | i18nVersion)" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLinkActive="active"
     routerLink="settings" class="link" sfngTipUpTrigger="navSettings" sfngTipUpPassive>
     <svg viewBox="0 0 24 24" class="settings">
       <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -152,7 +152,7 @@
 
   <div class="w-full border-t border-gray-400"></div>
 
-  <div [sfng-tooltip]="'nav.help' | t" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLink="support"
+  <div [sfng-tooltip]="'nav.help' | t: undefined : ('' | i18nVersion)" sfngTooltipDelay="1000" snfgTooltipPosition="right" routerLink="support"
     routerLinkActive="active" class="link" sfngTipUpTrigger="navSupport" sfngTipUpPassive>
     <svg viewBox="0 0 24 24" class="help">
       <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -165,7 +165,7 @@
   </div>
 </div>
 <div class="nav-lower-list">
-  <div class="relative link" sfngTipUpTrigger="navTools" sfngTipUpPassive [sfng-tooltip]="'nav.tools' | t"
+  <div class="relative link" sfngTipUpTrigger="navTools" sfngTipUpPassive [sfng-tooltip]="'nav.tools' | t: undefined : ('' | i18nVersion)"
     sfngTooltipDelay="1000" snfgTooltipPosition="right" (click)="settingsMenu.dropdown.toggle(settingsMenuTrigger)"
     cdkOverlayOrigin #settingsMenuTrigger="cdkOverlayOrigin" [class.active]="settingsMenu.dropdown.isOpen">
 
@@ -190,36 +190,36 @@
   <app-menu #settingsMenu offsetY="0" offsetX="10" overlayClass="rounded-t">
     <div class="flex flex-col p-4 text-xxs">
       <span class="text-secondary">
-        {{ 'nav.version' | t }}: <span class="text-primary">{{ versions?.Core?.Version }} </span>
+        {{ 'nav.version' | t: undefined : ('' | i18nVersion) }}: <span class="text-primary">{{ versions?.Core?.Version }} </span>
       </span>
       <span class="text-secondary">
-        {{ 'nav.channel' | t }}:
+        {{ 'nav.channel' | t: undefined : ('' | i18nVersion) }}:
         <span class="uppercase text-primary"
           [class.text-yellow-300]="versions?.Channel !== 'stable'">{{ versions?.Channel }}</span>
       </span>
     </div>
 
-    <app-menu-item (click)="downloadUpdates($event)" [sfng-tooltip]="'nav.checkUpdates.tip' | t">{{ 'nav.checkUpdates' | t }}</app-menu-item>
-    <app-menu-item (click)="openChangeLog()" [sfng-tooltip]="'nav.viewChangelog.tip' | t">{{ 'nav.viewChangelog' | t }}</app-menu-item>
+    <app-menu-item (click)="downloadUpdates($event)" [sfng-tooltip]="'nav.checkUpdates.tip' | t: undefined : ('' | i18nVersion)">{{ 'nav.checkUpdates' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
+    <app-menu-item (click)="openChangeLog()" [sfng-tooltip]="'nav.viewChangelog.tip' | t: undefined : ('' | i18nVersion)">{{ 'nav.viewChangelog' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
     <hr/>
-    <app-menu-item (click)="reloadUI($event)" [sfng-tooltip]="'nav.reloadUI.tip' | t">{{ 'nav.reloadUI' | t }}</app-menu-item>
-    <app-menu-item *appExpertiseLevel="'developer'" (click)="showIntro()" [sfng-tooltip]="'nav.showIntro.tip' | t">
-      {{ 'nav.showIntro' | t }}
+    <app-menu-item (click)="reloadUI($event)" [sfng-tooltip]="'nav.reloadUI.tip' | t: undefined : ('' | i18nVersion)">{{ 'nav.reloadUI' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
+    <app-menu-item *appExpertiseLevel="'developer'" (click)="showIntro()" [sfng-tooltip]="'nav.showIntro.tip' | t: undefined : ('' | i18nVersion)">
+      {{ 'nav.showIntro' | t: undefined : ('' | i18nVersion) }}
     </app-menu-item>
     <hr/>
-    <app-menu-item (click)="reinitSPN($event)" [sfng-tooltip]="'nav.reinitSPN.tip' | t">{{ 'nav.reinitSPN' | t }}</app-menu-item>
-    <app-menu-item (click)="logoutCompletely($event)" [sfng-tooltip]="'nav.logout.tip' | t">{{ 'nav.logout' | t }}</app-menu-item>
+    <app-menu-item (click)="reinitSPN($event)" [sfng-tooltip]="'nav.reinitSPN.tip' | t: undefined : ('' | i18nVersion)">{{ 'nav.reinitSPN' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
+    <app-menu-item (click)="logoutCompletely($event)" [sfng-tooltip]="'nav.logout.tip' | t: undefined : ('' | i18nVersion)">{{ 'nav.logout' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
     <hr/>
-    <app-menu-item (click)="resetBroadcastState()" [sfng-tooltip]="'nav.resetNotifications.tip' | t">{{ 'nav.resetNotifications' | t }}</app-menu-item>
-    <app-menu-item (click)="clearDNSCache($event)" [sfng-tooltip]="'nav.clearDNS.tip' | t">{{ 'nav.clearDNS' | t }}</app-menu-item>
-    <app-menu-item (click)="cleanupHistory($event)" [sfng-tooltip]="'nav.cleanupHistory.tip' | t">{{ 'nav.cleanupHistory' | t }}</app-menu-item>
+    <app-menu-item (click)="resetBroadcastState()" [sfng-tooltip]="'nav.resetNotifications.tip' | t: undefined : ('' | i18nVersion)">{{ 'nav.resetNotifications' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
+    <app-menu-item (click)="clearDNSCache($event)" [sfng-tooltip]="'nav.clearDNS.tip' | t: undefined : ('' | i18nVersion)">{{ 'nav.clearDNS' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
+    <app-menu-item (click)="cleanupHistory($event)" [sfng-tooltip]="'nav.cleanupHistory.tip' | t: undefined : ('' | i18nVersion)">{{ 'nav.cleanupHistory' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
     <hr/>
-    <app-menu-item (click)="openDataDir($event)" [sfng-tooltip]="'nav.openDataDir.tip' | t">{{ 'nav.openDataDir' | t }}</app-menu-item>
-    <app-menu-item (click)="copyDebugInfo($event)" [sfng-tooltip]="'nav.copyDebug.tip' | t">{{ 'nav.copyDebug' | t }}</app-menu-item>
+    <app-menu-item (click)="openDataDir($event)" [sfng-tooltip]="'nav.openDataDir.tip' | t: undefined : ('' | i18nVersion)">{{ 'nav.openDataDir' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
+    <app-menu-item (click)="copyDebugInfo($event)" [sfng-tooltip]="'nav.copyDebug.tip' | t: undefined : ('' | i18nVersion)">{{ 'nav.copyDebug' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
   </app-menu>
 
   <!-- Pause Menu -->
-  <div sfngTipUpTrigger="navPause" sfngTipUpPassive [sfng-tooltip]="'nav.pauseTitle' | t" sfngTooltipDelay="1000"
+  <div sfngTipUpTrigger="navPause" sfngTipUpPassive [sfng-tooltip]="'nav.pauseTitle' | t: undefined : ('' | i18nVersion)" sfngTooltipDelay="1000"
     snfgTooltipPosition="right" class="link" (click)="pauseMenu.dropdown.toggle(pauseMenuTrigger)" cdkOverlayOrigin
     #pauseMenuTrigger="cdkOverlayOrigin" [class.active]="pauseMenu.dropdown.isOpen">
 
@@ -246,19 +246,19 @@
       </div>
 
       <!-- we show 'Pause SPN...' items even when isPausedSPN to allow pause time modification-->
-      <app-menu-item (click)="pauseSPN($event, 60*5)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">{{ 'nav.pauseSPN5' | t }}</app-menu-item>
-      <app-menu-item (click)="pauseSPN($event, 60*15)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">{{ 'nav.pauseSPN15' | t }}</app-menu-item>
-      <app-menu-item (click)="pauseSPN($event, 60*60)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">{{ 'nav.pauseSPN1h' | t }}</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*5)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">{{ 'nav.pauseSPN5' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*15)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">{{ 'nav.pauseSPN15' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
+      <app-menu-item (click)="pauseSPN($event, 60*60)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">{{ 'nav.pauseSPN1h' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
       <hr/>
-      <app-menu-item (click)="pause($event, 60*5)">{{ 'nav.pause5' | t }}</app-menu-item>
-      <app-menu-item (click)="pause($event, 60*15)">{{ 'nav.pause15' | t }}</app-menu-item>
-      <app-menu-item (click)="pause($event, 60*60)">{{ 'nav.pause1h' | t }}</app-menu-item>
+      <app-menu-item (click)="pause($event, 60*5)">{{ 'nav.pause5' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
+      <app-menu-item (click)="pause($event, 60*15)">{{ 'nav.pause15' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
+      <app-menu-item (click)="pause($event, 60*60)">{{ 'nav.pause1h' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
       <hr/>
-      <app-menu-item (click)="resume($event)" [disabled]="!isPaused">{{ 'nav.resume' | t }}</app-menu-item>
+      <app-menu-item (click)="resume($event)" [disabled]="!isPaused">{{ 'nav.resume' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
   </app-menu>
 
   <!-- Power Menu -->
-  <div sfngTipUpTrigger="navPower" sfngTipUpPassive [sfng-tooltip]="'nav.restart' | t" sfngTooltipDelay="1000"
+  <div sfngTipUpTrigger="navPower" sfngTipUpPassive [sfng-tooltip]="'nav.restart' | t: undefined : ('' | i18nVersion)" sfngTooltipDelay="1000"
     snfgTooltipPosition="right" class="link" (click)="powerMenu.dropdown.toggle(powerMenuTrigger)" cdkOverlayOrigin
     #powerMenuTrigger="cdkOverlayOrigin" [class.active]="powerMenu.dropdown.isOpen">
 
@@ -278,8 +278,8 @@
 
   </div>
   <app-menu #powerMenu offsetY="0" offsetX="10" overlayClass="rounded-t">
-    <app-menu-item (click)="shutdown($event)">{{ 'nav.shutdown' | t }}</app-menu-item>
-    <app-menu-item (click)="restart($event)">{{ 'nav.restart' | t }}</app-menu-item>
+    <app-menu-item (click)="shutdown($event)">{{ 'nav.shutdown' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
+    <app-menu-item (click)="restart($event)">{{ 'nav.restart' | t: undefined : ('' | i18nVersion) }}</app-menu-item>
   </app-menu>
 
 </div>

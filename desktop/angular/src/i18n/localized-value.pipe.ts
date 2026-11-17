@@ -1,4 +1,5 @@
 import { Pipe, PipeTransform, inject } from '@angular/core';
+import { Language } from './i18n.service';
 import { LocalizedValueDomain, LocalizedValueService } from './localized-value.service';
 
 /**
@@ -8,10 +9,12 @@ import { LocalizedValueDomain, LocalizedValueService } from './localized-value.s
  *   {{ featureIds    | localizedValue:'feature' }}
  *   {{ conn.verdict  | localizedValue:'verdict':verdict[conn.verdict] }}
  *
- * The optional fallback is returned for unknown values. The pipe is impure so
- * a language switch refreshes the rendered value immediately.
+ * The optional fallback is returned for unknown values. The pipe is pure; a
+ * language switch is signalled through the `version` argument supplied by the
+ * `i18nVersion` pipe, so the (potentially expensive) lookup only runs when the
+ * value or the language actually changes.
  */
-@Pipe({ name: 'localizedValue', pure: false })
+@Pipe({ name: 'localizedValue' })
 export class LocalizedValuePipe implements PipeTransform {
   private readonly localized = inject(LocalizedValueService);
 
@@ -19,6 +22,7 @@ export class LocalizedValuePipe implements PipeTransform {
     value: string | number | Array<string | number> | null | undefined,
     domain: LocalizedValueDomain,
     fallback?: string,
+    _version?: Language,
   ): string {
     return this.localized.localize(value, domain, fallback);
   }

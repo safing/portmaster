@@ -8,7 +8,7 @@
         <fa-icon far icon="dot-circle"></fa-icon>
       </span>
       <span class="hop-title text-tertiary">
-        {{ 'spn.route.yourDevice' | t }}
+        {{ 'spn.route.yourDevice' | t: undefined : ('' | i18nVersion) }}
       </span>
     </li>
 
@@ -18,22 +18,22 @@
         <!-- TODO: use hop icon instead if unknown -->
         <span class="country unknown"></span>
       </ng-template>
-      <span>{{ node.entity.Country || ('spn.route.noLocation' | t) }}</span>
+      <span>{{ node.entity.Country || ('spn.route.noLocation' | t: undefined : ('' | i18nVersion)) }}</span>
       <span class="ip text-tertiary">{{ node.entity.IP || ''
         }}</span>
-      <span class="node-tag" *ngIf="first">{{ 'spn.route.home' | t }}</span>
-      <span class="node-tag" *ngIf="last">{{ 'spn.route.exit' | t }}</span>
+      <span class="node-tag" *ngIf="first">{{ 'spn.route.home' | t: undefined : ('' | i18nVersion) }}</span>
+      <span class="node-tag" *ngIf="last">{{ 'spn.route.exit' | t: undefined : ('' | i18nVersion) }}</span>
       <span *appExpertiseLevel="'expert'" class="text-tertiary"><br />{{ node.pin.Name }}
 
         <span class="ml-2">
-          {{ 'spn.route.by' | t }}
+          {{ 'spn.route.by' | t: undefined : ('' | i18nVersion) }}
           <spn-node-icon [bySafing]="node.pin.VerifiedOwner === 'Safing'" isActive="true" isExit="last"></spn-node-icon>
-          {{ node.pin.VerifiedOwner || ('common.community' | t) }}
+          {{ node.pin.VerifiedOwner || ('common.community' | t: undefined : ('' | i18nVersion)) }}
         </span>
       </span>
 
       <span *appExpertiseLevel="'expert'" class="text-tertiary"><br />AS{{ node.entity.ASN }} - {{ node.entity.ASOrg ||
-          'spn.route.asOrgNotInDb' | t
+          'spn.route.asOrgNotInDb' | t: undefined : ('' | i18nVersion)
           }}</span>
 
       <span *appExpertiseLevel="'developer'" class="text-tertiary"><br />{{ node.pin.ID }}</span>
@@ -45,7 +45,7 @@
         <!-- TODO: use destination country flag instead if known -->
       </span>
       <span class="hop-title text-tertiary">
-        {{ 'spn.route.destination' | t }}
+        {{ 'spn.route.destination' | t: undefined : ('' | i18nVersion) }}
       </span>
       <!-- TODO: add destination details? (Would be duplicate information from above.) -->
     </li>

@@ -1,21 +1,21 @@
 <div class="flex flex-col w-full h-full gap-3 p-4 xray-page">
   <div class="flex flex-row items-start justify-between gap-4">
     <div>
-      <h1 class="text-lg font-medium">{{ 'xray.title' | t }}</h1>
-      <p class="text-xs text-secondary">{{ 'xray.subtitle' | t }}</p>
+      <h1 class="text-lg font-medium">{{ 'xray.title' | t: undefined : ('' | i18nVersion) }}</h1>
+      <p class="text-xs text-secondary">{{ 'xray.subtitle' | t: undefined : ('' | i18nVersion) }}</p>
       <p class="mt-1 text-xs" *ngIf="status$ | async as st">
         <span [class.text-green-300]="st.connected" [class.text-secondary]="!st.connected">
-          {{ (st.connected ? 'xray.statusConnected' : 'xray.statusDisconnected') | t }}
+          {{ (st.connected ? 'xray.statusConnected' : 'xray.statusDisconnected') | t: undefined : ('' | i18nVersion) }}
         </span>
         <span *ngIf="st.connected && st.node_name">
-          — {{ 'xray.connectedTo' | t: { node: st.node_name } }}
+          — {{ 'xray.connectedTo' | t: { node: st.node_name }: ('' | i18nVersion) }}
         </span>
       </p>
     </div>
 
-    <button type="button" (click)="reload()" [title]="'xray.reloadHint' | t"
+    <button type="button" (click)="reload()" [title]="'xray.reloadHint' | t: undefined : ('' | i18nVersion)"
       class="px-3 py-1.5 text-xs font-medium rounded bg-gray-300 hover:bg-gray-200 whitespace-nowrap">
-      {{ 'common.refresh' | t }}
+      {{ 'common.refresh' | t: undefined : ('' | i18nVersion) }}
     </button>
   </div>
 
@@ -34,27 +34,27 @@
     <!-- Subscriptions / country filter / nodes panel -->
     <div class="flex flex-col w-96 gap-4 overflow-y-auto">
       <section>
-        <h2 class="mb-2 text-sm font-medium">{{ 'xray.subscriptions' | t }}</h2>
+        <h2 class="mb-2 text-sm font-medium">{{ 'xray.subscriptions' | t: undefined : ('' | i18nVersion) }}</h2>
 
         <form class="flex flex-row gap-1" (ngSubmit)="addSubscription()">
           <input type="text" name="subscriptionUrl" [(ngModel)]="newUrl"
-            [placeholder]="'xray.urlPlaceholder' | t"
+            [placeholder]="'xray.urlPlaceholder' | t: undefined : ('' | i18nVersion)"
             class="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-400 rounded bg-background">
           <button type="submit"
             class="px-2 py-1 text-xs font-medium rounded bg-blue text-white hover:bg-blue">
-            {{ 'common.add' | t }}
+            {{ 'common.add' | t: undefined : ('' | i18nVersion) }}
           </button>
         </form>
 
         <ul class="mt-2 text-xs" *ngIf="subscriptions$ | async as subscriptions">
           <li *ngIf="subscriptions.length === 0" class="text-secondary">
-            {{ 'xray.noSubscriptions' | t }}
+            {{ 'xray.noSubscriptions' | t: undefined : ('' | i18nVersion) }}
           </li>
           <li *ngFor="let sub of subscriptions"
             class="flex flex-row items-center justify-between gap-2 py-1 border-b border-gray-400">
             <span class="truncate" [title]="sub.url">{{ sub.name || sub.url }}</span>
             <span class="text-secondary whitespace-nowrap">
-              {{ 'xray.subscriptionNodes' | t: { count: sub.node_count || 0 } }}
+              {{ 'xray.subscriptionNodes' | t: { count: sub.node_count || 0 }: ('' | i18nVersion) }}
             </span>
             <button type="button" class="text-red-300 hover:text-red-200" (click)="removeSubscription(sub)">
               ×
@@ -64,31 +64,31 @@
       </section>
 
       <section>
-        <h2 class="mb-2 text-sm font-medium">{{ 'common.countries' | t }}</h2>
+        <h2 class="mb-2 text-sm font-medium">{{ 'common.countries' | t: undefined : ('' | i18nVersion) }}</h2>
         <select name="countryFilter" [(ngModel)]="selectedCountry"
           class="w-full px-2 py-1 text-xs border border-gray-400 rounded bg-background">
-          <option [ngValue]="null">{{ 'xray.allCountries' | t }}</option>
+          <option [ngValue]="null">{{ 'xray.allCountries' | t: undefined : ('' | i18nVersion) }}</option>
           <option *ngFor="let country of countries" [ngValue]="country">{{ country }}</option>
         </select>
       </section>
 
       <section *ngIf="selectedPin as pin" class="p-2 rounded bg-gray-300 bg-opacity-40">
-        <h2 class="mb-1 text-sm font-medium">{{ 'xray.selectedNode' | t }}</h2>
+        <h2 class="mb-1 text-sm font-medium">{{ 'xray.selectedNode' | t: undefined : ('' | i18nVersion) }}</h2>
         <div class="text-xs">{{ pin.pin.Name }}</div>
         <div class="text-xxs text-secondary">
           {{ pin.pin.VerifiedOwner }} · {{ pin.entity.Country }} · {{ pin.pin.EntityV4?.IP }}
         </div>
         <button type="button" (click)="connect(pin)"
           class="mt-2 px-3 py-1 text-xs font-medium text-white uppercase rounded-full bg-blue hover:bg-blue">
-          {{ 'xray.connectTo' | t: { node: pin.pin.Name } }}
+          {{ 'xray.connectTo' | t: { node: pin.pin.Name }: ('' | i18nVersion) }}
         </button>
       </section>
 
       <section class="flex-1 min-h-0">
-        <h2 class="mb-1 text-sm font-medium">{{ 'common.nodes' | t }}</h2>
-        <p class="mb-2 text-xxs text-secondary">{{ 'xray.clickInfoToConnect' | t }}</p>
+        <h2 class="mb-1 text-sm font-medium">{{ 'common.nodes' | t: undefined : ('' | i18nVersion) }}</h2>
+        <p class="mb-2 text-xxs text-secondary">{{ 'xray.clickInfoToConnect' | t: undefined : ('' | i18nVersion) }}</p>
         <div *ngIf="filteredPins.length === 0" class="text-xs text-secondary">
-          {{ 'xray.noNodes' | t }}
+          {{ 'xray.noNodes' | t: undefined : ('' | i18nVersion) }}
         </div>
         <spn-pin-list *ngIf="filteredPins.length > 0"
           [pins]="filteredPins"

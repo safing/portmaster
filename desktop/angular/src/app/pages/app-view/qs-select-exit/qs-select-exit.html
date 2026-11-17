@@ -1,17 +1,17 @@
 <div class="qs-select-exit relative flex flex-wrap items-center justify-center w-full h-full gap-2 px-3 py-1 bg-gray-300 border border-gray-300 rounded shadow">
   <span class="text-primary">
-    {{ 'app.spnExit' | t }}
+    {{ 'app.spnExit' | t: undefined : ('' | i18nVersion) }}
   </span>
 
   <span *ngIf="!canUse" routerLink="/dashboard" class="cursor-pointer text-tertiary hover:underline">
-    {{ 'app.getPro' | t }}
+    {{ 'app.getPro' | t: undefined : ('' | i18nVersion) }}
   </span>
 
   <sfng-select *ngIf="canUse && spnEnabled === true && exitRuleSetting"
-    [ngModel]="selectedExitRules" (ngModelChange)="updateExitRules($event)" [placeholder]="'app.custom' | t"
+    [ngModel]="selectedExitRules" (ngModelChange)="updateExitRules($event)" [placeholder]="'app.custom' | t: undefined : ('' | i18nVersion)"
     class="">
     <sfng-select-item *sfngSelectValue="">
-      {{ 'app.automatic' | t }}
+      {{ 'app.automatic' | t: undefined : ('' | i18nVersion) }}
     </sfng-select-item>
     <ng-container *ngFor="let option of availableExitRules">
       <sfng-select-item *sfngSelectValue="option.Value.join(',')">
@@ -32,8 +32,8 @@
 
   <span *ngIf="canUse && spnEnabled === false"
     routerLink="/spn" class="cursor-pointer text-tertiary hover:underline"
-    [sfng-tooltip]="'app.enableSPNUse' | t">
-      {{ 'common.disabled' | t }}
+    [sfng-tooltip]="'app.enableSPNUse' | t: undefined : ('' | i18nVersion)">
+      {{ 'common.disabled' | t: undefined : ('' | i18nVersion) }}
   </span>
 
 </div>

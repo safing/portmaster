@@ -1,14 +1,14 @@
 <section *ngIf="conn">
   <div>
     <span sfngAddToFilter="started" [sfngAddToFilterValue]="conn.started">
-      <span>{{ 'nq.started' | t }}</span>
+      <span>{{ 'nq.started' | t: undefined : ('' | i18nVersion) }}</span>
       <span>
         {{ conn.started | date:'medium'}}
       </span>
     </span>
 
     <span sfngAddToFilter="ended" [sfngAddToFilterValue]="conn.ended">
-      <span>{{ 'nq.ended' | t }}</span>
+      <span>{{ 'nq.ended' | t: undefined : ('' | i18nVersion) }}</span>
       <span *ngIf="conn.ended">
         {{ conn.ended | date:'medium'}}
       </span>
@@ -18,7 +18,7 @@
     </span>
 
     <span *ngIf="conn.ended">
-      <span>{{ 'nq.duration' | t }}</span>
+      <span>{{ 'nq.duration' | t: undefined : ('' | i18nVersion) }}</span>
       <span >
         {{ [conn.ended, conn.started] | duration }}
       </span>
@@ -26,35 +26,35 @@
 
     <span *appExpertiseLevel="'developer'" sfngAddToFilter="profile_revision"
       [sfngAddToFilterValue]="conn.profile_revision">
-      <span>{{ 'nq.profileRevision' | t }}</span>
+      <span>{{ 'nq.profileRevision' | t: undefined : ('' | i18nVersion) }}</span>
       <span>
         {{ conn.profile_revision }}
       </span>
     </span>
 
     <span *appExpertiseLevel="'developer'">
-      <span>{{ 'nq.connectionID' | t }}</span>
+      <span>{{ 'nq.connectionID' | t: undefined : ('' | i18nVersion) }}</span>
       <span>
         {{ conn.id }}
       </span>
     </span>
 
     <span *appExpertiseLevel="'expert'" sfngAddToFilter="verdict" [sfngAddToFilterValue]="conn.verdict">
-      <span>{{ 'nq.verdict' | t }}</span>
+      <span>{{ 'nq.verdict' | t: undefined : ('' | i18nVersion) }}</span>
       <span>
-        {{ conn.verdict | localizedValue:'verdict':(verdict[conn.verdict] || ('common.na' | t)) }}
+        {{ conn.verdict | localizedValue:'verdict':(verdict[conn.verdict] || ('common.na' | t: undefined : ('' | i18nVersion))): ('' | i18nVersion) }}
       </span>
     </span>
 
     <span *appExpertiseLevel="'developer'" sfngAddToFilter="internal" [sfngAddToFilterValue]="conn.internal">
-      <span>{{ 'nq.internalConn' | t }}</span>
+      <span>{{ 'nq.internalConn' | t: undefined : ('' | i18nVersion) }}</span>
       <span>
-        {{ conn.internal ? ('common.yes' | t) : ('common.no' | t) }}
+        {{ conn.internal ? ('common.yes' | t: undefined : ('' | i18nVersion)) : ('common.no' | t: undefined : ('' | i18nVersion)) }}
       </span>
     </span>
 
     <span *appExpertiseLevel="'expert'" sfngAddToFilter="local_ip" [sfngAddToFilterValue]="conn.local_ip">
-      <span>{{ 'nq.localAddress' | t }}</span>
+      <span>{{ 'nq.localAddress' | t: undefined : ('' | i18nVersion) }}</span>
       <span>
         {{ conn.local_ip }}
         <span *ngIf="conn.local_port" class="text-tertiary">{{ ':'+conn.local_port }}</span>
@@ -64,53 +64,53 @@
 
   <div *ngIf="conn.type === 'ip'; else: dnsTemplate">
     <span sfngAddToFilter="direction" [sfngAddToFilterValue]="conn.direction">
-      <span>{{ 'nq.direction' | t }}</span>
+      <span>{{ 'nq.direction' | t: undefined : ('' | i18nVersion) }}</span>
       <span>
         <fa-icon class="inline-block mr-1 transform rotate-45" [ngClass]="{'text-gray-600': !!conn.ended}"
           [icon]="conn.direction === 'inbound' ? 'arrow-down' : 'arrow-up'">
         </fa-icon>
-        {{ conn.direction === 'inbound' ? ('nq.incoming' | t) : ('nq.outgoing' | t) }}
+        {{ conn.direction === 'inbound' ? ('nq.incoming' | t: undefined : ('' | i18nVersion)) : ('nq.outgoing' | t: undefined : ('' | i18nVersion)) }}
       </span>
     </span>
     <span sfngAddToFilter="ip_protocol" [sfngAddToFilterValue]="conn.ip_protocol">
-      <span>{{ 'nq.protocol' | t }}</span>
-      <span>{{ Protocols[conn.ip_protocol] || ('common.na' | t) }}</span>
+      <span>{{ 'nq.protocol' | t: undefined : ('' | i18nVersion) }}</span>
+      <span>{{ Protocols[conn.ip_protocol] || ('common.na' | t: undefined : ('' | i18nVersion)) }}</span>
     </span>
     <span sfngAddToFilter="encrypted" [sfngAddToFilterValue]="conn.encrypted">
-      <span>{{ 'nq.encrypted' | t }}</span>
-      <span>{{ conn.encrypted ? ('common.yes' | t) : ('common.no' | t) }}</span>
+      <span>{{ 'nq.encrypted' | t: undefined : ('' | i18nVersion) }}</span>
+      <span>{{ conn.encrypted ? ('common.yes' | t: undefined : ('' | i18nVersion)) : ('common.no' | t: undefined : ('' | i18nVersion)) }}</span>
     </span>
     <span sfngAddToFilter="tunneled" [sfngAddToFilterValue]="conn.tunneled">
-      <span>{{ 'nq.spnProtected' | t }}</span>
-      <span>{{ conn.tunneled ? ('common.yes' | t) : ('common.no' | t) }}</span>
+      <span>{{ 'nq.spnProtected' | t: undefined : ('' | i18nVersion) }}</span>
+      <span>{{ conn.tunneled ? ('common.yes' | t: undefined : ('' | i18nVersion)) : ('common.no' | t: undefined : ('' | i18nVersion)) }}</span>
     </span>
 
     <span *ngIf="conn.bytes_received > 0">
-      <span>{{ 'nq.dataReceived' | t }}</span>
+      <span>{{ 'nq.dataReceived' | t: undefined : ('' | i18nVersion) }}</span>
       <span>{{ conn.bytes_received  | bytes }}</span>
     </span>
     <span *ngIf="conn.bytes_sent > 0">
-      <span>{{ 'nq.dataSent' | t }}</span>
+      <span>{{ 'nq.dataSent' | t: undefined : ('' | i18nVersion) }}</span>
       <span>{{ conn.bytes_sent | bytes }}</span>
     </span>
 
     <ng-container *ngIf="conn.extra_data?.tls as tls">
       <span>
-        <span>{{ 'nq.tlsVersion' | t }}</span>
+        <span>{{ 'nq.tlsVersion' | t: undefined : ('' | i18nVersion) }}</span>
         <span>{{ tls.Version }}</span>
       </span>
       <span>
-        <span>{{ 'nq.tlsSNI' | t }}</span>
+        <span>{{ 'nq.tlsSNI' | t: undefined : ('' | i18nVersion) }}</span>
         <span>{{ tls.SNI }}</span>
       </span>
       <ng-container *ngIf="!!tls.Chain">
         <ng-container *ngIf="tls.Chain[0] as firstChain">
           <span>
-            <span>{{ 'nq.tlsCert' | t }}</span>
+            <span>{{ 'nq.tlsCert' | t: undefined : ('' | i18nVersion) }}</span>
             <span>{{ firstChain[0].Subject }} <i class="port">by</i> {{ firstChain[0].Issuer }}</span>
           </span>
           <span>
-            <span>{{ 'nq.trustChain' | t }}</span>
+            <span>{{ 'nq.trustChain' | t: undefined : ('' | i18nVersion) }}</span>
             <span>
               <ol>
                 <li *ngFor="let cert of firstChain.slice(1)">
@@ -127,26 +127,26 @@
   <ng-template #dnsTemplate>
     <div *ngIf="conn.extra_data?.dns as dns">
       <span sfngAddToFilter="domain" [sfngAddToFilterValue]="dns.Domain">
-        <span>{{ 'nq.domain' | t }}</span>
+        <span>{{ 'nq.domain' | t: undefined : ('' | i18nVersion) }}</span>
         <span>{{dns.Domain}}</span>
       </span>
       <span>
-        <span>{{ 'nq.query' | t }}</span>
+        <span>{{ 'nq.query' | t: undefined : ('' | i18nVersion) }}</span>
         <span>{{dns.Question}}</span>
       </span>
 
       <span>
-        <span>{{ 'nq.response' | t }}</span>
+        <span>{{ 'nq.response' | t: undefined : ('' | i18nVersion) }}</span>
         <span>{{dns.RCode}}</span>
       </span>
 
       <span *appExpertiseLevel="'expert'">
-        <span>{{ 'nq.servedCache' | t }}</span>
-        <span>{{dns.ServedFromCache ? ('common.yes' | t) : ('common.no' | t) }}</span>
+        <span>{{ 'nq.servedCache' | t: undefined : ('' | i18nVersion) }}</span>
+        <span>{{dns.ServedFromCache ? ('common.yes' | t: undefined : ('' | i18nVersion)) : ('common.no' | t: undefined : ('' | i18nVersion)) }}</span>
       </span>
 
       <span *appExpertiseLevel="'expert'">
-        <span>{{ 'nq.expires' | t }}</span>
+        <span>{{ 'nq.expires' | t: undefined : ('' | i18nVersion) }}</span>
         <span>{{dns.Expires | date:'medium'}}</span>
       </span>
     </div>
@@ -154,77 +154,77 @@
 
   <div *ngIf="conn.type === 'ip'">
     <span *ngIf="conn.domain" sfngAddToFilter="domain" [sfngAddToFilterValue]="conn.domain">
-      <span>{{ 'nq.domain' | t }}</span>
+      <span>{{ 'nq.domain' | t: undefined : ('' | i18nVersion) }}</span>
       <sfng-netquery-scope-label leftRightFix="true" [scope]="conn.domain">
       </sfng-netquery-scope-label>
     </span>
 
     <span *ngIf="!conn.domain">
-      <span>{{ 'nq.scope' | t }}</span>
+      <span>{{ 'nq.scope' | t: undefined : ('' | i18nVersion) }}</span>
       <ng-container [ngSwitch]="conn.scope">
-        <span *ngSwitchCase="scopes.Global">{{ 'nq.scopeGlobal' | t }}</span>
-        <span *ngSwitchCase="scopes.GlobalMulitcast">{{ 'nq.scopeGlobalMulticast' | t }}</span>
-        <span *ngSwitchCase="scopes.HostLocal">{{ 'nq.scopeHostLocal' | t }}</span>
-        <span *ngSwitchCase="scopes.LinkLocal">{{ 'nq.scopeLinkLocal' | t }}</span>
-        <span *ngSwitchCase="scopes.LocalMulticast">{{ 'nq.scopeLocalMulticast' | t }}</span>
-        <span *ngSwitchCase="scopes.SiteLocal">{{ 'nq.scopeSiteLocal' | t }}</span>
+        <span *ngSwitchCase="scopes.Global">{{ 'nq.scopeGlobal' | t: undefined : ('' | i18nVersion) }}</span>
+        <span *ngSwitchCase="scopes.GlobalMulitcast">{{ 'nq.scopeGlobalMulticast' | t: undefined : ('' | i18nVersion) }}</span>
+        <span *ngSwitchCase="scopes.HostLocal">{{ 'nq.scopeHostLocal' | t: undefined : ('' | i18nVersion) }}</span>
+        <span *ngSwitchCase="scopes.LinkLocal">{{ 'nq.scopeLinkLocal' | t: undefined : ('' | i18nVersion) }}</span>
+        <span *ngSwitchCase="scopes.LocalMulticast">{{ 'nq.scopeLocalMulticast' | t: undefined : ('' | i18nVersion) }}</span>
+        <span *ngSwitchCase="scopes.SiteLocal">{{ 'nq.scopeSiteLocal' | t: undefined : ('' | i18nVersion) }}</span>
 
-        <span class="text-tertiary" *ngSwitchCase="scopes.Invalid">{{ 'common.na' | t }}</span>
-        <span class="text-tertiary" *ngSwitchCase="scopes.Undefined">{{ 'common.na' | t }}</span>
-        <span class="text-tertiary" *ngSwitchDefault>{{ 'common.na' | t }}</span>
+        <span class="text-tertiary" *ngSwitchCase="scopes.Invalid">{{ 'common.na' | t: undefined : ('' | i18nVersion) }}</span>
+        <span class="text-tertiary" *ngSwitchCase="scopes.Undefined">{{ 'common.na' | t: undefined : ('' | i18nVersion) }}</span>
+        <span class="text-tertiary" *ngSwitchDefault>{{ 'common.na' | t: undefined : ('' | i18nVersion) }}</span>
       </ng-container>
 
-      <span>{{ conn.direction === 'inbound' ? ' ' + ('nq.incoming' | t) : ' ' + ('nq.outgoing' | t) }}</span>
+      <span>{{ conn.direction === 'inbound' ? ' ' + ('nq.incoming' | t: undefined : ('' | i18nVersion)) : ' ' + ('nq.outgoing' | t: undefined : ('' | i18nVersion)) }}</span>
     </span>
 
     <span sfngAddToFilter="remote_ip" [sfngAddToFilterValue]="conn.remote_ip">
-      <span>{{ 'nq.remotePeer' | t }}</span>
+      <span>{{ 'nq.remotePeer' | t: undefined : ('' | i18nVersion) }}</span>
       <span>
-        {{ conn.remote_ip || ('nq.dnsRequest' | t) }}
+        {{ conn.remote_ip || ('nq.dnsRequest' | t: undefined : ('' | i18nVersion)) }}
         <span *ngIf="conn.remote_port" class="text-tertiary">{{ ':'+conn.remote_port }}</span>
       </span>
     </span>
     <span sfngAddToFilter="country" [sfngAddToFilterValue]="conn.country">
-      <span>{{ 'nq.country' | t }}</span>
+      <span>{{ 'nq.country' | t: undefined : ('' | i18nVersion) }}</span>
       <span *ngIf="!!conn.country" [appCountryFlags]="conn.country"></span>
-      <span>{{ (conn.country | countryName) || ('common.na' | t) }}</span>
+      <span>{{ (conn.country | countryName: ('' | i18nVersion)) || ('common.na' | t: undefined : ('' | i18nVersion)) }}</span>
     </span>
     <span sfngAddToFilter="asn" [sfngAddToFilterValue]="conn.asn">
-      <span>{{ 'nq.asn' | t }}</span>
-      <span>{{ conn.asn || ('common.na' | t) }}</span>
+      <span>{{ 'nq.asn' | t: undefined : ('' | i18nVersion) }}</span>
+      <span>{{ conn.asn || ('common.na' | t: undefined : ('' | i18nVersion)) }}</span>
     </span>
     <span sfngAddToFilter="as_owner" [sfngAddToFilterValue]="conn.as_owner">
-      <span>{{ 'nq.asOrg' | t }}</span>
-      <span>{{ conn.as_owner || ('common.na' | t) }}</span>
+      <span>{{ 'nq.asOrg' | t: undefined : ('' | i18nVersion) }}</span>
+      <span>{{ conn.as_owner || ('common.na' | t: undefined : ('' | i18nVersion)) }}</span>
     </span>
   </div>
 
   <div class="col-span-2">
     <span sfngAddToFilter="path" [sfngAddToFilterValue]="conn.path">
-      <span>{{ 'nq.binaryPath' | t }}</span>
+      <span>{{ 'nq.binaryPath' | t: undefined : ('' | i18nVersion) }}</span>
       <span class="break-normal whitespace-normal">{{ conn.path }} </span>
     </span>
     <span>
-      <span>{{ 'common.reason' | t }}</span>
+      <span>{{ 'common.reason' | t: undefined : ('' | i18nVersion) }}</span>
       <span class="break-normal whitespace-normal">
         {{conn.extra_data?.reason?.Msg}}
       </span>
     </span>
     <span *ngIf="conn.extra_data?.reason?.OptionKey as option">
-      <span>{{ 'nq.appliedSetting' | t }}</span>
+      <span>{{ 'nq.appliedSetting' | t: undefined : ('' | i18nVersion) }}</span>
       <span>
         <span>{{ helper.settings[option] || '' }}&nbsp;</span>
-        <span class="de-emphasize" style="display: inline-block; text-align: left">&nbsp;{{ 'nq.fromSettings' | t }}&nbsp;{{
-            (!!conn.extra_data?.reason?.Profile ? ('nq.appSettings' | t) : ('nq.globalSettings' | t)) }} {{ 'common.settings2' | t }}</span>
+        <span class="de-emphasize" style="display: inline-block; text-align: left">&nbsp;{{ 'nq.fromSettings' | t: undefined : ('' | i18nVersion) }}&nbsp;{{
+            (!!conn.extra_data?.reason?.Profile ? ('nq.appSettings' | t: undefined : ('' | i18nVersion)) : ('nq.globalSettings' | t: undefined : ('' | i18nVersion))) }} {{ 'common.settings2' | t: undefined : ('' | i18nVersion) }}</span>
       </span>
     </span>
   </div>
 
   <div *ngIf="conn.scope === scopes.Global && !!conn.tunneled">
-    <h3 class="text-primary text-xxs">{{ 'nq.spnTunnel' | t }}</h3>
+    <h3 class="text-primary text-xxs">{{ 'nq.spnTunnel' | t: undefined : ('' | i18nVersion) }}</h3>
     <ng-container [ngSwitch]="true">
       <span *ngSwitchCase="!conn.tunneled" class="inline-flex items-center gap-2 text-secondary">
-        {{ 'nq.notRouted' | t }}
+        {{ 'nq.notRouted' | t: undefined : ('' | i18nVersion) }}
         <sfng-tipup key="spn"></sfng-tipup>
       </span>
 
@@ -237,31 +237,31 @@
         </div>
         <div *appExpertiseLevel="'developer'" class="flex flex-col items-start justify-start gap-1 mt-2">
           <span class="flex flex-row items-center gap-2">
-            <span class="text-secondary">{{ 'nq.pathCosts' | t }}</span>
+            <span class="text-secondary">{{ 'nq.pathCosts' | t: undefined : ('' | i18nVersion) }}</span>
             <span>{{ conn.extra_data?.tunnel?.PathCost }}</span>
           </span>
           <span class="flex flex-row items-center gap-2">
-            <span class="text-secondary">{{ 'nq.routingAlg' | t }}</span>
+            <span class="text-secondary">{{ 'nq.routingAlg' | t: undefined : ('' | i18nVersion) }}</span>
             <span>{{ conn.extra_data?.tunnel?.RoutingAlg }}</span>
           </span>
         </div>
       </div>
 
       <span *ngSwitchDefault class="inline-flex items-center gap-2 text-secondary">
-        {{ 'nq.tunnelUnavailable' | t }}
+        {{ 'nq.tunnelUnavailable' | t: undefined : ('' | i18nVersion) }}
       </span>
     </ng-container>
   </div>
 
   <div *ngIf="!!conn.extra_data?.split_tun">
-    <h3 class="text-primary text-xxs">{{ 'nq.splitTunnel' | t }}</h3>
+    <h3 class="text-primary text-xxs">{{ 'nq.splitTunnel' | t: undefined : ('' | i18nVersion) }}</h3>
     <div *ngIf="conn.extra_data?.split_tun as splitTun" class="meta">
       <span *ngIf="!!splitTun.Proxy" class="inline-flex items-center gap-1 flex-wrap">
-        <span class="text-secondary">{{ 'nq.relayedProxy' | t }}</span>
+        <span class="text-secondary">{{ 'nq.relayedProxy' | t: undefined : ('' | i18nVersion) }}</span>
         <span>{{ splitTun.Proxy }}</span>
       </span>
       <span *ngIf="!!splitTun.Interface" class="inline-flex items-center gap-1 flex-wrap">
-        <span class="text-secondary">{{ 'nq.routedInterface' | t }}</span>
+        <span class="text-secondary">{{ 'nq.routedInterface' | t: undefined : ('' | i18nVersion) }}</span>
         <span>{{ splitTun.Interface }}</span>
         <span class="text-secondary">({{ splitTun.IP }})</span>
       </span>
@@ -269,7 +269,7 @@
   </div>
 
   <div *ngIf="!!bwData.length" class="col-span-3 block border-t border-gray-400 py-2">
-    <h2 class="text-secondary uppercase w-full text-center text-xxs">{{ 'nq.dataUsage' | t }}</h2>
+    <h2 class="text-secondary uppercase w-full text-center text-xxs">{{ 'nq.dataUsage' | t: undefined : ('' | i18nVersion) }}</h2>
     <sfng-netquery-line-chart class="block w-full !h-36" [data]="bwData" [config]="{
       series: {
         incoming: {
@@ -303,23 +303,23 @@
 </section>
 
 <div class="flex justify-end border-t border-gray-300 pt-0.5 mt-0.5" *ngIf="!!conn">
-  <button *ngIf="!!process" (click)="openProcessDetails()" class="btn-outline">{{ 'nq.processDetails' | t }}</button>
-  <button class="btn-outline" *appExpertiseLevel="'expert'" (click)="helper.dumpConnection(conn)">{{ 'nq.copyJSON' | t }}</button>
+  <button *ngIf="!!process" (click)="openProcessDetails()" class="btn-outline">{{ 'nq.processDetails' | t: undefined : ('' | i18nVersion) }}</button>
+  <button class="btn-outline" *appExpertiseLevel="'expert'" (click)="helper.dumpConnection(conn)">{{ 'nq.copyJSON' | t: undefined : ('' | i18nVersion) }}</button>
   <button class="btn-outline" *ngIf="(conn | isBlocked); else blockAction"
     (click)="helper.unblockAll(conn.domain || conn.remote_ip, conn)" [disabled]="!(conn | canUseRules)">
-    {{ 'nq.allow' | t }} {{ conn.domain ? ('nq.domain' | t) : ('nq.ip' | t) }}
+    {{ 'nq.allow' | t: undefined : ('' | i18nVersion) }} {{ conn.domain ? ('nq.domain' | t: undefined : ('' | i18nVersion)) : ('nq.ip' | t: undefined : ('' | i18nVersion)) }}
   </button>
   <ng-template #blockAction>
     <button class="btn-outline" (click)="helper.blockAll(conn.domain || conn.remote_ip, conn)"
       [disabled]="!(conn | canUseRules)">
-      {{ 'nq.block' | t }} {{ conn.domain ? ('nq.domain' | t) : ('nq.ip' | t) }}
+      {{ 'nq.block' | t: undefined : ('' | i18nVersion) }} {{ conn.domain ? ('nq.domain' | t: undefined : ('' | i18nVersion)) : ('nq.ip' | t: undefined : ('' | i18nVersion)) }}
     </button>
   </ng-template>
   <button class="btn-outline" (click)="helper.redirectToSetting('', conn)" *ngIf="!!conn.extra_data?.reason?.OptionKey">
-    {{ 'nq.appSetting' | t }}
+    {{ 'nq.appSetting' | t: undefined : ('' | i18nVersion) }}
   </button>
   <button class="btn-outline" (click)="helper.redirectToSetting(conn.extra_data!.reason!.OptionKey, conn, true)"
     *ngIf="!!conn.extra_data?.reason?.OptionKey">
-    {{ 'nq.globalSetting' | t }}
+    {{ 'nq.globalSetting' | t: undefined : ('' | i18nVersion) }}
   </button>
 </div>

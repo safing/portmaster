@@ -11,6 +11,7 @@ import { Line as D3Line, Selection, interpolateString, line, select } from 'd3';
 import { BehaviorSubject, Observable, Subscription, combineLatest, interval, of } from "rxjs";
 import { catchError, debounceTime, map, mergeMap, share, startWith, switchMap, take, takeUntil, withLatestFrom } from "rxjs/operators";
 import { fadeInAnimation, fadeInListAnimation, fadeOutAnimation } from "src/app/shared/animations";
+import { I18nService } from "src/i18n";
 import { ExpertiseService } from "src/app/shared/expertise/expertise.service";
 import { SPNAccountDetailsComponent } from "src/app/shared/spn-account-details";
 import { CountryDetailsComponent } from "./country-details";
@@ -200,6 +201,7 @@ export class SpnPageComponent implements OnInit, OnDestroy, AfterViewInit {
     private overlayContainerService: MapOverlayContainer,
     private cdr: ChangeDetectorRef,
     private injector: Injector,
+    private i18n: I18nService,
   ) {
     this.activeProfiles$ = interval(5000)
       .pipe(
@@ -226,6 +228,12 @@ export class SpnPageComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnInit() {
+    // This view is OnPush: translated strings in the template would otherwise
+    // stay stale after a language switch.
+    this.i18n.language$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.cdr.markForCheck());
+
     this.spnService
       .profile$
       .pipe(

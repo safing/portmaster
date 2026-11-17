@@ -1,8 +1,8 @@
 import { INTEGRATION_SERVICE, IntegrationService } from 'src/app/integration';
 import { ConnectedPosition } from '@angular/cdk/overlay';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Inject, OnDestroy, OnInit, Output, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, EventEmitter, Inject, OnInit, Output, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ConfigService, DebugAPI, PortapiService, SPNService, StringSetting, BoolSetting } from '@safing/portmaster-api';
-import { Subscription } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { I18nService } from 'src/i18n';
 import { AppComponent } from 'src/app/app.component';
@@ -23,8 +23,9 @@ import { TauriIntegrationService } from 'src/app/integration/taur-app';
     fadeOutAnimation,
   ]
 })
-export class NavigationComponent implements OnInit, OnDestroy {
+export class NavigationComponent implements OnInit {
   private readonly integration = inject(INTEGRATION_SERVICE);
+  private readonly destroyRef = inject(DestroyRef);
 
   /** Emits the current portapi connection state on changes. */
   readonly connected$ = this.portapi.connected$;
@@ -60,9 +61,6 @@ export class NavigationComponent implements OnInit, OnDestroy {
     }
     return '';
   }
-
-  /** Language changes need an explicit check because this view uses OnPush. */
-  private languageSubscription = Subscription.EMPTY;
 
   /** Whether or not we have new, unseen prompts */
   hasNewPrompts = false;
@@ -103,7 +101,10 @@ export class NavigationComponent implements OnInit, OnDestroy {
   ]
 
   ngOnInit() {
-    this.languageSubscription = this.i18n.language$.subscribe(() => this.cdr.markForCheck());
+    // OnPush view: refresh translated strings when the UI language changes.
+    this.i18n.language$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.cdr.markForCheck());
 
     const mql = window.matchMedia('(max-width: 1200px)');
 
@@ -179,10 +180,6 @@ export class NavigationComponent implements OnInit, OnDestroy {
       })
   }
 
-  ngOnDestroy() {
-    this.languageSubscription.unsubscribe();
-  }
-
   toggleSideDash(event: MouseEvent) {
     let notify: 'expanded' | 'collapsed' | 'force-overlay' = this.sideDashStatus;
 
@@ -214,8 +211,8 @@ export class NavigationComponent implements OnInit, OnDestroy {
         })
       )
       .subscribe(this.actionIndicator.httpObserver(
-        'Reloading UI ...',
-        'Failed to Reload UI',
+        this.i18n.t('nav.reloadingUI'),
+        this.i18n.t('nav.reloadUIFailed'),
       ))
   }
 
@@ -223,8 +220,8 @@ export class NavigationComponent implements OnInit, OnDestroy {
   reinitSPN(_: Event) {
     this.portapi.reinitSPN()
       .subscribe(this.actionIndicator.httpObserver(
-        'Re-initialized SPN',
-        'Failed to re-initialize the SPN'
+        this.i18n.t('nav.spnReinitialized'),
+        this.i18n.t('nav.spnReinitFailed')
       ))
   }
 
@@ -232,8 +229,8 @@ export class NavigationComponent implements OnInit, OnDestroy {
   logoutCompletely(_: Event) {
     this.spnService.logout(true)
       .subscribe(this.actionIndicator.httpObserver(
-        'Logout',
-        'You have been logged out of the SPN completely.'
+        this.i18n.t('dash.logout'),
+        this.i18n.t('dash.logoutDone')
       ))
   }
 
@@ -244,16 +241,16 @@ export class NavigationComponent implements OnInit, OnDestroy {
   clearDNSCache(_: Event) {
     this.portapi.clearDNSCache()
       .subscribe(this.actionIndicator.httpObserver(
-        'DNS Cache Cleared',
-        'Failed to Clear DNS Cache.',
+        this.i18n.t('nav.dnsCacheCleared'),
+        this.i18n.t('nav.dnsCacheClearFailed'),
       ))
   }
 
   cleanupHistory(_: Event) {
     this.portapi.cleanupHistory()
       .subscribe(this.actionIndicator.httpObserver(
-        'Network History Cleaned Up',
-        'Failed to Cleanup Network History.'
+        this.i18n.t('nav.historyCleaned'),
+        this.i18n.t('nav.historyCleanFailed')
       ))
   }
 
@@ -266,8 +263,8 @@ export class NavigationComponent implements OnInit, OnDestroy {
   downloadUpdates(event: Event) {
     this.portapi.checkForUpdates()
       .subscribe(this.actionIndicator.httpObserver(
-        'Downloading Updates ...',
-        'Failed to Check for Updates',
+        this.i18n.t('nav.updatesDownloading'),
+        this.i18n.t('nav.updatesCheckFailed'),
       ))
   }
 
@@ -294,8 +291,8 @@ export class NavigationComponent implements OnInit, OnDestroy {
 
     this.portapi.restartPortmaster()
       .subscribe(this.actionIndicator.httpObserver(
-        'Restarting ...',
-        'Failed to Restart',
+        this.i18n.t('nav.restarting'),
+        this.i18n.t('nav.restartFailed'),
       ))
   }
 
@@ -307,8 +304,8 @@ export class NavigationComponent implements OnInit, OnDestroy {
 
     this.portapi.pause(duration, false)
       .subscribe(this.actionIndicator.httpObserver(
-        'Pausing ...',
-        'Failed to Pause',
+        this.i18n.t('nav.pausing'),
+        this.i18n.t('nav.pauseFailed'),
       ))
   }
   pauseSPN(event: Event, duration: number) {
@@ -319,8 +316,8 @@ export class NavigationComponent implements OnInit, OnDestroy {
 
     this.portapi.pause(duration, true)
       .subscribe(this.actionIndicator.httpObserver(
-        'Pausing SPN...',
-        'Failed to Pause SPN',
+        this.i18n.t('nav.pausingSPN'),
+        this.i18n.t('nav.pauseSPNFailed'),
       ))
   }
   resume(event: Event) {
@@ -329,18 +326,18 @@ export class NavigationComponent implements OnInit, OnDestroy {
     event.preventDefault();
     event.stopPropagation();
 
-    let msg = 'Resuming ...';
+    let msg = this.i18n.t('nav.resuming');
     if (this.pauseState?.Interception===true && this.pauseState?.SPN===true) 
-      msg = 'Resuming Portmaster and SPN ...';
+      msg = this.i18n.t('nav.resumingBoth');
     else if (this.pauseState?.Interception===true)
-      msg = 'Resuming Portmaster ...';
+      msg = this.i18n.t('nav.resumingPM');
     else if (this.pauseState?.SPN===true)
-      msg = 'Resuming SPN ...';
+      msg = this.i18n.t('nav.resumingSPN');
 
     this.portapi.resume()
       .subscribe(this.actionIndicator.httpObserver(
         msg,
-        'Failed to Resume',
+        this.i18n.t('nav.resumeFailed'),
       ))
   }
     
@@ -351,7 +348,7 @@ export class NavigationComponent implements OnInit, OnDestroy {
    */
   openDataDir(event: Event) {
     this.integration.openDir('data')
-      .catch(err => this.actionIndicator.error('Failed to open data directory', err));
+      .catch(err => this.actionIndicator.error(this.i18n.t('nav.dataDirFailed'), err));
   }
 
   openChangeLog() {
@@ -366,8 +363,8 @@ export class NavigationComponent implements OnInit, OnDestroy {
   resetBroadcastState() {
     this.portapi.resetBroadcastState()
       .subscribe(this.actionIndicator.httpObserver(
-        'Notifications State Cleared',
-        'Failed to Reset Notifications State.',
+        this.i18n.t('nav.notificationsCleared'),
+        this.i18n.t('nav.notificationsClearFailed'),
       ))
   }
 
@@ -384,7 +381,7 @@ export class NavigationComponent implements OnInit, OnDestroy {
         },
         err => {
           console.error(err);
-          this.actionIndicator.error('Failed loading debug data', err);
+          this.actionIndicator.error(this.i18n.t('nav.debugLoadFailed'), err);
         }
       )
   }

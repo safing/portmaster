@@ -1,6 +1,6 @@
 <div class="header">
   <h4 class="breadcrumbs">
-    <span routerLink="../">{{ 'sup.getHelp' | t }}</span>
+    <span routerLink="../">{{ 'sup.getHelp' | t: undefined : ('' | i18nVersion) }}</span>
     <fa-icon icon="chevron-right" [@moveInOut]></fa-icon>
     <span [@moveInOut]>{{ page?.title }}</span>
   </h4>
@@ -25,11 +25,11 @@
       </button>
     </div>
 
-    <h3>{{ 'sup.title' | t }}</h3>
+    <h3>{{ 'sup.title' | t: undefined : ('' | i18nVersion) }}</h3>
     <div class="input-wrapper">
       <input class="title" [class.missing]="titleMissing && title === ''" required type="text" [(ngModel)]="title"
-        (ngModelChange)="searchIssues($event)" [placeholder]="'sup.titlePlaceholder' | t">
-      <span class="copy-button" (click)="copyToClipboard(title)">{{ 'sup.copy' | t }}</span>
+        (ngModelChange)="searchIssues($event)" [placeholder]="'sup.titlePlaceholder' | t: undefined : ('' | i18nVersion)">
+      <span class="copy-button" (click)="copyToClipboard(title)">{{ 'sup.copy' | t: undefined : ('' | i18nVersion) }}</span>
     </div>
 
     <section *ngFor="let section of page?.sections">
@@ -37,7 +37,7 @@
       <div class="input-wrapper">
         <textarea [(ngModel)]="form[section.title]" (ngModelChange)="onModelChange()" rows="4"
           [placeholder]="section.help || ''"></textarea>
-        <span class="copy-button" (click)="copyToClipboard(form[section.title])">{{ 'sup.copy' | t }}</span>
+        <span class="copy-button" (click)="copyToClipboard(form[section.title])">{{ 'sup.copy' | t: undefined : ('' | i18nVersion) }}</span>
       </div>
       <!--
       <span class="section-help" *ngIf="section.help">
@@ -48,18 +48,18 @@
 
     <ng-template [ngIf]="page?.includeDebugData">
       <div class="page-title">
-        <h1>{{ 'sup.includedDebug' | t }}</h1>
+        <h1>{{ 'sup.includedDebug' | t: undefined : ('' | i18nVersion) }}</h1>
       </div>
 
       <p class="prologue secondary-text">
-        {{ 'sup.debugDesc' | t }}
+        {{ 'sup.debugDesc' | t: undefined : ('' | i18nVersion) }}
       </p>
       <div class="debug-header">
         <div class="pl-4 secondary-text">
-          {{ 'sup.version' | t }} <u>{{version}}</u>
-          {{ 'sup.buildDate' | t }} <u>{{buildDate}}</u>
+          {{ 'sup.version' | t: undefined : ('' | i18nVersion) }} <u>{{version}}</u>
+          {{ 'sup.buildDate' | t: undefined : ('' | i18nVersion) }} <u>{{buildDate}}</u>
         </div>
-        <span class="copy-button" (click)="copyToClipboard(debugData)">{{ 'sup.copy' | t }}</span>
+        <span class="copy-button" (click)="copyToClipboard(debugData)">{{ 'sup.copy' | t: undefined : ('' | i18nVersion) }}</span>
       </div>
       <textarea [(ngModel)]="debugData" rows="8"></textarea>
     </ng-template>
@@ -67,10 +67,10 @@
     <div class="actions">
       <button *ngIf="!!page?.ghIssuePreset" class="primary" (click)="createOnGithub()">
         <fa-icon [icon]="['fab', 'github']" class="mr-1"></fa-icon>
-        {{ (haveGhAccount ? ('sup.open' | t) : ('sup.create' | t)) }} {{ 'sup.onGithub' | t }}
+        {{ (haveGhAccount ? ('sup.open' | t: undefined : ('' | i18nVersion)) : ('sup.create' | t: undefined : ('' | i18nVersion))) }} {{ 'sup.onGithub' | t: undefined : ('' | i18nVersion) }}
       </button>
       <button *ngIf="page?.privateTicket" [class.primary]="!page?.ghIssuePreset" (click)="createPrivateTicket()">
-        {{ 'sup.sendPrivate' | t }}
+        {{ 'sup.sendPrivate' | t: undefined : ('' | i18nVersion) }}
       </button>
     </div>
   </div>
@@ -78,23 +78,23 @@
   <div *ngIf="page?.ghIssuePreset" class="issue-list" sfngTipUpAnchor="left">
     <div class="page-title">
       <h1>
-        {{ 'sup.relatedIssues' | t }}
+        {{ 'sup.relatedIssues' | t: undefined : ('' | i18nVersion) }}
         <sfng-tipup key="support-page-related-issues"></sfng-tipup>
       </h1>
     </div>
     <p class="prologue secondary-text">
-      {{ 'sup.publicIssues' | t }}
+      {{ 'sup.publicIssues' | t: undefined : ('' | i18nVersion) }}
     </p>
 
     <p class="prologue secondary-text" *ngIf="!relatedIssues.length">
-      {{ 'sup.noRelated' | t }}
+      {{ 'sup.noRelated' | t: undefined : ('' | i18nVersion) }}
     </p>
 
     <ul [@fadeInList]="relatedIssues.slice(0, 8).length">
       <li *ngFor="let issue of relatedIssues.slice(0, 8); trackBy: trackIssue" (click)="openIssue(issue)" class="issue">
         <span class="title">{{ issue.title }}</span>
-        <span class="meta">{{ (issue.closed ? ('sup.closed' | t) : ('sup.opened' | t)) }} {{ 'sup.in' | t }} <u>{{ repos[issue.repository] || issue.repository
-            }}</u> {{ 'sup.by' | t }} <u>{{ issue.user }}</u>
+        <span class="meta">{{ (issue.closed ? ('sup.closed' | t: undefined : ('' | i18nVersion)) : ('sup.opened' | t: undefined : ('' | i18nVersion))) }} {{ 'sup.in' | t: undefined : ('' | i18nVersion) }} <u>{{ repos[issue.repository] || issue.repository
+            }}</u> {{ 'sup.by' | t: undefined : ('' | i18nVersion) }} <u>{{ issue.user }}</u>
           {{
           issue.createdAt | timeAgo
           }}</span>
