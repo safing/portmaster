@@ -50,6 +50,10 @@ func (conn *Connection) UpdateFirewallHandler(handler FirewallHandler) {
 // StopFirewallHandler unsets the firewall handler and stops the handler worker.
 // The caller needs to hold a lock on the connection.
 func (conn *Connection) StopFirewallHandler() {
+	// Publish the verdict state before packets are handled without locking the
+	// connection, as the caller might hold the lock for some more time.
+	conn.publishVerdictState()
+
 	conn.pktQueueLock.Lock()
 	defer conn.pktQueueLock.Unlock()
 
@@ -87,9 +91,20 @@ func (conn *Connection) HandlePacket(pkt packet.Packet) {
 		}
 	} else {
 		// Run default handler.
-		defaultFirewallHandler(conn, pkt)
+		// The connection is not locked here and must not be: This is the single
+		// packet dispatching goroutine, and connections may be locked for a
+		// long time, eg. while they are re-evaluated.
+		defaultLockFreeFirewallHandler(conn, pkt)
 
 		// Record metrics.
+		recordPacketHandlingDuration(pkt)
+	}
+}
+
+// recordPacketHandlingDuration records how long the packet took to be handled.
+// The metric is not available before the module has registered its metrics.
+func recordPacketHandlingDuration(pkt packet.Packet) {
+	if packetHandlingHistogram != nil {
 		packetHandlingHistogram.UpdateDuration(pkt.Info().SeenAt)
 	}
 }
@@ -220,7 +235,7 @@ func packetHandlerHandleConn(ctx context.Context, conn *Connection, pkt packet.P
 		defaultFirewallHandler(conn, pkt)
 
 		// Record metrics.
-		packetHandlingHistogram.UpdateDuration(pkt.Info().SeenAt)
+		recordPacketHandlingDuration(pkt)
 
 		return
 	}
@@ -238,7 +253,7 @@ func packetHandlerHandleConn(ctx context.Context, conn *Connection, pkt packet.P
 	conn.firewallHandler(conn, pkt)
 
 	// Record metrics.
-	packetHandlingHistogram.UpdateDuration(pkt.Info().SeenAt)
+	recordPacketHandlingDuration(pkt)
 
 	// Log result and submit trace, when there are any changes.
 	if conn.saveWhenFinished {

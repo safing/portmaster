@@ -132,7 +132,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	Resolver *resolver.ResolverInfo
 	// Verdict holds the decisions that are made for a connection
 	// The verdict may change so any access to it must be guarded by the
-	// connection lock.
+	// connection lock. Use VerdictState to access it without the lock.
 	Verdict Verdict
 	// Whether or not the connection has been established at least once.
 	ConnectionEstablished bool
@@ -195,6 +195,11 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	BytesReceived uint64
 	// BytesSent holds the observed sent bytes of the connection.
 	BytesSent uint64
+
+	// verdictState mirrors the Verdict, VerdictPermanent, Inbound and PID
+	// fields for packets that are handled without locking the connection.
+	// See VerdictState.
+	verdictState atomic.Uint64
 
 	// lastSeen holds the timestamp when the connection was last seen.
 	// If permanent verdicts are enabled and bandwidth reporting is not active,
@@ -377,6 +382,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	// saved if they are not "used" by a connection.
 
 	dnsConn.UpdateMeta()
+	dnsConn.publishVerdictState()
 	return dnsConn
 }
 
@@ -421,6 +427,7 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 	// saved if they are not "used" by a connection.
 
 	dnsConn.UpdateMeta()
+	dnsConn.publishVerdictState()
 	return dnsConn, nil
 }
 
@@ -462,6 +469,7 @@ func NewIncompleteConnection(pkt packet.Packet) *Connection {
 	// Save connection to internal state in order to mitigate creation of
 	// duplicates. Do not propagate yet, as data is not yet complete.
 	conn.UpdateMeta()
+	conn.publishVerdictState()
 	conns.add(conn)
 
 	return conn

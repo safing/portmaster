@@ -629,7 +629,9 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 	}
 }
 
-// defaultFirewallHandler is used when no other firewall handler is set on a connection.
+// defaultFirewallHandler is used when no other firewall handler is set on a
+// connection. Like all firewall handlers, it is called with the connection
+// locked.
 func defaultFirewallHandler(conn *network.Connection, pkt packet.Packet) {
 	switch conn.IPProtocol { //nolint:exhaustive
 	case packet.ICMP, packet.ICMPv6:
@@ -638,6 +640,27 @@ func defaultFirewallHandler(conn *network.Connection, pkt packet.Packet) {
 
 	default:
 		verdictHandler(conn, pkt)
+	}
+}
+
+// defaultLockFreeFirewallHandler is used when no other firewall handler is
+// set on a connection and the packet is handled directly on the packet
+// dispatching goroutine. The connection is not locked and the handler must
+// never wait for the connection lock. It may only access the immutable
+// attributes of the connection and its lock-free verdict state.
+func defaultLockFreeFirewallHandler(conn *network.Connection, pkt packet.Packet) {
+	switch conn.IPProtocol { //nolint:exhaustive
+	case packet.ICMP, packet.ICMPv6:
+		// Always use the ICMP handler for ICMP connections.
+		icmpLockFreeHandler(conn, pkt)
+
+	default:
+		// Ignore info-only packets in this handler.
+		if pkt.InfoOnly() {
+			return
+		}
+
+		issueVerdictLockFree(conn, pkt, 0, true)
 	}
 }
 
@@ -761,19 +784,55 @@ func inspectDNSPacket(conn *network.Connection, pkt packet.Packet) {
 }
 
 func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {
+	// Handle packets that do not need to be evaluated.
+	if verdict, handled := icmpPreFilter(pkt); handled {
+		issueVerdict(conn, pkt, verdict, false)
+		return
+	}
+
+	icmpEvaluate(conn, pkt)
+
+	issueVerdict(conn, pkt, 0, false)
+}
+
+// icmpLockFreeHandler handles ICMP packets like icmpFilterHandler, but is
+// called without the connection being locked and never waits for the lock.
+func icmpLockFreeHandler(conn *network.Connection, pkt packet.Packet) {
+	// Handle packets that do not need to be evaluated.
+	if verdict, handled := icmpPreFilter(pkt); handled {
+		issueVerdictLockFree(conn, pkt, verdict, false)
+		return
+	}
+
+	// Evaluating the connection changes it and requires the lock. If the
+	// connection is locked right now, apply the current verdict instead and
+	// leave the evaluation to a later packet.
+	state := conn.VerdictState()
+	needsEvaluation := state.Verdict == network.VerdictUndecided ||
+		state.Verdict == network.VerdictUndeterminable ||
+		(state.Inbound && pkt.IsOutbound())
+	if needsEvaluation && conn.TryLock() {
+		icmpEvaluate(conn, pkt)
+		conn.Unlock()
+	}
+
+	issueVerdictLockFree(conn, pkt, 0, false)
+}
+
+// icmpPreFilter handles the ICMP packets that are not subject to the verdict
+// of their connection. It does not access the connection.
+func icmpPreFilter(pkt packet.Packet) (verdict network.Verdict, handled bool) {
 	// Load packet data.
 	err := pkt.LoadPacketData()
 	if err != nil {
 		log.Tracer(pkt.Ctx()).Debugf("filter: failed to load ICMP packet data: %s", err)
-		issueVerdict(conn, pkt, network.VerdictDrop, false)
-		return
+		return network.VerdictDrop, true
 	}
 
 	// Submit to ICMP listener.
 	submitted := netenv.SubmitPacketToICMPListener(pkt)
 	if submitted {
-		issueVerdict(conn, pkt, network.VerdictDrop, false)
-		return
+		return network.VerdictDrop, true
 	}
 
 	// Handle echo request and replies regularly.
@@ -786,8 +845,7 @@ func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {
 			layers.ICMPv4TypeEchoReply:
 			// Continue
 		default:
-			issueVerdict(conn, pkt, network.VerdictAccept, false)
-			return
+			return network.VerdictAccept, true
 		}
 
 	case *layers.ICMPv6:
@@ -797,11 +855,16 @@ func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {
 			// Continue
 
 		default:
-			issueVerdict(conn, pkt, network.VerdictAccept, false)
-			return
+			return network.VerdictAccept, true
 		}
 	}
 
+	return network.VerdictUndecided, false
+}
+
+// icmpEvaluate decides on ICMP echo connections.
+// The caller must hold the lock of the connection.
+func icmpEvaluate(conn *network.Connection, pkt packet.Packet) {
 	// Check if we already have a verdict.
 	switch conn.Verdict { //nolint:exhaustive
 	case network.VerdictUndecided, network.VerdictUndeterminable:
@@ -823,15 +886,11 @@ func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {
 		// Save and propagate changes.
 		conn.SaveWhenFinished()
 	}
-
-	issueVerdict(conn, pkt, 0, false)
 }
 
+// issueVerdict applies the verdict of the connection to the packet.
+// The caller must hold the lock of the connection.
 func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.Verdict, allowPermanent bool) {
-	type permanentAcceptFinaler interface {
-		PermanentAcceptFinal() error
-	}
-
 	// Check if packed was already fast-tracked by the OS integration.
 	if pkt.FastTrackedByIntegration() {
 		return
@@ -843,19 +902,51 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 		conn.SaveWhenFinished()
 	}
 
+	applyVerdict(pkt, verdict, network.VerdictState{
+		Verdict:          conn.Verdict,
+		VerdictPermanent: conn.VerdictPermanent,
+		Inbound:          conn.Inbound,
+		PID:              conn.PID,
+	})
+}
+
+// issueVerdictLockFree applies the verdict of the connection to the packet
+// without requiring or waiting for the lock of the connection.
+func issueVerdictLockFree(conn *network.Connection, pkt packet.Packet, verdict network.Verdict, allowPermanent bool) {
+	// Check if packed was already fast-tracked by the OS integration.
+	if pkt.FastTrackedByIntegration() {
+		return
+	}
+
+	// Enable permanent verdict.
+	state := conn.VerdictState()
+	if allowPermanent && !state.VerdictPermanent && permanentVerdicts() {
+		state = conn.MakeVerdictPermanentLockFree()
+	}
+
+	applyVerdict(pkt, verdict, state)
+}
+
+// applyVerdict applies the given verdict to the packet, but at least the
+// verdict of the given connection verdict state.
+func applyVerdict(pkt packet.Packet, verdict network.Verdict, state network.VerdictState) {
+	type permanentAcceptFinaler interface {
+		PermanentAcceptFinal() error
+	}
+
 	// do not allow to circumvent decision: e.g. to ACCEPT packets from a DROP-ed connection
-	if verdict < conn.Verdict {
-		verdict = conn.Verdict
+	if verdict < state.Verdict {
+		verdict = state.Verdict
 	}
 
 	var err error
 	switch verdict {
 	case network.VerdictAccept:
 		atomic.AddUint64(packetsAccepted, 1)
-		if conn.VerdictPermanent {
+		if state.VerdictPermanent {
 			// Portmaster-owned outbound connections should be finalized to avoid
 			// later third-party OUTPUT rules from overriding the allow decision.
-			if !conn.Inbound && conn.PID == ownPID {
+			if !state.Inbound && state.PID == ownPID {
 				if finaler, ok := pkt.(permanentAcceptFinaler); ok {
 					err = finaler.PermanentAcceptFinal()
 				} else {
@@ -869,14 +960,14 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 		}
 	case network.VerdictBlock:
 		atomic.AddUint64(packetsBlocked, 1)
-		if conn.VerdictPermanent {
+		if state.VerdictPermanent {
 			err = pkt.PermanentBlock()
 		} else {
 			err = pkt.Block()
 		}
 	case network.VerdictDrop:
 		atomic.AddUint64(packetsDropped, 1)
-		if conn.VerdictPermanent {
+		if state.VerdictPermanent {
 			err = pkt.PermanentDrop()
 		} else {
 			err = pkt.Drop()

@@ -57,12 +57,28 @@ func (n *Network) SetSleep(enabled bool) {
 	}
 }
 
-var defaultFirewallHandler FirewallHandler
+var (
+	// defaultFirewallHandler handles packets of connections without a firewall
+	// handler. It is called with the connection locked.
+	defaultFirewallHandler FirewallHandler
+	// defaultLockFreeFirewallHandler handles packets of connections without
+	// a firewall handler directly on the packet dispatching goroutine. It is
+	// called without the connection being locked.
+	defaultLockFreeFirewallHandler FirewallHandler
+)
 
-// SetDefaultFirewallHandler sets the default firewall handler.
-func SetDefaultFirewallHandler(handler FirewallHandler) {
+// SetDefaultFirewallHandler sets the default firewall handlers, which are
+// used for connections that have no firewall handler (anymore).
+//
+// The handler is called with the connection locked, like any other firewall
+// handler. The lockFreeHandler is called without the connection being locked
+// and must not wait for the connection lock. It may only use the immutable
+// attributes of the connection and its lock-free accessors, such as
+// VerdictState.
+func SetDefaultFirewallHandler(handler, lockFreeHandler FirewallHandler) {
 	if defaultFirewallHandler == nil {
 		defaultFirewallHandler = handler
+		defaultLockFreeFirewallHandler = lockFreeHandler
 	}
 }
 
