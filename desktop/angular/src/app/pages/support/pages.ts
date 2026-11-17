@@ -40,19 +40,19 @@ export const supportTypes: PageSections[] = [
       {
         type: 'link',
         title: '📘 Portmaster Wiki & FAQ',
-        url: 'https://wiki.safing.io/?source=Portmaster',
+        url: 'https://wiki.safing.io/',
         shortHelp: 'Search the Portmaster knowledge base and FAQ.',
       },
       {
         type: 'link',
         title: '🔖 Settings Handbook',
-        url: 'https://docs.safing.io/portmaster/settings?source=Portmaster',
+        url: 'https://docs.safing.io/portmaster/settings',
         shortHelp: 'A reference document of all Portmaster settings.'
       },
       {
         type: 'link',
         title: '📑 Safing Blog',
-        url: 'https://safing.io/blog?source=Portmaster',
+        url: 'https://safing.io/blog',
         shortHelp: 'Read our blog posts and announcements.',
       }
     ]
@@ -78,12 +78,6 @@ export const supportTypes: PageSections[] = [
         title: 'Follow us on Twitter',
         url: 'https://twitter.com/SafingIO',
         shortHelp: 'Get updates and privacy jokes on Twitter.'
-      },
-      {
-        type: 'link',
-        title: 'Safing Support via Email',
-        url: 'mailto:support@safing.io',
-        shortHelp: 'As a subscriber, reach out to the Safing team directly.'
       }
     ]
   },
@@ -115,7 +109,6 @@ export const supportTypes: PageSections[] = [
           },
         ],
         includeDebugData: true,
-        privateTicket: true,
         ghIssuePreset: "report-bug.md",
         repositories: []
       },
@@ -133,7 +126,6 @@ export const supportTypes: PageSections[] = [
           }
         ],
         includeDebugData: false,
-        privateTicket: true,
         ghIssuePreset: "suggest-feature.md",
         repositories: []
       },
@@ -156,7 +148,6 @@ export const supportTypes: PageSections[] = [
           },
         ],
         includeDebugData: true,
-        privateTicket: true,
         ghIssuePreset: "report-compatibility.md",
         repositories: [] // not needed with the default being "portmaster"
       },

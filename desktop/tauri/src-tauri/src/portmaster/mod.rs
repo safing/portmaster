@@ -24,7 +24,7 @@ pub mod websocket;
 mod notifications;
 
 use crate::portapi::{
-    client::PortAPI, message::Payload, models::config::BooleanValue, types::Request,
+    client::PortAPI,
 };
 use std::{
     collections::HashMap,
@@ -187,23 +187,6 @@ impl<R: Runtime> PortmasterInterface<R> {
         }
     }
 
-    /// Enables or disables the SPN.
-    pub fn set_spn_enabled(&self, enabled: bool) {
-        if let Some(api) = self.get_api() {
-            let body: Result<Payload, serde_json::Error> = BooleanValue {
-                value: Some(enabled),
-            }
-            .try_into();
-
-            if let Ok(payload) = body {
-                tauri::async_runtime::spawn(async move {
-                    _ = api
-                        .request(Request::Update("config:spn/enable".to_string(), payload))
-                        .await;
-                });
-            }
-        }
-    }
 
     /// Send Shutdown request to portmaster
     pub fn trigger_shutdown(&self) {
@@ -241,7 +224,6 @@ impl<R: Runtime> PortmasterInterface<R> {
             }
         });
     }
-
 
     pub fn set_pause(&self, duration_seconds: u64, spn_only: bool) {
         tauri::async_runtime::spawn(async move {

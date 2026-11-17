@@ -14,7 +14,7 @@ myKey:
     And :rocket: emojis
 
     ### :tada: :facepalm:
-  url: https://docs.safing.io/?source=Portmaster
+  url: https://docs.safing.io/
   urlText: Show me!
   nextKey: navMonitor
 
@@ -368,7 +368,7 @@ spn:
     and Internet traffic from prying eyes. It spreads your connections over multiple server,
     letting you access the Internet from many places at once in order to effectively hide
     your tracks.
-  url: https://safing.io/spn/?source=Portmaster
+  url: https://safing.io/spn/
   urlText: Learn More
 
 ###########################

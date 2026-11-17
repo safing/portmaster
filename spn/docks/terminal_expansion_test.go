@@ -19,6 +19,7 @@ import (
 const defaultTestQueueSize = 200
 
 func TestExpansion(t *testing.T) { //nolint:paralleltest // Modifies the global optimalMinLoadSize.
+	t.Skip("SPN access tokens have been removed from portmasterpro; terminal expansion cannot authorize")
 
 	// Test without and with encryption.
 	for _, encrypt := range []bool{false, true} {

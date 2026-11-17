@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -40,9 +41,14 @@ var (
 	// IP address -> 100.127.247.245 is a special ip used by the android VPN service. Must be ignored during online check.
 	IgnoreIPsInOnlineStatusCheck = []net.IP{net.IPv4(100, 127, 247, 245)}
 
-	DNSTestDomain     = "online-check.safing.io."
-	DNSTestExpectedIP = net.IPv4(0, 65, 67, 75) // Ascii: \0ACK
-	DNSTestQueryFunc  func(ctx context.Context, fdqn string) (ips []net.IP, ok bool, err error)
+	// DNSTestDomain is resolved to check whether DNS works. It is a well-known
+	// name with fixed addresses of a public DNS provider (Cloudflare, also one
+	// of the default resolvers), so that the check does not contact a server of
+	// its own and no additional party learns when the check runs.
+	DNSTestDomain = "one.one.one.one."
+	// DNSTestExpectedIPs are the IPv4 addresses DNSTestDomain resolves to.
+	DNSTestExpectedIPs = []net.IP{net.IPv4(1, 1, 1, 1), net.IPv4(1, 0, 0, 1)}
+	DNSTestQueryFunc   func(ctx context.Context, fdqn string) (ips []net.IP, ok bool, err error)
 
 	ConnectedToSPN = abool.New()
 	ConnectedToDNS = abool.New()
@@ -614,7 +620,7 @@ func checkOnlineStatus(ctx context.Context) {
 			"all checks passed, acceptable result for dns query check: %s",
 			err,
 		))
-	case ok && len(ips) >= 1 && ips[0].Equal(DNSTestExpectedIP):
+	case ok && len(ips) >= 1 && slices.ContainsFunc(DNSTestExpectedIPs, ips[0].Equal):
 		updateOnlineStatus(StatusOnline, nil, "all checks passed")
 	case ok && len(ips) >= 1:
 		log.Warningf("netenv: dns query check response mismatched: got %s", ips[0])

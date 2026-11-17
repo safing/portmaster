@@ -113,9 +113,11 @@ vm_fetch() {
 }
 
 # wait_for_ssh PORT USER TIMEOUT_SECONDS waits until SSH login works.
+# The probe is "exit 0", which works in bash and in PowerShell, the SSH
+# shell of the Windows VM ("true" is not a PowerShell command).
 wait_for_ssh() {
 	local port="$1" user="$2" timeout="$3" waited=0
-	until vm_ssh "$port" "$user" true 2>/dev/null; do
+	until vm_ssh "$port" "$user" 'exit 0' 2>/dev/null; do
 		((waited += 10))
 		((waited <= timeout)) || return 1
 		sleep 10

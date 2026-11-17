@@ -207,24 +207,6 @@ export class NavigationComponent implements OnInit {
       ))
   }
 
-  /** Re-initialize the SPN */
-  reinitSPN(_: Event) {
-    this.portapi.reinitSPN()
-      .subscribe(this.actionIndicator.httpObserver(
-        'Re-initialized SPN',
-        'Failed to re-initialize the SPN'
-      ))
-  }
-
-  /** Logs the user out of the SPN completely by purgin the user profile from the local storage */
-  logoutCompletely(_: Event) {
-    this.spnService.logout(true)
-      .subscribe(this.actionIndicator.httpObserver(
-        'Logout',
-        'You have been logged out of the SPN completely.'
-      ))
-  }
-
   /**
    * @private
    * Clear the DNS name cache.
