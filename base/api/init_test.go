@@ -1,6 +1,7 @@
 package api
 
 import (
+	"sync/atomic"
 	"testing"
 
 	"github.com/safing/portmaster/base/config"
@@ -8,6 +9,10 @@ import (
 
 type testInstance struct {
 	config *config.Config
+
+	// notReady makes Ready report false. Tests changing it must not run in
+	// parallel.
+	notReady atomic.Bool
 }
 
 var _ instance = &testInstance{}
@@ -19,7 +24,7 @@ func (stub *testInstance) Config() *config.Config {
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
 
 func (stub *testInstance) Ready() bool {
-	return true
+	return !stub.notReady.Load()
 }
 
 func TestMain(m *testing.M) {
