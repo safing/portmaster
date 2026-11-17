@@ -3,6 +3,7 @@ package database
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -154,5 +155,152 @@ func TestPutManyFinish(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+var errCommitPutMany = errors.New("test storage failed to commit batch")
+
+// committingBatchStorage is a test storage that, like the SQLite and BBolt
+// storages, collects the batch until the batch channel is closed and then
+// commits it. The commit only completes once release is closed.
+type committingBatchStorage struct {
+	nonBatchingStorage
+
+	commitErr error
+	closed    chan struct{} // Closed when the batch channel was closed.
+	release   chan struct{} // Close to let the commit complete.
+	committed chan int      // Receives the number of committed records.
+}
+
+func newCommittingBatchStorage(commitErr error) *committingBatchStorage {
+	return &committingBatchStorage{
+		commitErr: commitErr,
+		closed:    make(chan struct{}),
+		release:   make(chan struct{}),
+		committed: make(chan int, 1),
+	}
+}
+
+func (s *committingBatchStorage) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error) {
+	batch := make(chan record.Record, 100)
+	errs := make(chan error, 1)
+	go func() {
+		var n int
+		for range batch {
+			n++
+		}
+		close(s.closed)
+		<-s.release
+		if s.commitErr == nil {
+			s.committed <- n
+		}
+		errs <- s.commitErr
+	}()
+	return batch, errs
+}
+
+var (
+	putManyCommitOK     = newCommittingBatchStorage(nil)
+	putManyCommitFailed = newCommittingBatchStorage(errCommitPutMany)
+)
+
+func init() {
+	_ = storage.Register("test-putmany-commit-ok", func(name, location string) (storage.Interface, error) {
+		return putManyCommitOK, nil
+	})
+	_ = storage.Register("test-putmany-commit-failed", func(name, location string) (storage.Interface, error) {
+		return putManyCommitFailed, nil
+	})
+}
+
+// TestPutManyTimeoutReportsCommit checks what the caller learns when the
+// PutMany batch times out: the storage commits the records that were passed
+// on before the timeout, as the batch channel is closed normally. The caller
+// must only get the final result once the storage finished the batch, and the
+// result must say whether these records were stored.
+func TestPutManyTimeoutReportsCommit(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		storageType string
+		storage     *committingBatchStorage
+	}{
+		{storageType: "test-putmany-commit-ok", storage: putManyCommitOK},
+		{storageType: "test-putmany-commit-failed", storage: putManyCommitFailed},
+	} {
+		t.Run(tc.storageType, func(t *testing.T) {
+			t.Parallel()
+
+			dbName := tc.storageType + "-db"
+			_, err := Register(&Database{
+				Name:        dbName,
+				Description: "Unit Test Database for PutMany timeouts",
+				StorageType: tc.storageType,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			db := NewInterface(&Options{
+				Local:    true,
+				Internal: true,
+			})
+
+			const records = 5
+			put := db.PutMany(dbName)
+			for i := range records {
+				err = put(NewExample(fmt.Sprintf("%s:%d", dbName, i), "A", i))
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			// Wait for the idle timeout to close the batch.
+			select {
+			case <-tc.storage.closed:
+			case <-time.After(10 * time.Second):
+				t.Fatal("PutMany did not time out")
+			}
+
+			finished := make(chan error, 1)
+			go func() {
+				finished <- put(nil)
+			}()
+
+			// The result is not known before the storage finished the batch.
+			select {
+			case err = <-finished:
+				t.Fatalf("finishing returned %v before the storage finished the batch", err)
+			case <-time.After(200 * time.Millisecond):
+			}
+			close(tc.storage.release)
+
+			select {
+			case err = <-finished:
+			case <-time.After(10 * time.Second):
+				t.Fatal("finishing the batch blocked")
+			}
+			if !errors.Is(err, errPutManyTimeout) {
+				t.Errorf("finishing returned %v, expected %v", err, errPutManyTimeout)
+			}
+			if tc.storage.commitErr != nil {
+				if !errors.Is(err, tc.storage.commitErr) {
+					t.Errorf("finishing returned %v, expected it to include %v", err, tc.storage.commitErr)
+				}
+				return
+			}
+
+			if n := <-tc.storage.committed; n != records {
+				t.Fatalf("storage committed %d records, expected %d", n, records)
+			}
+			if err == nil || !strings.Contains(err.Error(), fmt.Sprintf("%d records submitted before were stored", records)) {
+				t.Errorf("finishing returned %v, expected it to report that %d records were stored", err, records)
+			}
+			// Further puts are rejected with the same result.
+			againErr := put(NewExample(dbName+":late", "A", 1))
+			if againErr == nil || againErr.Error() != err.Error() {
+				t.Errorf("put after the timeout returned %v, expected %v", againErr, err)
+			}
+		})
 	}
 }

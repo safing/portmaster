@@ -358,6 +358,12 @@ func (i *Interface) PutNew(r record.Record) (err error) {
 // - Subscriptions
 // - Caching
 // Use with care.
+//
+// Calling put with nil finishes the batch and returns its result. If put is
+// not called for one second, the batch is closed: the records submitted
+// before (put returned nil) are still handed to the storage, which commits
+// them, and the batch then fails with an error that says whether they were
+// stored. A timed out batch is thus not rolled back.
 func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 	interfaceBatch := make(chan record.Record, 100)
 
@@ -390,10 +396,36 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 	// of the batch and then closes done when it exits.
 	done := make(chan struct{})
 	var result error
+	// On the idle timeout, the proxy closes stopping and then sets stopped,
+	// after which no more records are accepted. All records accepted before
+	// are still passed on to the storage.
+	stopping := make(chan struct{})
+	var (
+		acceptLock sync.Mutex
+		stopped    bool
+	)
 
 	// interface options proxy
 	go func() {
 		defer close(done)
+		var forwarded int
+		// forward passes r on to the storage. If the storage stopped processing
+		// the batch, it sets result and returns false.
+		forward := func(r record.Record) bool {
+			// apply options
+			i.options.Apply(r)
+			// pass along, unless the storage stopped processing the batch
+			select {
+			case dbBatch <- r:
+				forwarded++
+				return true
+			case err := <-errs:
+				close(dbBatch)
+				result = storageStoppedError(err)
+				return false
+			}
+		}
+
 		for {
 			select {
 			case r := <-interfaceBatch:
@@ -403,14 +435,7 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 					result = <-errs
 					return
 				}
-				// apply options
-				i.options.Apply(r)
-				// pass along, unless the storage stopped processing the batch
-				select {
-				case dbBatch <- r:
-				case err := <-errs:
-					close(dbBatch)
-					result = storageStoppedError(err)
+				if !forward(r) {
 					return
 				}
 			case err := <-errs:
@@ -419,13 +444,55 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 				result = storageStoppedError(err)
 				return
 			case <-time.After(1 * time.Second):
-				// bail out
+				// Bail out. Stop accepting records, then pass on the ones that
+				// were already accepted, as the caller was told so.
+				close(stopping)
+				acceptLock.Lock()
+				stopped = true
+				acceptLock.Unlock()
+				finishing := false
+			drain:
+				for {
+					select {
+					case r := <-interfaceBatch:
+						if r == nil {
+							finishing = true
+						} else if !forward(r) {
+							return
+						}
+					default:
+						break drain
+					}
+				}
+
+				// Closing the batch channel makes the storage commit the
+				// records passed on so far. Wait for the outcome, so that the
+				// caller learns whether they were stored.
 				close(dbBatch)
-				result = errPutManyTimeout
+				result = putManyTimeoutError(<-errs, forwarded, finishing)
 				return
 			}
 		}
 	}()
+
+	// submit passes r (nil finishes the batch) to the proxy and reports
+	// whether it was accepted. Accepted records are passed on to the storage
+	// unless the storage stops processing the batch.
+	submit := func(r record.Record) bool {
+		acceptLock.Lock()
+		defer acceptLock.Unlock()
+		if stopped {
+			return false
+		}
+		select {
+		case interfaceBatch <- r:
+			return true
+		case <-stopping:
+			return false
+		case <-done:
+			return false
+		}
+	}
 
 	// batchClosedErr may only be called after done was closed.
 	batchClosedErr := func() error {
@@ -439,10 +506,7 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 		// finish?
 		if r == nil {
 			if finished.SetToIf(false, true) {
-				select {
-				case interfaceBatch <- nil: // signify that we are finished
-				case <-done:
-				}
+				submit(nil) // signify that we are finished
 			}
 			// do not close, as this fn could be called again with nil.
 			<-done
@@ -465,12 +529,28 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 		}
 
 		// submit
-		select {
-		case interfaceBatch <- r:
+		if submit(r) {
 			return nil
-		case <-done:
-			return batchClosedErr()
 		}
+		<-done
+		return batchClosedErr()
+	}
+}
+
+// putManyTimeoutError returns the result of a batch that was closed because of
+// the idle timeout. storageErr is the result of the storage for the forwarded
+// records passed on before. If the caller had finished the batch already
+// (finishing), the storage result is returned as is.
+func putManyTimeoutError(storageErr error, forwarded int, finishing bool) error {
+	switch {
+	case finishing:
+		return storageErr
+	case storageErr != nil:
+		return fmt.Errorf("%w; storing the %d records submitted before failed: %w", errPutManyTimeout, forwarded, storageErr)
+	case forwarded == 0:
+		return errPutManyTimeout
+	default:
+		return fmt.Errorf("%w; the %d records submitted before were stored", errPutManyTimeout, forwarded)
 	}
 }
 
