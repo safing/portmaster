@@ -6,11 +6,12 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::net::UdpSocket;
 use tokio::sync::{watch, Mutex};
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
 
 use crate::decider::SharedDecider;
 use crate::dial::connect_udp;
-use crate::egress::EgressCache;
+use crate::egress::{EgressCache, EgressGuard};
 use crate::metrics::ProxyMetrics;
 
 pub struct UdpProxyConfig {
@@ -32,8 +33,12 @@ impl Default for UdpProxyConfig {
 struct UdpSession {
     upstream_socket: Arc<UdpSocket>,
     last_activity: Instant,
-    /// Destination the session egresses to.
-    dest: SocketAddr,
+    /// Cancelled when the session is evicted or the proxy stops. The reply
+    /// relay watches this so an evicted session's socket is released and its
+    /// stale relay cannot refresh a new session from the same peer.
+    cancel: CancellationToken,
+    /// Egress registration lives exactly as long as the session is in the map.
+    _egress: EgressGuard,
 }
 
 pub struct UdpProxy {
@@ -90,7 +95,6 @@ impl UdpProxy {
         // Spawn cleanup worker
         let sessions_for_cleanup = Arc::clone(&self.sessions);
         let metrics_for_cleanup = Arc::clone(&self.metrics);
-        let egress_for_cleanup = Arc::clone(&self.egress);
         let idle_timeout = self.config.idle_timeout;
         let cleanup_interval = self.config.cleanup_interval;
         let mut cleanup_shutdown = self.shutdown_rx.clone();
@@ -102,18 +106,23 @@ impl UdpProxy {
                     _ = ticker.tick() => {
                         let mut map = sessions_for_cleanup.lock().await;
                         let now = Instant::now();
-                        let mut removed = Vec::new();
+                        let mut removed = 0usize;
                         map.retain(|_, session| {
                             let keep = now.duration_since(session.last_activity) < idle_timeout;
                             if !keep {
-                                removed.push(session.dest);
+                                // Signal the reply relay to stop. Dropping the
+                                // map entry also drops its EgressGuard (releasing
+                                // egress) and one Arc of the upstream socket;
+                                // the relay's Arc is dropped when it exits on
+                                // cancellation.
+                                session.cancel.cancel();
+                                removed += 1;
                             }
                             keep
                         });
-                        if !removed.is_empty() {
-                            debug!("udp_proxy: evicted {} idle sessions", removed.len());
-                            for dest in removed {
-                                egress_for_cleanup.remove(dest);
+                        if removed > 0 {
+                            debug!("udp_proxy: evicted {} idle sessions", removed);
+                            for _ in 0..removed {
                                 metrics_for_cleanup.session_finished();
                             }
                         }
@@ -191,19 +200,23 @@ impl UdpProxy {
 
                             // Register egress before the first datagram so the
                             // firewall can recognize it as a proxy session.
-                            self.egress.add(target_addr);
+                            // The guard is moved into the session so egress is
+                            // released exactly when the session is evicted.
+                            let egress = EgressGuard::new(Arc::clone(&self.egress), target_addr);
                             if let Err(e) = upstream.send(data).await {
-                                self.egress.remove(target_addr);
+                                drop(egress);
                                 error!("udp_proxy: failed to send initial datagram to {}: {}", target_addr, e);
                                 self.metrics.inc_errors();
                                 continue;
                             }
                             self.metrics.bytes_tx.fetch_add(len as u64, Ordering::Relaxed);
                             self.metrics.session_started();
+                            let session_cancel = CancellationToken::new();
                             sessions_guard.insert(peer_addr, UdpSession {
                                 upstream_socket: Arc::clone(&upstream),
                                 last_activity: Instant::now(),
-                                dest: target_addr,
+                                cancel: session_cancel.clone(),
+                                _egress: egress,
                             });
                             drop(sessions_guard);
 
@@ -220,6 +233,13 @@ impl UdpProxy {
                                         res = upstream.recv(&mut reply_buf) => {
                                             match res {
                                                 Ok(reply_len) => {
+                                                    // If this session was evicted while we
+                                                    // were waiting, do not touch the map: a
+                                                    // new session may now occupy the same
+                                                    // peer address.
+                                                    if session_cancel.is_cancelled() {
+                                                        break;
+                                                    }
                                                     metrics_ref.bytes_rx.fetch_add(reply_len as u64, Ordering::Relaxed);
                                                     if let Err(e) = client_sock.send_to(&reply_buf[..reply_len], peer_addr).await {
                                                         debug!("udp_proxy: client reply send error: {}", e);
@@ -229,7 +249,11 @@ impl UdpProxy {
                                                     metrics_ref.bytes_tx.fetch_add(reply_len as u64, Ordering::Relaxed);
                                                     let mut map = sessions_ref.lock().await;
                                                     if let Some(s) = map.get_mut(&peer_addr) {
-                                                        s.last_activity = Instant::now();
+                                                        // Re-check after acquiring the lock:
+                                                        // eviction holds the same lock.
+                                                        if !s.cancel.is_cancelled() {
+                                                            s.last_activity = Instant::now();
+                                                        }
                                                     }
                                                 }
                                                 Err(e) => {
@@ -239,6 +263,7 @@ impl UdpProxy {
                                             }
                                         }
                                         _ = reply_shutdown.changed() => break,
+                                        _ = session_cancel.cancelled() => break,
                                     }
                                 }
                             });
@@ -265,5 +290,68 @@ impl UdpProxy {
     pub fn stop(&self) {
         self.running.store(false, Ordering::SeqCst);
         let _ = self.shutdown_tx.send(true);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::decider::Decision;
+    use std::net::Ipv4Addr;
+
+    #[tokio::test]
+    async fn idle_session_is_evicted_and_releases_egress() {
+        // Echo upstream so the first datagram succeeds and a session is created.
+        let echo = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let echo_addr = echo.local_addr().unwrap();
+        tokio::spawn(async move {
+            let mut buf = [0u8; 256];
+            if let Ok((len, peer)) = echo.recv_from(&mut buf).await {
+                let _ = echo.send_to(&buf[..len], peer).await;
+            }
+        });
+
+        let decider: SharedDecider = Arc::new(move |_, _| Ok(Decision::new(echo_addr.ip(), echo_addr.port())));
+        let config = UdpProxyConfig {
+            max_sessions: 10,
+            idle_timeout: Duration::from_millis(150),
+            cleanup_interval: Duration::from_millis(20),
+        };
+        let proxy = Arc::new(
+            UdpProxy::bind("127.0.0.1:0".parse().unwrap(), decider, config)
+                .await
+                .unwrap(),
+        );
+        let proxy_addr = proxy.local_addr().unwrap();
+        let run_proxy = Arc::clone(&proxy);
+        let proxy_handle = tokio::spawn(async move {
+            let _ = run_proxy.run().await;
+        });
+        let client = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        client.send_to(b"ping", proxy_addr).await.unwrap();
+
+        let mut buf = [0u8; 256];
+        let (n, _) = client.recv_from(&mut buf).await.unwrap();
+        assert_eq!(&buf[..n], b"ping");
+
+        // Wait for the session to be created and its egress registered.
+        tokio::time::sleep(Duration::from_millis(30)).await;
+        assert_eq!(proxy.metrics().snapshot().active_sessions, 1);
+        assert!(proxy.has_proxied_egress(
+            std::net::IpAddr::V4(Ipv4Addr::LOCALHOST),
+            echo_addr.port()
+        ));
+
+        // After the idle timeout + a cleanup tick the session must be gone,
+        // its cancel token signalled and its egress released.
+        tokio::time::sleep(Duration::from_millis(250)).await;
+        assert_eq!(proxy.metrics().snapshot().active_sessions, 0);
+        assert!(!proxy.has_proxied_egress(
+            std::net::IpAddr::V4(Ipv4Addr::LOCALHOST),
+            echo_addr.port()
+        ));
+
+        proxy.stop();
+        proxy_handle.abort();
     }
 }

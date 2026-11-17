@@ -7,6 +7,7 @@ license.workspace = true
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
+tokio-util.workspace = true
 url = "2"
 thiserror = "2"
 tracing = "0.1"
