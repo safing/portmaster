@@ -598,6 +598,7 @@ impl Service {
                 databases: Arc::clone(&databases),
                 runtime: &runtime,
                 data_dir: data_dir.clone(),
+                bin_dir: options.bin_dir.clone(),
                 local_addr: listener.local_addr()?,
                 custom_lists: Arc::clone(&custom_lists),
                 filter_lists: Arc::clone(&filter_lists),

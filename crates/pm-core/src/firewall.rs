@@ -816,6 +816,9 @@ pub struct FirewallDeps<'a> {
     pub databases: Arc<pm_database::Databases>,
     pub runtime: &'a pm_runtime::Runtime,
     pub data_dir: std::path::PathBuf,
+    /// Where binary updates (including portmaster-kext.sys) live. Go reads the
+    /// driver from the binary updates directory, not the data directory.
+    pub bin_dir: std::path::PathBuf,
     pub local_addr: std::net::SocketAddr,
     pub custom_lists: Arc<pm_intel::customlists::CustomListService>,
     pub filter_lists: Arc<pm_intel::FilterLists>,
@@ -868,6 +871,10 @@ impl Firewall {
             databases,
             runtime,
             data_dir,
+            #[cfg(windows)]
+            bin_dir,
+            #[cfg(not(windows))]
+            bin_dir: _,
             local_addr,
             custom_lists,
             filter_lists,
@@ -979,7 +986,16 @@ impl Firewall {
             #[cfg(windows)]
             winkext: Mutex::new(None),
             #[cfg(windows)]
-            winkext_path: data_dir.join("portmaster-kext.sys"),
+            winkext_path: {
+                // Go loads the driver from the binary updates directory.
+                // Fall back to data_dir for older layouts that keep it there.
+                let from_bin = bin_dir.join("portmaster-kext.sys");
+                if from_bin.exists() {
+                    from_bin
+                } else {
+                    data_dir.join("portmaster-kext.sys")
+                }
+            },
             subscription: Mutex::new(Some(
                 databases
                     .interface(pm_database::Options {
