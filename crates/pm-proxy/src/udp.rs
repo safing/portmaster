@@ -9,6 +9,7 @@ use tokio::sync::{watch, Mutex};
 use tracing::{debug, error, info, warn};
 
 use crate::decider::SharedDecider;
+use crate::dial::connect_udp;
 use crate::egress::EgressCache;
 use crate::metrics::ProxyMetrics;
 
@@ -163,27 +164,30 @@ impl UdpProxy {
 
                             let target_addr = SocketAddr::new(decision.remote_ip, decision.remote_port);
 
-                            // Bind upstream UDP socket
-                            let bind_addr: SocketAddr = if decision.remote_ip.is_ipv4() {
-                                "0.0.0.0:0".parse().unwrap()
-                            } else {
-                                "[::]:0".parse().unwrap()
-                            };
+                            // UDP cannot be relayed through an upstream proxy;
+                            // Go drops the datagram instead of leaking it
+                            // directly to the destination.
+                            if decision
+                                .binding
+                                .as_ref()
+                                .is_some_and(|binding| binding.upstream.is_some())
+                            {
+                                warn!(
+                                    "udp_proxy: UDP is not supported through an upstream proxy, dropping datagram from {}",
+                                    peer_addr
+                                );
+                                self.metrics.inc_errors();
+                                continue;
+                            }
 
-                            let upstream = match UdpSocket::bind(bind_addr).await {
-                                Ok(s) => Arc::new(s),
+                            let upstream = match connect_udp(target_addr, decision.binding.as_ref()).await {
+                                Ok(socket) => Arc::new(socket),
                                 Err(e) => {
-                                    error!("udp_proxy: failed to bind upstream socket: {}", e);
+                                    error!("udp_proxy: failed to create upstream socket for {}: {}", target_addr, e);
                                     self.metrics.inc_errors();
                                     continue;
                                 }
                             };
-
-                            if let Err(e) = upstream.connect(target_addr).await {
-                                error!("udp_proxy: failed to connect upstream socket to {}: {}", target_addr, e);
-                                self.metrics.inc_errors();
-                                continue;
-                            }
 
                             if let Err(e) = upstream.send(data).await {
                                 error!("udp_proxy: failed to send initial datagram to {}: {}", target_addr, e);

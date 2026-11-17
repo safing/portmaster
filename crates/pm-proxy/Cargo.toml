@@ -12,6 +12,7 @@ thiserror = "2"
 tracing = "0.1"
 bytes = "1"
 async-trait = "0.1"
+socket2 = { version = "0.6.5", features = ["all"] }
 
 [dev-dependencies]
 tokio-test = "0.4"

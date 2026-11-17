@@ -9,6 +9,18 @@ pub async fn http_connect(
     host: &str,
     port: u16,
 ) -> io::Result<()> {
+    // Defense in depth: the host is validated before it reaches this point,
+    // but never let control characters into the CONNECT request line.
+    if host.is_empty()
+        || host.len() > 253
+        || host.bytes().any(|b| b.is_ascii_control() || b.is_ascii_whitespace())
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "invalid host in CONNECT request",
+        ));
+    }
+
     let authority = if host.contains(':') && !host.starts_with('[') {
         format!("[{}]:{}", host, port)
     } else {

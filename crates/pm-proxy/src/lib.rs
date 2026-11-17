@@ -6,6 +6,7 @@
 //! supporting SOCKS5, SOCKS4/4a, and HTTP CONNECT forwarding.
 
 pub mod binding;
+pub mod dial;
 pub mod decider;
 pub mod egress;
 pub mod metrics;

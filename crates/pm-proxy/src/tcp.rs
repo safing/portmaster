@@ -8,6 +8,7 @@ use tokio::sync::watch;
 use tracing::{debug, error, info, warn};
 
 use crate::decider::SharedDecider;
+use crate::dial::{connect_tcp, resolve_peers};
 use crate::egress::{EgressCache, EgressGuard};
 use crate::metrics::ProxyMetrics;
 
@@ -161,33 +162,64 @@ async fn handle_tcp_session(
     shutdown: &mut watch::Receiver<bool>,
     egress: Arc<EgressCache>,
 ) -> io::Result<()> {
-    let target_ip = decision.remote_ip.to_string();
+    let target_ip = decision.remote_ip;
     let target_port = decision.remote_port;
+    let binding = decision.binding.as_ref();
 
-    let mut upstream = if let Some(binding) = decision.binding.as_ref() {
-        if let Some(proxy) = binding.upstream.as_ref() {
-            proxy.dial_and_handshake(&target_ip, target_port, connect_timeout).await?
-        } else {
-            let target_addr = SocketAddr::new(decision.remote_ip, target_port);
-            tokio::time::timeout(connect_timeout, TcpStream::connect(target_addr))
+    // Register the egress address before dialing so the firewall recognizes
+    // the outgoing socket as a proxied session from the moment it is created,
+    // like Go adding the session to its cache before the dial. For an upstream
+    // proxy the egress is the proxy server; otherwise it is the destination.
+    let mut egress_guard: Option<EgressGuard> = None;
+
+    let mut upstream = if let Some(proxy) = binding.and_then(|b| b.upstream.as_deref()) {
+        let peers = resolve_peers(&proxy.host, proxy.port, connect_timeout).await?;
+        let target_host = target_ip.to_string();
+        let mut connected = None;
+        let mut last_error = None;
+        for proxy_addr in peers {
+            // Move the egress registration to the address of each dial
+            // attempt, like Go `setEgress` before every upstream attempt.
+            egress_guard = Some(EgressGuard::new(Arc::clone(&egress), proxy_addr));
+            // A loopback proxy is reached without the interface binding;
+            // binding to a physical interface would break loopback (Go).
+            let dial_binding = if proxy_addr.ip().is_loopback() {
+                None
+            } else {
+                binding
+            };
+            match proxy
+                .dial_and_handshake_to(
+                    proxy_addr,
+                    &target_host,
+                    target_port,
+                    dial_binding,
+                    connect_timeout,
+                )
                 .await
-                .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "direct dial timed out"))??
+            {
+                Ok(stream) => {
+                    connected = Some(stream);
+                    break;
+                }
+                Err(error) => last_error = Some(error),
+            }
+        }
+        match connected {
+            Some(stream) => stream,
+            None => {
+                return Err(last_error.unwrap_or_else(|| {
+                    io::Error::new(io::ErrorKind::NotFound, "proxy host has no addresses")
+                }))
+            }
         }
     } else {
-        let target_addr = SocketAddr::new(decision.remote_ip, target_port);
-        tokio::time::timeout(connect_timeout, TcpStream::connect(target_addr))
-            .await
-            .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "direct dial timed out"))??
+        let target_addr = SocketAddr::new(target_ip, target_port);
+        egress_guard = Some(EgressGuard::new(Arc::clone(&egress), target_addr));
+        connect_tcp(target_addr, binding, connect_timeout).await?
     };
 
-    // Track the address the outgoing socket actually connected to: the
-    // destination itself or the upstream proxy server.
-    let _egress = upstream
-        .peer_addr()
-        .map(|address| EgressGuard::new(Arc::clone(&egress), address))
-        .ok();
-
-    tokio::select! {
+    let result = tokio::select! {
         res = tokio::io::copy_bidirectional(&mut client, &mut upstream) => {
             let (tx, rx) = res?;
             metrics.add_bytes(tx, rx);
@@ -196,5 +228,7 @@ async fn handle_tcp_session(
         _ = shutdown.changed() => {
             Ok(())
         }
-    }
+    };
+    drop(egress_guard);
+    result
 }
