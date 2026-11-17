@@ -1568,6 +1568,7 @@ dependencies = [
  "pm-status",
  "pm-sync",
  "pm-updates",
+ "pm-winplatform",
  "pm-xray",
  "serde",
  "serde_json",
@@ -1761,6 +1762,7 @@ dependencies = [
 name = "pm-log"
 version = "0.1.0"
 dependencies = [
+ "pm-winplatform",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1940,6 +1942,7 @@ dependencies = [
  "pm-dsd",
  "pm-netstate",
  "pm-profile",
+ "pm-winplatform",
  "regex",
  "serde",
  "serde_json",
@@ -1966,6 +1969,7 @@ dependencies = [
  "pm-migration",
  "pm-query",
  "pm-updates",
+ "pm-winplatform",
  "regex",
  "serde",
  "serde_json",
@@ -2173,6 +2177,16 @@ dependencies = [
  "getrandom 0.4.3",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "pm-winplatform"
+version = "0.1.0"
+dependencies = [
+ "pm-netstate",
+ "sha1 0.10.7",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]

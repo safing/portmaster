@@ -88,6 +88,8 @@ pub struct Service {
     pub metrics: Arc<pm_metrics::Metrics>,
     /// Xray subscriptions, node discovery and child process lifecycle.
     pub xray: Arc<pm_xray::Xray>,
+    /// Windows OS integration (ETW); a no-op off Windows.
+    pub os_integration: Mutex<crate::win_integration::OsIntegration>,
     /// Subscribed in `new` so changes before `run` are not missed.
     profile_changes: Mutex<Option<tokio::sync::broadcast::Receiver<()>>>,
     listener: Mutex<Option<TcpListener>>,
@@ -163,6 +165,7 @@ impl Service {
 
         // Binary updater: checks the release channel, downloads and applies on
         // user action only, needs a restart.
+        #[allow(unused_mut)] // mutated only in the Linux SELinux block below
         let mut binary_config = pm_updates::UpdaterConfig {
             name: pm_updates::DEFAULT_BINARY_INDEX_NAME.to_string(),
             directory: options.bin_dir.to_string_lossy().into_owned(),
@@ -539,6 +542,7 @@ impl Service {
         // resolver cache. The source and sink are injected so the module is
         // testable without systemd or root; the production source connects to
         // the varlink socket and only runs where it exists.
+        #[cfg(target_os = "linux")]
         let dns_monitor = if std::path::Path::new(pm_dnsmonitor::DEFAULT_SYSTEMD_SOCKET).exists() {
             let dns_monitor_ip_info = Arc::clone(&ip_info);
             let dns_monitor_self_check = Arc::clone(&compat);
@@ -556,6 +560,8 @@ impl Service {
             tracing::info!("dnsmonitor: systemd resolver monitor socket is not present");
             None
         };
+        #[cfg(not(target_os = "linux"))]
+        let dns_monitor = None;
 
         // Split tunnel request queue and proxies. The proxies are only started
         // when the split tunnel module is enabled.
@@ -721,6 +727,7 @@ impl Service {
             sync,
             metrics,
             xray,
+            os_integration: Mutex::new(crate::win_integration::initialize(&data_dir)),
             profile_changes: Mutex::new(Some(profile_changes)),
             local_addr: listener.local_addr()?,
             listener: Mutex::new(Some(listener)),
@@ -1084,6 +1091,10 @@ impl Service {
         self.xray.stop();
         self.dns.stop();
         self.metrics.stop();
+        self.os_integration
+            .lock()
+            .expect("lock poisoned")
+            .clean_up();
         self.databases.shutdown()?;
         Ok(())
     }

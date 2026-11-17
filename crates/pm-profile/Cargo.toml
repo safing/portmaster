@@ -17,6 +17,7 @@ pm-intel = { path = "../pm-intel" }
 pm-migration = { path = "../pm-migration" }
 pm-query = { path = "../pm-query" }
 pm-updates = { path = "../pm-updates" }
+pm-winplatform = { path = "../pm-winplatform" }
 regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true

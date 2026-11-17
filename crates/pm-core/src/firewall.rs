@@ -13,9 +13,11 @@ use std::sync::{Arc, Mutex, RwLock};
 use pm_config::Config;
 use pm_firewall::inspection::InspectorRegistry;
 use pm_firewall::packet::{
-    BandwidthSink, ConntrackControl, ExternalVerdict, LayeredProfileLookup, NfqPacket, PacketEnv,
-    PacketHandler, QueuedPacket, SystemConntrack,
+    BandwidthSink, ConntrackControl, ExternalVerdict, LayeredProfileLookup, PacketEnv, PacketHandler,
+    QueuedPacket, SystemConntrack,
 };
+#[cfg(target_os = "linux")]
+use pm_firewall::packet::NfqPacket;
 use pm_firewall::{
     CustomLists, FirewallEnv, LocalNetwork, MulticastRequest, ServiceCustomLists, SplitTunnelEnv,
 };
@@ -32,6 +34,7 @@ use pm_profile::{
 };
 use pm_resolver::ipinfo::IpInfoStore;
 use pm_resolver::ResolverService;
+#[cfg(target_os = "linux")]
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -833,6 +836,19 @@ impl Firewall {
                 tracing::warn!(%error, "filter: failed to clean up IPv6 iptables");
             }
         }
+        Ok(())
+    }
+
+    /// Non-Linux stub: native packet interception is Linux-only for now.
+    #[cfg(not(target_os = "linux"))]
+    pub fn start(&self) -> anyhow::Result<()> {
+        tracing::info!("filter: native interception is not available on this platform");
+        Ok(())
+    }
+
+    /// Non-Linux stub: native packet interception is Linux-only for now.
+    #[cfg(not(target_os = "linux"))]
+    pub async fn stop(&self) -> anyhow::Result<()> {
         Ok(())
     }
 }

@@ -5,11 +5,9 @@
 //! neither systemd nor root privileges.
 
 use std::collections::VecDeque;
-use std::io::{self, BufRead, BufReader, Write};
-use std::net::Shutdown;
-use std::os::unix::net::UnixStream;
+use std::io;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Unix socket of the systemd-resolved query monitor (Go
 /// `io.systemd.Resolve.Monitor`).
@@ -52,7 +50,17 @@ pub trait DnsEventSource: Send {
     }
 }
 
+#[cfg(unix)]
+use std::io::{BufRead, BufReader, Write};
+#[cfg(unix)]
+use std::net::Shutdown;
+#[cfg(unix)]
+use std::os::unix::net::UnixStream;
+#[cfg(unix)]
+use std::sync::Mutex;
+
 /// Production source backed by the systemd-resolved varlink socket.
+#[cfg(unix)]
 pub struct SystemdVarlinkSource {
     path: PathBuf,
     reader: Option<BufReader<UnixStream>>,
@@ -61,12 +69,14 @@ pub struct SystemdVarlinkSource {
     shutdown_socket: Arc<Mutex<Option<UnixStream>>>,
 }
 
+#[cfg(unix)]
 impl Default for SystemdVarlinkSource {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(unix)]
 impl SystemdVarlinkSource {
     /// Uses the standard systemd-resolved monitor socket.
     pub fn new() -> SystemdVarlinkSource {
@@ -89,6 +99,7 @@ impl SystemdVarlinkSource {
     }
 }
 
+#[cfg(unix)]
 impl DnsEventSource for SystemdVarlinkSource {
     fn subscribe(&mut self) -> Result<(), SourceError> {
         if std::fs::metadata(&self.path).is_err() {
@@ -149,6 +160,51 @@ impl DnsEventSource for SystemdVarlinkSource {
                 .map(Some)
                 .map_err(|err| SourceError::Varlink(format!("invalid UTF-8: {err}")));
         }
+    }
+}
+
+/// Non-Unix stub for the systemd-resolved varlink source.
+///
+/// The systemd monitor does not exist outside Unix, so this source is always
+/// unavailable. It keeps the public API available for cross-compilation.
+#[cfg(not(unix))]
+pub struct SystemdVarlinkSource {
+    path: PathBuf,
+}
+
+#[cfg(not(unix))]
+impl Default for SystemdVarlinkSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(not(unix))]
+impl SystemdVarlinkSource {
+    /// Uses the standard systemd-resolved monitor socket path.
+    pub fn new() -> SystemdVarlinkSource {
+        Self::with_path(DEFAULT_SYSTEMD_SOCKET)
+    }
+
+    /// Uses a custom socket path.
+    pub fn with_path(path: impl Into<PathBuf>) -> SystemdVarlinkSource {
+        SystemdVarlinkSource { path: path.into() }
+    }
+
+    /// Returns the configured socket path.
+    pub fn path(&self) -> &std::path::Path {
+        &self.path
+    }
+}
+
+#[cfg(not(unix))]
+impl DnsEventSource for SystemdVarlinkSource {
+    fn subscribe(&mut self) -> Result<(), SourceError> {
+        Err(SourceError::Unavailable(self.path.display().to_string()))
+    }
+
+    fn recv(&mut self) -> Result<Option<String>, SourceError> {
+        Err(SourceError::Varlink("not subscribed".into()))
     }
 }
 

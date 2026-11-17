@@ -55,6 +55,8 @@ pub struct LogWriter {
     file: Box<dyn IoWrite + Send>,
     path: Option<PathBuf>,
     is_stdout: bool,
+    /// Whether to emit ANSI colors, gated by console support on Windows.
+    use_color: bool,
     rotation: Rotation,
     current_size: u64,
     counter: LineCounter,
@@ -67,6 +69,7 @@ impl LogWriter {
             file: Box::new(io::stdout()),
             path: None,
             is_stdout: true,
+            use_color: crate::color_supported(),
             rotation: Rotation::default(),
             current_size: 0,
             counter: LineCounter::default(),
@@ -84,6 +87,7 @@ impl LogWriter {
             file: Box::new(file),
             path: Some(path),
             is_stdout: false,
+            use_color: false,
             rotation,
             current_size,
             counter: LineCounter::default(),
@@ -117,7 +121,7 @@ impl LogWriter {
 
 impl Sink for LogWriter {
     fn write_message(&mut self, line: &LogLine, duplicates: u64) {
-        let text = format_line(line, duplicates, self.is_stdout, self.counter.next());
+        let text = format_line(line, duplicates, self.use_color, self.counter.next());
         self.write_raw(&text);
         self.write_raw("\n");
     }

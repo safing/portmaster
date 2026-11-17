@@ -32,6 +32,20 @@ mod profile;
 mod proxy_url;
 mod store;
 
+/// Binary metadata helpers, port of Go `service/profile/binmeta`.
+///
+/// The icon model ([`Icon`]) lives here in `pm-profile`; the Windows-specific
+/// extraction and the pure name/icon helpers live in `pm-winplatform`. On
+/// non-Windows targets [`get_icon_and_name`] still returns a path-derived name
+/// but no icon, mirroring Go's `find_default.go` no-op.
+pub mod binmeta {
+    pub use pm_winplatform::binmeta::{
+        clean_file_description, generate_binary_name_from_path, get_icon_and_name, icon_filename,
+        ignore_icon, load_and_save_icon, parse_winstore_app_dir, winstore_app_dir, BinaryMeta,
+        BinMetaError, IconResult, ICON_SOURCE_CORE, ICON_TYPE_API,
+    };
+}
+
 pub use fingerprint::{
     derive_profile_id, key_and_value_in_tags, key_in_tags, match_fingerprints, parse_fingerprints,
     sort_and_compact_fingerprints, sort_fingerprints, Fingerprint, MatchingData,

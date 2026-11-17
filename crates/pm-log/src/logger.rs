@@ -295,11 +295,11 @@ pub fn start(config: StartConfig) -> std::io::Result<()> {
 
 fn write_banners(logger: &Logger, version: &str, is_stdout: bool) {
     let time = Timestamp::now().format();
-    if is_stdout {
-        logger.write_raw(&format!("\x1b[2m{time}\x1b[22m \x1b[34mBOF ▶\x1b[0m\n"));
+    if is_stdout && crate::color_supported() {
+        logger.write_raw(&format!("\x1b[2m{time}\x1b[22m \x1b[34mBOF {}\x1b[0m\n", crate::RIGHT_ARROW));
         logger.write_raw(&format!("\x1b[2m{time}\x1b[22m \x1b[34mrunning {version}\x1b[0m\n"));
     } else {
-        logger.write_raw(&format!("{time} BOF ▶\n"));
+        logger.write_raw(&format!("{time} BOF {}\n", crate::RIGHT_ARROW));
         logger.write_raw(&format!("{time} running {version}\n"));
     }
 }
@@ -464,10 +464,10 @@ fn writer_loop(rx: Receiver<WriterEvent>, mut sink: Box<dyn Sink>, shared: Arc<S
 
     flush(&mut current, &mut duplicates, sink.as_mut(), &shared);
     let time = Timestamp::now().format();
-    let eof = if sink.is_stdout() {
-        format!("\x1b[2m{time}\x1b[22m \x1b[34mEOF ◀\x1b[0m\n")
+    let eof = if sink.is_stdout() && crate::color_supported() {
+        format!("\x1b[2m{time}\x1b[22m \x1b[34mEOF {}\x1b[0m\n", crate::LEFT_ARROW)
     } else {
-        format!("{time} EOF ◀\n")
+        format!("{time} EOF {}\n", crate::LEFT_ARROW)
     };
     sink.write_raw(&eof);
     sink.close();
