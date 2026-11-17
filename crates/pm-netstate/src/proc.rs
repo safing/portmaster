@@ -10,11 +10,12 @@
 //! [`UNDEFINED_PROCESS_ID`]. Windows has no POSIX user IDs, so socket owners
 //! are reported with uid 0 (see [`owner_uid`]).
 
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fs;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, RwLock};
+use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
 use crate::socket::{Address, BindInfo, ConnectionInfo, SocketInfo, UNDEFINED_PROCESS_ID};
@@ -146,12 +147,78 @@ impl OwnerCache {
     }
 }
 
+/// State shared by all callers waiting on one in-flight owner scan.
+struct FlightState {
+    done: bool,
+    result: i32,
+}
+
+/// A single-flight group for one socket inode: one caller scans `/proc` while
+/// the others wait for the published result instead of repeating the scan.
+struct Flight {
+    state: Mutex<FlightState>,
+    ready: Condvar,
+}
+
+impl Flight {
+    fn new() -> Flight {
+        Flight {
+            state: Mutex::new(FlightState {
+                done: false,
+                result: UNDEFINED_PROCESS_ID,
+            }),
+            ready: Condvar::new(),
+        }
+    }
+
+    fn resolve(&self, result: i32) {
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        state.result = result;
+        state.done = true;
+        self.ready.notify_all();
+    }
+
+    fn wait(&self) -> i32 {
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        while !state.done {
+            state = self
+                .ready
+                .wait(state)
+                .unwrap_or_else(|e| e.into_inner());
+        }
+        state.result
+    }
+}
+
+/// Makes sure the leader always resolves and deregisters its flight, even if
+/// the `/proc` scan panics, so waiting callers cannot block forever.
+struct FlightGuard<'a> {
+    flights: &'a Mutex<HashMap<i64, Arc<Flight>>>,
+    inode: i64,
+    flight: Arc<Flight>,
+    resolved: bool,
+}
+
+impl Drop for FlightGuard<'_> {
+    fn drop(&mut self) {
+        if !self.resolved {
+            self.flight.resolve(UNDEFINED_PROCESS_ID);
+        }
+        self.flights
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&self.inode);
+    }
+}
+
 /// Access to the proc file system, with the same caches as the Go package.
 pub struct ProcFs {
     root: PathBuf,
     pids_by_user: RwLock<HashMap<i32, Vec<i32>>>,
     pids_updated_at: Mutex<Option<Instant>>,
     owners: Mutex<OwnerCache>,
+    /// In-flight owner scans, keyed by inode, for single-flight deduplication.
+    flights: Mutex<HashMap<i64, Arc<Flight>>>,
 }
 
 impl Default for ProcFs {
@@ -168,6 +235,7 @@ impl ProcFs {
             pids_by_user: RwLock::new(HashMap::new()),
             pids_updated_at: Mutex::new(None),
             owners: Mutex::new(OwnerCache::new()),
+            flights: Mutex::new(HashMap::new()),
         }
     }
 
@@ -238,18 +306,49 @@ impl ProcFs {
             return pid;
         }
 
+        // Scanning every /proc/<pid>/fd is expensive. When several callers look
+        // up the same inode concurrently, let one of them do the scan and have
+        // the rest wait for its result (Go single-flight style). The owner cache
+        // above still serves all later lookups.
+        let (flight, leader) = {
+            let mut flights = self.flights.lock().expect("lock poisoned");
+            match flights.entry(inode) {
+                Entry::Occupied(entry) => (Arc::clone(entry.get()), false),
+                Entry::Vacant(entry) => {
+                    let flight = Arc::new(Flight::new());
+                    entry.insert(Arc::clone(&flight));
+                    (flight, true)
+                }
+            }
+        };
+
+        if !leader {
+            return flight.wait();
+        }
+
+        let mut guard = FlightGuard {
+            flights: &self.flights,
+            inode,
+            flight: Arc::clone(&flight),
+            resolved: false,
+        };
+
         // Higher PIDs are more likely to be the ones we are looking for.
+        let mut result = UNDEFINED_PROCESS_ID;
         for pid in pids.iter().rev() {
             if self.pid_has_socket(*pid, inode) {
                 self.owners
                     .lock()
                     .expect("lock poisoned")
                     .insert(uid, inode, *pid);
-                return *pid;
+                result = *pid;
+                break;
             }
         }
 
-        UNDEFINED_PROCESS_ID
+        flight.resolve(result);
+        guard.resolved = true;
+        result
     }
 
     /// Refreshes the PID table at most every 10ms, like `proc.updatePids`.
@@ -478,5 +577,53 @@ mod tests {
             split_fields("  0: 0100007F:1F90  0A "),
             vec!["0", "0100007F", "1F90", "0A"]
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn concurrent_find_pid_scans_are_deduplicated() {
+        use std::os::unix::fs::MetadataExt;
+        use std::thread;
+
+        let mut root = std::env::temp_dir();
+        root.push(format!(
+            "pm-netstate-flight-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .subsec_nanos()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+
+        // update_pids groups PIDs by the owner of their /proc/<pid> entry, so
+        // the fake process must belong to the current user.
+        let uid = fs::metadata(&root).unwrap().uid() as i32;
+        let inode = 4242_i64;
+        let pid = 2345_i32;
+        let fd_dir = root.join(pid.to_string()).join("fd");
+        fs::create_dir_all(&fd_dir).unwrap();
+        std::os::unix::fs::symlink(format!("socket:[{inode}]"), fd_dir.join("7")).unwrap();
+
+        let procfs = std::sync::Arc::new(ProcFs::new(&root));
+        // Prime the PID map so concurrent callers skip update_pids and reach
+        // the single-flight path with an empty owner cache.
+        procfs.update_pids();
+        let mut handles = Vec::new();
+        for _ in 0..8 {
+            let procfs = std::sync::Arc::clone(&procfs);
+            handles.push(thread::spawn(move || procfs.find_pid(uid, inode)));
+        }
+        for handle in handles {
+            assert_eq!(handle.join().unwrap(), pid);
+        }
+
+        assert!(
+            procfs.flights.lock().unwrap().is_empty(),
+            "all in-flight scans must be deregistered"
+        );
+
+        let _ = fs::remove_dir_all(&root);
     }
 }

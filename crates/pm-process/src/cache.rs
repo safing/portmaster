@@ -305,6 +305,56 @@ impl ProcessCache {
         Some(updated)
     }
 
+    /// Assigns the resolved primary profile to every cached process with the
+    /// given PID and pushes a database update for each changed process.
+    ///
+    /// `scoped_id` is the profile's scoped ID (`source/id`), i.e. Go's
+    /// `localProfile.ScopedID()`. This is the missing Rust counterpart of Go's
+    /// `Process.GetProfile`, which sets `PrimaryProfileID` right after a profile
+    /// is resolved. Without this call the field stays empty in production and
+    /// `pm-firewall` cannot attribute connections to a profile.
+    ///
+    /// # Required call site in pm-core
+    ///
+    /// pm-core owns profile resolution, so it must call this once a profile has
+    /// been matched for a process. In `crates/pm-core/src/firewall.rs`,
+    /// `CoreProfiles::layered_for` resolves `matching` (either an existing
+    /// profile or a newly created one). Give `CoreProfiles` an
+    /// `Arc<ProcessCache>` (the same instance wrapped by `SystemProcessResolver`
+    /// in `Firewall::new`) and, after `matching` is known and before returning
+    /// the layered profile, call:
+    ///
+    /// ```ignore
+    /// let scoped_id = pm_profile::make_scoped_id(&matching.source, &matching.id);
+    /// process_cache.set_primary_profile(process.pid, &scoped_id);
+    /// ```
+    ///
+    /// Refresh paths (`CoreProfiles::refresh`) should re-resolve or clear as
+    /// appropriate, since the layered cache is dropped there.
+    ///
+    /// Returns the number of cached entries that were updated.
+    pub fn set_primary_profile(&self, pid: i32, scoped_id: &str) -> usize {
+        let mut updated_processes = Vec::new();
+        {
+            let mut processes = self.processes.write().expect("lock poisoned");
+            for process in processes.values_mut() {
+                if process.pid != pid || process.primary_profile_id == scoped_id {
+                    continue;
+                }
+                let mut updated = (**process).clone();
+                updated.primary_profile_id = scoped_id.to_string();
+                let updated = Arc::new(updated);
+                *process = Arc::clone(&updated);
+                updated_processes.push(updated);
+            }
+        }
+
+        for process in &updated_processes {
+            self.push_update(process, false);
+        }
+        updated_processes.len()
+    }
+
     /// Returns the process group leader of the process, like Go
     /// `FindProcessGroupLeader`.
     pub fn leader(self: &Arc<Self>, process: &Process) -> Option<Arc<Process>> {

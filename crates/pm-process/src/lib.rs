@@ -67,6 +67,42 @@ pub const UNSOLICITED_PROFILE_NAME: &str = "Network Noise";
 /// Name of the system profile.
 pub const SYSTEM_PROFILE_NAME: &str = "Operating System";
 
+/// Profile ID of the Portmaster UI app, like Go `profile.PortmasterAppProfileID`.
+///
+/// pm-profile does not define this ID yet, so it is exposed here until the
+/// upstream constants land there (see the note below).
+pub const PORTMASTER_APP_PROFILE_ID: &str = "_portmaster-app";
+/// Profile ID of the Portmaster tray notifier, like Go
+/// `profile.PortmasterNotifierProfileID`.
+pub const PORTMASTER_NOTIFIER_PROFILE_ID: &str = "_portmaster-notifier";
+
+/// Returns the scoped ID (`local/_portmaster-app`) of the Portmaster UI app.
+pub fn portmaster_app_profile_scoped_id() -> String {
+    pm_profile::make_scoped_id(pm_profile::SOURCE_LOCAL, PORTMASTER_APP_PROFILE_ID)
+}
+
+/// Returns the scoped ID (`local/_portmaster-notifier`) of the notifier.
+pub fn portmaster_notifier_profile_scoped_id() -> String {
+    pm_profile::make_scoped_id(pm_profile::SOURCE_LOCAL, PORTMASTER_NOTIFIER_PROFILE_ID)
+}
+
+/// Returns whether `id` is one of the Portmaster component special profile IDs
+/// that are still missing from pm-profile.
+pub fn is_portmaster_component_profile_id(id: &str) -> bool {
+    matches!(
+        id,
+        PORTMASTER_APP_PROFILE_ID | PORTMASTER_NOTIFIER_PROFILE_ID
+    )
+}
+
+// NOTE for the pm-profile owner (crate is not part of this change):
+// Add `PORTMASTER_APP_PROFILE_ID = "_portmaster-app"` and
+// `PORTMASTER_NOTIFIER_PROFILE_ID = "_portmaster-notifier"` (plus the matching
+// `*_PROFILE_NAME` constants, "Portmaster User Interface" and
+// "Portmaster Notifier") to `crates/pm-profile/src/lib.rs`, and include them in
+// `is_special_profile_id` and `special_profile_name`. Once that lands, replace
+// the helpers above with re-exports of the pm-profile constants.
+
 /// A simple key/value tag used in process metadata.
 ///
 /// This is the same type as [`pm_profile::Tag`], so profiles can match the tags
