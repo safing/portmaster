@@ -163,7 +163,8 @@ impl std::str::FromStr for Message {
         // queries and messages may contain '|' themselves. This mirrors the Go
         // side (base/api/database.go), which uses SplitN(msg, "|", 3) and, for
         // messages carrying a payload, splits the rest once more into <key>|<data>.
-        let cmd = line.splitn(3, '|').nth(1).unwrap_or("");
+        // The command is always the second field.
+        let cmd = line.split('|').nth(1).unwrap_or("");
         let limit = if has_payload(cmd) { 4 } else { 3 };
         let parts = line.splitn(limit, '|').collect::<Vec<&str>>();
 
