@@ -60,6 +60,9 @@ tokio-util.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
+[target.'cfg(windows)'.dependencies]
+pm-winkext = { path = "../pm-winkext" }
+
 [dev-dependencies]
 pm-mgr = { path = "../pm-mgr" }
 pm-migration = { path = "../pm-migration" }

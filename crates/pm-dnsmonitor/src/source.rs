@@ -5,11 +5,20 @@
 //! neither systemd nor root privileges.
 
 use std::collections::VecDeque;
-use std::io::{self, BufRead, BufReader, Write};
+use std::io;
+use std::sync::Arc;
+
+#[cfg(unix)]
+use std::sync::Mutex;
+
+#[cfg(unix)]
+use std::io::{BufRead, BufReader, Write};
+#[cfg(unix)]
 use std::net::Shutdown;
+#[cfg(unix)]
 use std::os::unix::net::UnixStream;
+#[cfg(unix)]
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 
 /// Unix socket of the systemd-resolved query monitor (Go
 /// `io.systemd.Resolve.Monitor`).
@@ -53,6 +62,7 @@ pub trait DnsEventSource: Send {
 }
 
 /// Production source backed by the systemd-resolved varlink socket.
+#[cfg(unix)]
 pub struct SystemdVarlinkSource {
     path: PathBuf,
     reader: Option<BufReader<UnixStream>>,
@@ -61,12 +71,14 @@ pub struct SystemdVarlinkSource {
     shutdown_socket: Arc<Mutex<Option<UnixStream>>>,
 }
 
+#[cfg(unix)]
 impl Default for SystemdVarlinkSource {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(unix)]
 impl SystemdVarlinkSource {
     /// Uses the standard systemd-resolved monitor socket.
     pub fn new() -> SystemdVarlinkSource {
@@ -89,6 +101,7 @@ impl SystemdVarlinkSource {
     }
 }
 
+#[cfg(unix)]
 impl DnsEventSource for SystemdVarlinkSource {
     fn subscribe(&mut self) -> Result<(), SourceError> {
         if std::fs::metadata(&self.path).is_err() {
@@ -149,6 +162,39 @@ impl DnsEventSource for SystemdVarlinkSource {
                 .map(Some)
                 .map_err(|err| SourceError::Varlink(format!("invalid UTF-8: {err}")));
         }
+    }
+}
+
+/// Non-Unix placeholder. The systemd-resolved varlink monitor does not exist
+/// outside Unix, so this source always reports itself unavailable. Keeping the
+/// type on all platforms lets the rest of the core build unchanged.
+#[cfg(not(unix))]
+pub struct SystemdVarlinkSource;
+
+#[cfg(not(unix))]
+impl SystemdVarlinkSource {
+    /// No-op constructor; the varlink monitor is never available off Unix.
+    #[must_use]
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+#[cfg(not(unix))]
+impl Default for SystemdVarlinkSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(not(unix))]
+impl DnsEventSource for SystemdVarlinkSource {
+    fn subscribe(&mut self) -> Result<(), SourceError> {
+        Err(SourceError::Unavailable(DEFAULT_SYSTEMD_SOCKET.into()))
+    }
+
+    fn recv(&mut self) -> Result<Option<String>, SourceError> {
+        Ok(None)
     }
 }
 

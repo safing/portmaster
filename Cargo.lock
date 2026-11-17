@@ -1568,6 +1568,7 @@ dependencies = [
  "pm-status",
  "pm-sync",
  "pm-updates",
+ "pm-winkext",
  "pm-xray",
  "serde",
  "serde_json",
@@ -2173,6 +2174,13 @@ dependencies = [
  "getrandom 0.4.3",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "pm-winkext"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
 ]
 
 [[package]]
