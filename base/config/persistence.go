@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 
@@ -61,32 +62,41 @@ func loadConfig(requireValidConfig bool) error {
 	return nil
 }
 
+// saveConfigLock serializes SaveConfig, so that a save that snapshotted older
+// values can never overwrite the file after a save with newer values.
+var saveConfigLock sync.Mutex
+
 // SaveConfig saves the current configuration to file.
 // It will acquire a read-lock on the global options registry
-// lock and must lock each option!
+// lock and will lock each option, one at a time.
 func SaveConfig() error {
-	optionsLock.RLock()
-	defer optionsLock.RUnlock()
+	saveConfigLock.Lock()
+	defer saveConfigLock.Unlock()
 
 	// check if persistence is configured
 	if configFilePath == "" {
 		return nil
 	}
 
-	// extract values
+	// Extract values.
+	// Lock only one option at a time: holding all option locks at once, acquired
+	// in random map order, deadlocks concurrent saves (AB-BA lock order).
+	// The value caches are never modified in place, so copying the string
+	// slices is enough to make the snapshot independent of later changes.
 	activeValues := make(map[string]interface{})
+	optionsLock.RLock()
 	for key, option := range options {
-		// we cannot immedately unlock the option afger
-		// getData() because someone could lock and change it
-		// while we are marshaling the value (i.e. for string slices).
-		// We NEED to keep the option locks until we finsihed.
 		option.Lock()
-		defer option.Unlock()
-
 		if option.activeValue != nil {
-			activeValues[key] = option.activeValue.getData(option)
+			data := option.activeValue.getData(option)
+			if s, ok := data.([]string); ok {
+				data = slices.Clone(s)
+			}
+			activeValues[key] = data
 		}
+		option.Unlock()
 	}
+	optionsLock.RUnlock()
 
 	// convert to JSON
 	data, err := MapToJSON(activeValues)
