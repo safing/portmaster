@@ -97,6 +97,23 @@ fn netenv_emits_notification_events_on_status_changes() {
 }
 
 #[test]
+fn portal_deletion_is_notified_even_when_status_does_not_change() {
+    let sink = Arc::new(RecordingSink::default());
+    let netenv = NetEnv::with_notification_sink(sink.clone());
+
+    let portal = CaptivePortal::from_url("http://portal.example/login");
+    netenv.update_online_status(OnlineStatus::Portal, Some(portal));
+    assert!(netenv.captive_portal().is_some());
+
+    // The portal disappears but the status number stays `Portal`.
+    netenv.update_online_status(OnlineStatus::Portal, None);
+    let changes = sink.changes.lock().unwrap();
+    assert_eq!(changes.len(), 2, "a notification change is still emitted");
+    assert!(changes[1].delete_captive_portal);
+    assert!(netenv.captive_portal().is_none());
+}
+
+#[test]
 fn global_spn_and_dns_flags_are_independent() {
     pm_netenv::set_connected_to_spn(true);
     assert!(pm_netenv::is_connected_to_spn());

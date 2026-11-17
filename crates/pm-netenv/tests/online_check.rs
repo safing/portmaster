@@ -295,6 +295,8 @@ fn connectivity_domains_match_go() {
         assert!(is_connectivity_domain(domain, ""), "{domain}");
     }
     assert!(is_connectivity_domain("captive.apple.com.", ""));
+    // The special captive portal domain counts even without a detected portal.
+    assert!(is_connectivity_domain(pm_netenv::SPECIAL_CAPTIVE_PORTAL_DOMAIN, ""));
     assert!(is_connectivity_domain(
         "portal.example.",
         "portal.example."

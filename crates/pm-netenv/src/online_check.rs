@@ -7,7 +7,7 @@
 
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use pm_netstate::{ip_scope, IpScope};
@@ -61,7 +61,8 @@ pub fn is_connectivity_domain(domain: &str, portal_domain: &str) -> bool {
     if domain.is_empty() {
         return false;
     }
-    CONNECTIVITY_DOMAINS.contains(&domain)
+    domain == crate::SPECIAL_CAPTIVE_PORTAL_DOMAIN
+        || CONNECTIVITY_DOMAINS.contains(&domain)
         || (!portal_domain.is_empty() && domain == portal_domain)
 }
 
@@ -253,6 +254,15 @@ fn online(status: OnlineStatus, comment: &str) -> OnlineCheckResult {
     }
 }
 
+/// Resolves a `Location` header against the portal test URL, like Go's
+/// `http.Response.Location`. A malformed URL is kept as-is.
+fn resolve_location(location: &str) -> String {
+    match url::Url::parse(PORTAL_TEST_URL).and_then(|base| base.join(location)) {
+        Ok(url) => url.to_string(),
+        Err(_) => location.to_string(),
+    }
+}
+
 /// The system HTTP probe for the portal test URL.
 pub struct SystemPortalProbe {
     agent: ureq::Agent,
@@ -286,7 +296,7 @@ impl PortalProbe for SystemPortalProbe {
                     if let Some(location) = response.headers().get("location") {
                         let location = location.to_str().unwrap_or_default();
                         if !location.is_empty() {
-                            return PortalProbeResult::Redirect(location.to_string());
+                            return PortalProbeResult::Redirect(resolve_location(location));
                         }
                     }
                     return PortalProbeResult::Other(status);
@@ -361,13 +371,25 @@ pub fn dynamic_check_delay(status: OnlineStatus) -> Option<Duration> {
     }
 }
 
+/// Returned when a DNS check is installed twice on an [`OnlineMonitor`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DnsCheckAlreadySet;
+
+impl std::fmt::Display for DnsCheckAlreadySet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("DNS check already set")
+    }
+}
+
+impl std::error::Error for DnsCheckAlreadySet {}
+
 /// Runs online status checks and applies their result, like Go
 /// `monitorOnlineStatus`.
 pub struct OnlineMonitor {
     netenv: Arc<NetEnv>,
     addresses: Arc<AddressCache>,
     portal: Arc<dyn PortalProbe>,
-    dns: Option<Arc<dyn DnsCheck>>,
+    dns: OnceLock<Arc<dyn DnsCheck>>,
     connected_to_spn: AtomicBool,
     connected_to_dns: AtomicBool,
     trigger: tokio::sync::Notify,
@@ -382,15 +404,25 @@ impl OnlineMonitor {
         portal: Arc<dyn PortalProbe>,
         dns: Option<Arc<dyn DnsCheck>>,
     ) -> OnlineMonitor {
-        OnlineMonitor {
+        let monitor = OnlineMonitor {
             netenv,
             addresses,
             portal,
-            dns,
+            dns: OnceLock::new(),
             connected_to_spn: AtomicBool::new(false),
             connected_to_dns: AtomicBool::new(false),
             trigger: tokio::sync::Notify::new(),
+        };
+        if let Some(dns) = dns {
+            let _ = monitor.dns.set(dns);
         }
+        monitor
+    }
+
+    /// Installs the DNS check after construction, for callers that create the
+    /// monitor before the resolver exists. Can only be set once.
+    pub fn set_dns_check(&self, dns: Arc<dyn DnsCheck>) -> Result<(), DnsCheckAlreadySet> {
+        self.dns.set(dns).map_err(|_| DnsCheckAlreadySet)
     }
 
     /// Returns the state the monitor updates.
@@ -421,7 +453,7 @@ impl OnlineMonitor {
         let env = OnlineCheckEnv {
             addresses: &self.addresses,
             portal: self.portal.as_ref(),
-            dns: self.dns.as_deref(),
+            dns: self.dns.get().map(|check| check.as_ref()),
             connected_to_spn: self.connected_to_spn.load(Ordering::SeqCst)
                 || crate::is_connected_to_spn(),
             connected_to_dns: self.connected_to_dns.load(Ordering::SeqCst)
@@ -458,5 +490,23 @@ async fn sleep_optional(delay: Option<Duration>) {
     match delay {
         Some(delay) => tokio::time::sleep(delay).await,
         None => std::future::pending::<()>().await,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn relative_locations_resolve_against_the_portal_test_url() {
+        assert_eq!(
+            resolve_location("/login.html"),
+            "http://192.0.2.1/login.html"
+        );
+        assert_eq!(resolve_location("login.html"), "http://192.0.2.1/login.html");
+        assert_eq!(
+            resolve_location("http://portal.example/"),
+            "http://portal.example/"
+        );
     }
 }

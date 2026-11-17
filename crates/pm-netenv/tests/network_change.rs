@@ -75,6 +75,25 @@ fn detects_interface_changes_once() {
 }
 
 #[test]
+fn mac_changes_do_not_trigger_but_flag_changes_do() {
+    let source = FakeSource::new();
+    let monitor = NetworkChangeMonitor::new(
+        Arc::clone(&source) as Arc<dyn InterfaceSource>,
+        Arc::new(NetEnv::new()),
+        None,
+    );
+
+    monitor.check_once().expect("record checksum");
+
+    // Go's checksum hashes the flags string, not the hardware address.
+    source.interfaces.lock().unwrap()[0].mac = Some("11:22:33:44:55:66".to_string());
+    assert!(!monitor.check_once().expect("mac is ignored"));
+
+    source.interfaces.lock().unwrap()[0].loopback = true;
+    assert!(monitor.check_once().expect("flags are hashed"));
+}
+
+#[test]
 fn manual_triggers_skip_the_online_check() {
     let source = FakeSource::new();
     let online_checks = Arc::new(AtomicUsize::new(0));

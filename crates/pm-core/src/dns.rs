@@ -2,26 +2,33 @@
 
 use std::net::{IpAddr, SocketAddr};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock, RwLock};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use pm_api::Api;
 use pm_config::Config;
 use pm_database::Databases;
+use pm_firewall::dns_filter::FirewallDnsHook;
+use pm_firewall::packet::{LayeredProfileLookup, PacketEnv};
 use pm_nameserver::{
-    DnsRequestInfo, ListenerEvent, Nameserver, NameserverDeps, NetstateLookup, PermissiveHook,
-    RequestAttributor, Running, StartOptions, SystemEnv,
+    DnsRequestInfo, FilterOutcome, FirewallHook, ListenerEvent, Nameserver, NameserverDeps,
+    NameserverIpMatcher, NetstateLookup, PermissiveHook, RequestAttributor, Running, StartOptions,
+    SystemEnv,
 };
-use pm_netenv::OnlineStatus;
+use pm_netenv::{network_changed_flag, OnlineStatus};
 use pm_netstate::{NetState, ProcFs};
-use pm_network::{Connection, ConnectionType, SharedConnection};
+use pm_network::{Connection, ConnectionType, Network, SharedConnection};
 use pm_notifications::{
     Action, ActionTypeOpenSettingPayload, Notification, Notifications, ACTION_TYPE_OPEN_SETTING,
     ACTION_TYPE_OPEN_URL,
 };
 use pm_process::ProcReader;
 use pm_resolver::env::{Environment, Nameserver as AssignedNameserver};
-use pm_resolver::{ConfigSettings, NameRecordStore, ResolverService, Settings, SystemEnvironment};
+use pm_resolver::{
+    ConfigSettings, IpInfoStore, NameRecordStore, Query, ResolverService, RRCache, Settings,
+    SystemEnvironment,
+};
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
@@ -68,6 +75,12 @@ impl Environment for CoreEnvironment {
 
     fn nameservers(&self) -> Vec<AssignedNameserver> {
         self.system.nameservers()
+    }
+
+    /// Feed the resolver's connectivity result back into netenv, so the online
+    /// monitor can short-circuit to Online when a configured resolver answers.
+    fn set_connected_to_dns(&self, connected: bool) {
+        pm_netenv::set_connected_to_dns(connected);
     }
 
     fn is_local_network(&self, ip: IpAddr) -> bool {
@@ -119,6 +132,69 @@ impl RequestAttributor for BasicAttributor {
             ..Connection::default()
         };
         Ok(Arc::new(Mutex::new(conn)))
+    }
+}
+
+/// Returned when a firewall hook is installed twice on the DNS stack.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FirewallHookAlreadySet;
+
+impl std::fmt::Display for FirewallHookAlreadySet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("firewall hook already set")
+    }
+}
+
+impl std::error::Error for FirewallHookAlreadySet {}
+
+/// Forwards firewall steps to the real hook once the core has built it. The
+/// resolver and nameserver start before the firewall, so until then requests
+/// are allowed through, as they were with the old `PermissiveHook`.
+struct DeferredHook {
+    hook: Arc<OnceLock<Arc<dyn FirewallHook>>>,
+    fallback: PermissiveHook,
+}
+
+#[async_trait]
+impl FirewallHook for DeferredHook {
+    async fn filter_connection(&self, conn: &SharedConnection) -> FilterOutcome {
+        match self.hook.get() {
+            Some(hook) => hook.filter_connection(conn).await,
+            None => self.fallback.filter_connection(conn).await,
+        }
+    }
+
+    async fn filter_resolved_dns(
+        &self,
+        conn: &SharedConnection,
+        q: &Query,
+        rr_cache: RRCache,
+    ) -> (Option<RRCache>, FilterOutcome) {
+        match self.hook.get() {
+            Some(hook) => hook.filter_resolved_dns(conn, q, rr_cache).await,
+            None => self.fallback.filter_resolved_dns(conn, q, rr_cache).await,
+        }
+    }
+
+    fn update_ips_and_cnames(&self, q: &Query, rr: &RRCache, conn: &SharedConnection) {
+        match self.hook.get() {
+            Some(hook) => hook.update_ips_and_cnames(q, rr, conn),
+            None => self.fallback.update_ips_and_cnames(q, rr, conn),
+        }
+    }
+
+    fn save_open_dns_request(&self, q: &Query, rr: &RRCache, conn: &SharedConnection) {
+        match self.hook.get() {
+            Some(hook) => hook.save_open_dns_request(q, rr, conn),
+            None => self.fallback.save_open_dns_request(q, rr, conn),
+        }
+    }
+
+    fn save_connection(&self, conn: &SharedConnection) {
+        match self.hook.get() {
+            Some(hook) => hook.save_connection(conn),
+            None => self.fallback.save_connection(conn),
+        }
     }
 }
 
@@ -179,6 +255,10 @@ impl Listeners {
 pub struct Dns {
     resolver: ResolverService,
     running: Arc<tokio::sync::Mutex<Option<Running>>>,
+    /// The current nameserver matcher, refreshed whenever the listeners start.
+    matcher: Arc<RwLock<Option<NameserverIpMatcher>>>,
+    /// Set by the core once the firewall is available.
+    firewall_hook: Arc<OnceLock<Arc<dyn FirewallHook>>>,
     cancel: CancellationToken,
     tasks: Mutex<Vec<JoinHandle<()>>>,
 }
@@ -212,12 +292,18 @@ impl Dns {
             let config = Arc::clone(config);
             move || config.get_as_bool(CFG_NETWORK_SERVICE, false)()
         };
+        let system_env = Arc::new(SystemEnv::new(network_service));
+        let firewall_hook = Arc::new(OnceLock::new());
+        let matcher = Arc::new(RwLock::new(None));
         let listeners = Arc::new(Listeners {
             nameserver: Arc::new(Nameserver::new(NameserverDeps {
                 resolver: Arc::new(resolver.clone()),
                 attributor: Arc::new(BasicAttributor),
-                hook: Arc::new(PermissiveHook::default()),
-                env: Arc::new(SystemEnv::new(network_service)),
+                hook: Arc::new(DeferredHook {
+                    hook: Arc::clone(&firewall_hook),
+                    fallback: PermissiveHook::default(),
+                }),
+                env: Arc::clone(&system_env),
             })),
             notifications: Arc::clone(notifications),
             lookup: Arc::new(NetstateLookup {
@@ -229,9 +315,38 @@ impl Dns {
         let address_key = pm_nameserver::CFG_DEFAULT_NAMESERVER_ADDRESS_KEY;
         let mut address = config.get_as_string(address_key, default_address)();
         let running = Arc::new(tokio::sync::Mutex::new(listeners.start(&address).await));
+        {
+            let guard = running.lock().await;
+            if let Some(running) = guard.as_ref() {
+                *matcher.write().unwrap_or_else(|error| error.into_inner()) =
+                    Some(running.ip_matcher());
+            }
+        }
 
         let cancel = CancellationToken::new();
         let mut tasks = Vec::new();
+
+        // Reset failing queries after a network change, like Go's nameserver
+        // reading `netenv.GetNetworkChangedFlag`.
+        tasks.push(tokio::spawn({
+            let system_env = Arc::clone(&system_env);
+            let cancel = cancel.clone();
+            let flag = network_changed_flag();
+            async move {
+                let mut ticker = tokio::time::interval(Duration::from_secs(1));
+                loop {
+                    tokio::select! {
+                        () = cancel.cancelled() => return,
+                        _ = ticker.tick() => {
+                            if flag.is_set() {
+                                system_env.set_network_changed();
+                                flag.refresh();
+                            }
+                        }
+                    }
+                }
+            }
+        }));
 
         // Reload the resolvers and restart the listeners on config changes.
         let mut previous_servers = settings.nameservers().join(" ");
@@ -239,6 +354,7 @@ impl Dns {
             let cancel = cancel.clone();
             let resolver = resolver.clone();
             let running = Arc::clone(&running);
+            let matcher = Arc::clone(&matcher);
             let config = Arc::clone(config);
             let default_address = default_address.to_string();
             async move {
@@ -264,7 +380,12 @@ impl Dns {
                         if let Some(old) = running.take() {
                             old.shutdown().await;
                         }
-                        *running = listeners.start(&address).await;
+                        let started = listeners.start(&address).await;
+                        if let Some(running) = started.as_ref() {
+                            *matcher.write().unwrap_or_else(|error| error.into_inner()) =
+                                Some(running.ip_matcher());
+                        }
+                        *running = started;
                     }
                 }
             }
@@ -290,6 +411,8 @@ impl Dns {
         Ok(Dns {
             resolver,
             running,
+            matcher,
+            firewall_hook,
             cancel,
             tasks: Mutex::new(tasks),
         })
@@ -298,6 +421,42 @@ impl Dns {
     /// The resolver.
     pub fn resolver(&self) -> &ResolverService {
         &self.resolver
+    }
+
+    /// Installs the firewall hook used by every nameserver request. The core
+    /// calls this after the firewall has been built, because the resolver must
+    /// start first. Only the first call takes effect.
+    pub fn set_firewall_hook(
+        &self,
+        hook: Arc<dyn FirewallHook>,
+    ) -> Result<(), FirewallHookAlreadySet> {
+        self.firewall_hook
+            .set(hook)
+            .map_err(|_| FirewallHookAlreadySet)
+    }
+
+    /// Convenience wrapper: builds [`FirewallDnsHook`] from the firewall's
+    /// shared pieces and installs it as the DNS firewall step.
+    pub fn set_firewall_dns_hook(
+        &self,
+        env: Arc<dyn PacketEnv>,
+        profiles: Arc<dyn LayeredProfileLookup>,
+        ip_info: Arc<IpInfoStore>,
+        network: Option<Arc<Network>>,
+    ) -> Result<(), FirewallHookAlreadySet> {
+        self.set_firewall_hook(Arc::new(FirewallDnsHook::new(
+            env, profiles, ip_info, network,
+        )))
+    }
+
+    /// The matcher for the local nameserver, to be installed on the firewall's
+    /// packet handler with `set_nameserver_ip_matcher`. Refreshed whenever the
+    /// listeners (re)start.
+    pub fn nameserver_ip_matcher(&self) -> Option<NameserverIpMatcher> {
+        self.matcher
+            .read()
+            .unwrap_or_else(|error| error.into_inner())
+            .clone()
     }
 
     /// The addresses the nameserver listens on.

@@ -15,6 +15,7 @@ sha1.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
+url.workspace = true
 ureq = "3.5.2"
 tracing.workspace = true
 

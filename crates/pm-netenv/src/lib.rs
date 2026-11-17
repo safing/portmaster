@@ -88,8 +88,9 @@ pub use notifications::{
 };
 pub use online_check::{
     check_online_status, dynamic_check_delay, is_connectivity_domain, no_portal_probe,
-    shared_probe, DnsCheck, DnsCheckOutcome, OnlineCheckEnv, OnlineCheckResult, OnlineMonitor,
-    PortalProbe, PortalProbeResult, StaticDnsCheck, StaticPortalProbe, SystemPortalProbe,
+    shared_probe, DnsCheck, DnsCheckAlreadySet, DnsCheckOutcome, OnlineCheckEnv, OnlineCheckResult,
+    OnlineMonitor, PortalProbe, PortalProbeResult, StaticDnsCheck, StaticPortalProbe,
+    SystemPortalProbe,
     CONNECTIVITY_DOMAINS, DNS_TEST_DOMAIN, DNS_TEST_EXPECTED_IP, IGNORE_IPS_IN_ONLINE_STATUS_CHECK,
     PORTAL_TEST_IP, PORTAL_TEST_URL,
 };
@@ -345,12 +346,18 @@ impl NetEnv {
 
         let previous = self.online_status.swap(status as u8, Ordering::SeqCst);
         let changed = previous != status as u8;
-        if !changed {
+        // A portal can disappear while the status number stays the same; its
+        // notification still has to be deleted in that case (Go separates the
+        // captive portal notification from the online status notification).
+        let portal_removed = had_portal && portal.as_ref().map_or(true, |p| p.url.is_empty());
+        if !changed && !portal_removed {
             return false;
         }
 
-        tracing::info!(status = %status, "netenv: online status changed");
-        self.online_status_events.submit(status);
+        if changed {
+            tracing::info!(status = %status, "netenv: online status changed");
+            self.online_status_events.submit(status);
+        }
 
         let mut status_id = self.status_notification_id.write().expect("lock poisoned");
         let change = notification_change(status, portal.as_ref(), had_portal, status_id.as_deref());

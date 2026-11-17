@@ -715,7 +715,9 @@ impl ResolverService {
                 tracing::info!(
                     "resolver: check successful, resolver {resolver} is available again (answer: {ips:?}, {err:?})"
                 );
-                conn.reset_failure();
+                // Go clears the failure through the resolver wrapper so the
+                // "connected to DNS" state is updated as well.
+                self.reset_failure(resolver);
             } else {
                 tracing::debug!("resolver: failed resolver {resolver} is still failing: {err:?}");
             }
