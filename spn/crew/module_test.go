@@ -10,20 +10,42 @@ import (
 	"github.com/safing/portmaster/base/metrics"
 	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/service/core/base"
+	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/service/netenv"
+	"github.com/safing/portmaster/service/updates"
+	"github.com/safing/portmaster/spn/access"
 	"github.com/safing/portmaster/spn/cabin"
 	"github.com/safing/portmaster/spn/conf"
+	"github.com/safing/portmaster/spn/docks"
+	"github.com/safing/portmaster/spn/hub"
+	"github.com/safing/portmaster/spn/navigator"
 	"github.com/safing/portmaster/spn/terminal"
 )
 
 type testInstance struct {
-	db       *dbmodule.DBModule
-	config   *config.Config
-	metrics  *metrics.Metrics
-	rng      *rng.Rng
-	base     *base.Base
-	terminal *terminal.TerminalModule
-	cabin    *cabin.Cabin
+	db        *dbmodule.DBModule
+	config    *config.Config
+	metrics   *metrics.Metrics
+	rng       *rng.Rng
+	base      *base.Base
+	terminal  *terminal.TerminalModule
+	cabin     *cabin.Cabin
+	docks     *docks.Docks
+	geoip     *geoip.GeoIP
+	navigator *navigator.Navigator
+
+	// updates is an updater without any index. It makes geoip lookups fail
+	// cleanly, as no geoip databases are available in tests.
+	updates *updates.Updater
+}
+
+func (stub *testInstance) BinaryUpdates() *updates.Updater {
+	return stub.updates
+}
+
+func (stub *testInstance) IntelUpdates() *updates.Updater {
+	return stub.updates
 }
 
 func (stub *testInstance) Config() *config.Config {
@@ -52,6 +74,11 @@ var _dataDir string
 
 func runTest(m *testing.M) error {
 	conf.EnablePublicHub(true) // Make hub config available.
+	access.EnableTestMode()    // Register test zone instead of real ones.
+	// Do not probe the network (eg. with traceroute) for the device location,
+	// which the navigator requests when adding hubs to the main map.
+	netenv.DisableNetworkDerivedLocation(true)
+
 	var err error
 	// Create a temporary directory for the data
 	_dataDir, err = os.MkdirTemp("", "")
@@ -60,7 +87,9 @@ func runTest(m *testing.M) error {
 	}
 	defer func() { _ = os.RemoveAll(_dataDir) }()
 
-	instance := &testInstance{}
+	instance := &testInstance{
+		updates: &updates.Updater{},
+	}
 	// Init
 	instance.db, err = dbmodule.New(instance)
 	if err != nil {
@@ -89,6 +118,20 @@ func runTest(m *testing.M) error {
 	instance.cabin, err = cabin.New(instance)
 	if err != nil {
 		return fmt.Errorf("failed to create cabin module: %w", err)
+	}
+	instance.docks, err = docks.New(instance)
+	if err != nil {
+		return fmt.Errorf("failed to create docks module: %w", err)
+	}
+	// The geoip module is only created, not started, as there are no geoip
+	// databases. The navigator needs it to look up (missing) locations.
+	instance.geoip, err = geoip.New(instance)
+	if err != nil {
+		return fmt.Errorf("failed to create geoip module: %w", err)
+	}
+	instance.navigator, err = navigator.New(instance)
+	if err != nil {
+		return fmt.Errorf("failed to create navigator module: %w", err)
 	}
 	module, err = New(instance)
 	if err != nil {
@@ -124,9 +167,34 @@ func runTest(m *testing.M) error {
 	if err != nil {
 		return fmt.Errorf("failed to start cabin module: %w", err)
 	}
+	err = instance.docks.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start docks module: %w", err)
+	}
+	err = instance.navigator.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start navigator module: %w", err)
+	}
+	// Hubs are only regarded for routing after the intel data was applied.
+	// Use empty intel data, so that no intel based states are set.
+	mapIntel := &hub.Intel{}
+	err = mapIntel.ParseAdvisories()
+	if err != nil {
+		return fmt.Errorf("failed to parse map intel: %w", err)
+	}
+	err = navigator.Main.UpdateIntel(mapIntel, nil)
+	if err != nil {
+		return fmt.Errorf("failed to set map intel: %w", err)
+	}
 	err = module.Start()
 	if err != nil {
 		return fmt.Errorf("failed to start crew module: %w", err)
+	}
+	// Initialize the access zones without the access module, which would also
+	// manage the account and request tokens.
+	err = access.InitializeZones()
+	if err != nil {
+		return fmt.Errorf("failed to initialize access zones: %w", err)
 	}
 
 	conf.EnablePublicHub(true)
