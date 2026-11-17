@@ -102,9 +102,11 @@ fn scoped_filter_sizes_match_go() {
             "{scope}"
         );
     }
+    // The report shows the element capacity (bits / hashes, rounded), not the
+    // raw bit count of each filter.
     assert_eq!(
         bloom.capacity_report(),
-        "domain=0/28755176 asn=0/143776 country=0/4314 ipv4=0/2875518 ipv6=0/287552"
+        "domain=0/2875518 asn=0/14378 country=0/431 ipv4=0/287552 ipv6=0/28755"
     );
 }
 
@@ -121,10 +123,20 @@ fn decodes_plain_and_gzipped_files() {
     let decoded = decode_file(gzipped.as_slice()).unwrap();
     assert_eq!(decoded, expected);
 
-    // The decoder rejects unknown contents.
+    // The decoder rejects invalid headers, but non-JSON DSD formats are now
+    // supported (or skipped with a warning when pm-dsd cannot decode them).
     assert!(decode_file(&b""[..]).is_err());
     assert!(decode_file(&b"XX"[..]).is_err());
-    assert!(decode_file(&[pm_dsd::format::LIST, pm_dsd::format::CBOR][..]).is_err());
+    assert!(
+        decode_file(&[pm_dsd::format::LIST, pm_dsd::format::CBOR][..])
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        decode_file(&[pm_dsd::format::LIST, pm_dsd::format::YAML][..])
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[test]
