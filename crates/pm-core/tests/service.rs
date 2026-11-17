@@ -600,7 +600,7 @@ async fn restart_endpoint_requests_a_restart() {
         .expect("service stops on restart request")
         .expect("service task");
     assert!(result.is_ok(), "service stopped cleanly: {result:?}");
-    assert!(service.restart_token.is_cancelled());
+    assert!(service.restart_requested());
     let _ = std::fs::remove_dir_all(&data_dir);
 }
 
