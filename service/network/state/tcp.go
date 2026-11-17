@@ -24,6 +24,11 @@ type tcpTable struct {
 
 	// lastUpdateAt stores the time when the tables where last updated as unix nanoseconds.
 	lastUpdateAt atomic.Int64
+	// lastFetchAttemptAt stores the time of the last attempt to update the
+	// tables as unix nanoseconds, regardless of whether it succeeded.
+	// Exists() uses it, so that a failing fetch is not retried for every
+	// connection check. Lookups use lastUpdateAt, so that they still retry.
+	lastFetchAttemptAt atomic.Int64
 
 	fetchLimiter *utils.CallLimiter2
 	fetchTable   func() (connections []*socket.ConnectionInfo, listeners []*socket.BindInfo, err error)
@@ -69,6 +74,8 @@ func (table *tcpTable) updateTables() (
 	table.fetchLimiter.Do(func() {
 		// Fetch new tables from system.
 		connections, listeners, err := table.fetchTable()
+		fetchedAt := time.Now().UnixNano()
+		defer table.lastFetchAttemptAt.Store(fetchedAt)
 		if err != nil {
 			log.Warningf("state: failed to get TCP%d socket table: %s", table.version, err)
 			return
@@ -84,7 +91,7 @@ func (table *tcpTable) updateTables() (
 		defer table.lock.Unlock()
 		table.connections = connections
 		table.listeners = listeners
-		table.lastUpdateAt.Store(time.Now().UnixNano())
+		table.lastUpdateAt.Store(fetchedAt)
 	})
 
 	return table.getCurrentTables()

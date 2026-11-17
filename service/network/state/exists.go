@@ -65,7 +65,10 @@ func (table *tcpTable) exists(pktInfo *packet.Info, now time.Time) (exists bool)
 
 func (table *tcpTable) existsInTable(pktInfo *packet.Info, updateIfOlderThan int64) (exists bool) {
 	// Update tables if older than the given time (unix nanoseconds).
-	if table.lastUpdateAt.Load() < updateIfOlderThan {
+	// Use the time of the last fetch attempt, so that a failing fetch is not
+	// retried for every connection of a cleaner run. The last good tables are
+	// used instead until the next cleaner run.
+	if table.lastFetchAttemptAt.Load() < updateIfOlderThan {
 		table.updateTables()
 	}
 
@@ -117,7 +120,9 @@ func (table *udpTable) exists(pktInfo *packet.Info, now time.Time) (exists bool)
 // as lookups do.
 func (table *udpTable) findBind(pktInfo *packet.Info) *socket.BindInfo {
 	// Update tables if older than the connection that is checked.
-	if table.lastUpdateAt.Load() < pktInfo.SeenAt.UnixNano() {
+	// Use the time of the last fetch attempt, so that a failing fetch is not
+	// retried for every connection of a cleaner run.
+	if table.lastFetchAttemptAt.Load() < pktInfo.SeenAt.UnixNano() {
 		table.updateTables()
 	}
 

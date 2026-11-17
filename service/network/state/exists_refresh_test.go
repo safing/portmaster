@@ -37,6 +37,7 @@ func newMutableTestTCPTable(version int, osTable *atomic.Pointer[[]*socket.Conne
 func waitForNextCleanerRun(tables ...*tcpTable) (now time.Time) {
 	for _, table := range tables {
 		table.lastUpdateAt.Add(-testCleanerTick.Nanoseconds())
+		table.lastFetchAttemptAt.Add(-testCleanerTick.Nanoseconds())
 	}
 	return time.Now()
 }
