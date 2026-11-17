@@ -164,6 +164,11 @@ type Updater struct {
 
 	corruptedInstallation error
 
+	// recoveryFailed is set when the rollback of a failed upgrade could not
+	// restore all files: the purge directory then holds files of the installed
+	// version, which the next upgrade must not delete. Guarded by indexLock.
+	recoveryFailed bool
+
 	isUpdateRunning *abool.AtomicBool
 	started         *abool.AtomicBool
 	configureLock   sync.Mutex

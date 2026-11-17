@@ -31,6 +31,19 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 		defer u.instance.UI().DisableUpgradeLock()
 	}
 
+	// A previous rollback could not restore all files: they are still in the
+	// purge directory, which the upgrade resets. Retry to restore them first.
+	if u.recoveryFailed {
+		_, err := os.Stat(u.cfg.PurgeDirectory)
+		if err == nil {
+			err = u.recoverFromFailedUpgrade(nil)
+			if err != nil {
+				return fmt.Errorf("cannot upgrade: files of a failed rollback in %s cannot be restored: %w", u.cfg.PurgeDirectory, err)
+			}
+		}
+		u.recoveryFailed = false
+	}
+
 	// Execute the upgrade.
 	previousIndex := u.index
 	installedFiles, upgradeError := u.upgradeMoveFiles(downloader)
@@ -54,7 +67,8 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 	}
 
 	// Recovery failed too.
-	return fmt.Errorf("upgrade (including recovery) failed: %w", upgradeError)
+	u.recoveryFailed = true
+	return fmt.Errorf("upgrade (including recovery) failed: %w (recovery: %w)", upgradeError, recoveryErr)
 }
 
 // upgradeMoveFiles moves the new version into place. It returns the names of the
@@ -196,13 +210,16 @@ func (u *Updater) recoverFromFailedUpgrade(installedFiles []string) error {
 	}
 
 	// Move all files back to main dir.
+	var restoreErrs []error
 	for _, file := range files {
 		purgedFile := filepath.Join(u.cfg.PurgeDirectory, file.Name())
 		activeFile := filepath.Join(u.cfg.Directory, file.Name())
 		err := u.moveFile(purgedFile, activeFile, "", utils.PublicReadPermission)
 		if err != nil {
-			// Only warn and continue to recover as many files as possible.
+			// Continue to recover as many files as possible, but report the
+			// failure: the file is only in the purge directory now.
 			log.Warningf("updates/%s: failed to roll back file %s: %s", u.cfg.Name, file.Name(), err)
+			restoreErrs = append(restoreErrs, fmt.Errorf("roll back %s: %w", file.Name(), err))
 		}
 	}
 
@@ -220,7 +237,7 @@ func (u *Updater) recoverFromFailedUpgrade(installedFiles []string) error {
 		}
 	}
 
-	return nil
+	return errors.Join(restoreErrs...)
 }
 
 func (u *Updater) cleanupAfterUpgrade() error {

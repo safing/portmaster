@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -128,5 +129,85 @@ func TestRollbackWithCopyFallback(t *testing.T) {
 	compareSnapshots(t, before, snapshotDir(t, installedDir))
 	for name := range snapshotDir(t, updater.cfg.PurgeDirectory) {
 		t.Errorf("unexpected file %q left in purge directory after rollback", name)
+	}
+}
+
+//nolint:paralleltest // Replaces the package-level renameFile.
+func TestRollbackReportsAndKeepsUnrestoredFile(t *testing.T) {
+	updater, downloader, installedDir := newRollbackTestUpdater(t, nil)
+
+	// Give the old file distinct content to tell it apart from the new one.
+	const name = "portmaster-core"
+	const oldContent = "old:portmaster-core"
+	err := os.WriteFile(filepath.Join(installedDir, name), []byte(oldContent), 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := snapshotDir(t, installedDir)
+
+	// Make the upgrade fail after the new file was installed: the last artifact is missing.
+	last := downloader.index.Artifacts[len(downloader.index.Artifacts)-1].Filename
+	if last == name {
+		t.Fatalf("unexpected test index: %s must not be the last artifact", name)
+	}
+	err = os.Remove(filepath.Join(updater.cfg.DownloadDirectory, last))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Make the restore of the old file fail: the rename fails and a directory
+	// blocks the temporary file of the copy fallback.
+	purged := filepath.Join(updater.cfg.PurgeDirectory, name)
+	blocker := filepath.Join(installedDir, name+".copy")
+	renameFile = func(oldpath, newpath string) error {
+		if oldpath == purged {
+			err := os.MkdirAll(blocker, 0o700)
+			if err != nil {
+				return err
+			}
+			return failRename(oldpath, newpath)
+		}
+		return os.Rename(oldpath, newpath)
+	}
+	defer func() { renameFile = os.Rename }()
+
+	err = updater.upgrade(downloader, true)
+	if err == nil || !strings.Contains(err.Error(), "including recovery") {
+		t.Errorf("expected upgrade to report a failed recovery, got: %v", err)
+	}
+	checkPurgedFile := func(step string) {
+		t.Helper()
+		content, err := os.ReadFile(purged)
+		if err != nil || string(content) != oldContent {
+			t.Errorf("%s: old file not kept in purge directory: %q, %v", step, content, err)
+		}
+	}
+	checkPurgedFile("after failed recovery")
+
+	// All other files must be restored.
+	after := snapshotDir(t, installedDir)
+	for _, ignore := range []string{name, name + ".copy/"} {
+		delete(before, ignore)
+		delete(after, ignore)
+	}
+	compareSnapshots(t, before, after)
+
+	// The next upgrade must not delete the unrestored file while it cannot be restored.
+	err = updater.upgrade(downloader, true)
+	if err == nil {
+		t.Error("expected upgrade to be refused while an old file cannot be restored")
+	}
+	checkPurgedFile("after refused upgrade")
+
+	// Once the cause is gone, the next upgrade restores the file first.
+	renameFile = os.Rename
+	err = os.RemoveAll(blocker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = updater.upgrade(downloader, true) // Fails: the downloads were consumed.
+	content, err := os.ReadFile(filepath.Join(installedDir, name))
+	if err != nil || string(content) != oldContent {
+		t.Errorf("old file not restored by the next upgrade: %q, %v", content, err)
 	}
 }
