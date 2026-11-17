@@ -220,6 +220,17 @@ func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 		return GetSystemProcess(ctx), nil
 	}
 
+	// Return a known process without the more expensive lookup of all process
+	// data by gopsutil. The creation time is the same, so the process key is,
+	// too. If the fast path fails, for example because the process exited, the
+	// lookup below handles it as before.
+	pid32 := int32(pid) //nolint:gosec // PIDs fit into int32, as for gopsutil below.
+	if createdAt, ok := fastCreateTime(ctx, pid32); ok {
+		if p, ok := GetProcessFromStorage(getProcessKey(pid32, createdAt)); ok {
+			return p, nil
+		}
+	}
+
 	// Get pid and creation time for identification.
 	pInfo, err := processInfo.NewProcessWithContext(ctx, int32(pid))
 	if err != nil {
