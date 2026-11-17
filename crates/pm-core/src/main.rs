@@ -63,7 +63,18 @@ fn main() -> ExitCode {
         );
 
         match service.run().await {
-            Ok(()) => ExitCode::SUCCESS,
+            Ok(()) => {
+                if service.restart_requested() {
+                    // A restart is a graceful stop from the service's point of
+                    // view, but the supervisor only spins up the new binary
+                    // when we exit non-zero (see `RESTART_EXIT_CODE`). Plain
+                    // shutdowns, including SIGTERM, keep exiting 0.
+                    tracing::info!(code = cli::RESTART_EXIT_CODE, "restarting core");
+                    ExitCode::from(cli::RESTART_EXIT_CODE as u8)
+                } else {
+                    ExitCode::SUCCESS
+                }
+            }
             Err(error) => {
                 tracing::error!(%error, "core failed");
                 eprintln!("core failed: {error}");
