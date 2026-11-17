@@ -32,6 +32,7 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 	}
 
 	// Execute the upgrade.
+	previousIndex := u.index
 	upgradeError := u.upgradeMoveFiles(downloader)
 	if upgradeError == nil {
 		// Files upgraded successfully.
@@ -44,6 +45,9 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 	}
 
 	// Attempt to recover from failed upgrade.
+	// The recovery moves the previous files (including the index file) back,
+	// so the previous index must be active again too.
+	u.index = previousIndex
 	recoveryErr := u.recoverFromFailedUpgrade()
 	if recoveryErr == nil {
 		return fmt.Errorf("upgrade failed, but recovery was successful: %w", upgradeError)
