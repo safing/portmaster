@@ -61,6 +61,9 @@ func NewBBolt(name, location string) (storage.Interface, error) {
 		return nil
 	})
 	if err != nil {
+		// Close the database in order to release its file lock, which would
+		// otherwise block every later attempt to open it.
+		_ = db.Close()
 		return nil, err
 	}
 
