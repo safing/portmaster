@@ -43,6 +43,8 @@ type TCPResolver struct {
 	// heartbeatTimeout defines how long the connection may take to respond
 	// to an alive check before it is replaced.
 	heartbeatTimeout time.Duration
+	// clientTTL defines after which time a connection is recycled.
+	clientTTL time.Duration
 	// dialSlot is held while a new connection is established, so that
 	// concurrent queries share one new connection instead of each dialing
 	// their own. It is a channel, so that waiting can be canceled.
@@ -70,6 +72,9 @@ type tcpResolverConn struct {
 	// inFlightTimeout defines after which time unanswered in-flight queries
 	// are removed from inFlightQueries.
 	inFlightTimeout time.Duration
+	// ttl defines after which time the connection is recycled.
+	// Zero means defaultClientTTL.
+	ttl time.Duration
 	// heartbeat is a alive-checking channel from which the resolver conn must
 	// always read asap.
 	heartbeat chan struct{}
@@ -118,6 +123,7 @@ func NewTCPResolver(resolver *Resolver) *TCPResolver {
 			WriteTimeout: tcpWriteTimeout,
 		},
 		heartbeatTimeout: heartbeatTimeout,
+		clientTTL:        defaultClientTTL,
 		dialSlot:         make(chan struct{}, 1),
 	}
 	newResolver.BasicResolverConn.init()
@@ -261,6 +267,7 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		// Query() gives up waiting for a reply after defaultRequestTimeout.
 		// Keep unanswered queries a bit longer in order to still cache late replies.
 		inFlightTimeout: 2 * defaultRequestTimeout,
+		ttl:             tr.clientTTL,
 		heartbeat:       make(chan struct{}),
 		abandoned:       abool.New(),
 		stopped:         make(chan struct{}),
@@ -458,7 +465,11 @@ func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 
 	// Set up variables.
 	var readyToRecycle bool
-	ttlTimer := time.After(defaultClientTTL)
+	ttl := trc.ttl
+	if ttl <= 0 {
+		ttl = defaultClientTTL
+	}
+	ttlTimer := time.After(ttl)
 	cleanupTicker := time.NewTicker(trc.inFlightTimeout)
 	defer cleanupTicker.Stop()
 
@@ -478,6 +489,10 @@ func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
 		case <-ttlTimer:
 			// Recycle the connection after the TTL is reached.
 			readyToRecycle = true
+			// Stop handing out this connection to new queries, so that it
+			// drains and the next query creates a new one. Otherwise a busy
+			// connection that always has a query in flight is never recycled.
+			trc.abandoned.Set()
 			// Send dummy response to trigger the check.
 			select {
 			case trc.responses <- nil:

@@ -747,3 +747,87 @@ func TestTCPResolverWaitForDialHonorsContext(t *testing.T) {
 		t.Errorf("expected no connection, got %d", got)
 	}
 }
+
+// TestTCPResolverRecyclesBusyConn checks that a connection that always has a
+// query in flight is still recycled after its TTL.
+func TestTCPResolverRecyclesBusyConn(t *testing.T) {
+	t.Parallel()
+
+	// A server that answers every query after a delay, so that queries
+	// overlap. It records for each accepted connection whether the client
+	// closed it.
+	listener, port := listenTCP(t)
+	var (
+		lock   sync.Mutex
+		closed []bool
+	)
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			t.Cleanup(func() { _ = conn.Close() })
+			lock.Lock()
+			index := len(closed)
+			closed = append(closed, false)
+			lock.Unlock()
+			go func() {
+				dnsConn := &dns.Conn{Conn: conn}
+				var writeLock sync.Mutex
+				for {
+					query, err := dnsConn.ReadMsg()
+					if err != nil {
+						lock.Lock()
+						closed[index] = true
+						lock.Unlock()
+						return
+					}
+					go func() {
+						time.Sleep(100 * time.Millisecond)
+						reply := &dns.Msg{}
+						reply.SetReply(query)
+						writeLock.Lock()
+						defer writeLock.Unlock()
+						_ = dnsConn.WriteMsg(reply)
+					}()
+				}
+			}()
+		}
+	}()
+	server := &tcpTestServer{port: port}
+	tr := NewTCPResolver(server.resolver())
+	tr.clientTTL = 200 * time.Millisecond
+
+	// Keep queries in flight all the time.
+	ctx, cancel := context.WithCancel(t.Context())
+	var wg sync.WaitGroup
+	for i := range 4 {
+		wg.Go(func() {
+			time.Sleep(time.Duration(i) * 25 * time.Millisecond)
+			for ctx.Err() == nil {
+				_, _ = tr.Query(ctx, &Query{FQDN: "busy.example.", QType: dns.Type(dns.TypeA), NoCaching: true})
+			}
+		})
+	}
+
+	// The first connection must be replaced and closed.
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		lock.Lock()
+		recycled := len(closed) >= 2 && closed[0]
+		accepted := len(closed)
+		lock.Unlock()
+		if recycled {
+			break
+		}
+		if time.Now().After(deadline) {
+			cancel()
+			wg.Wait()
+			t.Fatalf("busy connection was not recycled 10x past its TTL (%d connections accepted)", accepted)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	wg.Wait()
+}
