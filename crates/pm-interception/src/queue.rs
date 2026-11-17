@@ -12,8 +12,39 @@ use std::time::{Duration, Instant};
 use tokio::io::unix::AsyncFd;
 use tokio::sync::{mpsc, oneshot};
 
+#[cfg(target_os = "linux")]
+use std::os::unix::io::AsRawFd;
+
 use crate::marks::Mark;
 use crate::packet::{parse_layer3, Parsed};
+
+#[cfg(target_os = "linux")]
+#[allow(unsafe_code)]
+fn tune_nfqueue_socket(fd: std::os::unix::io::RawFd) {
+    // 4MB netlink buffer to eliminate ENOBUFS receive buffer overruns during packet bursts.
+    // Try SO_RCVBUFFORCE first (overrides sysctl rmem_max when CAP_NET_ADMIN/root is held),
+    // and fall back to SO_RCVBUF otherwise.
+    const SO_RCVBUFFORCE: libc::c_int = 33;
+    let size: libc::c_int = 4 * 1024 * 1024;
+    unsafe {
+        let ret = libc::setsockopt(
+            fd,
+            libc::SOL_SOCKET,
+            SO_RCVBUFFORCE,
+            &size as *const _ as *const libc::c_void,
+            std::mem::size_of_val(&size) as libc::socklen_t,
+        );
+        if ret != 0 {
+            let _ = libc::setsockopt(
+                fd,
+                libc::SOL_SOCKET,
+                libc::SO_RCVBUF,
+                &size as *const _ as *const libc::c_void,
+                std::mem::size_of_val(&size) as libc::socklen_t,
+            );
+        }
+    }
+}
 
 /// A packet without verdict is dropped after this time.
 pub const VERDICT_TIMEOUT: Duration = Duration::from_secs(20);
@@ -113,6 +144,10 @@ pub fn start(
     queue.set_copy_range(num, MAX_PACKET_LEN)?;
     queue.set_queue_max_len(num, MAX_QUEUE_LEN)?;
     queue.set_nonblocking(true);
+    #[cfg(target_os = "linux")]
+    {
+        tune_nfqueue_socket(queue.as_raw_fd());
+    }
     let fd = register(queue)?;
     let (stop_tx, stop_rx) = oneshot::channel();
     let task = tokio::spawn(run(fd, num, inbound, out, stop_rx));
@@ -153,7 +188,7 @@ async fn run(
             _ = &mut stop => break,
             Some((id, mark)) = verdict_rx.recv() => {
                 if let Some((msg, _)) = pending.remove(&id) {
-                    send_verdict(fd.get_mut(), msg, mark, num)?;
+                    let _ = send_verdict(fd.get_mut(), msg, mark, num);
                 }
             }
             _ = sweep.tick() => {
@@ -166,7 +201,7 @@ async fn run(
                 for id in expired {
                     if let Some((msg, _)) = pending.remove(&id) {
                         tracing::warn!(queue = num, id, "nfqueue: no verdict set after 20s, dropping");
-                        send_verdict(fd.get_mut(), msg, Mark::Drop, num)?;
+                        let _ = send_verdict(fd.get_mut(), msg, Mark::Drop, num);
                     }
                 }
             }
@@ -187,8 +222,8 @@ async fn run(
                         Err(e) => return Err(e),
                     };
                     let id = msg.get_packet_id();
-                    let payload = msg.get_payload().to_vec();
-                    let info = match parse_layer3(&payload) {
+                    let raw_bytes = msg.get_payload();
+                    let info = match parse_layer3(raw_bytes) {
                         Ok(info) => info,
                         Err(e) => {
                             tracing::warn!(queue = num, id, error = %e, "nfqueue: failed to parse payload");
@@ -196,6 +231,7 @@ async fn run(
                             continue;
                         }
                     };
+                    let payload = raw_bytes.to_vec();
                     let packet = QueuedPacket {
                         queue: num,
                         id,
@@ -220,7 +256,7 @@ async fn run(
 
     // Unanswered packets must not stay in the kernel queue.
     for (_, (msg, _)) in pending.drain() {
-        send_verdict(fd.get_mut(), msg, Mark::Drop, num)?;
+        let _ = send_verdict(fd.get_mut(), msg, Mark::Drop, num);
     }
     let _ = fd.get_mut().unbind(num);
     Ok(())

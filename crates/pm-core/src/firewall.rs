@@ -729,15 +729,13 @@ impl PacketEnv for CoreFirewallEnv {
         rr: &pm_resolver::RRCache,
         conn: &pm_network::Connection,
     ) {
-        let Some(profile) = self
-            .profiles
-            .layered_for(conn.process.as_ref().expect("process"))
-        else {
-            return;
-        };
+        let profile = conn
+            .process
+            .as_ref()
+            .and_then(|proc| self.profiles.layered_for(proc));
         pm_firewall::dns_filter::update_ips_and_cnames(
             &self.ip_info,
-            &profile,
+            profile.as_deref(),
             query,
             rr,
             conn,
@@ -964,7 +962,10 @@ impl Firewall {
                 Arc::new(pm_firewall::PreAuthPorts::new()),
                 Arc::new(SystemConntrack::new()) as Arc<dyn ConntrackControl>,
             )
-            .with_bandwidth_sink(Arc::new(NetqueryBandwidth::new(Arc::clone(&db)))),
+            .with_bandwidth_sink(Arc::new(NetqueryBandwidth::new(Arc::clone(&db))))
+            .with_executor(Arc::new(|job| {
+                tokio::task::spawn_blocking(job);
+            })),
         );
 
         Ok(Firewall {
@@ -1114,7 +1115,7 @@ impl Firewall {
         // default, so unconditionally deleting all unmarked conntrack entries
         // kills the user's live connections on every start.
 
-        let (tx, mut rx) = mpsc::channel::<pm_interception::queue::QueuedPacket>(1024);
+        let (tx, mut rx) = mpsc::channel::<pm_interception::queue::QueuedPacket>(16384);
         let mut queues = Vec::new();
         for (number, inbound) in [
             (iptables::QUEUE_V4_OUT, false),

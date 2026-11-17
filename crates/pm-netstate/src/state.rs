@@ -96,25 +96,24 @@ impl TcpTable {
     fn update(&self, procfs: &ProcFs) -> (Vec<Arc<ConnectionInfo>>, Vec<Arc<BindInfo>>) {
         {
             let mut limiter = self.limiter.lock().expect("lock poisoned");
-            let should_fetch =
-                limiter.is_none_or(|last| last.elapsed() >= MIN_DURATION_BETWEEN_TABLE_UPDATES);
-            if should_fetch {
-                *limiter = Some(Instant::now());
+            if let Some(last) = *limiter {
+                let elapsed = last.elapsed();
+                if elapsed < MIN_DURATION_BETWEEN_TABLE_UPDATES {
+                    std::thread::sleep(MIN_DURATION_BETWEEN_TABLE_UPDATES - elapsed);
+                }
             }
-            drop(limiter);
+            *limiter = Some(Instant::now());
 
-            if should_fetch {
-                match procfs.table(self.stack) {
-                    Ok((connections, listeners)) => {
-                        *self.connections.write().expect("lock poisoned") =
-                            connections.into_iter().map(Arc::new).collect();
-                        *self.listeners.write().expect("lock poisoned") =
-                            listeners.into_iter().map(Arc::new).collect();
-                        *self.last_update.lock().expect("lock poisoned") = Some(SystemTime::now());
-                    }
-                    Err(error) => {
-                        tracing::warn!(stack = ?self.stack, %error, "state: failed to get socket table");
-                    }
+            match procfs.table(self.stack) {
+                Ok((connections, listeners)) => {
+                    *self.connections.write().expect("lock poisoned") =
+                        connections.into_iter().map(Arc::new).collect();
+                    *self.listeners.write().expect("lock poisoned") =
+                        listeners.into_iter().map(Arc::new).collect();
+                    *self.last_update.lock().expect("lock poisoned") = Some(SystemTime::now());
+                }
+                Err(error) => {
+                    tracing::warn!(stack = ?self.stack, %error, "state: failed to get socket table");
                 }
             }
         }
@@ -164,23 +163,22 @@ impl UdpTable {
     fn update(&self, procfs: &ProcFs) -> Vec<Arc<BindInfo>> {
         {
             let mut limiter = self.limiter.lock().expect("lock poisoned");
-            let should_fetch =
-                limiter.is_none_or(|last| last.elapsed() >= MIN_DURATION_BETWEEN_TABLE_UPDATES);
-            if should_fetch {
-                *limiter = Some(Instant::now());
+            if let Some(last) = *limiter {
+                let elapsed = last.elapsed();
+                if elapsed < MIN_DURATION_BETWEEN_TABLE_UPDATES {
+                    std::thread::sleep(MIN_DURATION_BETWEEN_TABLE_UPDATES - elapsed);
+                }
             }
-            drop(limiter);
+            *limiter = Some(Instant::now());
 
-            if should_fetch {
-                match procfs.table(self.stack) {
-                    Ok((_, binds)) => {
-                        *self.binds.write().expect("lock poisoned") =
-                            binds.into_iter().map(Arc::new).collect();
-                        *self.last_update.lock().expect("lock poisoned") = Some(SystemTime::now());
-                    }
-                    Err(error) => {
-                        tracing::warn!(stack = ?self.stack, %error, "state: failed to get socket table");
-                    }
+            match procfs.table(self.stack) {
+                Ok((_, binds)) => {
+                    *self.binds.write().expect("lock poisoned") =
+                        binds.into_iter().map(Arc::new).collect();
+                    *self.last_update.lock().expect("lock poisoned") = Some(SystemTime::now());
+                }
+                Err(error) => {
+                    tracing::warn!(stack = ?self.stack, %error, "state: failed to get socket table");
                 }
             }
         }

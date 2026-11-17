@@ -18,6 +18,7 @@ pm-compat = { path = "../pm-compat" }
 anyhow.workspace = true
 async-trait.workspace = true
 hex.workspace = true
+sha2.workspace = true
 pm-api = { path = "../pm-api" }
 pm-config = { path = "../pm-config" }
 pm-control = { path = "../pm-control" }
@@ -44,6 +45,7 @@ pm-splittun = { path = "../pm-splittun" }
 pm-sync = { path = "../pm-sync" }
 pm-status = { path = "../pm-status" }
 pm-updates = { path = "../pm-updates" }
+pm-utils = { path = "../pm-utils" }
 pm-intel = { path = "../pm-intel" }
 pm-jess = { path = "../pm-jess" }
 pm-metrics = { path = "../pm-metrics" }

@@ -708,6 +708,7 @@ impl Service {
         });
         crate::account_api::register_api(&api)
             .map_err(|error| anyhow::anyhow!("register account api: {error}"))?;
+        crate::account_api::register_spn_and_user_profile(&runtime, &databases);
 
         crate::core_api::register_api(
             Arc::clone(&api),
@@ -715,6 +716,7 @@ impl Service {
             Arc::clone(&notifications),
             Arc::clone(&firewall.netquery_db),
             Arc::clone(&firewall.profiles),
+            &options.data_dir,
         )
         .map_err(|error| anyhow::anyhow!("register core api: {error}"))?;
 

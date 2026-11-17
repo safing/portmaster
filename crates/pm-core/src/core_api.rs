@@ -28,7 +28,10 @@ pub fn register_api(
     notifications: std::sync::Arc<Notifications>,
     netquery_db: std::sync::Arc<pm_netquery::Database>,
     profiles: std::sync::Arc<crate::firewall::CoreProfiles>,
+    data_dir: impl AsRef<std::path::Path>,
 ) -> Result<()> {
+    register_profile_icon_api(&api, data_dir.as_ref())?;
+
     api.register_endpoint(
         Endpoint::new(
             "app/profile",
@@ -345,6 +348,90 @@ fn platform_family(platform: &str) -> &'static str {
         "alpine" => "alpine",
         _ => "unknown",
     }
+}
+
+/// Registers profile icon endpoints `profile/icon/{id}` and `profile/icon`.
+pub fn register_profile_icon_api(api: &Api, data_dir: &std::path::Path) -> Result<()> {
+    let icons_dir1 = data_dir.join("databases").join("core").join("icons");
+    let icons_dir2 = data_dir.join("databases").join("icons");
+    let icons_dir_upload = icons_dir1.clone();
+
+    api.register_endpoint(
+        Endpoint::new("profile/icon/{id}", "Get Profile Icon", "Returns the requested profile icon.")
+            .with_read(PERMIT_USER)
+            .with_handler(move |request| {
+                let Some(id) = request.params.get("id") else {
+                    return pm_api::Response::error(400, "missing icon id");
+                };
+                if id.contains('/') || id.contains('\\') || id.contains("..") {
+                    return pm_api::Response::error(400, "invalid icon id");
+                }
+                let ext = std::path::Path::new(id)
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("")
+                    .to_ascii_lowercase();
+                let mime = match ext.as_str() {
+                    "ico" => "image/x-icon",
+                    "png" => "image/png",
+                    "svg" => "image/svg+xml",
+                    "jpg" | "jpeg" => "image/jpeg",
+                    "webp" => "image/webp",
+                    _ => "application/octet-stream",
+                };
+                let path1 = icons_dir1.join(id);
+                let path2 = icons_dir2.join(id);
+                let target = if path1.is_file() {
+                    Some(path1)
+                } else if path2.is_file() {
+                    Some(path2)
+                } else {
+                    None
+                };
+                match target {
+                    Some(path) => match std::fs::read(&path) {
+                        Ok(data) => pm_api::Response::body(200, data, mime),
+                        Err(_) => pm_api::Response::error(500, "failed to read icon"),
+                    },
+                    None => pm_api::Response::error(404, "icon not found"),
+                }
+            }),
+    )?;
+
+    api.register_endpoint(
+        Endpoint::new("profile/icon", "Update Profile Icon", "Updates a profile icon.")
+            .with_write(PERMIT_USER)
+            .with_handler(move |request| {
+                if request.body.is_empty() {
+                    return pm_api::Response::error(400, "no content");
+                }
+                if request.body.len() > 1_000_000 {
+                    return pm_api::Response::error(400, "icon too big");
+                }
+                use sha2::{Digest, Sha256};
+                let mut hasher = Sha256::new();
+                hasher.update(&request.body);
+                let hash = hex::encode(hasher.finalize());
+                let mime = request.header.get("content-type").and_then(|v| v.to_str().ok()).unwrap_or("");
+                let ext = match mime {
+                    "image/png" => "png",
+                    "image/x-icon" | "image/vnd.microsoft.icon" => "ico",
+                    "image/svg+xml" => "svg",
+                    "image/jpeg" => "jpg",
+                    _ => "png",
+                };
+                let filename = format!("{hash}.{ext}");
+                let _ = std::fs::create_dir_all(&icons_dir_upload);
+                let _ = std::fs::write(icons_dir_upload.join(&filename), &request.body);
+                pm_api::Response::body(
+                    200,
+                    serde_json::to_vec(&serde_json::json!({ "filename": filename })).unwrap(),
+                    "application/json",
+                )
+            }),
+    )?;
+
+    Ok(())
 }
 
 #[cfg(test)]

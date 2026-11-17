@@ -152,6 +152,10 @@ EOF
 ExecStart=
 ExecStart=${RUST_BIN} --bin-dir=${BIN_DIR} --data-dir=${DATA_DIR} --log-dir=${DATA_DIR}/log --log=\${LOGLEVEL}
 EOF
+	if [[ -f ${UI_DROPIN} && -d ${PILOT_WEB} ]]; then
+		mkdir -p "${PILOT_DEST_DIR}"
+		cp -a "${PILOT_WEB}/." "${PILOT_DEST_DIR}/"
+	fi
 	# Never leave a broken drop-in behind: if the restart fails or the core
 	# does not become ready, roll back to the Go core automatically.
 	if ! restart; then

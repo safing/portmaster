@@ -13,8 +13,8 @@ use pm_firewall::dns_filter::FirewallDnsHook;
 use pm_firewall::packet::{LayeredProfileLookup, PacketEnv};
 use pm_nameserver::{
     DnsRequestInfo, FilterOutcome, FirewallHook, ListenerEvent, Nameserver, NameserverDeps,
-    NameserverIpMatcher, NetstateLookup, PermissiveHook, RequestAttributor, Running, ServerEnv,
-    StartOptions, SystemEnv,
+    NameserverIpMatcher, NetstateLookup, NetworkAttributor, PermissiveHook, RequestAttributor,
+    Running, ServerEnv, StartOptions, SystemEnv,
 };
 use pm_netenv::{network_changed_flag, OnlineStatus};
 use pm_netstate::{NetState, ProcFs};
@@ -132,6 +132,23 @@ impl RequestAttributor for BasicAttributor {
             ..Connection::default()
         };
         Ok(Arc::new(Mutex::new(conn)))
+    }
+}
+
+/// Forwards DNS request attribution to the real network-backed attributor once
+/// the firewall connection store is available.
+struct DeferredAttributor {
+    attributor: Arc<OnceLock<Arc<dyn RequestAttributor>>>,
+    fallback: BasicAttributor,
+}
+
+#[async_trait]
+impl RequestAttributor for DeferredAttributor {
+    async fn attribute(&self, request: &DnsRequestInfo) -> Result<SharedConnection, String> {
+        match self.attributor.get() {
+            Some(attributor) => attributor.attribute(request).await,
+            None => self.fallback.attribute(request).await,
+        }
     }
 }
 
@@ -261,6 +278,8 @@ pub struct Dns {
     matcher: Arc<RwLock<Option<NameserverIpMatcher>>>,
     /// Set by the core once the firewall is available.
     firewall_hook: Arc<OnceLock<Arc<dyn FirewallHook>>>,
+    /// Set by the core once the firewall connection store is available.
+    attributor: Arc<OnceLock<Arc<dyn RequestAttributor>>>,
     /// Called whenever the nameserver matcher changes, so the firewall can
     /// replace its old matcher instead of keeping a stale one.
     matcher_sink: Arc<RwLock<Option<MatcherSink>>>,
@@ -300,12 +319,16 @@ impl Dns {
         let system_env_concrete = Arc::new(SystemEnv::new(network_service));
         let system_env: Arc<dyn ServerEnv> = Arc::clone(&system_env_concrete) as Arc<dyn ServerEnv>;
         let firewall_hook = Arc::new(OnceLock::new());
+        let attributor = Arc::new(OnceLock::new());
         let matcher = Arc::new(RwLock::new(None));
         let matcher_sink: Arc<RwLock<Option<MatcherSink>>> = Arc::new(RwLock::new(None));
         let listeners = Arc::new(Listeners {
             nameserver: Arc::new(Nameserver::new(NameserverDeps {
                 resolver: Arc::new(resolver.clone()),
-                attributor: Arc::new(BasicAttributor),
+                attributor: Arc::new(DeferredAttributor {
+                    attributor: Arc::clone(&attributor),
+                    fallback: BasicAttributor,
+                }),
                 hook: Arc::new(DeferredHook {
                     hook: Arc::clone(&firewall_hook),
                     fallback: PermissiveHook::default(),
@@ -431,6 +454,7 @@ impl Dns {
             running,
             matcher,
             firewall_hook,
+            attributor,
             matcher_sink,
             cancel,
             tasks: Mutex::new(tasks),
@@ -440,6 +464,12 @@ impl Dns {
     /// The resolver.
     pub fn resolver(&self) -> &ResolverService {
         &self.resolver
+    }
+
+    /// Installs the request attributor used by the nameserver once the network
+    /// connection store is available. Only the first call takes effect.
+    pub fn set_attributor(&self, attributor: Arc<dyn RequestAttributor>) {
+        let _ = self.attributor.set(attributor);
     }
 
     /// Installs the firewall hook used by every nameserver request. The core
@@ -463,6 +493,11 @@ impl Dns {
         ip_info: Arc<IpInfoStore>,
         network: Option<Arc<Network>>,
     ) -> Result<(), FirewallHookAlreadySet> {
+        if let Some(net) = &network {
+            self.set_attributor(Arc::new(NetworkAttributor {
+                network: Arc::clone(net),
+            }));
+        }
         self.set_firewall_hook(Arc::new(FirewallDnsHook::new(
             env, profiles, ip_info, network,
         )))

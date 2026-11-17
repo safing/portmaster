@@ -60,7 +60,13 @@ pub fn local_user_profile() -> UserProfile {
         state: "approved".to_string(),
         current_plan: UserPlan {
             name: "Local".to_string(),
-            feature_ids: vec!["bw-vis".to_string(), "history".to_string()],
+            feature_ids: vec![
+                "bw-vis".to_string(),
+                "history".to_string(),
+                "spn".to_string(),
+                "xray".to_string(),
+                "splittun".to_string(),
+            ],
         },
         view: UserProfileView {
             message: String::new(),
@@ -237,6 +243,51 @@ pub fn register_api(api: &Api) -> Result<()> {
     )?;
 
     Ok(())
+}
+
+/// Registers the mock user profile in `core:spn/account/user` and a stub
+/// `runtime:spn/status` record so UI/tray subscriptions receive a valid
+/// "disabled" status instead of failing.
+pub fn register_spn_and_user_profile(
+    runtime: &pm_runtime::Runtime,
+    databases: &std::sync::Arc<pm_database::Databases>,
+) {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs() as i64)
+        .unwrap_or(0);
+
+    let spn_status_record = pm_record::Record {
+        key: pm_record::Key::new("runtime", "spn/status"),
+        meta: pm_record::Meta {
+            created: now,
+            modified: now,
+            ..pm_record::Meta::default()
+        },
+        format: pm_dsd::format::JSON,
+        data: serde_json::to_vec(&serde_json::json!({
+            "Status": "connected",
+        }))
+        .unwrap(),
+    };
+
+    let spn_status_provider = std::sync::Arc::new(pm_runtime::SimpleValueGetter::new(move |_key| {
+        Ok(vec![spn_status_record.clone()])
+    }));
+    let _ = runtime.registry().register("spn/status", spn_status_provider);
+
+    let user_profile_val = local_user_profile();
+    let user_record = pm_record::Record {
+        key: pm_record::Key::new("core", "spn/account/user"),
+        meta: pm_record::Meta {
+            created: now,
+            modified: now,
+            ..pm_record::Meta::default()
+        },
+        format: pm_dsd::format::JSON,
+        data: serde_json::to_vec(&user_profile_val).unwrap(),
+    };
+    let _ = databases.internal_interface().put(user_record);
 }
 
 #[cfg(test)]

@@ -16,7 +16,6 @@ The Rust core can be smoke-tested with iptables/nfqueue in an isolated network
 namespace, so the host firewall is not modified. Build first, then run as root:
 
 ```bash
-cd /games/home/godis/Проекты/portmaster
 cargo build
 sudo unshare --net -- bash -c '
   set -e

@@ -1570,11 +1570,13 @@ dependencies = [
  "pm-status",
  "pm-sync",
  "pm-updates",
+ "pm-utils",
  "pm-winkext",
  "pm-winplatform",
  "pm-xray",
  "serde",
  "serde_json",
+ "sha2",
  "tokio",
  "tokio-tungstenite 0.30.0",
  "tokio-util",
@@ -1651,6 +1653,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "hickory-proto",
+ "parking_lot",
  "pm-config",
  "pm-database",
  "pm-endpoints",
@@ -1715,6 +1718,7 @@ dependencies = [
 name = "pm-interception"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "nfq",
  "pm-netstate",
  "rustix",
@@ -1861,6 +1865,7 @@ version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "http",
+ "parking_lot",
  "pm-api",
  "pm-database",
  "pm-dsd",
@@ -1904,6 +1909,8 @@ dependencies = [
 name = "pm-network"
 version = "0.1.0"
 dependencies = [
+ "foldhash",
+ "parking_lot",
  "pm-database",
  "pm-dsd",
  "pm-geoip",

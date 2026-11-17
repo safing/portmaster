@@ -399,12 +399,14 @@ pub fn ip_info_profile_scope(local_profile_id: &str) -> &str {
 /// request connection.
 pub fn update_ips_and_cnames(
     store: &IpInfoStore,
-    profile: &LayeredProfile,
+    profile: Option<&LayeredProfile>,
     q: &Query,
     rr: &RRCache,
     conn: &Connection,
 ) -> Option<Vec<String>> {
-    let profile_id = ip_info_profile_scope(&profile.local_profile().id).to_string();
+    let profile_id = profile
+        .map(|p| ip_info_profile_scope(&p.local_profile().id).to_string())
+        .unwrap_or_else(|| IP_INFO_PROFILE_SCOPE_GLOBAL.to_string());
     let (ips, resolved) = collect_ips_and_cnames(q, rr);
     save_ips_in_cache(store, &ips, &profile_id, &resolved);
     (conn.conn_type == ConnectionType::Dns).then(|| resolved.cnames.unwrap_or_default())
@@ -545,10 +547,10 @@ impl FirewallHook for FirewallDnsHook {
 
     fn update_ips_and_cnames(&self, q: &Query, rr: &RRCache, conn: &SharedConnection) {
         let mut guard = lock(conn);
-        let Some(profile) = self.profile_of(&guard) else {
-            return;
-        };
-        if let Some(cnames) = update_ips_and_cnames(&self.ip_info, &profile, q, rr, &guard) {
+        let profile = self.profile_of(&guard);
+        if let Some(cnames) =
+            update_ips_and_cnames(&self.ip_info, profile.as_deref(), q, rr, &guard)
+        {
             if let Some(entity) = guard.entity.as_mut() {
                 entity.cname = cnames;
             }

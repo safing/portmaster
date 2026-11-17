@@ -141,6 +141,19 @@ pub async fn serve_pilot_index(
     pilot_response(&api, &dir.0, "").await
 }
 
+/// `/` when PORTMASTER_UI_TYPE=rust: serves `pilot-web/index.html` if the pilot
+/// directory exists; otherwise gracefully falls back to the standard UI redirect
+/// so the user is never stuck with a 404 "pilot ui is not installed".
+pub async fn serve_pilot_root(
+    State(api): State<Arc<Api>>,
+    Extension(dir): Extension<PilotDir>,
+) -> AxumResponse {
+    if !dir.0.is_dir() {
+        return pm_api::ui::redirect_root().await;
+    }
+    pilot_response(&api, &dir.0, "").await
+}
+
 /// `/pilot/<path>` -> `pilot-web/<path>`.
 pub async fn serve_pilot_file(
     State(api): State<Arc<Api>>,
@@ -170,7 +183,21 @@ pub async fn serve_pilot_wasm(
 /// `pm_api_router.merge(pilot_router(&data_dir))`, without touching any of the
 /// existing UI or API routes.
 pub fn pilot_router(data_dir: impl AsRef<Path>) -> Router<Arc<Api>> {
-    let dir = PilotDir(data_dir.as_ref().join(PILOT_ASSET_DIR));
+    let primary = data_dir.as_ref().join(PILOT_ASSET_DIR);
+    let resolved_dir = if primary.is_dir() {
+        primary
+    } else {
+        let candidates = [
+            PathBuf::from("/usr/lib/portmaster").join(PILOT_ASSET_DIR),
+            PathBuf::from("pilot/leptos/web"),
+            PathBuf::from("../pilot/leptos/web"),
+        ];
+        candidates
+            .into_iter()
+            .find(|p| p.is_dir() && p.join("index.html").is_file())
+            .unwrap_or(primary)
+    };
+    let dir = PilotDir(resolved_dir);
     let mut router = Router::new()
         .route("/pilot", axum::routing::get(serve_pilot_index))
         .route("/pilot/", axum::routing::get(serve_pilot_index))
@@ -180,7 +207,7 @@ pub fn pilot_router(data_dir: impl AsRef<Path>) -> Router<Arc<Api>> {
     // main UI at `/`, leaving the TypeScript UI one systemd override away.
     if std::env::var("PORTMASTER_UI_TYPE").as_deref() == Ok("rust") {
         router = router
-            .route("/", axum::routing::get(serve_pilot_index))
+            .route("/", axum::routing::get(serve_pilot_root))
             .route(
                 "/pm_leptos_pilot.js",
                 axum::routing::get(serve_pilot_js),

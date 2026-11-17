@@ -254,6 +254,14 @@ async fn core_serves_api_and_database() {
     assert!(response.starts_with("HTTP/1.1 200"), "{response}");
     assert!(response.contains("<svg"), "{response}");
 
+    // Profile icon endpoint serves icon files.
+    let icon_dir = data_dir.join("databases/core/icons");
+    std::fs::create_dir_all(&icon_dir).unwrap();
+    std::fs::write(icon_dir.join("testicon.ico"), b"\x00\x00\x01\x00icon").unwrap();
+    let response = http_get(address, "/api/v1/profile/icon/testicon.ico", "").await;
+    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    assert!(response.contains("content-type: image/x-icon"), "{response}");
+
     // Invalid permissions are rejected before any prompt is shown.
     let response = http_get(address, "/api/v1/app/auth?app-name=test&read=bad&write=user", "").await;
     assert!(response.contains("invalid read permission"), "{response}");
@@ -364,7 +372,7 @@ async fn core_serves_api_and_database() {
         .iter()
         .any(|info| info.name == "notifications"));
 
-    // The system status is published through the runtime database.
+    // The system status and SPN stub status are published through the runtime database.
     let record = service
         .databases
         .internal_interface()
@@ -377,6 +385,22 @@ async fn core_serves_api_and_database() {
     assert!(online_status <= 5, "valid status: {online_status}");
     assert_eq!(status["Modules"], json!([]));
     assert_eq!(status["WorstState"]["Module"], "");
+
+    let spn_status = service
+        .databases
+        .internal_interface()
+        .get("runtime:spn/status")
+        .expect("spn/status runtime provider must be registered");
+    let spn_data: serde_json::Value = serde_json::from_slice(&spn_status.data).unwrap();
+    assert_eq!(spn_data["Status"], "connected");
+
+    let user_record = service
+        .databases
+        .internal_interface()
+        .get("core:spn/account/user")
+        .expect("core:spn/account/user record must exist");
+    let user_data: serde_json::Value = serde_json::from_slice(&user_record.data).unwrap();
+    assert_eq!(user_data["username"], "local");
 
     // Module states flow into the published status and into notifications.
     service
@@ -438,6 +462,23 @@ async fn core_serves_api_and_database() {
     assert!(frame.starts_with("1|ok|core:test/key|J"), "{frame}");
     assert!(frame.contains("\"Value\":\"banana\""), "{frame}");
     assert!(frame.contains("\"_meta\""), "{frame}");
+
+    socket
+        .send(tokio_tungstenite::tungstenite::Message::Binary(
+            b"2|get|runtime:spn/status".to_vec().into(),
+        ))
+        .await
+        .unwrap();
+    let message = tokio::time::timeout(Duration::from_secs(2), socket.next())
+        .await
+        .expect("timed out")
+        .unwrap()
+        .unwrap()
+        .into_data();
+    let frame = String::from_utf8_lossy(&message);
+    assert!(frame.starts_with("2|ok|runtime:spn/status|J"), "{frame}");
+    assert!(frame.contains("\"Status\":\"connected\""), "{frame}");
+
     socket.close(None).await.unwrap();
 
     server.abort();

@@ -673,7 +673,7 @@ func (conn *Connection) UpdateFeatures() error {
 		}
 	}
 
-	conn.BandwidthEnabled = false
+	conn.BandwidthEnabled = true
 	return nil
 }
 

@@ -61,6 +61,10 @@ func prep() error {
 		return err
 	}
 
+	if err := registerAccountAPIEndpoints(); err != nil {
+		return err
+	}
+
 	if err := initModulesIntegration(); err != nil {
 		return err
 	}
@@ -76,6 +80,7 @@ func start() error {
 	// Setup update system.
 	initUpdateConfig()
 	initVersionExport()
+	initUserProfile()
 
 	// Enable persistent metrics.
 	if err := metrics.EnableMetricPersistence("core:metrics/storage"); err != nil {
