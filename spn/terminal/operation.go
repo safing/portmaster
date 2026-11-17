@@ -119,7 +119,7 @@ func (t *TerminalBase) handleOperationStart(opID uint32, initData *container.Con
 	}
 
 	// Extract the requested operation name.
-	opType, err := initData.GetNextBlock()
+	opType, err := GetNextBlock(initData)
 	if err != nil {
 		t.StopOperation(newUnknownOp(opID, ""), ErrMalformedData.With("failed to get init data: %w", err))
 		return

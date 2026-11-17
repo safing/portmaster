@@ -104,11 +104,11 @@ func (crane *Crane) startLocal(callerCtx context.Context) *terminal.Error {
 		}
 
 		// Parse and import Announcement and Status.
-		announcementData, err := reply.GetNextBlock()
+		announcementData, err := terminal.GetNextBlock(reply)
 		if err != nil {
 			return terminal.ErrMalformedData.With("failed to get announcement: %w", err)
 		}
-		statusData, err := reply.GetNextBlock()
+		statusData, err := terminal.GetNextBlock(reply)
 		if err != nil {
 			return terminal.ErrMalformedData.With("failed to get status: %w", err)
 		}
