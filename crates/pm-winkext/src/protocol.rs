@@ -189,11 +189,17 @@ pub struct VerdictInfo {
 
 impl VerdictInfo {
     /// Bytes sent to the driver.
+    ///
+    /// Go mirrors this struct with `network.Verdict` (an `int8`) and sends its
+    /// raw memory via `unsafe.Slice`, so the driver expects the full
+    /// `unsafe.Sizeof` of the struct: `id` (4), `verdict` (1) and 3 trailing
+    /// alignment padding bytes — 8 bytes in total.
     #[must_use]
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::with_capacity(size_of::<Self>());
         out.extend_from_slice(&self.id.to_le_bytes());
         out.push(self.verdict as u8);
+        out.extend_from_slice(&[0, 0, 0]);
         out
     }
 }
@@ -214,6 +220,10 @@ pub struct VerdictUpdateInfo {
 
 impl VerdictUpdateInfo {
     /// Bytes sent to the driver.
+    ///
+    /// Go sends the raw memory of the struct via `unsafe.Slice`, so the driver
+    /// expects the full `unsafe.Sizeof`: 39 bytes of fields plus 1 trailing
+    /// alignment padding byte — 40 bytes in total.
     #[must_use]
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::with_capacity(size_of::<Self>());
@@ -228,6 +238,7 @@ impl VerdictUpdateInfo {
         out.push(self.ip_v6);
         out.push(self.protocol);
         out.push(self.verdict);
+        out.push(0);
         out
     }
 }
@@ -373,6 +384,34 @@ pub const fn kext_verdict_from(verdict: NetworkVerdict, permanent: bool) -> Kext
         NetworkVerdict::RerouteToTunnel => KextVerdict::RerouteToTunnel,
         NetworkVerdict::RerouteToSplitTun => KextVerdict::RerouteToSplitTun,
         NetworkVerdict::Failed => KextVerdict::Failed,
+    }
+}
+
+/// Maps a v2 [`KextVerdict`] to the wire value understood by the v1 ioctl
+/// interface (Go `service/firewall/interception/windowskext`).
+///
+/// The v1 driver uses [`NetworkVerdict`] numbers, with the sign encoding
+/// permanence: permanent verdicts use the positive base value, temporary ones
+/// use its negation (Go `SetVerdict(pkt, -network.VerdictAccept)` for a
+/// temporary accept, `SetVerdict(pkt, network.VerdictAccept)` for a permanent
+/// one). Reroute and Failed verdicts have no temporary form in v1 and stay
+/// positive. The v2 `KextVerdict` numbers must therefore never be passed to a
+/// v1 ioctl verbatim.
+#[must_use]
+pub const fn v1_verdict_from(verdict: KextVerdict) -> i8 {
+    match verdict {
+        KextVerdict::Undecided => NetworkVerdict::Undecided.as_i8(),
+        KextVerdict::Undeterminable => NetworkVerdict::Undeterminable.as_i8(),
+        KextVerdict::Accept => -NetworkVerdict::Accept.as_i8(),
+        KextVerdict::PermanentAccept => NetworkVerdict::Accept.as_i8(),
+        KextVerdict::Block => -NetworkVerdict::Block.as_i8(),
+        KextVerdict::PermanentBlock => NetworkVerdict::Block.as_i8(),
+        KextVerdict::Drop => -NetworkVerdict::Drop.as_i8(),
+        KextVerdict::PermanentDrop => NetworkVerdict::Drop.as_i8(),
+        KextVerdict::RerouteToNameserver => NetworkVerdict::RerouteToNameserver.as_i8(),
+        KextVerdict::RerouteToTunnel => NetworkVerdict::RerouteToTunnel.as_i8(),
+        KextVerdict::Failed => NetworkVerdict::Failed.as_i8(),
+        KextVerdict::RerouteToSplitTun => NetworkVerdict::RerouteToSplitTun.as_i8(),
     }
 }
 
@@ -629,7 +668,9 @@ impl<'a> Reader<'a> {
 
 /// Maximum accepted info payload. The v2 driver caps its log lines at 500
 /// bytes; this guard also prevents a corrupt size field from allocating GiBs.
-const MAX_INFO_SIZE: usize = 1024 * 1024;
+/// Callers allocating a buffer of the announced size must check against this
+/// value first.
+pub const MAX_INFO_SIZE: usize = 1024 * 1024;
 
 /// Parses one complete info frame from `buf`.
 ///

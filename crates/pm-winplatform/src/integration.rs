@@ -47,7 +47,8 @@ use ffi::Dll;
 
 #[cfg(windows)]
 mod ffi {
-    use std::ffi::{c_char, c_void};
+    use std::ffi::{c_char, c_void, OsStr};
+    use std::os::windows::ffi::OsStrExt;
 
     /// Owns a loaded module and frees it on drop.
     pub(super) struct Dll(*mut c_void);
@@ -63,7 +64,9 @@ mod ffi {
     #[allow(unsafe_code)]
     #[link(name = "kernel32")]
     unsafe extern "system" {
-        pub(super) fn LoadLibraryA(name: *const c_char) -> *mut c_void;
+        // Go uses windows.LoadDLL, which calls the UTF-16 LoadLibraryW API.
+        // Use it here too so non-ASCII DLL paths resolve correctly.
+        pub(super) fn LoadLibraryW(name: *const u16) -> *mut c_void;
         pub(super) fn GetProcAddress(module: *mut c_void, name: *const c_char) -> *mut c_void;
         pub(super) fn FreeLibrary(module: *mut c_void) -> i32;
     }
@@ -71,13 +74,18 @@ mod ffi {
     #[allow(unsafe_code)]
     impl Dll {
         pub(super) fn load(path: &str) -> super::Result<Self> {
-            use std::ffi::CString;
-
-            let path = CString::new(path)
-                .map_err(|err| super::IntegrationError::InvalidPath(err.to_string()))?;
-            let handle = unsafe { LoadLibraryA(path.as_ptr()) };
+            if path.contains('\0') {
+                return Err(super::IntegrationError::InvalidPath(format!(
+                    "interior NUL byte in DLL path: {path}"
+                )));
+            }
+            let wide: Vec<u16> = OsStr::new(path)
+                .encode_wide()
+                .chain(core::iter::once(0))
+                .collect();
+            let handle = unsafe { LoadLibraryW(wide.as_ptr()) };
             if handle.is_null() {
-                return Err(super::IntegrationError::LoadFailed(path.to_string_lossy().into_owned()));
+                return Err(super::IntegrationError::LoadFailed(path.to_string()));
             }
             Ok(Dll(handle))
         }

@@ -71,7 +71,42 @@ fn verdict_info_serialization() {
         id: 0x0102_0304,
         verdict: NetworkVerdict::Accept.as_i8(),
     };
-    assert_eq!(info.to_bytes(), vec![4, 3, 2, 1, 2]);
+    let bytes = info.to_bytes();
+    // Go sends the full unsafe.Sizeof: 4-byte id, 1-byte verdict, 3 padding.
+    assert_eq!(bytes.len(), size_of::<VerdictInfo>());
+    assert_eq!(bytes.len(), 8);
+    assert_eq!(bytes, vec![4, 3, 2, 1, 2, 0, 0, 0]);
+}
+
+#[test]
+fn verdict_update_info_serialization() {
+    let mut local_ip = [0_u32; 4];
+    let mut remote_ip = [0_u32; 4];
+    for (index, word) in local_ip.iter_mut().enumerate() {
+        *word = index as u32 + 1;
+    }
+    for (index, word) in remote_ip.iter_mut().enumerate() {
+        *word = index as u32 + 5;
+    }
+    let info = VerdictUpdateInfo {
+        local_ip,
+        remote_ip,
+        local_port: 0x0102,
+        remote_port: 0x0304,
+        ip_v6: 0,
+        protocol: 6,
+        verdict: 2,
+    };
+    let bytes = info.to_bytes();
+    // Go sends the full unsafe.Sizeof: 39 bytes of fields plus 1 padding byte.
+    assert_eq!(bytes.len(), size_of::<VerdictUpdateInfo>());
+    assert_eq!(bytes.len(), 40);
+    assert_eq!(&bytes[0..4], &1_u32.to_le_bytes());
+    assert_eq!(&bytes[16..20], &5_u32.to_le_bytes());
+    assert_eq!(&bytes[32..34], &0x0102_u16.to_le_bytes());
+    assert_eq!(&bytes[34..36], &0x0304_u16.to_le_bytes());
+    assert_eq!(&bytes[36..39], &[0, 6, 2]);
+    assert_eq!(bytes[39], 0);
 }
 
 #[test]
@@ -161,6 +196,41 @@ fn kext_verdict_mapping_matches_go() {
         kext_verdict_from(NetworkVerdict::RerouteToSplitTun, false),
         KextVerdict::RerouteToSplitTun
     );
+}
+
+#[test]
+fn v1_verdict_mapping_uses_v1_numbers_and_negative_temporary() {
+    // Base v1 numbers (Go service/network/status.go).
+    assert_eq!(v1_verdict_from(KextVerdict::Undecided), 0);
+    assert_eq!(v1_verdict_from(KextVerdict::Undeterminable), 1);
+
+    // Temporary verdicts are the negated base number.
+    assert_eq!(v1_verdict_from(KextVerdict::Accept), -2);
+    assert_eq!(v1_verdict_from(KextVerdict::Block), -3);
+    assert_eq!(v1_verdict_from(KextVerdict::Drop), -4);
+
+    // Permanent verdicts use the positive base number.
+    assert_eq!(v1_verdict_from(KextVerdict::PermanentAccept), 2);
+    assert_eq!(v1_verdict_from(KextVerdict::PermanentBlock), 3);
+    assert_eq!(v1_verdict_from(KextVerdict::PermanentDrop), 4);
+
+    // Reroutes and Failed have no temporary form in v1 and stay positive.
+    assert_eq!(v1_verdict_from(KextVerdict::RerouteToNameserver), 5);
+    assert_eq!(v1_verdict_from(KextVerdict::RerouteToTunnel), 6);
+    assert_eq!(v1_verdict_from(KextVerdict::Failed), 7);
+    assert_eq!(v1_verdict_from(KextVerdict::RerouteToSplitTun), 8);
+}
+
+#[test]
+fn v1_verdict_mapping_differs_from_v2_numbers() {
+    // Guard against regressing to `verdict.as_u8() as i8`: the v2 numbers for
+    // these verdicts are different from the v1 wire numbers.
+    assert_ne!(
+        v1_verdict_from(KextVerdict::PermanentBlock),
+        KextVerdict::PermanentBlock.as_u8() as i8
+    );
+    assert_eq!(v1_verdict_from(KextVerdict::RerouteToSplitTun), 8);
+    assert_eq!(KextVerdict::RerouteToSplitTun.as_u8() as i8, 11);
 }
 
 fn frame(info_type: InfoType, payload: &[u8]) -> Vec<u8> {
@@ -356,4 +426,13 @@ fn parse_rejects_bad_frames() {
         parse_info(&frame(InfoType::ConnectionV4, &[0; 4])),
         Err(Error::UnexpectedInfoSize)
     ));
+}
+
+#[test]
+fn info_size_guard_rejects_oversized_announced_frame() {
+    // An attacker-controlled size above MAX_INFO_SIZE must be rejected before
+    // any buffer of that size is allocated (recv_info checks the same bound).
+    let mut frame = vec![InfoType::LogLine as u8];
+    frame.extend_from_slice(&(MAX_INFO_SIZE as u32 + 1).to_le_bytes());
+    assert!(matches!(parse_info(&frame), Err(Error::UnexpectedInfoSize)));
 }
