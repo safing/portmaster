@@ -128,9 +128,9 @@
             {{ stats.bytes_received | bytes }}
           </h2>
           <ng-template #cannotViewBW>
-            <span routerLink="/dashboard"
-              class="p-0 pb-2.5 m-0 text-opacity-50 whitespace-nowrap text-xxs sfng-lg:text-xs text-tertiary hover:underline">
-              Available in Plus
+            <span
+              class="p-0 pb-2.5 m-0 text-opacity-50 whitespace-nowrap text-xxs sfng-lg:text-xs text-tertiary">
+              Not available
             </span>
           </ng-template>
           <span class="text-secondary">Received</span>
@@ -175,7 +175,7 @@
         <div class="flex flex-row items-center pr-2 mb-4 space-x-4">
           <input type="text" [(ngModel)]="searchTerm" placeholder="Search Settings">
 
-          <a href="https://docs.safing.io/portmaster/settings?source=Portmaster"
+          <a href="https://docs.safing.io/portmaster/settings"
             class="flex flex-row gap-1 justify-center items-center self-stretch px-2 whitespace-nowrap bg-gray-300 rounded hover:bg-gray-200 text-blue">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
               stroke="currentColor" class="w-4 h-4">
