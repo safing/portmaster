@@ -137,10 +137,13 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) (installedFiles []str
 	return installedFiles, nil
 }
 
+// renameFile is os.Rename. Tests replace it to exercise the copy fallback of moveFile.
+var renameFile = os.Rename
+
 // moveFile moves a file and falls back to copying if it fails.
 func (u *Updater) moveFile(currentPath, newPath string, sha256sum string, filePermission utils.FSPermission) error {
 	// Try to simply move file.
-	err := os.Rename(currentPath, newPath)
+	err := renameFile(currentPath, newPath)
 	if err == nil {
 		// Moving was successful, return.
 		utils.SetFilePermission(newPath, filePermission)
@@ -152,6 +155,14 @@ func (u *Updater) moveFile(currentPath, newPath string, sha256sum string, filePe
 	err = copyAndCheckSHA256Sum(currentPath, newPath, sha256sum, filePermission)
 	if err != nil {
 		return fmt.Errorf("move failed, copy+delete fallback failed: %w", err)
+	}
+
+	// Complete the move: the source must not remain, e.g. an old file in the main directory.
+	// The copy is in place, so a source that cannot be deleted (e.g. a file in
+	// use on Windows) does not fail the move. It is left behind as before.
+	err = os.Remove(currentPath)
+	if err != nil {
+		log.Warningf("updates/%s: copied %q to %q, but failed to delete the source: %s", u.cfg.Name, currentPath, newPath, err)
 	}
 
 	return nil
