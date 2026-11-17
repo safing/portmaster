@@ -2,6 +2,7 @@
 # Run the test suite in the Linux VM as root:
 #
 #   test-linux.sh [unit|smoke|all]     (default: all)
+#   test-linux.sh soak [MINUTES]       (not part of all; default 60 minutes)
 #
 # The VM is reset to its clean snapshot first, so every run starts from the
 # same state. Results are written to $VMTEST_WORK/results/linux-*.
@@ -56,6 +57,37 @@ if [[ "$what" == smoke || "$what" == all ]]; then
 	tail -c +"$((offset + 1))" "$serial" | tr -d '\r' | sed -n '/^== Before start/,/^SMOKE TEST/p' | tee "$results/smoke.txt"
 	grep -q 'SMOKE TEST PASSED' "$results/smoke.txt" || rc=1
 	"${SSH[@]}" 'sudo cat /tmp/pm-smoke/core.log' >"$results/core.log" 2>/dev/null || true
+fi
+
+if [[ "$what" == soak ]]; then
+	minutes="${2:-60}"
+	log "building portmaster-core"
+	(cd "$VMTEST_REPO" && GOOS=linux CGO_ENABLED=0 "$(go_bin)" build -o "$results/portmaster-core" ./cmds/portmaster-core)
+	vm_scp "$LINUX_SSH_PORT" "$LINUX_USER" "$results/portmaster-core" "$VMTEST_REPO/tools/vmtest/linux/soak.sh" "/home/$LINUX_USER/"
+	# Like the smoke test: run detached and report on the serial console.
+	serial="$LINUX_DIR/serial.log"
+	capture_pid=""
+	if [[ "$VMTEST_BACKEND" == proxmox ]]; then
+		serial="$results/serial.log"
+		: >"$serial"
+		capture_pid="$(pve_serial_capture "$LINUX_VMID" "$serial")"
+		sleep 2
+	fi
+	log "running soak test for $minutes minutes as root (live output: $serial)"
+	offset=$(stat -c %s "$serial")
+	"${SSH[@]}" 'sudo systemd-run --unit=pm-soak --collect bash -c "bash /home/'"$LINUX_USER"'/soak.sh /home/'"$LINUX_USER"'/portmaster-core '"$minutes"' 2>&1 | tee /dev/ttyS0"'
+	waited=0
+	limit=$(((minutes + 15) * 60))
+	until tail -c +"$((offset + 1))" "$serial" | grep -qa 'SOAK \(TEST PASSED\|TEST FAILED\|FAILED\|INCONCLUSIVE\)'; do
+		sleep 30
+		((waited += 30))
+		((waited < limit)) || { log "soak test did not finish in time"; rc=1; break; }
+	done
+	[[ -n "$capture_pid" ]] && kill "$capture_pid" 2>/dev/null
+	tail -c +"$((offset + 1))" "$serial" | tr -d '\r' | sed -n '/^portmaster-core running/,/^SOAK/p' | tee "$results/soak.txt"
+	grep -q 'SOAK TEST PASSED' "$results/soak.txt" || rc=1
+	"${SSH[@]}" 'sudo cat /tmp/pm-soak/samples.csv' >"$results/samples.csv" 2>/dev/null || true
+	"${SSH[@]}" 'sudo cat /tmp/pm-soak/core.log' >"$results/core.log" 2>/dev/null || true
 fi
 
 log "results in $results"

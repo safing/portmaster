@@ -35,7 +35,16 @@ tools/vmtest/test-linux.sh          # unit tests (race detector) + smoke test, a
 tools/vmtest/test-windows.sh all    # unit tests + smoke test, as administrator
 ```
 
-`test-linux.sh` resets the VM to its clean snapshot before every run. Both
+`test-linux.sh` resets the VM to its clean snapshot before every run.
+
+A soak test runs the service for a longer time under constant traffic
+(HTTPS and DNS lookups of always new names) and samples memory, goroutines,
+open files and data size every minute. It fails if one of them keeps growing
+well beyond the level after warm-up:
+
+```bash
+tools/vmtest/test-linux.sh soak 60   # minutes
+``` Both
 print a summary and write logs to `~/vms/portmaster-test/results/`.
 
 What the smoke tests check:
