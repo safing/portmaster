@@ -11,7 +11,8 @@
 //! * Session cookies, the database WebSocket bridge and the UI zip server are
 //!   not implemented yet; API keys, the authenticator hook and development mode
 //!   are.
-//! * `expires` in API keys is parsed but not enforced.
+//! * `expires` in API keys is parsed and enforced; expired keys are dropped from
+//!   the registry and never authorize a request.
 //! * Error and content-type behavior of the Go router (security headers, CORS
 //!   origin checks, permission replies) is kept.
 
@@ -654,11 +655,18 @@ impl Api {
 
     fn check_api_key(&self, request: &Request) -> Option<AuthToken> {
         let key = bearer_token(&request.header)?;
-        self.api_keys
+        let token = self
+            .api_keys
             .read()
             .expect("lock poisoned")
-            .get(key)
-            .cloned()
+            .get(key.as_str())
+            .cloned()?;
+        // Defense in depth, matching Go's `checkAPIKey`: even if a stale token
+        // is still registered, an expired key must never authorize.
+        if token.expired() {
+            return None;
+        }
+        Some(token)
     }
 
     fn execute(&self, request: &mut Request, endpoint: &Endpoint) -> Response {
@@ -707,7 +715,7 @@ impl Api {
         response
     }
 
-    fn decorate(
+    pub(crate) fn decorate(
         &self,
         mut response: Response,
         request: &Request,
@@ -744,6 +752,10 @@ impl Api {
                 http::header::ACCESS_CONTROL_MAX_AGE,
                 HeaderValue::from_static("60"),
             );
+            // Go adds this on the same branch as the CORS headers.
+            response
+                .headers
+                .append(http::header::VARY, HeaderValue::from_static("Origin"));
         }
 
         response
@@ -789,7 +801,7 @@ fn effective_method(request: &Request) -> Option<(&'static str, bool)> {
 }
 
 /// Checks whether a cross-origin request may access the API.
-fn origin_allowed(origin: &str, host: &str, dev_mode: bool) -> bool {
+pub(crate) fn origin_allowed(origin: &str, host: &str, dev_mode: bool) -> bool {
     let parsed = origin.split_once("://");
     let Some((scheme, rest)) = parsed else {
         return false;

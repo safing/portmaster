@@ -22,7 +22,6 @@ use std::sync::{Arc, Mutex};
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{FromRequestParts, State};
-use axum::response::IntoResponse;
 use pm_database::{Databases, Interface, Key, Meta, Options, Query, Record};
 use serde_json::Value;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
@@ -391,53 +390,98 @@ fn scheme(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).into_owned()
 }
 
+/// Builds the request used for the HTTP handshake checks.
+fn handshake_request(parts: &http::request::Parts) -> crate::Request {
+    let mut request = crate::Request::new(parts.method.as_str(), parts.uri.path());
+    request.host = parts
+        .headers
+        .get(http::header::HOST)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    request.remote_addr = parts
+        .extensions
+        .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+        .map(|info| info.0.to_string())
+        .unwrap_or_default();
+    request.header = parts.headers.clone();
+    request.read_method = true;
+    request
+}
+
 /// Upgrades a request to the database WebSocket API.
 pub async fn database_ws_upgrade(
     State(api): State<Arc<Api>>,
     request: axum::extract::Request,
 ) -> axum::response::Response {
     let (mut parts, _body) = request.into_parts();
+    let mut api_request = handshake_request(&parts);
 
-    // Authenticate before upgrading, like Go's auth wrapper.
-    let mut api_request = crate::Request::new(parts.method.as_str(), parts.uri.path());
-    api_request.host = parts
-        .headers
-        .get(http::header::HOST)
-        .and_then(|value| value.to_str().ok())
-        .unwrap_or("")
-        .to_string();
-    api_request.remote_addr = parts
-        .extensions
-        .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
-        .map(|info| info.0.to_string())
-        .unwrap_or_default();
-    api_request.header = parts.headers.clone();
-    api_request.read_method = true;
-    // The authenticator may block, so it runs off the async workers.
+    // Go's mainHandler validates Origin/Host and adds security/CORS headers to
+    // every request before the database handler runs. The websocket upgrader's
+    // `allowAnyOrigin` only relaxes the upgrade handshake itself, so it must
+    // not bypass this check.
+    let cors_origin = if let Some(origin) = api_request.header("origin").map(str::to_string) {
+        if !crate::origin_allowed(&origin, &api_request.host, api.dev_mode()) {
+            let response = api.decorate(
+                Response::error(403, "Cross-Origin Request Denied."),
+                &api_request,
+                None,
+            );
+            return response.into_axum();
+        }
+        Some(origin)
+    } else {
+        None
+    };
+
+    // Authenticate before upgrading, like Go's auth wrapper. Return the
+    // request as well so its response headers (eg. a session cookie) survive.
     let auth_api = Arc::clone(&api);
     let authorized = tokio::task::spawn_blocking(move || {
-        auth_api
+        let result = auth_api
             .authorize_required(&mut api_request, PERMIT_ADMIN)
             .map(|_| ())
-            .map_err(Box::new)
+            .map_err(Box::new);
+        (result, api_request)
     })
     .await;
-    match authorized {
-        Ok(Ok(())) => {}
-        Ok(Err(response)) => return (*response).into_axum(),
-        Err(_) => return Response::error(500, "Internal server error.").into_axum(),
+    let (authorized, api_request) = match authorized {
+        Ok(result) => result,
+        Err(_) => (
+            Err(Box::new(Response::error(500, "Internal server error."))),
+            handshake_request(&parts),
+        ),
+    };
+    if let Err(response) = authorized {
+        let response = api.decorate(*response, &api_request, cors_origin.as_deref());
+        return response.into_axum();
     }
 
     let databases = match api.databases() {
         Some(databases) => databases,
         None => {
-            return Response::error(503, "database API is not available").into_axum();
+            let response = api.decorate(
+                Response::error(503, "database API is not available"),
+                &api_request,
+                cors_origin.as_deref(),
+            );
+            return response.into_axum();
         }
     };
 
     let websocket = match WebSocketUpgrade::from_request_parts(&mut parts, &()).await {
         Ok(websocket) => websocket,
-        Err(rejection) => return rejection.into_response(),
+        Err(_) => {
+            // Mirror Go's "could not upgrade" path while keeping the security
+            // and CORS headers set by the main handler.
+            let response = api.decorate(
+                Response::error(400, "could not upgrade websocket"),
+                &api_request,
+                cors_origin.as_deref(),
+            );
+            return response.into_axum();
+        }
     };
 
     websocket

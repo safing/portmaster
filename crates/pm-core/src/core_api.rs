@@ -19,8 +19,11 @@ use serde_json::json;
 use crate::service::CFG_API_KEYS;
 
 /// Registers `app/profile`, `app/auth` and `debug/core`.
+///
+/// `api` is an `Arc` so the `app/auth` action handler can refresh the runtime
+/// API key registry as soon as a new key is written to the config.
 pub fn register_api(
-    api: &Api,
+    api: std::sync::Arc<Api>,
     config: std::sync::Arc<Config>,
     notifications: std::sync::Arc<Notifications>,
     netquery_db: std::sync::Arc<pm_netquery::Database>,
@@ -57,6 +60,7 @@ pub fn register_api(
         }),
     )?;
 
+    let auth_api = std::sync::Arc::clone(&api);
     api.register_endpoint(
         Endpoint::new(
             "app/auth",
@@ -66,6 +70,7 @@ pub fn register_api(
         .with_read(PERMIT_ANYONE)
         .with_struct(move |request| {
             auth_app(
+                &auth_api,
                 &config,
                 &notifications,
                 request.query_param("app-name").unwrap_or_default(),
@@ -94,6 +99,7 @@ pub fn register_api(
 }
 
 fn auth_app(
+    api: &std::sync::Arc<Api>,
     config: &std::sync::Arc<Config>,
     notifications: &Notifications,
     app_name: &str,
@@ -133,6 +139,7 @@ fn auth_app(
 
     let (tx, rx) = mpsc::channel::<String>();
     let config_for_action = config.clone();
+    let api_for_action = std::sync::Arc::clone(api);
     let read_text = read.to_string();
     let write_text = write.to_string();
     let handle = notifications
@@ -140,6 +147,10 @@ fn auth_app(
         .ok_or_else(|| ApiError::Message("failed to create prompt".to_string()))?;
     handle.set_action_handler(std::sync::Arc::new(move |notification| {
         if notification.selected_action_id != "allow" {
+            // Go closes the channel on deny, which the waiting handler sees as
+            // an empty key. Send the same sentinel so it replies immediately
+            // with "access denied" instead of blocking until the 60s timeout.
+            let _ = tx.send(String::new());
             return Ok(());
         }
         // Use the shared Fortuna generator (seeded from the OS) for the API
@@ -158,17 +169,26 @@ fn auth_app(
         config_for_action
             .set_config_option(CFG_API_KEYS, serde_json::json!(keys))
             .map_err(|error| error.to_string())?;
+        // Go reloads keys via the EventConfigChange callback (`updateAPIKeys`).
+        // Do the equivalent here so the new key authenticates immediately,
+        // without waiting for a restart.
+        api_for_action.update_api_keys(&keys);
         tx.send(key).map_err(|error| error.to_string())?;
         Ok(())
     }));
 
     match rx.recv_timeout(Duration::from_secs(60)) {
+        Ok(key) if key.is_empty() => {
+            Err(ApiError::Message("access denied".to_string()).with_status(403))
+        }
         Ok(key) => Ok(json!({
             "key": key,
             "validUntil": format_rfc3339(valid_until),
         })),
+        // The sender was dropped without granting a key (eg. notification
+        // discarded), which is also a denial rather than a timeout.
         Err(mpsc::RecvTimeoutError::Disconnected) => {
-            Err(ApiError::Message("access denied".to_string()))
+            Err(ApiError::Message("access denied".to_string()).with_status(403))
         }
         Err(mpsc::RecvTimeoutError::Timeout) => Err(ApiError::Message("timeout".to_string())),
     }
