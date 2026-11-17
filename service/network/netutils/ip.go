@@ -99,6 +99,10 @@ func GetIPScope(ip net.IP) IPScope { //nolint:gocognit
 		case ip[0] == 0xfe && ip[1]&0xc0 == 0x80:
 			// fe80::/10
 			return LinkLocal
+		case ip[0] == 0xfe && ip[1]&0xc0 == 0xc0:
+			// fec0::/10 - deprecated site-local addresses (RFC 3879), which are
+			// never globally routed. QEMU's user networking still uses them.
+			return SiteLocal
 		case ip[0] == 0xff && ip[1] <= 0x05:
 			// ff00::/16 - ff05::/16
 			return LocalMulticast
