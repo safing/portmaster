@@ -3,7 +3,44 @@ package sqlite
 import (
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestAnonymizePlaceholders(t *testing.T) {
+	t.Parallel()
+
+	q, err := anonymizePlaceholders("INSERT INTO t(a, b) VALUES (?1, ?2), (?3, ?4) RETURNING a", 4)
+	require.NoError(t, err)
+	assert.Equal(t, "INSERT INTO t(a, b) VALUES (?, ?), (?, ?) RETURNING a", q)
+
+	// Placeholders out of order, missing or of an unexpected count are rejected.
+	for _, query := range []string{
+		"VALUES (?2, ?1, ?3, ?4)",
+		"VALUES (?1, ?2, ?4, ?5)",
+		"VALUES (?1, ?2, ?3)",
+		"VALUES (?1, ?2, ?3, ?4, ?5)",
+		"VALUES (?1, ?2, ?, ?)",
+		"VALUES (?1, ?2, ?3, :a)",
+	} {
+		_, err := anonymizePlaceholders(query, 4)
+		assert.Error(t, err, query)
+	}
+}
+
+func TestBuildUpsertPlaceholders(t *testing.T) {
+	t.Parallel()
+
+	db, err := openSQLite("test", t.TempDir(), false)
+	require.NoError(t, err)
+	defer func() { _ = db.Shutdown() }()
+
+	q, err := db.buildUpsert(upsertRowsPerStatement)
+	require.NoError(t, err)
+	assert.NotContains(t, q, "?1")
+	assert.Contains(t, q, "(?, ?, ?, ?, ?, ?, ?, ?, ?)")
+}
 
 func BenchmarkPutMany(b *testing.B) {
 	// Configure prepared statement usage.

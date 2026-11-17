@@ -2,7 +2,10 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/sqlite/im"
@@ -48,7 +51,49 @@ func (db *SQLite) buildUpsert(rows int) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("build upsert for %d rows: %w", rows, err)
 	}
-	return rawQuery, nil
+	return anonymizePlaceholders(rawQuery, rows*len(recordColumns))
+}
+
+var errUnexpectedPlaceholders = errors.New("unexpected placeholders in upsert")
+
+// anonymizePlaceholders replaces the numbered placeholders ?1, ?2, ... ?n in
+// query with anonymous ? placeholders. SQLite numbers anonymous placeholders
+// in the order they appear, so this is only done if the numbered placeholders
+// appear exactly in the order 1..n; otherwise an error is returned.
+//
+// The modernc.org/sqlite driver matches every numbered placeholder against
+// all arguments by formatting each argument's ordinal as a string, which
+// makes binding the arguments of a multi-row insert quadratic and allocate
+// for every comparison. Anonymous placeholders are matched by ordinal.
+func anonymizePlaceholders(query string, n int) (string, error) {
+	var b strings.Builder
+	b.Grow(len(query))
+
+	next := 1
+	for i := 0; i < len(query); i++ {
+		c := query[i]
+		b.WriteByte(c)
+		if c != '?' {
+			continue
+		}
+
+		// Read the placeholder number.
+		end := i + 1
+		for end < len(query) && query[end] >= '0' && query[end] <= '9' {
+			end++
+		}
+		num, err := strconv.Atoi(query[i+1 : end])
+		if err != nil || num != next {
+			return "", fmt.Errorf("%w: found %q, expected ?%d", errUnexpectedPlaceholders, query[i:end], next)
+		}
+		next++
+		i = end - 1
+	}
+
+	if next-1 != n {
+		return "", fmt.Errorf("%w: found %d, expected %d", errUnexpectedPlaceholders, next-1, n)
+	}
+	return b.String(), nil
 }
 
 // putManyWithPreparedStmts stores many records in the database. The batch is
