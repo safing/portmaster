@@ -323,17 +323,24 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	switch {
 	case !ok:
 		// No dns request connection found.
-	case dnsRequestConn.PID < 0:
-		// Process is not identified or is special.
-	case dnsRequestConn.Ended > 0 && dnsRequestConn.Ended < time.Now().Unix()-3:
-		// Connection has already ended (too long ago).
-		log.Tracer(ctx).Debugf("network: found ended dns request connection %s for dns request for %s", dnsRequestConn, fqdn)
 	default:
-		log.Tracer(ctx).Debugf("network: found matching dns request connection %s", dnsRequestConn.String())
-		// Inherit PID.
-		pi.PID = dnsRequestConn.PID
-		// Inherit process struct itself, as the PID may already be re-used.
-		proc = dnsRequestConn.process
+		// The dns request connection is still handled by its packet handler
+		// worker and checked by the connection cleaner, so it may only be read
+		// while holding its lock.
+		reqPID, reqProc, reqEnded, reqDesc := dnsRequestConn.dnsRequestAttribution()
+		switch {
+		case reqPID < 0:
+			// Process is not identified or is special.
+		case reqEnded > 0 && reqEnded < time.Now().Unix()-3:
+			// Connection has already ended (too long ago).
+			log.Tracer(ctx).Debugf("network: found ended dns request connection %s for dns request for %s", reqDesc, fqdn)
+		default:
+			log.Tracer(ctx).Debugf("network: found matching dns request connection %s", reqDesc)
+			// Inherit PID.
+			pi.PID = reqPID
+			// Inherit process struct itself, as the PID may already be re-used.
+			proc = reqProc
+		}
 	}
 
 	// Find process by remote IP/Port.
@@ -810,6 +817,23 @@ func (conn *Connection) DataIsComplete() bool {
 	return conn.dataComplete.IsSet()
 }
 
+// IsAttributedToProfile reports whether the data of the connection is
+// complete and the connection is attributed to the given profile.
+// It locks the connection.
+func (conn *Connection) IsAttributedToProfile(profileSource, profileID string) bool {
+	// Check the atomic flag first in order to not wait for the lock of
+	// connections that cannot match.
+	if !conn.DataIsComplete() {
+		return false
+	}
+
+	conn.Lock()
+	defer conn.Unlock()
+
+	return conn.ProcessContext.Profile == profileID &&
+		conn.ProcessContext.Source == profileSource
+}
+
 // Process returns the connection's process.
 func (conn *Connection) Process() *process.Process {
 	return conn.process
@@ -934,6 +958,16 @@ func (conn *Connection) String() string {
 	default:
 		return fmt.Sprintf("%s -> %s", conn.process, conn.Entity.IP)
 	}
+}
+
+// dnsRequestAttribution returns the data of a saved dns request connection
+// that is needed to attribute a dns request to its process.
+// It locks the connection.
+func (conn *Connection) dnsRequestAttribution() (pid int, proc *process.Process, ended int64, description string) {
+	conn.Lock()
+	defer conn.Unlock()
+
+	return conn.PID, conn.process, conn.Ended, conn.String()
 }
 
 func (conn *Connection) shouldWaitForDomain() bool {

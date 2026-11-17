@@ -80,9 +80,9 @@ func resetProfileConnectionVerdict(profileSource, profileID string) {
 	var changedVerdicts int
 	for _, conn := range network.GetAllConnections() {
 		// Check if connection is complete and attributed to the deleted profile.
-		if conn.DataIsComplete() &&
-			conn.ProcessContext.Profile == profileID &&
-			conn.ProcessContext.Source == profileSource {
+		// The attribution may only be read while holding the connection lock,
+		// as connections are re-attributed concurrently.
+		if conn.IsAttributedToProfile(profileSource, profileID) {
 			if resetConnectionVerdict(ctx, conn) {
 				changedVerdicts++
 			}
