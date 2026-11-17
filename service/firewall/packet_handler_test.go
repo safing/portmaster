@@ -7,6 +7,8 @@ import (
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/process"
+	"github.com/safing/portmaster/spn/access"
+	"github.com/safing/portmaster/spn/access/account"
 )
 
 // realTestPacket is a packet that is not info-only, but otherwise behaves like
@@ -164,4 +166,40 @@ func TestApplyBandwidthUpdateWhileLocked(t *testing.T) {
 		t.Errorf("connection has %d/%d bytes, want 2000/1000", conn.BytesReceived, conn.BytesSent)
 	}
 	conn.Unlock()
+}
+
+// TestResetSingleConnectionVerdictSkipsIncomplete checks that a connection
+// whose data is not yet complete is not re-evaluated after a re-attribution
+// event, as it has no process, entity or profile yet. Its verdict is decided
+// by its firewall handler once its data is complete.
+func TestResetSingleConnectionVerdictSkipsIncomplete(t *testing.T) { //nolint:paralleltest // Modifies the global user cache.
+	// Without a database, the user lookup fails and the feature flags of the
+	// connection are not updated. With the service running, the user is
+	// either known or not logged in, which both let the feature flag update
+	// access the connection data. Saving the user caches it, persisting it
+	// fails without a database.
+	_ = (&access.UserRecord{User: &account.User{View: &account.View{}}}).Save()
+
+	conn := network.NewIncompleteConnection(realTestPacket{packet.NewInfoPacket(packet.Info{
+		Inbound:  false,
+		Version:  packet.IPv4,
+		Protocol: packet.TCP,
+		Src:      net.IPv4(127, 0, 0, 1),
+		SrcPort:  42017,
+		Dst:      net.IPv4(192, 0, 2, 17),
+		DstPort:  443,
+	})})
+
+	// Connection IDs are reused, so the connection the re-attribution event
+	// refers to may have been replaced by a new, incomplete one.
+	resetSingleConnectionVerdict(conn.ID)
+
+	conn.Lock()
+	defer conn.Unlock()
+	if conn.DataIsComplete() {
+		t.Error("connection must stay incomplete")
+	}
+	if conn.Verdict != network.VerdictUndecided {
+		t.Errorf("verdict of incomplete connection changed to %s", conn.VerdictVerb())
+	}
 }

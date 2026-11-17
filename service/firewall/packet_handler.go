@@ -64,6 +64,15 @@ func resetSingleConnectionVerdict(connID string) {
 		}
 	}
 
+	// Skip incomplete connections, as they have no process, entity and profile
+	// to re-evaluate yet. Only complete connections are re-attributed, but the
+	// ID may refer to a new connection by now. Its firewall handler decides on
+	// it with the current profile once its data is complete.
+	if !conn.DataIsComplete() {
+		tracer.Debugf("filter: skipping re-evaluation of incomplete connection %s", connID)
+		return
+	}
+
 	resetConnectionVerdict(ctx, conn)
 }
 
