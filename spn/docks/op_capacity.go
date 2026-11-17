@@ -55,6 +55,9 @@ type CapacityTestOp struct {
 
 	testResult int
 	result     chan *terminal.Error
+
+	// stopping is closed when the operation is stopped, from any side.
+	stopping chan struct{}
 }
 
 // CapacityTestOptions holds options for the capacity test.
@@ -99,6 +102,7 @@ func NewCapacityTestOp(t terminal.Terminal, opts *CapacityTestOptions) (*Capacit
 		dataSent:        new(int64),
 		dataSentWasAckd: abool.New(),
 		result:          make(chan *terminal.Error, 1),
+		stopping:        make(chan struct{}),
 	}
 
 	// Make capacity test request.
@@ -152,6 +156,7 @@ func startCapacityTestOp(t terminal.Terminal, opID uint32, data *container.Conta
 		dataSent:        new(int64),
 		dataSentWasAckd: abool.New(),
 		result:          make(chan *terminal.Error, 1),
+		stopping:        make(chan struct{}),
 	}
 	op.InitOperationBase(t, opID)
 
@@ -186,6 +191,10 @@ func (op *CapacityTestOp) handler(ctx *mgr.WorkerCtx) error {
 		select {
 		case <-ctx.Done():
 			returnErr = terminal.ErrCanceled
+			return nil
+
+		case <-op.stopping:
+			// The operation was stopped, eg. by the remote side.
 			return nil
 
 		case <-opTimeout:
@@ -323,6 +332,9 @@ func (op *CapacityTestOp) Deliver(msg *terminal.Msg) *terminal.Error {
 // The returned error is the error to send to the other side.
 // Should never be called directly. Call Stop() instead.
 func (op *CapacityTestOp) HandleStop(tErr *terminal.Error) (errorToSend *terminal.Error) {
+	// Signal the handler to end. HandleStop is only called once.
+	close(op.stopping)
+
 	// Return result to waiting routine.
 	select {
 	case op.result <- tErr:
