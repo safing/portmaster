@@ -5,6 +5,7 @@ import (
 	"net"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"unsafe"
 
@@ -108,10 +109,10 @@ func BenchmarkDecideOnConnection(b *testing.B) {
 		Config: profileConfig,
 	})
 	proc := &process.Process{Pid: 1234, Path: "/usr/lib/firefox/firefox"}
-	*fieldAt[*profile.LayeredProfile](
+	fieldAt[atomic.Pointer[profile.LayeredProfile]](
 		unsafe.Pointer(proc), //nolint:gosec // Test-only access to an unexported field.
 		unexportedFieldOffset(b, reflect.TypeFor[process.Process](), "profile"),
-	) = profile.NewLayeredProfile(localProfile)
+	).Store(profile.NewLayeredProfile(localProfile))
 
 	connProcess := unexportedFieldOffset(b, reflect.TypeFor[network.Connection](), "process")
 	connDataComplete := unexportedFieldOffset(b, reflect.TypeFor[network.Connection](), "dataComplete")
