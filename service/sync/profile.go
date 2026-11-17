@@ -294,6 +294,9 @@ func ImportProfile(r *ProfileImportRequest, requiredProfileSource profile.Profil
 	if r.Export.Source != "" && r.Export.Source != requiredProfileSource {
 		return nil, ErrMismatch
 	}
+	// The profile is always imported to the required source, so use it for all
+	// checks below, even if the export does not specify a source.
+	r.Export.Source = requiredProfileSource
 	// Convert fingerprints to internal representation.
 	fingerprints := convertFingerprintsToInternal(r.Export.Fingerprints)
 	if len(fingerprints) == 0 {
