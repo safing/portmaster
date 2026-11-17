@@ -11,6 +11,11 @@
 # requires. The screen is on VNC at 127.0.0.1:590$WINDOWS_VNC_DISPLAY.
 source "$(dirname "${BASH_SOURCE[0]}")/../common.sh"
 
+if [[ "$VMTEST_BACKEND" == proxmox ]]; then
+	pve_vm_main "$WINDOWS_VMID" windows "$@"
+	exit
+fi
+
 DIR="$WINDOWS_DIR"
 DISK="$DIR/disk.qcow2"
 VARS="$DIR/OVMF_VARS.fd"

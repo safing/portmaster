@@ -9,6 +9,11 @@
 #   vm.sh reset          discard all changes since create (snapshot "clean")
 source "$(dirname "${BASH_SOURCE[0]}")/../common.sh"
 
+if [[ "$VMTEST_BACKEND" == proxmox ]]; then
+	pve_vm_main "$LINUX_VMID" linux "$@"
+	exit
+fi
+
 DIR="$LINUX_DIR"
 DISK="$DIR/disk.qcow2"
 PIDFILE="$DIR/qemu.pid"
