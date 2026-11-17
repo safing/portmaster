@@ -39,6 +39,7 @@ require (
 	github.com/maruel/panicparse/v2 v2.5.0
 	github.com/mattn/go-colorable v0.1.15
 	github.com/mattn/go-isatty v0.0.24
+	github.com/mdlayher/netlink v1.8.0
 	github.com/miekg/dns v1.1.72
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-server-timing v1.0.1
@@ -127,7 +128,6 @@ require (
 	github.com/mattn/go-oci8 v0.1.1 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mattn/go-sqlite3 v1.14.19 // indirect
-	github.com/mdlayher/netlink v1.8.0 // indirect
 	github.com/mdlayher/socket v0.5.1 // indirect
 	github.com/mitchellh/cli v1.1.5 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
