@@ -162,7 +162,12 @@ func (ep *EndpointBase) parsePPP(typedEp Endpoint, fields []string) (Endpoint, e
 			case "", "*":
 				return nil, invalidDefinitionError(fields, "omit port if should match any")
 			default:
-				portSplitted := strings.Split(splitted[1], "-")
+				// Some port names contain a hyphen (eg. "FTP-DATA"), check
+				// for a full name match before splitting a port range.
+				portSplitted := []string{splitted[1]}
+				if _, isName := reference.GetPortNumber(splitted[1]); !isName {
+					portSplitted = strings.Split(splitted[1], "-")
+				}
 				if len(portSplitted) > 2 {
 					return nil, invalidDefinitionError(fields, "ports must be in format from-to")
 				}
