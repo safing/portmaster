@@ -36,7 +36,10 @@ func (s *TerminalModule) Stop() error {
 var (
 	rngFeeder *rng.Feeder = nil
 
-	scheduler *unit.Scheduler
+	// scheduler holds the current unit scheduler. It is replaced on every
+	// module start, while it may be used concurrently, so always use
+	// getScheduler() to access it.
+	scheduler atomic.Pointer[unit.Scheduler]
 
 	debugUnitScheduling bool
 )
@@ -48,12 +51,13 @@ func init() {
 func start() error {
 	rngFeeder = rng.NewFeeder()
 
-	scheduler = unit.NewScheduler(getSchedulerConfig())
+	newScheduler := unit.NewScheduler(getSchedulerConfig())
 	if debugUnitScheduling {
 		// Debug unit leaks.
-		scheduler.StartDebugLog()
+		newScheduler.StartDebugLog()
 	}
-	module.mgr.Go("msg unit scheduler", scheduler.SlotScheduler)
+	scheduler.Store(newScheduler)
+	module.mgr.Go("msg unit scheduler", newScheduler.SlotScheduler)
 
 	lockOpRegistry()
 
@@ -72,9 +76,14 @@ func TimedOut(timeout time.Duration) <-chan time.Time {
 
 // StopScheduler stops the unit scheduler.
 func StopScheduler() {
-	if scheduler != nil {
-		scheduler.Stop()
+	if s := getScheduler(); s != nil {
+		s.Stop()
 	}
+}
+
+// getScheduler returns the current unit scheduler.
+func getScheduler() *unit.Scheduler {
+	return scheduler.Load()
 }
 
 func getSchedulerConfig() *unit.SchedulerConfig {

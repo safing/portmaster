@@ -26,7 +26,7 @@ func registerMetrics() (err error) {
 	_, err = metrics.NewGauge(
 		"spn/scheduling/unit/slotpace/max",
 		nil,
-		metricFromInt(scheduler.GetMaxSlotPace, scaleSlotToSecondsFactor),
+		metricFromInt(func() int64 { return getScheduler().GetMaxSlotPace() }, scaleSlotToSecondsFactor),
 		&metrics.Options{
 			Name:       "SPN Scheduling Max Slot Pace (scaled to per second)",
 			Permission: api.PermitUser,
@@ -39,7 +39,7 @@ func registerMetrics() (err error) {
 	_, err = metrics.NewGauge(
 		"spn/scheduling/unit/slotpace/leveled/max",
 		nil,
-		metricFromInt(scheduler.GetMaxLeveledSlotPace, scaleSlotToSecondsFactor),
+		metricFromInt(func() int64 { return getScheduler().GetMaxLeveledSlotPace() }, scaleSlotToSecondsFactor),
 		&metrics.Options{
 			Name:       "SPN Scheduling Max Leveled Slot Pace (scaled to per second)",
 			Permission: api.PermitUser,
@@ -52,7 +52,7 @@ func registerMetrics() (err error) {
 	_, err = metrics.NewGauge(
 		"spn/scheduling/unit/slotpace/avg",
 		nil,
-		metricFromInt(scheduler.GetAvgSlotPace, scaleSlotToSecondsFactor),
+		metricFromInt(func() int64 { return getScheduler().GetAvgSlotPace() }, scaleSlotToSecondsFactor),
 		&metrics.Options{
 			Name:       "SPN Scheduling Avg Slot Pace (scaled to per second)",
 			Permission: api.PermitUser,
@@ -65,7 +65,7 @@ func registerMetrics() (err error) {
 	_, err = metrics.NewGauge(
 		"spn/scheduling/unit/life/avg/seconds",
 		nil,
-		metricFromNanoseconds(scheduler.GetAvgUnitLife),
+		metricFromNanoseconds(func() int64 { return getScheduler().GetAvgUnitLife() }),
 		&metrics.Options{
 			Name:       "SPN Scheduling Avg Unit Life",
 			Permission: api.PermitUser,
@@ -78,7 +78,7 @@ func registerMetrics() (err error) {
 	_, err = metrics.NewGauge(
 		"spn/scheduling/unit/workslot/avg/seconds",
 		nil,
-		metricFromNanoseconds(scheduler.GetAvgWorkSlotDuration),
+		metricFromNanoseconds(func() int64 { return getScheduler().GetAvgWorkSlotDuration() }),
 		&metrics.Options{
 			Name:       "SPN Scheduling Avg Work Slot Duration",
 			Permission: api.PermitUser,
@@ -91,7 +91,7 @@ func registerMetrics() (err error) {
 	_, err = metrics.NewGauge(
 		"spn/scheduling/unit/catchupslot/avg/seconds",
 		nil,
-		metricFromNanoseconds(scheduler.GetAvgCatchUpSlotDuration),
+		metricFromNanoseconds(func() int64 { return getScheduler().GetAvgCatchUpSlotDuration() }),
 		&metrics.Options{
 			Name:       "SPN Scheduling Avg Catch-Up Slot Duration",
 			Permission: api.PermitUser,

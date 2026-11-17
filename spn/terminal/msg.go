@@ -28,7 +28,7 @@ func NewMsg(data []byte) *Msg {
 	msg := &Msg{
 		Type: MsgTypeData,
 		Data: container.New(data),
-		Unit: scheduler.NewUnit(),
+		Unit: getScheduler().NewUnit(),
 	}
 
 	// Debug unit leaks.
@@ -44,7 +44,7 @@ func NewMsg(data []byte) *Msg {
 func NewEmptyMsg() *Msg {
 	msg := &Msg{
 		Type: MsgTypeData,
-		Unit: scheduler.NewUnit(),
+		Unit: getScheduler().NewUnit(),
 	}
 
 	// Debug unit leaks.
@@ -101,6 +101,6 @@ func (msg *Msg) debugWithCaller(skip int) { //nolint:unparam
 	}
 	_, file, line, ok := runtime.Caller(skip)
 	if ok {
-		scheduler.DebugUnit(msg.Unit, fmt.Sprintf("%s:%d", file, line))
+		getScheduler().DebugUnit(msg.Unit, fmt.Sprintf("%s:%d", file, line))
 	}
 }
