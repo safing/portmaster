@@ -80,10 +80,14 @@ impl Artifact {
 
     /// Returns whether the artifact is newer than the given one.
     ///
-    /// The second value is `false` when the versions cannot be compared.
+    /// Mirrors Go `Artifact.IsNewerThan`: an unparsable version on *either*
+    /// side makes the comparison impossible, so both values are `false`. Only
+    /// a nil receiver-but-present-other is explicitly `(false, false)` in Go;
+    /// a present receiver with a nil `other.version_num` is also `(false,
+    /// false)`, because Go checks `b.versionNum == nil` before comparing.
     pub fn is_newer_than(&self, other: &Artifact) -> (bool, bool) {
         match (&self.version_num, &other.version_num) {
-            (_, None) => (true, true),
+            (_, None) => (false, false),
             (None, _) => (false, false),
             (Some(new), Some(old)) => (new > old, true),
         }

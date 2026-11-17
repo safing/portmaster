@@ -297,6 +297,8 @@ fn artifacts_are_compared_by_version() {
 
     assert_eq!(new.is_newer_than(&old), (true, true));
     assert_eq!(old.is_newer_than(&new), (false, true));
-    assert_eq!(new.is_newer_than(&unknown), (true, true));
+    // Go returns (false, false) when the *other* artifact has no parsed
+    // version: the comparison cannot be made.
+    assert_eq!(new.is_newer_than(&unknown), (false, false));
     assert_eq!(unknown.is_newer_than(&new), (false, false));
 }

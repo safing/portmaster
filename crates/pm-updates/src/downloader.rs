@@ -90,7 +90,9 @@ pub fn decompress(content_type: &str, data: &[u8]) -> Result<Vec<u8>> {
 }
 
 fn decompress_gzip(data: &[u8]) -> Result<Vec<u8>> {
-    let reader = flate2::read::GzDecoder::new(data);
+    // Go's gzip.Reader transparently reads concatenated members; the single
+    // member GzDecoder would silently stop after the first one.
+    let reader = flate2::read::MultiGzDecoder::new(data);
     read_limited(reader, "read gzip file")
 }
 
@@ -348,6 +350,29 @@ pub fn copy_and_check_sha256_sum(
     Ok(())
 }
 
+/// Verifies a file's SHA-256 against the *decompressed* bytes described by an
+/// index artifact.
+///
+/// Mirrors store the original (compressed) bytes on disk, while index
+/// checksums describe the unpacked content (see Go `Decompress` and the normal
+/// `Downloader.getArtifact` path). Verifying the raw file directly therefore
+/// fails for artifacts with an `Unpack` type. Use this helper when checking a
+/// mirrored file against its index checksum so the check covers the same bytes
+/// the checksum was computed over.
+pub fn check_sha256_sum_file_unpacked(
+    filename: impl AsRef<Path>,
+    unpack: &str,
+    sha256sum: &str,
+) -> Result<()> {
+    let data = std::fs::read(filename).map_err(Error::OpenFile)?;
+    let data = if unpack.is_empty() {
+        data
+    } else {
+        decompress(unpack, &data)?
+    };
+    check_sha256_sum(&data, sha256sum)
+}
+
 /// Creates the directory if it does not exist.
 fn ensure_directory(dir: &Path) -> Result<()> {
     std::fs::create_dir_all(dir)
@@ -391,5 +416,52 @@ mod tests {
             }
             other => panic!("unexpected result: {other:?}"),
         }
+    }
+
+    #[test]
+    fn gzip_decompresses_all_members() {
+        use flate2::write::GzEncoder;
+        use flate2::Compression;
+        use std::io::Write;
+
+        // Concatenated gzip members, as produced e.g. by `gzip -c a b > out.gz`.
+        let mut combined = Vec::new();
+        for part in [b"first".as_slice(), b"second".as_slice()] {
+            let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+            encoder.write_all(part).unwrap();
+            combined.extend_from_slice(&encoder.finish().unwrap());
+        }
+        assert_eq!(decompress("gz", &combined).unwrap(), b"firstsecond");
+    }
+
+    #[test]
+    fn unpacked_file_checksum_matches_decompressed_bytes() {
+        use crate::check_sha256_sum_file;
+        use flate2::write::GzEncoder;
+        use flate2::Compression;
+        use std::io::Write;
+
+        let plain = b"the decompressed content";
+        let expected = sha2::Sha256::digest(plain);
+        let hash = hex::encode(expected);
+
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+        encoder.write_all(plain).unwrap();
+        let gzipped = encoder.finish().unwrap();
+
+        let dir = std::env::temp_dir().join(format!(
+            "pm-updates-unpacked-hash-{}-{}",
+            std::process::id(),
+            plain.len()
+        ));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("artifact.gz");
+        std::fs::write(&path, &gzipped).unwrap();
+
+        assert!(check_sha256_sum_file_unpacked(&path, "gz", &hash).is_ok());
+        // A plain checksum over the compressed bytes does not match, which is
+        // the mismatch the mirror helper exists to avoid.
+        assert!(check_sha256_sum_file(&path, &hash).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -370,6 +370,80 @@ fn configure_updates_the_flags() {
 }
 
 #[test]
+fn configure_with_check_reports_when_to_recheck() {
+    let tree = TempTree::new("configure-check");
+    let update = index("2.0.0", now() - 60);
+    let mut config = base_config(&tree);
+    config.auto_check = false;
+    config.index_urls = vec![];
+    let updater = updater(config, &update, Arc::new(Notifications::new()));
+
+    let first = updater.configure_with_check(true, vec![INDEX_URL.to_string()]);
+    assert!(first.changed);
+    assert!(first.auto_check);
+    assert!(first.should_check);
+
+    // Re-applying the same config changes nothing.
+    let second = updater.configure_with_check(true, vec![INDEX_URL.to_string()]);
+    assert!(!second.changed);
+    assert!(!second.should_check);
+
+    // Turning automatic checking off is a change, but must not trigger a check.
+    let disabled = updater.configure_with_check(false, vec![INDEX_URL.to_string()]);
+    assert!(disabled.changed);
+    assert!(!disabled.auto_check);
+    assert!(!disabled.should_check);
+
+    // Switching the release channel (index URLs) while enabled triggers one.
+    let channel = updater.configure_with_check(false, vec!["https://other/index.json".to_string()]);
+    assert!(channel.changed);
+    assert!(!channel.should_check, "auto-check is still off");
+    let reenabled = updater.configure_with_check(true, vec!["https://other/index.json".to_string()]);
+    assert!(reenabled.changed);
+    assert!(reenabled.should_check);
+}
+
+#[test]
+fn offline_check_loads_the_staged_index_from_download_dir() {
+    let tree = TempTree::new("offline");
+    let notifications = Arc::new(Notifications::new());
+    let installed = index("1.0.0", now() - 120);
+    let staged = index("2.0.0", now() - 60);
+
+    // Install v1 in the main directory, with a matching artifact so no
+    // corruption repair path is taken.
+    std::fs::create_dir_all(tree.path("bin")).expect("create bin");
+    std::fs::write(
+        tree.path("bin/index.json"),
+        installed.to_json().expect("index json"),
+    )
+    .expect("write installed index");
+    std::fs::write(tree.path("bin/tool"), ARTIFACT_CONTENT).expect("write installed artifact");
+
+    // Stage v2 in the download directory. There is no index URL, so the
+    // updater must pick this index up to see a newer version.
+    std::fs::create_dir_all(tree.path("download")).expect("create download");
+    std::fs::write(
+        tree.path("download/index.json"),
+        staged.to_json().expect("index json"),
+    )
+    .expect("write staged index");
+
+    let mut config = base_config(&tree);
+    config.index_urls = vec![];
+    let updater = updater(config, &staged, Arc::clone(&notifications));
+    assert_eq!(updater.get_index().expect("installed index").version, "1.0.0");
+
+    updater.update_check().expect("offline update check");
+
+    assert_eq!(updater.get_index().expect("new index").version, "2.0.0");
+    assert_eq!(
+        std::fs::read(tree.path("bin/tool")).expect("installed artifact"),
+        ARTIFACT_CONTENT
+    );
+}
+
+#[test]
 fn repeat_duration_matches_go() {
     assert_eq!(pm_updates::UPDATE_TASK_REPEAT_DURATION, Duration::from_secs(3600));
 }
