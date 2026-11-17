@@ -1087,14 +1087,16 @@ impl Firewall {
         }
 
         // Like Go's activateNfqueueFirewall: drop stale verdict-marked entries
-        // and force flows that bypassed Portmaster while stopped to be
-        // re-evaluated. Errors are non-fatal (Go ignores them too).
+        // so old verdicts do not survive a restart. Errors are non-fatal.
         if let Err(error) = self.conntrack.delete_all_marked(ipv6) {
             tracing::warn!(%error, "filter: failed to delete marked conntrack entries");
         }
-        if let Err(error) = self.conntrack.delete_unmarked(ipv6) {
-            tracing::warn!(%error, "filter: failed to delete unmarked conntrack entries");
-        }
+        // Deliberately NOT calling delete_unmarked() here. Go's own TODO says
+        // it is only needed when DNAT-based features (SPN, split-tunneling)
+        // are active, and it *disconnects every existing non-loopback flow*.
+        // In this port SPN is replaced by xray and split-tunneling is off by
+        // default, so unconditionally deleting all unmarked conntrack entries
+        // kills the user's live connections on every start.
 
         let (tx, mut rx) = mpsc::channel::<pm_interception::queue::QueuedPacket>(1024);
         let mut queues = Vec::new();
