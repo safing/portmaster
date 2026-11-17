@@ -1,9 +1,11 @@
 package log
 
 import (
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/safing/portmaster/base/info"
@@ -110,21 +112,26 @@ func writerManager() {
 
 	for {
 		err := writer()
-		if err != nil {
-			Errorf("log: writer failed: %s", err)
-		} else {
+		if err == nil {
 			return
 		}
+		// The error report was already written to GlobalWriter. Do not log
+		// via the log buffer here, as this goroutine is the only consumer of
+		// it and would deadlock if the buffer is full.
+		atomic.AddUint64(errLogLines, 1)
 	}
 }
 
-func writer() error {
-	var err error
+// errWriterPanic is returned by writer when it recovered from a panic.
+var errWriterPanic = errors.New("log writer panicked")
+
+func writer() (err error) {
 	defer func() {
 		// recover from panic
 		panicVal := recover()
 		if panicVal != nil {
-			_, err = fmt.Fprintf(GlobalWriter, "%s", panicVal)
+			// Always return an error, so that the writer is restarted.
+			err = fmt.Errorf("%w: %v", errWriterPanic, panicVal)
 
 			// write stack to stderr
 			fmt.Fprintf(
@@ -157,7 +164,7 @@ StackTrace:
 		case <-forceEmptyingOfBuffer: // log buffer is full!
 		case <-shutdownSignal: // shutting down
 			finalizeWriting()
-			return err
+			return nil
 		}
 
 		// wait for timeslot to log
@@ -166,7 +173,7 @@ StackTrace:
 		case <-forceEmptyingOfBuffer: // log buffer is full!
 		case <-shutdownSignal: // shutting down
 			finalizeWriting()
-			return err
+			return nil
 		}
 
 		// write all the logs!
@@ -213,7 +220,7 @@ StackTrace:
 		case <-time.After(10 * time.Millisecond):
 		case <-shutdownSignal:
 			finalizeWriting()
-			return err
+			return nil
 		}
 
 	}
