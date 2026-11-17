@@ -743,6 +743,18 @@ type saveQuery struct {
 	historySQL string
 }
 
+// saveInsertOnlyColumns are the columns that are only written when a
+// connection is inserted, as they never change afterwards: the ID is the
+// conflict target of the upsert and network.Connection.Started is only set
+// when the connection is created.
+// SQLite decides by the columns of the SET list which indexes an UPDATE has
+// to rewrite, not by whether the values change: setting these two rewrote the
+// primary key index and the started index for every update of a connection.
+var saveInsertOnlyColumns = map[string]bool{
+	"id":      true,
+	"started": true, //nolint:goconst // SQL column name.
+}
+
 // newSaveQuery builds the statements to save the given column map.
 func newSaveQuery(connMap map[string]any) *saveQuery {
 	columns := make([]string, 0, len(connMap))
@@ -762,6 +774,9 @@ func newSaveQuery(connMap map[string]any) *saveQuery {
 		// the order of the columns. An update sets the values of the row that
 		// could not be inserted.
 		placeholders = append(placeholders, "?")
+		if saveInsertOnlyColumns[key] {
+			continue
+		}
 		updateSets = append(updateSets, fmt.Sprintf("%s = excluded.%s", key, key))
 	}
 

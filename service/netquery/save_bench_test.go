@@ -119,7 +119,7 @@ func TestToParamMapConnStable(t *testing.T) {
 	m, err = orm.ToParamMap(ctx, conn, "", orm.DefaultEncodeConfig, benchSkipFields)
 	require.NoError(t, err)
 	require.Len(t, m, 33)
-	for _, key := range []string{"ended", "allowed", "exit_node", "started"} {
+	for _, key := range []string{"ended", "allowed", "exit_node", "started"} { //nolint:goconst // SQL column names.
 		v, ok := m[key]
 		require.True(t, ok, key)
 		require.Nil(t, v, key)
@@ -134,17 +134,17 @@ func TestSaveQuery(t *testing.T) {
 	require.Equal(t, `INSERT INTO main.connections (a, b, id)
 				VALUES(?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
-				a = excluded.a, b = excluded.b, id = excluded.id
+				a = excluded.a, b = excluded.b
 			`, q.sql(LiveDatabase))
 	require.Equal(t, `INSERT INTO history.connections (a, b, id)
 				VALUES(?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
-				a = excluded.a, b = excluded.b, id = excluded.id
+				a = excluded.a, b = excluded.b
 			`, q.sql(HistoryDatabase))
 	require.Equal(t, `INSERT INTO other.connections (a, b, id)
 				VALUES(?, ?, ?)
 				ON CONFLICT(id) DO UPDATE SET
-				a = excluded.a, b = excluded.b, id = excluded.id
+				a = excluded.a, b = excluded.b
 			`, q.sql("other"))
 
 	require.True(t, q.matches(map[string]any{"a": nil, "b": nil, "id": nil}))
