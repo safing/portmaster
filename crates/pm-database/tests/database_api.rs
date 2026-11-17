@@ -497,3 +497,75 @@ fn read_only_storage_rejects_writes() {
         Err(Error::NotImplemented)
     ));
 }
+
+#[test]
+fn invalid_queries_are_rejected() {
+    let (_dir, dbs) = setup("invalid-query");
+    let internal = dbs.internal_interface();
+    internal
+        .put(json_record("core:a", json!({"a": 1})))
+        .unwrap();
+
+    // An int condition with a non-numeric string is a build error. Go's
+    // Interface.Query/Subscribe call q.Check() and return that error instead
+    // of silently matching nothing.
+    let bad = Query::new("core:").where_(pm_query::Condition::new("a", pm_query::EQUALS, "nope"));
+    assert!(internal.query(&bad).is_err());
+    assert!(internal.subscribe(bad).is_err());
+
+    // A valid query still works.
+    let good = Query::new("core:");
+    assert_eq!(internal.query(&good).unwrap().len(), 1);
+}
+
+#[test]
+fn subscriptions_drop_updates_when_feed_is_full() {
+    let dbs = Arc::new(Databases::without_disk());
+    dbs.register_injected("core", "core test").unwrap();
+    dbs.inject("core", Box::new(MemoryStorage::new())).unwrap();
+    let internal = dbs.internal_interface();
+
+    let mut subscription = internal.subscribe(Query::new("core:events/")).unwrap();
+    for i in 0..1005 {
+        internal
+            .put(json_record(&format!("core:events/{i}"), json!({"i": i})))
+            .unwrap();
+    }
+
+    // The feed is buffered at 1000; the extra updates are dropped instead of
+    // growing an unbounded queue.
+    let mut received = 0;
+    while subscription.try_recv().is_some() {
+        received += 1;
+    }
+    assert_eq!(received, 1000);
+    subscription.cancel();
+}
+
+#[test]
+fn write_paths_do_not_run_read_hooks() {
+    let (_dir, dbs) = setup("write-hooks");
+    let controller = dbs.controller("core").unwrap();
+    let recorder = Arc::new(Recorder::default());
+    let hook = controller.register_hook(Query::new("core:hooked/"), recorder.clone());
+
+    // A limited interface must check permissions on writes; Go does this with
+    // a metadata-only GetMeta, so pre_get/post_get hooks must not run.
+    let limited = dbs.interface(Options {
+        local: true,
+        internal: false,
+        ..Options::default()
+    });
+    limited
+        .put(json_record("core:hooked/a", json!({"a": 1})))
+        .unwrap();
+    assert_eq!(recorder.calls(), vec!["pre_put"]);
+
+    recorder.calls().clear();
+    limited
+        .set_absolute_expiry("core:hooked/a", now() + 100)
+        .unwrap();
+    assert_eq!(recorder.calls(), vec!["pre_put"]);
+
+    hook.cancel();
+}

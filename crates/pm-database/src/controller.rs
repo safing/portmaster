@@ -5,10 +5,13 @@ use std::sync::{Arc, RwLock, Weak};
 
 use pm_query::Query;
 use pm_record::Record;
-use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::{self, Receiver, Sender};
 
 use crate::storage::Storage;
 use crate::{now, DatabaseInfo, Error, Result};
+
+/// Capacity of a subscription feed, matching Go's `make(chan record.Record, 1000)`.
+const SUBSCRIPTION_BUFFER: usize = 1000;
 
 /// A hook registered for records matching a query.
 pub trait Hook: Send + Sync {
@@ -54,7 +57,7 @@ struct SubscriptionEntry {
     query: Query,
     local: bool,
     internal: bool,
-    sender: UnboundedSender<Record>,
+    sender: Sender<Record>,
 }
 
 /// Handle of a registered hook; dropping it keeps the hook active, use
@@ -152,6 +155,24 @@ impl Controller {
         Ok(record.meta)
     }
 
+    /// Returns the stored record without running pre-get/post-get hooks.
+    ///
+    /// Write paths use this instead of [`Controller::get`]: the record is about
+    /// to be modified and written back, so running read hooks would transform
+    /// the stored representation. Go avoids this by serving write paths from
+    /// the interface cache (or via the metadata-only `GetMeta`).
+    pub fn get_for_write(&self, db_key: &str) -> Result<Record> {
+        self.check_running()?;
+        let record = self.storage.get(db_key).map_err(|err| match err {
+            Error::StorageNotFound => Error::NotFound,
+            other => other,
+        })?;
+        if !record.meta.check_validity(now()) {
+            return Err(Error::NotFound);
+        }
+        Ok(record)
+    }
+
     /// Saves a record, running pre-put hooks and notifying subscribers.
     pub fn put(&self, mut record: Record) -> Result<()> {
         self.check_running()?;
@@ -210,9 +231,9 @@ impl Controller {
         query: Query,
         local: bool,
         internal: bool,
-    ) -> Result<(u64, UnboundedReceiver<Record>)> {
+    ) -> Result<(u64, Receiver<Record>)> {
         self.check_running()?;
-        let (sender, receiver) = mpsc::unbounded_channel();
+        let (sender, receiver) = mpsc::channel(SUBSCRIPTION_BUFFER);
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         self.subscriptions
             .write()
@@ -262,8 +283,9 @@ impl Controller {
                 .check_permission(subscription.local, subscription.internal)
                 && subscription.query.matches(record)
             {
-                // A closed receiver is simply skipped, like a full channel in Go.
-                let _ = subscription.sender.send(record.clone());
+                // Drop the update when the feed is full or closed, like Go's
+                // non-blocking send on the buffered subscription channel.
+                let _ = subscription.sender.try_send(record.clone());
             }
         }
     }

@@ -699,3 +699,42 @@ fn validation_func_runs_after_regex_and_on_defaults() {
         .with_validation_func(|_| Err("never".to_string()));
     assert!(config.register(bad).is_err());
 }
+
+#[test]
+fn database_writes_push_a_single_update() {
+    let config = Config::new();
+    quick_register(&config, "test/string", OPT_TYPE_STRING, json!("default"));
+    let dbs = Arc::new(Databases::without_disk());
+    config.register_database(&dbs).unwrap();
+    let internal = dbs.internal_interface();
+
+    let mut subscription = internal
+        .subscribe(pm_database::Query::new("config:test/string"))
+        .unwrap();
+    let mut record = internal.get("config:test/string").unwrap();
+    let mut accessor = record.accessor().unwrap();
+    accessor.set("Value", json!("water")).unwrap();
+    record.data = pm_dsd::gojson::to_vec(accessor.value()).unwrap();
+    internal.put(record).unwrap();
+
+    // The controller notifies once for the write; set_value must not push a
+    // second, duplicate update for DB-originated writes (Go uses push=false).
+    let mut count = 0;
+    while subscription.try_recv().is_some() {
+        count += 1;
+    }
+    assert_eq!(count, 1, "database writes must notify exactly once");
+    subscription.cancel();
+}
+
+#[test]
+fn json_to_map_handles_null_like_go() {
+    // Go's JSONToMap unmarshals `null` into an empty map and keeps explicit
+    // null values as nil entries.
+    assert!(values("null").is_empty());
+    assert!(values("{}").is_empty());
+    assert!(values("{\"a\": {}}").is_empty());
+    let with_null = values("{\"a\": null}");
+    assert_eq!(with_null.len(), 1);
+    assert!(with_null["a"].is_null());
+}
