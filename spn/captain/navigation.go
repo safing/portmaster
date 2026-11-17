@@ -28,6 +28,8 @@ var (
 	ErrReInitSPNSuggested = errors.New("SPN re-init suggested")
 )
 
+// establishHomeHub picks a nearby hub and connects to it as home hub. If the
+// map is empty, it adds the bootstrap hubs first.
 func establishHomeHub(ctx *mgr.WorkerCtx) error {
 	// Get own IP.
 	locations, ok := netenv.GetInternetLocation()
@@ -131,6 +133,9 @@ findCandidates:
 	return errors.New("no home hub candidates available")
 }
 
+// connectToHomeHub connects to the given hub, fills the map from its gossip,
+// authorizes and sets it as the home hub. While connecting, the hub's IPs are
+// excepted from tunneling.
 func connectToHomeHub(wCtx *mgr.WorkerCtx, dst *hub.Hub) error {
 	// Create new context with timeout.
 	// The maximum timeout is a worst case safeguard.
@@ -217,6 +222,8 @@ func connectToHomeHub(wCtx *mgr.WorkerCtx, dst *hub.Hub) error {
 	return nil
 }
 
+// optimizeNetwork opens the lanes the navigator suggests and starts retiring
+// lanes that are no longer suggested. It runs on public hubs only.
 func optimizeNetwork(ctx *mgr.WorkerCtx) error {
 	if publicIdentity == nil {
 		return nil

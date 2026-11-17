@@ -102,6 +102,8 @@ func TriggerHubStatusMaintenance() {
 	module.statusUpdater.Go()
 }
 
+// maintainPublicIdentity rebuilds the hub's announcement from the config and
+// gossips it to all gossip peers if it changed.
 func maintainPublicIdentity(_ *mgr.WorkerCtx) error {
 	changed, err := publicIdentity.MaintainAnnouncement(nil, false)
 	if err != nil {
@@ -128,6 +130,8 @@ func maintainPublicIdentity(_ *mgr.WorkerCtx) error {
 	return nil
 }
 
+// maintainPublicStatus refreshes the hub's status (lanes, load, flags,
+// exchange keys) and gossips it to all gossip peers if it changed.
 func maintainPublicStatus(ctx *mgr.WorkerCtx) error {
 	// Get current lanes.
 	cranes := docks.GetAllAssignedCranes()

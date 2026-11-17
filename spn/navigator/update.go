@@ -147,6 +147,8 @@ func (m *Map) UpdateHub(h *hub.Hub) {
 	m.updateHub(h, true, true)
 }
 
+// updateHub creates or updates the pin of the given hub. lockMap and lockHub
+// say whether this function must take those locks itself.
 func (m *Map) updateHub(h *hub.Hub, lockMap, lockHub bool) {
 	if lockMap {
 		m.Lock()
@@ -434,6 +436,8 @@ func (m *Map) updateFailingStates(ctx *mgr.WorkerCtx) error {
 	return nil
 }
 
+// updateStates deletes discontinued and obsolete hubs and recalculates which
+// hubs are active and reachable. It runs periodically.
 func (m *Map) updateStates(ctx *mgr.WorkerCtx) error {
 	var toDelete []string
 

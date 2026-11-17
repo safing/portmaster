@@ -117,6 +117,8 @@ func init() {
 	})
 }
 
+// expand handles an incoming expand request: it relays data between the
+// requesting terminal and a new terminal on the crane to the requested hub.
 func expand(t terminal.Terminal, opID uint32, data *container.Container) (terminal.Operation, *terminal.Error) {
 	// Submit metrics.
 	newExpandOp.Inc()

@@ -33,6 +33,8 @@ func registerIntelUpdateHook() error {
 	return nil
 }
 
+// updateSPNIntel applies the SPN intel file to the main map if the file has
+// changed. It fails if the intel file is not made for the map in use.
 func updateSPNIntel(_ context.Context, _ interface{}) (err error) {
 	intelResourceUpdateLock.Lock()
 	defer intelResourceUpdateLock.Unlock()

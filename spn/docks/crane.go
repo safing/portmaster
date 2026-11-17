@@ -427,6 +427,8 @@ func (crane *Crane) decrypt(shipment *container.Container) (decrypted *container
 	return container.New(decryptedData), nil
 }
 
+// unloader reads from the ship, cuts the byte stream into length-prefixed
+// shipments and passes them on through the unloading channel.
 func (crane *Crane) unloader(workerCtx *mgr.WorkerCtx) error {
 	// Unclean shutdown safeguard.
 	defer crane.Stop(terminal.ErrUnknownError.With("unloader died"))
@@ -517,6 +519,8 @@ func (crane *Crane) unloadUntilFull(buf []byte) error {
 	}
 }
 
+// handler decrypts incoming shipments and dispatches their segments to the
+// terminals. An init segment creates a terminal, a stop segment abandons it.
 func (crane *Crane) handler(workerCtx *mgr.WorkerCtx) error {
 	var partialShipment *container.Container
 	var segmentLength uint32
@@ -646,6 +650,9 @@ handling:
 	}
 }
 
+// loader collects outgoing messages into shipments and sends them. A shipment
+// is sent when it reaches targetLoadSize or when loadingMaxWaitDuration is
+// over. Messages of the crane controller go first.
 func (crane *Crane) loader(workerCtx *mgr.WorkerCtx) (err error) {
 	shipment := container.New()
 	var partialShipment *container.Container

@@ -72,6 +72,8 @@ func triggerClientHealthCheck() {
 	}
 }
 
+// clientManager is the main loop of the SPN client: it connects to a home hub,
+// keeps checking the connection and reconnects when a check fails.
 func clientManager(ctx *mgr.WorkerCtx) error {
 	defer func() {
 		ready.UnSet()
@@ -214,6 +216,8 @@ func clientCheckNetworkReady(ctx *mgr.WorkerCtx) clientComponentResult {
 // Attempts to use the same will result in errors.
 var DisableAccount bool
 
+// clientCheckAccountAndTokens checks that the user is logged in and may use
+// the SPN, and requests new access tokens when they run low.
 func clientCheckAccountAndTokens(ctx *mgr.WorkerCtx) clientComponentResult {
 	if DisableAccount {
 		return clientResultOk
@@ -340,6 +344,8 @@ func clientStopHomeHub(ctx *mgr.WorkerCtx) clientComponentResult {
 	return clientResultOk
 }
 
+// clientConnectToHomeHub connects to a new home hub and notifies the user if
+// that fails.
 func clientConnectToHomeHub(ctx *mgr.WorkerCtx) clientComponentResult {
 	err := establishHomeHub(ctx)
 	if err != nil {
@@ -444,6 +450,9 @@ func clientSetActiveConnectionStatus(ctx *mgr.WorkerCtx) clientComponentResult {
 	return clientResultOk
 }
 
+// clientCheckHomeHubConnection pings the home hub. If the ping fails or the
+// home terminal is gone, it requests a reconnect. A failed ping also marks the
+// hub as failing, unless the device was probably asleep.
 func clientCheckHomeHubConnection(ctx *mgr.WorkerCtx) clientComponentResult {
 	// Check the status of the Home Hub.
 	home, homeTerminal := navigator.Main.GetHome()
@@ -486,6 +495,8 @@ func clientCheckHomeHubConnection(ctx *mgr.WorkerCtx) clientComponentResult {
 	return clientResultOk
 }
 
+// pingHome sends a ping operation through the given terminal and returns how
+// long the answer took.
 func pingHome(ctx *mgr.WorkerCtx, t terminal.Terminal, timeout time.Duration) (latency time.Duration, err *terminal.Error) {
 	started := time.Now()
 
