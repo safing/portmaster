@@ -9,6 +9,7 @@ DATA_DIR=/var/lib/portmaster
 UNIT=portmaster.service
 DROPIN_DIR=/etc/systemd/system/${UNIT}.d
 DROPIN=${DROPIN_DIR}/50-rust-core.conf
+UI_DROPIN=${DROPIN_DIR}/60-ui-rust.conf
 RUST_BIN=${BIN_DIR}/portmaster-core-rs
 # Set by backup() so a rollback or a later `go` can point at the last backup.
 BACKUP_PATH=""
@@ -18,10 +19,12 @@ usage() {
 Usage: $0 status
        $0 rust [path/to/portmaster-core-rs] [--yes]
        $0 go
+       $0 ui {status|rust|typescript}
 
 status  show which core the service uses
 rust    install the Rust core (if a path is given) and switch the service to it
 go      switch the service back to the Go core
+ui      switch the UI between the TypeScript (Angular) build and the Rust/WASM pilot
 EOF
 }
 
@@ -166,6 +169,39 @@ go)
 		fi
 	fi
 	restart
+	;;
+ui)
+	need_root "$@"
+	shift
+	case ${1:-status} in
+	status)
+		if [[ -f ${UI_DROPIN} ]]; then
+			echo "ui: rust (WASM pilot)"
+		else
+			echo "ui: typescript (Angular)"
+		fi
+		;;
+	rust)
+		mkdir -p "${DROPIN_DIR}"
+		cat >"${UI_DROPIN}" <<UIOUF
+[Service]
+Environment=PORTMASTER_UI_TYPE=rust
+UIOUF
+		restart
+		wait_ready
+		echo "UI switched to the Rust/WASM pilot at / (TypeScript UI still available on the Go core)"
+		;;
+	typescript)
+		rm -f "${UI_DROPIN}"
+		restart
+		wait_ready
+		echo "UI switched back to the TypeScript (Angular) build"
+		;;
+	*)
+		echo "usage: $0 ui {status|rust|typescript}" >&2
+		exit 2
+		;;
+	esac
 	;;
 *)
 	usage

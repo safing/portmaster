@@ -66,6 +66,12 @@ pub fn t(key: &'static str, lang: Lang) -> &'static str {
         ("language", Lang::En) => "Language",
         ("language", Lang::Ru) => "Язык",
 
+        ("dark", Lang::En) => "Dark",
+        ("dark", Lang::Ru) => "Тёмная",
+
+        ("light", Lang::En) => "Light",
+        ("light", Lang::Ru) => "Светлая",
+
         // Unknown keys are returned verbatim instead of panicking.
         _ => key,
     }
@@ -113,6 +119,8 @@ mod tests {
     fn dictionary_covers_required_labels() {
         let required = [
             "title",
+            "dark",
+            "light",
             "counter",
             "connect",
             "status",

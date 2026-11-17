@@ -150,6 +150,20 @@ pub async fn serve_pilot_file(
     pilot_response(&api, &dir.0, &path).await
 }
 
+pub async fn serve_pilot_js(
+    State(api): State<Arc<Api>>,
+    Extension(dir): Extension<PilotDir>,
+) -> AxumResponse {
+    pilot_response(&api, &dir.0, "pm_leptos_pilot.js").await
+}
+
+pub async fn serve_pilot_wasm(
+    State(api): State<Arc<Api>>,
+    Extension(dir): Extension<PilotDir>,
+) -> AxumResponse {
+    pilot_response(&api, &dir.0, "pm_leptos_pilot_bg.wasm").await
+}
+
 /// Builds just the optional pilot routes with `Arc<Api>` as router state.
 ///
 /// This can be merged into the main API router, e.g.
@@ -157,11 +171,28 @@ pub async fn serve_pilot_file(
 /// existing UI or API routes.
 pub fn pilot_router(data_dir: impl AsRef<Path>) -> Router<Arc<Api>> {
     let dir = PilotDir(data_dir.as_ref().join(PILOT_ASSET_DIR));
-    Router::new()
+    let mut router = Router::new()
         .route("/pilot", axum::routing::get(serve_pilot_index))
         .route("/pilot/", axum::routing::get(serve_pilot_index))
-        .route("/pilot/{*path}", axum::routing::get(serve_pilot_file))
-        .layer(Extension(dir))
+        .route("/pilot/{*path}", axum::routing::get(serve_pilot_file));
+
+    // UI type switch: PORTMASTER_UI_TYPE=rust makes the Rust/WASM pilot the
+    // main UI at `/`, leaving the TypeScript UI one systemd override away.
+    if std::env::var("PORTMASTER_UI_TYPE").as_deref() == Ok("rust") {
+        router = router
+            .route("/", axum::routing::get(serve_pilot_index))
+            .route(
+                "/pm_leptos_pilot.js",
+                axum::routing::get(serve_pilot_js),
+            )
+            .route(
+                "/pm_leptos_pilot_bg.wasm",
+                axum::routing::get(serve_pilot_wasm),
+            );
+    } else {
+        router = router.route("/", axum::routing::get(pm_api::ui::redirect_root));
+    }
+    router.layer(Extension(dir))
 }
 
 /// Fully assembled API server: the regular routes from `pm_api::serve` plus the
@@ -195,7 +226,6 @@ pub async fn serve(
             "/ui/modules/{module}/{*path}",
             axum::routing::get(pm_api::ui::serve_module_file),
         )
-        .route("/", axum::routing::get(pm_api::ui::redirect_root))
         .merge(pilot_router(data_dir))
         .fallback(axum::routing::any(handle_axum))
         .with_state(api);
