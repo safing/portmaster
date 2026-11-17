@@ -33,7 +33,7 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 
 	// Execute the upgrade.
 	previousIndex := u.index
-	upgradeError := u.upgradeMoveFiles(downloader)
+	installedFiles, upgradeError := u.upgradeMoveFiles(downloader)
 	if upgradeError == nil {
 		// Files upgraded successfully.
 		// Applying post-upgrade tasks, if any.
@@ -48,7 +48,7 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 	// The recovery moves the previous files (including the index file) back,
 	// so the previous index must be active again too.
 	u.index = previousIndex
-	recoveryErr := u.recoverFromFailedUpgrade()
+	recoveryErr := u.recoverFromFailedUpgrade(installedFiles)
 	if recoveryErr == nil {
 		return fmt.Errorf("upgrade failed, but recovery was successful: %w", upgradeError)
 	}
@@ -57,7 +57,9 @@ func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 	return fmt.Errorf("upgrade (including recovery) failed: %w", upgradeError)
 }
 
-func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
+// upgradeMoveFiles moves the new version into place. It returns the names of the
+// new version's files that were moved into the main directory, also on failure.
+func (u *Updater) upgradeMoveFiles(downloader *Downloader) (installedFiles []string, err error) {
 	// Important:
 	// We assume that the downloader has done its job and all artifacts are verified.
 	// Files will just be moved here.
@@ -65,9 +67,9 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 
 	// Reset purge directory, so that we can do a clean rollback later.
 	_ = os.RemoveAll(u.cfg.PurgeDirectory)
-	err := utils.EnsureDirectory(u.cfg.PurgeDirectory, utils.PublicReadExecPermission)
+	err = utils.EnsureDirectory(u.cfg.PurgeDirectory, utils.PublicReadExecPermission)
 	if err != nil {
-		return fmt.Errorf("failed to create purge directory: %w", err)
+		return nil, fmt.Errorf("failed to create purge directory: %w", err)
 	}
 
 	// Move current version files into purge folder.
@@ -77,11 +79,11 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 	files, err := os.ReadDir(u.cfg.Directory)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("read current directory: %w", err)
+			return nil, fmt.Errorf("read current directory: %w", err)
 		}
 		err := utils.EnsureDirectory(u.cfg.PurgeDirectory, utils.PublicReadExecPermission)
 		if err != nil {
-			return fmt.Errorf("create current directory: %w", err)
+			return nil, fmt.Errorf("create current directory: %w", err)
 		}
 	} else {
 		// Move files.
@@ -100,7 +102,7 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 			dst := filepath.Join(u.cfg.PurgeDirectory, file.Name())
 			err := u.moveFile(src, dst, "", utils.PublicReadPermission)
 			if err != nil {
-				return fmt.Errorf("failed to move current file %s to purge dir: %w", file.Name(), err)
+				return nil, fmt.Errorf("failed to move current file %s to purge dir: %w", file.Name(), err)
 			}
 		}
 	}
@@ -111,8 +113,9 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 	dst := filepath.Join(u.cfg.Directory, u.cfg.IndexFile)
 	err = u.moveFile(src, dst, "", utils.PublicReadPermission)
 	if err != nil {
-		return fmt.Errorf("failed to move index file to %s: %w", dst, err)
+		return nil, fmt.Errorf("failed to move index file to %s: %w", dst, err)
 	}
+	installedFiles = append(installedFiles, u.cfg.IndexFile)
 
 	// Move downloaded files to the current version folder.
 	for _, artifact := range downloader.index.Artifacts {
@@ -120,8 +123,9 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 		dst = filepath.Join(u.cfg.Directory, artifact.Filename)
 		err = u.moveFile(src, dst, artifact.SHA256, artifact.GetFileMode())
 		if err != nil {
-			return fmt.Errorf("failed to move file %s: %w", artifact.Filename, err)
+			return installedFiles, fmt.Errorf("failed to move file %s: %w", artifact.Filename, err)
 		} else {
+			installedFiles = append(installedFiles, artifact.Filename)
 			log.Debugf("updates/%s: %s moved", u.cfg.Name, artifact.Filename)
 		}
 	}
@@ -130,7 +134,7 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) error {
 	u.index = downloader.index
 	log.Infof("updates/%s: update complete (v%s from %s)", u.cfg.Name, u.index.Version, u.index.Published)
 
-	return nil
+	return installedFiles, nil
 }
 
 // moveFile moves a file and falls back to copying if it fails.
@@ -154,11 +158,19 @@ func (u *Updater) moveFile(currentPath, newPath string, sha256sum string, filePe
 }
 
 // recoverFromFailedUpgrade attempts to roll back any moved files by the upgrade process.
-func (u *Updater) recoverFromFailedUpgrade() error {
+// installedFiles are the names of the new version's files that the upgrade moved
+// into the main directory.
+func (u *Updater) recoverFromFailedUpgrade(installedFiles []string) error {
 	// Get list of files from purge dir.
 	files, err := os.ReadDir(u.cfg.PurgeDirectory)
 	if err != nil {
 		return err
+	}
+
+	// Remember which files had an old counterpart.
+	purged := make(map[string]struct{}, len(files))
+	for _, file := range files {
+		purged[file.Name()] = struct{}{}
 	}
 
 	// Move all files back to main dir.
@@ -169,6 +181,20 @@ func (u *Updater) recoverFromFailedUpgrade() error {
 		if err != nil {
 			// Only warn and continue to recover as many files as possible.
 			log.Warningf("updates/%s: failed to roll back file %s: %s", u.cfg.Name, file.Name(), err)
+		}
+	}
+
+	// Remove files of the new version that had no counterpart in the old
+	// version: moving the old files back does not replace them.
+	// Only files that this upgrade installed are removed, never anything that
+	// was purged (it was restored above) or is ignored by the upgrade.
+	for _, name := range installedFiles {
+		if _, ok := purged[name]; ok || slices.Contains(u.cfg.Ignore, name) {
+			continue
+		}
+		err := os.Remove(filepath.Join(u.cfg.Directory, name))
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			log.Warningf("updates/%s: failed to remove new file %s while rolling back: %s", u.cfg.Name, name, err)
 		}
 	}
 

@@ -446,12 +446,14 @@ func copyAndCheckSHA256Sum(src, dst, sha256sum string, filePermission utils.FSPe
 	tmpDst := dst + ".copy"
 	err = os.WriteFile(tmpDst, fileData, filePermission.AsUnixPermission())
 	if err != nil {
+		_ = os.Remove(tmpDst)
 		return fmt.Errorf("write temp dst file: %w", err)
 	}
 
 	// Rename/Move to actual location.
 	err = os.Rename(tmpDst, dst)
 	if err != nil {
+		_ = os.Remove(tmpDst)
 		return fmt.Errorf("rename dst file after write: %w", err)
 	}
 	utils.SetFilePermission(dst, filePermission)
