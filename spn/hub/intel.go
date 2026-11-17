@@ -7,7 +7,6 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"github.com/safing/jess/lhash"
 	"github.com/safing/portmaster/service/profile/endpoints"
 )
 
@@ -172,7 +171,8 @@ func ParseBootstrapHub(bootstrapTransport string) (t *Transport, hubID string, h
 	if t.Option == "" {
 		return nil, "", nil, errors.New("missing hub ID in URL fragment")
 	}
-	if _, err := lhash.FromBase58(t.Option); err != nil {
+	_, err = labeledHashFromBase58(t.Option)
+	if err != nil {
 		return nil, "", nil, fmt.Errorf("hub ID is invalid: %w", err)
 	}
 

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mr-tron/base58"
+
 	"github.com/safing/jess"
 	"github.com/safing/jess/lhash"
 	"github.com/safing/portmaster/base/database"
@@ -12,6 +14,7 @@ import (
 	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/structures/container"
 	"github.com/safing/structures/dsd"
+	"github.com/safing/structures/varint"
 )
 
 var (
@@ -507,9 +510,38 @@ func createHubID(scheme string, pubkey []byte) string {
 	return lhash.Digest(lhash.BLAKE2b_256, c.CompileData()).Base58()
 }
 
+// labeledHashFromBase58 is like lhash.FromBase58, but first checks that the
+// encoded digest length matches the available data. lhash allocates the
+// encoded length before checking it, so a short attacker-supplied ID could
+// otherwise make it allocate terabytes and crash the process.
+func labeledHashFromBase58(encoded string) (*lhash.LabeledHash, error) {
+	raw, err := base58.Decode(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base58: %w", err)
+	}
+
+	// Skip algorithm ID.
+	_, algIDSize, err := varint.Unpack64(raw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse algorithm ID: %w", err)
+	}
+	// Check digest length.
+	digestSize, digestSizeSize, err := varint.Unpack64(raw[algIDSize:])
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse digest length: %w", err)
+	}
+	if digestSize != uint64(len(raw[algIDSize+digestSizeSize:])) {
+		return nil, errInvalidDigestLength
+	}
+
+	return lhash.Load(raw)
+}
+
+var errInvalidDigestLength = errors.New("labeled hash has invalid digest length")
+
 func verifyHubID(id string, scheme string, pubkey []byte) (ok bool) {
 	// load labeled hash from ID
-	labeledHash, err := lhash.FromBase58(id)
+	labeledHash, err := labeledHashFromBase58(id)
 	if err != nil {
 		return false
 	}
