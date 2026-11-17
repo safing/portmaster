@@ -314,7 +314,9 @@ func (e *Entity) GetCountry(ctx context.Context) (string, bool) {
 	return e.Country, true
 }
 
-// GetCountryInfo returns the two letter ISO country code and whether it is set.
+// GetCountryInfo returns the country information of the entity's location.
+// It returns nil if the location could not be determined, ie. if there was a
+// location lookup error or if no location is available, eg. for non-global IPs.
 func (e *Entity) GetCountryInfo(ctx context.Context) *geoip.CountryInfo {
 	e.getLocation(ctx)
 
