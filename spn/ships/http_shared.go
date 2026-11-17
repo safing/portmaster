@@ -15,7 +15,8 @@ import (
 )
 
 type sharedServer struct {
-	server *http.Server
+	server    *http.Server
+	listeners []net.Listener
 
 	handlers     map[string]http.HandlerFunc
 	handlersLock sync.RWMutex
@@ -23,11 +24,13 @@ type sharedServer struct {
 
 // ServeHTTP forwards requests to registered handler or uses defaults.
 func (shared *sharedServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	shared.handlersLock.Lock()
-	defer shared.handlersLock.Unlock()
-
-	// Get and forward to registered handler.
+	// Get the handler, but do not hold the lock while it runs: handlers may
+	// take long, and requests must not wait for each other.
+	shared.handlersLock.RLock()
 	handler, ok := shared.handlers[r.URL.Path]
+	shared.handlersLock.RUnlock()
+
+	// Forward to registered handler.
 	if ok {
 		handler(w, r)
 		return
@@ -110,6 +113,10 @@ func addHTTPHandler(port uint16, path string, handler http.HandlerFunc) error {
 			Port: int(port),
 		})
 		if err != nil {
+			// Close the listeners that were already opened.
+			for _, l := range listeners {
+				_ = l.Close()
+			}
 			return fmt.Errorf("failed to listen: %w", err)
 		}
 
@@ -118,6 +125,7 @@ func addHTTPHandler(port uint16, path string, handler http.HandlerFunc) error {
 	}
 
 	// Add shared http server to list.
+	shared.listeners = listeners
 	sharedHTTPServers[port] = shared
 
 	// Start servers in service workers.
@@ -126,7 +134,7 @@ func addHTTPHandler(port uint16, path string, handler http.HandlerFunc) error {
 			fmt.Sprintf("shared http server listener on %s", serviceListener.Addr()),
 			func(_ *mgr.WorkerCtx) error {
 				err := shared.server.Serve(serviceListener)
-				if !errors.Is(http.ErrServerClosed, err) {
+				if !errors.Is(err, http.ErrServerClosed) {
 					return err
 				}
 				return nil
@@ -148,6 +156,30 @@ func removeHTTPHandler(port uint16, path string) error {
 		path = "/"
 	}
 
+	shared := detachHTTPHandler(port, path)
+	if shared == nil {
+		return nil
+	}
+
+	// Shut the server down after releasing the locks, as shutting down waits
+	// for active requests, which need the handlers lock.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err := shared.server.Shutdown(ctx)
+
+	// Shutdown only closes listeners the server already serves on, but the
+	// listener workers may not have started yet. Close all of them, so that
+	// the port is released now.
+	for _, listener := range shared.listeners {
+		_ = listener.Close()
+	}
+	return err
+}
+
+// detachHTTPHandler removes the handler at path from the shared server of
+// port. If no more handlers are registered, it also removes the shared server
+// and returns it, so that the caller can shut it down.
+func detachHTTPHandler(port uint16, path string) *sharedServer {
 	sharedHTTPServersLock.Lock()
 	defer sharedHTTPServersLock.Unlock()
 
@@ -157,31 +189,16 @@ func removeHTTPHandler(port uint16, path string) error {
 		return nil
 	}
 
-	// Set path to handler.
 	shared.handlersLock.Lock()
 	defer shared.handlersLock.Unlock()
 
-	// Check if path is registered.
-	_, ok = shared.handlers[path]
-	if !ok {
+	// Remove path from handlers.
+	delete(shared.handlers, path)
+	if len(shared.handlers) > 0 {
 		return nil
 	}
 
-	// Remove path from handler.
-	delete(shared.handlers, path)
-
-	// Shutdown shared HTTP server if no more handlers are registered.
-	if len(shared.handlers) == 0 {
-		ctx, cancel := context.WithTimeout(
-			context.Background(),
-			10*time.Second,
-		)
-		defer cancel()
-		return shared.server.Shutdown(ctx)
-	}
-
-	// Remove shared HTTP server from map.
+	// No more handlers are registered: remove the shared server.
 	delete(sharedHTTPServers, port)
-
-	return nil
+	return shared
 }
