@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/miekg/dns"
@@ -98,10 +99,25 @@ var errTCPConnStopped = fmt.Errorf("%w: connection stopped before sending the qu
 
 // tcpQuery holds the query information for a tcpResolverConn.
 type tcpQuery struct {
-	Query    *Query
+	Query *Query
+	// Response receives the reply. It holds one reply, so that the handler
+	// never blocks on it and the reply is not lost when it arrives before
+	// the query waits for it.
 	Response chan *dns.Msg
+	// settled is set by whoever is first: the handler when it delivers the
+	// reply, or the query when it stops waiting. A reply that arrives after
+	// the query stopped waiting is cached instead.
+	settled atomic.Bool
 	// expires is set when the query is sent and is only used by the handler.
 	expires time.Time
+}
+
+// newTCPQuery returns a new tcpQuery for the given query.
+func newTCPQuery(q *Query) *tcpQuery {
+	return &tcpQuery{
+		Query:    q,
+		Response: make(chan *dns.Msg, 1),
+	}
 }
 
 // MakeCacheRecord creates an RRCache record from a reply.
@@ -115,6 +131,25 @@ func (tq *tcpQuery) MakeCacheRecord(reply *dns.Msg, resolverInfo *ResolverInfo) 
 		Extra:    reply.Extra,
 		Resolver: resolverInfo.Copy(),
 	}
+}
+
+// deliver hands the reply to the waiting query. It never blocks. It returns
+// false if the query stopped waiting.
+func (tq *tcpQuery) deliver(reply *dns.Msg) bool {
+	if !tq.settled.CompareAndSwap(false, true) {
+		return false
+	}
+	tq.Response <- reply
+	return true
+}
+
+// stopWaiting marks the query as no longer waiting for the reply. If the
+// reply was delivered already, it is returned.
+func (tq *tcpQuery) stopWaiting() *dns.Msg {
+	if tq.settled.CompareAndSwap(false, true) {
+		return nil
+	}
+	return <-tq.Response
 }
 
 // NewTCPResolver returns a new TPCResolver.
@@ -316,16 +351,10 @@ func (tr *TCPResolver) Query(ctx context.Context, q *Query) (*RRCache, error) {
 
 	// The connection may stop right after it was handed out to this query,
 	// e.g. when it is recycled. Send the query on a new connection then.
-	tq := &tcpQuery{
-		Query:    q,
-		Response: make(chan *dns.Msg),
-	}
+	tq := newTCPQuery(q)
 	reply, err := tr.query(ctx, tq)
 	if errors.Is(err, errTCPConnStopped) {
-		tq = &tcpQuery{
-			Query:    q,
-			Response: make(chan *dns.Msg),
-		}
+		tq = newTCPQuery(q)
 		reply, err = tr.query(ctx, tq)
 	}
 	if err != nil {
@@ -397,11 +426,19 @@ func (tr *TCPResolver) query(ctx context.Context, tq *tcpQuery) (*dns.Msg, error
 			return nil, errTCPConnStopped
 		}
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		err = ctx.Err()
 	case <-module.mgr.Done():
-		return nil, ErrShuttingDown
+		err = ErrShuttingDown
 	case <-time.After(defaultRequestTimeout):
-		return nil, ErrTimeout
+		err = ErrTimeout
+	}
+	if err != nil {
+		// Use the reply if it was delivered meanwhile. Otherwise it is cached
+		// when it arrives.
+		reply = tq.stopWaiting()
+		if reply == nil {
+			return nil, err
+		}
 	}
 
 	// Check if we have a reply.
@@ -645,13 +682,11 @@ func (trc *tcpResolverConn) handleQueryResponse(msg *dns.Msg) {
 		return
 	}
 
-	// Send response to waiting query handler.
-	select {
-	case tq.Response <- msg:
+	// Hand the response to the waiting query.
+	if tq.deliver(msg) {
 		return
-	default:
-		// No one is listening for that response.
 	}
+	// The query stopped waiting for the response.
 
 	// If caching is disabled for this query, we are done.
 	if tq.Query.NoCaching {

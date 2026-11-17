@@ -853,3 +853,56 @@ func TestTCPResolverRecyclesBusyConn(t *testing.T) {
 	cancel()
 	wg.Wait()
 }
+
+// TestTCPResolverConnReplyBeforeQueryWaits checks that a reply that the
+// handler receives before the query waits for it is not dropped. The query
+// hands itself to the handler through a buffered queue and may not wait for
+// the reply yet when the reply arrives, e.g. under CPU load. The query then
+// timed out although the server answered.
+func TestTCPResolverConnReplyBeforeQueryWaits(t *testing.T) {
+	t.Parallel()
+
+	trc := &tcpResolverConn{
+		resolverInfo:    &ResolverInfo{Name: "ReplyTest", Type: ServerTypeTCP},
+		inFlightQueries: make(map[uint16]*tcpQuery, 1),
+	}
+	newReply := func(tq *tcpQuery, id uint16) *dns.Msg {
+		trc.inFlightQueries[id] = tq
+		reply := &dns.Msg{}
+		reply.SetQuestion(tq.Query.FQDN, dns.TypeA)
+		reply.Id = id
+		reply.Response = true
+		return reply
+	}
+
+	// The reply arrives before the query waits for it.
+	tq := newTCPQuery(&Query{FQDN: "early.example.", QType: dns.Type(dns.TypeA), NoCaching: true})
+	reply := newReply(tq, 1)
+	trc.handleQueryResponse(reply)
+	select {
+	case got := <-tq.Response:
+		if got != reply {
+			t.Errorf("expected the reply, got %v", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("reply that arrived before the query waited for it was dropped")
+	}
+
+	// The reply arrives right before the query stops waiting: it is used.
+	tq = newTCPQuery(&Query{FQDN: "late.example.", QType: dns.Type(dns.TypeA), NoCaching: true})
+	reply = newReply(tq, 2)
+	trc.handleQueryResponse(reply)
+	if got := tq.stopWaiting(); got != reply {
+		t.Errorf("expected the delivered reply when giving up, got %v", got)
+	}
+
+	// The reply arrives after the query stopped waiting: it is not delivered.
+	tq = newTCPQuery(&Query{FQDN: "gone.example.", QType: dns.Type(dns.TypeA), NoCaching: true})
+	if got := tq.stopWaiting(); got != nil {
+		t.Errorf("expected no reply, got %v", got)
+	}
+	trc.handleQueryResponse(newReply(tq, 3))
+	if len(tq.Response) != 0 {
+		t.Error("reply was delivered to a query that stopped waiting")
+	}
+}
