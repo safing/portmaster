@@ -25,8 +25,14 @@ const (
 func TestConnectOp(t *testing.T) {
 	t.Parallel()
 
+	// This test cannot be made hermetic: the exit side of the connect op only
+	// connects to IPs in the global scope (see ConnectOp.setup), so a local
+	// listener on a loopback or LAN address is always denied. Running it
+	// without network access would require a configurable scope check in
+	// production code, which does not exist.
 	if testing.Short() {
-		t.Skip("skipping test in short mode, as it interacts with the network")
+		t.Skip("skipping test in short mode: it connects to orf.at:80 on the Internet, " +
+			"because the connect op only allows destinations with a global IP")
 	}
 
 	// Create test terminal pair.
@@ -40,6 +46,10 @@ func TestConnectOp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create test terminal pair: %s", err)
 	}
+
+	// The exit side of the connect op requires a terminal with a session for
+	// rate limiting. Test terminals have none, so attach one to b.
+	b.SetTerminalExtension(&sessionTestTerminal{TestTerminal: b})
 
 	// Set up connect op.
 	b.GrantPermission(terminal.MayConnect)
@@ -111,4 +121,11 @@ func TestConnectOp(t *testing.T) {
 
 		time.Sleep(500 * time.Millisecond)
 	}
+}
+
+// sessionTestTerminal adds session support to a test terminal, as required by
+// operations that rate limit per session, such as the connect op.
+type sessionTestTerminal struct {
+	*terminal.TestTerminal
+	terminal.SessionAddOn
 }
