@@ -32,6 +32,9 @@ func TestServerReadHeaderTimeout(t *testing.T) { //nolint:paralleltest // Modifi
 	go func() { _ = srv.Serve(ln) }()
 	defer func() { _ = srv.Close() }()
 
+	// Start measuring before connecting: the server starts the timeout when it
+	// accepts the connection, which may happen before Dial returns.
+	start := time.Now()
 	conn, err := net.Dial("tcp", ln.Addr().String())
 	if err != nil {
 		t.Fatal(err)
@@ -39,7 +42,6 @@ func TestServerReadHeaderTimeout(t *testing.T) { //nolint:paralleltest // Modifi
 	defer func() { _ = conn.Close() }()
 
 	// Send an incomplete request header and then stall.
-	start := time.Now()
 	_, err = io.WriteString(conn, "GET /api/v1/ping HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Slow: ")
 	if err != nil {
 		t.Fatal(err)
