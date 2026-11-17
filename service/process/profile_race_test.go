@@ -29,8 +29,7 @@ func TestProfileConcurrentReassign(t *testing.T) {
 			}
 			// Same write pattern as GetProfile/RefetchProfile.
 			p.Lock()
-			p.PrimaryProfileID = "local/test"
-			p.profile.Store(lp)
+			p.setProfile("local/test", lp)
 			p.Unlock()
 		}
 	})

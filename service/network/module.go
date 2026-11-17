@@ -136,7 +136,7 @@ func reAttributeConnections(_ *mgr.WorkerCtx, profileID string) (bool, error) {
 	for _, conn := range conns.clone() {
 		if reAttributeConnection(ctx, conn, profileID, profileSource) {
 			reAttributed++
-			tracer.Debugf("filter: re-attributed %s to %s", conn, conn.process.PrimaryProfileID)
+			tracer.Debugf("filter: re-attributed %s to %s", conn, conn.process.GetPrimaryProfileID())
 		}
 	}
 
@@ -144,7 +144,7 @@ func reAttributeConnections(_ *mgr.WorkerCtx, profileID string) (bool, error) {
 	for _, conn := range dnsConns.clone() {
 		if reAttributeConnection(ctx, conn, profileID, profileSource) {
 			reAttributed++
-			tracer.Debugf("filter: re-attributed %s to %s", conn, conn.process.PrimaryProfileID)
+			tracer.Debugf("filter: re-attributed %s to %s", conn, conn.process.GetPrimaryProfileID())
 		}
 	}
 
@@ -181,7 +181,7 @@ func reAttributeConnection(ctx context.Context, conn *Connection, profileID, pro
 	// Trigger event for re-attribution.
 	module.EventConnectionReattributed.Submit(conn.ID)
 
-	log.Tracer(ctx).Debugf("filter: re-attributed %s to %s", conn, conn.process.PrimaryProfileID)
+	log.Tracer(ctx).Debugf("filter: re-attributed %s to %s", conn, conn.process.GetPrimaryProfileID())
 	return true
 }
 

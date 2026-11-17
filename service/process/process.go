@@ -66,7 +66,13 @@ type Process struct {
 	MatchingPath string
 
 	// PrimaryProfileID holds the scoped ID of the primary profile.
+	// It is reassigned by RefetchProfile while the process is in use: only
+	// access it while holding the process lock (as serialization does), and
+	// use GetPrimaryProfileID for lock-free reads.
 	PrimaryProfileID string
+	// primaryProfileID mirrors PrimaryProfileID for lock-free reads via
+	// GetPrimaryProfileID. Both are only written by setProfile.
+	primaryProfileID atomic.Pointer[string]
 	// profile holds the layered profile based on the primary profile.
 	// It is reassigned by RefetchProfile while the process is in use, so it is
 	// atomic to allow lock-free reads via Profile(). Writers still hold the
@@ -158,7 +164,21 @@ func (p *Process) IsSystemResolver() bool {
 	}
 
 	// Check ID.
-	return p.PrimaryProfileID == systemResolverScopedID
+	return p.GetPrimaryProfileID() == systemResolverScopedID
+}
+
+// GetPrimaryProfileID returns the scoped ID of the primary profile, or an
+// empty string if no profile is assigned yet. Unlike the PrimaryProfileID
+// field, it is safe to call without holding the process lock.
+func (p *Process) GetPrimaryProfileID() string {
+	if p == nil {
+		return ""
+	}
+
+	if id := p.primaryProfileID.Load(); id != nil {
+		return *id
+	}
+	return ""
 }
 
 // GetLastSeen returns the unix timestamp when the process was last seen.

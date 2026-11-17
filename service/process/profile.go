@@ -35,8 +35,7 @@ func (p *Process) GetProfile(ctx context.Context) (changed bool, err error) {
 	}
 
 	// Assign profile to process.
-	p.PrimaryProfileID = localProfile.ScopedID()
-	p.profile.Store(localProfile.LayeredProfile())
+	p.setProfile(localProfile.ScopedID(), localProfile.LayeredProfile())
 
 	return true, nil
 }
@@ -53,10 +52,18 @@ func (p *Process) RefetchProfile(ctx context.Context) error {
 	}
 
 	// Assign profile to process.
-	p.PrimaryProfileID = localProfile.ScopedID()
-	p.profile.Store(localProfile.LayeredProfile())
+	p.setProfile(localProfile.ScopedID(), localProfile.LayeredProfile())
 
 	return nil
+}
+
+// setProfile assigns the primary profile ID and the layered profile to the
+// process. The caller must hold the process lock (or own the process
+// exclusively, before it is published).
+func (p *Process) setProfile(scopedID string, lp *profile.LayeredProfile) {
+	p.PrimaryProfileID = scopedID
+	p.primaryProfileID.Store(&scopedID)
+	p.profile.Store(lp)
 }
 
 // getSpecialProfileID returns the special profile ID for the process, if any.
