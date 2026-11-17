@@ -219,6 +219,9 @@ func (c *Control) startResumeWorker(duration time.Duration) {
 // updateStatesAndNotify updates the paused states and sends notifications accordingly.
 // No thread safety, caller must hold c.locker.
 func (c *Control) updateStatesAndNotify() {
+	// A new pause/resume attempt supersedes the error of a previous one.
+	c.deleteErrorNotification()
+
 	if !c.pauseInfo.Interception && !c.pauseInfo.SPN {
 		if c.pauseNotification != nil {
 			c.pauseNotification.Delete()
@@ -273,16 +276,28 @@ func (c *Control) updateStatesAndNotifyError(errDescription string, err error) {
 		errDescription = "Error"
 	}
 
-	// Error notification
-	c.pauseNotification = &notifications.Notification{
+	// Error notification. It is tracked separately so that it does not replace
+	// (and thereby orphan) the pause notification, which stays valid while the
+	// pause state is unchanged.
+	c.deleteErrorNotification()
+	c.errorNotification = &notifications.Notification{
 		EventID:   "control:error",
 		Type:      notifications.Error,
 		Title:     errDescription,
 		Message:   err.Error(),
 		EventData: &c.pauseInfo,
 	}
-	notifications.Notify(c.pauseNotification)
-	c.pauseNotification.SyncWithState(c.states)
+	notifications.Notify(c.errorNotification)
+	c.errorNotification.SyncWithState(c.states)
+}
+
+// deleteErrorNotification deletes the error notification, if any.
+// No thread safety, caller must hold c.locker.
+func (c *Control) deleteErrorNotification() {
+	if c.errorNotification != nil {
+		c.errorNotification.Delete()
+		c.errorNotification = nil
+	}
 }
 
 func (c *Control) showNotification(title, message string) *notifications.Notification {
