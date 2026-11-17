@@ -1108,8 +1108,8 @@ func applyBandwidthUpdate(conn *network.Connection, bwUpdate *packet.BandwidthUp
 	// Update stats according to method.
 	switch bwUpdate.Method {
 	case packet.Absolute:
-		bytesIn = bwUpdate.BytesReceived - conn.BytesReceived
-		bytesOut = bwUpdate.BytesSent - conn.BytesSent
+		bytesIn = absoluteBandwidthDelta(conn.BytesReceived, bwUpdate.BytesReceived)
+		bytesOut = absoluteBandwidthDelta(conn.BytesSent, bwUpdate.BytesSent)
 
 		conn.BytesReceived = bwUpdate.BytesReceived
 		conn.BytesSent = bwUpdate.BytesSent
@@ -1124,6 +1124,18 @@ func applyBandwidthUpdate(conn *network.Connection, bwUpdate *packet.BandwidthUp
 	}
 
 	return bytesIn, bytesOut, true
+}
+
+// absoluteBandwidthDelta returns the bytes transferred between the previous
+// and the current value of an absolute byte counter. A counter that went
+// backwards was reset, eg. because the OS integration started counting a new
+// socket with the same connection ID. It then counted the current value since
+// the reset, which becomes the new baseline.
+func absoluteBandwidthDelta(previous, current uint64) uint64 {
+	if current < previous {
+		return current
+	}
+	return current - previous
 }
 
 func statLogger(w *mgr.WorkerCtx) error {

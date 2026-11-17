@@ -203,3 +203,43 @@ func TestResetSingleConnectionVerdictSkipsIncomplete(t *testing.T) { //nolint:pa
 		t.Errorf("verdict of incomplete connection changed to %s", conn.VerdictVerb())
 	}
 }
+
+// TestApplyBandwidthUpdateCounterReset checks that an absolute bandwidth update
+// with lower counters than the connection has does not underflow, but is
+// treated as a reset counter.
+func TestApplyBandwidthUpdateCounterReset(t *testing.T) {
+	t.Parallel()
+
+	conn := &network.Connection{}
+	apply := func(received, sent uint64) (bytesIn, bytesOut uint64) {
+		t.Helper()
+
+		bytesIn, bytesOut, ok := applyBandwidthUpdate(conn, &packet.BandwidthUpdate{
+			BytesReceived: received,
+			BytesSent:     sent,
+			Method:        packet.Absolute,
+		})
+		if !ok {
+			t.Fatal("update was not applied to an unlocked connection")
+		}
+		conn.Unlock()
+		return bytesIn, bytesOut
+	}
+
+	if bytesIn, bytesOut := apply(1000, 500); bytesIn != 1000 || bytesOut != 500 {
+		t.Errorf("reported %d/%d bytes, want 1000/500", bytesIn, bytesOut)
+	}
+
+	// The received counter was reset and counted 100 bytes since then.
+	if bytesIn, bytesOut := apply(100, 600); bytesIn != 100 || bytesOut != 100 {
+		t.Errorf("reported %d/%d bytes after counter reset, want 100/100", bytesIn, bytesOut)
+	}
+	if conn.BytesReceived != 100 || conn.BytesSent != 600 {
+		t.Errorf("connection has %d/%d bytes, want 100/600", conn.BytesReceived, conn.BytesSent)
+	}
+
+	// The reset counter is the new baseline.
+	if bytesIn, bytesOut := apply(150, 600); bytesIn != 50 || bytesOut != 0 {
+		t.Errorf("reported %d/%d bytes, want 50/0", bytesIn, bytesOut)
+	}
+}
