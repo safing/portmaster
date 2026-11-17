@@ -141,6 +141,10 @@ var localAddrFactory atomic.Pointer[func(network string) net.Addr]
 
 // SetLocalAddrFactory supplies the intel package with a function to get permitted local addresses for connections.
 func SetLocalAddrFactory(laf func(network string) net.Addr) {
+	if laf == nil {
+		// Setting no factory leaves it unset, so that it can still be set.
+		return
+	}
 	localAddrFactory.CompareAndSwap(nil, &laf)
 }
 
