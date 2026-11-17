@@ -26,15 +26,36 @@ pub struct BroadcastState {
     pub read: i64,
 }
 
+/// Go marshals `BroadcastState` as a struct (`{"Read": "<rfc3339>"}`): the
+/// `Read` field is a `time.Time`, which encodes as an RFC3339 string. Older
+/// Rust records stored the bare string directly; keep accepting that shape on
+/// read for backwards compatibility.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum BroadcastStateRepr {
+    Object {
+        #[serde(rename = "Read")]
+        read: String,
+    },
+    String(String),
+}
+
 impl Serialize for BroadcastState {
     fn serialize<S: Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
-        serializer.serialize_str(&gotime::format_rfc3339(self.read))
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("BroadcastState", 1)?;
+        state.serialize_field("Read", &gotime::format_rfc3339(self.read))?;
+        state.end()
     }
 }
 
 impl<'de> Deserialize<'de> for BroadcastState {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
-        let text = String::deserialize(deserializer)?;
+        let repr = BroadcastStateRepr::deserialize(deserializer)?;
+        let text = match repr {
+            BroadcastStateRepr::Object { read } => read,
+            BroadcastStateRepr::String(read) => read,
+        };
         Ok(BroadcastState {
             read: gotime::parse_rfc3339(&text).unwrap_or(0),
         })

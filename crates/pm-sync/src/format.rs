@@ -146,10 +146,12 @@ fn add_yaml_checksum(data: &[u8]) -> Result<Vec<u8>, String> {
     Ok(out)
 }
 
-/// Port of `filesig.VerifyYAMLChecksum`.
+/// Port of `filesig.VerifyYAMLChecksum`. Like Go, a document without any
+/// checksum lines is accepted here: `parseExport` ignores
+/// `filesig.ErrChecksumMissing`. Real verification failures still return an
+/// error.
 fn verify_yaml_checksum(data: &[u8]) -> Result<(), String> {
     let (content, meta) = yaml_split(data);
-    let mut verified = 0;
     for line in &meta {
         if let Some(value) = line.strip_prefix("jess-checksum") {
             let value = value.trim().trim_matches(|c| c == ':' || c == '=' || c == ' ');
@@ -158,12 +160,10 @@ fn verify_yaml_checksum(data: &[u8]) -> Result<(), String> {
             if !hash.matches(&content) {
                 return Err("checksum does not match".to_string());
             }
-            verified += 1;
         }
     }
-    if verified == 0 {
-        return Err("no checksum found".to_string());
-    }
+    // Go reports ErrChecksumMissing when nothing was verified; parseExport
+    // explicitly ignores it, so an export without a checksum is still valid.
     Ok(())
 }
 
@@ -271,8 +271,12 @@ pub fn parse_export<T: DeserializeOwned>(data: &[u8], mime: &str) -> Result<(T, 
     })?;
 
     let verified = match format {
-        pm_dsd::format::JSON => pm_jess::verify_json_checksum(data)
-            .map_err(|error| format!("checksum does not match: {error}")),
+        pm_dsd::format::JSON => match pm_jess::verify_json_checksum(data) {
+            // Go ignores filesig.ErrChecksumMissing in parseExport; only real
+            // verification failures (mismatch, malformed hash) are fatal.
+            Ok(()) | Err(pm_jess::Error::ChecksumMissing) => Ok(()),
+            Err(error) => Err(format!("checksum does not match: {error}")),
+        },
         pm_dsd::format::YAML => verify_yaml_checksum(data),
         _ => Ok(()),
     };
@@ -574,5 +578,24 @@ mod accept_tests {
             format_from_accept("application/xml;q=0.9, application/json; charset=utf-8, */*;q=0.8"),
             Some(pm_dsd::format::JSON)
         );
+    }
+
+    #[test]
+    fn import_accepts_mime_params_and_missing_checksum() {
+        // Go's parseExport uses the MIME before ';' and ignores
+        // filesig.ErrChecksumMissing, so a checksum-less export with a
+        // parameterised content type must still import.
+        let json = br#"{"type":"settings","config":{}}"#;
+        let (parsed, format) =
+            crate::parse_export::<crate::SettingsExport>(json, "application/json; charset=utf-8")
+                .expect("parse json export without checksum");
+        assert_eq!(format, pm_dsd::format::JSON);
+        assert_eq!(parsed.type_, "settings");
+
+        let yaml = b"type: settings\nconfig: {}\n";
+        let (parsed, format) = crate::parse_export::<crate::SettingsExport>(yaml, "application/yaml")
+            .expect("parse yaml export without checksum");
+        assert_eq!(format, pm_dsd::format::YAML);
+        assert_eq!(parsed.type_, "settings");
     }
 }

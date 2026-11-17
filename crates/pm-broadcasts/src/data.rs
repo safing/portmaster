@@ -188,11 +188,9 @@ impl Broadcasts {
                 }
             },
             Err(Error::Database(pm_database::Error::NotFound)) => {
-                // Go marshals the raw database.ErrNotFound message.
-                data.insert(
-                    "Install".to_string(),
-                    json!({ "Error": "database entry not found" }),
-                );
+                // Go wraps even database.ErrNotFound in a DataError. A plain
+                // error has no exported fields, so it marshals as `{}`.
+                data.insert("Install".to_string(), json!({ "Error": {} }));
             }
             Err(error) => {
                 data.insert("Install".to_string(), data_error(&error));
@@ -240,6 +238,9 @@ impl Broadcasts {
     }
 }
 
-fn data_error(error: &Error) -> Value {
-    json!({ "Error": error.to_string() })
+fn data_error(_error: &Error) -> Value {
+    // Go's `DataError{Error: err}` marshals the `error` interface value by its
+    // concrete type. Plain errors (e.g. `*errors.errorString`) have no exported
+    // fields, so the result is an empty object rather than the error message.
+    json!({ "Error": {} })
 }
