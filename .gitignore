@@ -71,3 +71,8 @@ windows_kext/test/_delme/
 
 # Local plans and notes
 docs/
+
+# IDE configs
+.vscode/
+.idea/
+

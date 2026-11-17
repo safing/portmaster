@@ -2,13 +2,14 @@
 # line endings. Windows users contributing to Go will need to use a
 # modern version of git and editors capable of LF line endings.
 
-*.go -text diff=golang
+*.go -text diff=golang linguist-vendored=true
 
-# GitHub Linguist language overrides
+# GitHub Linguist language overrides: prioritize Rust Core
 crates/** linguist-detectable=true
 crates/** linguist-vendored=false
 crates/fixtures/** linguist-vendored=true
 desktop/angular/dist/** linguist-vendored=true
 pilot/leptos/web/** linguist-vendored=true
+
 
 

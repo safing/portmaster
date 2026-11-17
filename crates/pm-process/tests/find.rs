@@ -14,12 +14,13 @@ fn attributes_connections_to_processes() {
     common::set_boot_time(&root, 1_700_000_000);
     common::add_process(&root, 4242, 1, 4242, 500, "server", "/usr/bin/server");
     let passwd = common::write_passwd(&root);
+    let uid = common::current_uid();
 
     // 10.0.0.1:50000 -> 10.0.0.2:443, owned by PID 4242.
     common::write_tcp_table(
         &root,
-        &[String::from(
-            "   0: 0100000A:C350 0200000A:01BB 01 00000000:00000000 00:00000000 00000000  1000 0 1111 1 0000000000000000 20 4 30 10 -1",
+        &[format!(
+            "   0: 0100000A:C350 0200000A:01BB 01 00000000:00000000 00:00000000 00000000  {uid} 0 1111 1 0000000000000000 20 4 30 10 -1",
         )],
     );
     common::add_socket_owner(&root, 4242, 1111);

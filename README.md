@@ -1,8 +1,8 @@
 # Portmaster (Rust Core & Unlocked Edition)
 
-[![CI](https://github.com/VLOD-ZDOV/portmaster/actions/workflows/ci.yml/badge.svg)](https://github.com/VLOD-ZDOV/portmaster/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/VLOD-ZDOV/portmaster?include_prereleases)](https://github.com/VLOD-ZDOV/portmaster/releases/latest)
-[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![CI](https://github.com/VLOD-ZDOV/portmaster-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/VLOD-ZDOV/portmaster-rust/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/VLOD-ZDOV/portmaster-rust?include_prereleases)](https://github.com/VLOD-ZDOV/portmaster-rust/releases/latest)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 
 An advanced, privacy-first application firewall and traffic controller for Linux and Windows.
 
@@ -36,7 +36,7 @@ If you already have Portmaster installed or want to switch your installation to 
 ### Linux (One-Liner)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/VLOD-ZDOV/portmaster/development/scripts/patch-portmaster.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/VLOD-ZDOV/portmaster-rust/main/scripts/patch-portmaster.sh | sudo bash
 ```
 
 *Options:*
@@ -46,7 +46,7 @@ curl -fsSL https://raw.githubusercontent.com/VLOD-ZDOV/portmaster/development/sc
 ### Windows (PowerShell Administrator)
 
 ```powershell
-irm https://raw.githubusercontent.com/VLOD-ZDOV/portmaster/development/scripts/patch-portmaster.ps1 | iex
+irm https://raw.githubusercontent.com/VLOD-ZDOV/portmaster-rust/main/scripts/patch-portmaster.ps1 | iex
 ```
 
 *Options:*
@@ -150,6 +150,6 @@ sudo ./packaging/linux/portmaster-core-switch.sh go
 
 ## License
 
-This project is licensed under the [AGPL-3.0 License](LICENSE).
+This project is licensed under the [GPL-3.0 License](LICENSE).
 Portions derived from the upstream project are Copyright (c) Safing ICS Technologies GmbH.
 All modifications and Rust core implementation are released under the same open-source terms.

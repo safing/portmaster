@@ -24,6 +24,18 @@ pub fn temp_dir(tag: &str) -> PathBuf {
     path
 }
 
+pub fn current_uid() -> u32 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        std::fs::metadata(".").map(|m| m.uid()).unwrap_or(1000)
+    }
+    #[cfg(not(unix))]
+    {
+        1000
+    }
+}
+
 pub fn write_file(path: &Path, content: impl AsRef<[u8]>) {
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(path, content).unwrap();

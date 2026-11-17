@@ -5,12 +5,12 @@
 # and modern unlocked web UI with Xray proxy integration.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/VLOD-ZDOV/portmaster/development/scripts/patch-portmaster.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/VLOD-ZDOV/portmaster-rust/main/scripts/patch-portmaster.sh | sudo bash
 #   sudo ./scripts/patch-portmaster.sh [--core rs|go] [--tag latest|<version>] [--restore]
 #
 set -euo pipefail
 
-REPO="VLOD-ZDOV/portmaster"
+REPO="VLOD-ZDOV/portmaster-rust"
 TARGET_CORE="rs"
 TAG="latest"
 ACTION="patch"

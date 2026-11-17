@@ -6,7 +6,7 @@
 
 .DESCRIPTION
     Usage in PowerShell (Run as Administrator):
-        irm https://raw.githubusercontent.com/VLOD-ZDOV/portmaster/development/scripts/patch-portmaster.ps1 | iex
+        irm https://raw.githubusercontent.com/VLOD-ZDOV/portmaster-rust/main/scripts/patch-portmaster.ps1 | iex
         .\scripts\patch-portmaster.ps1 [-Core rs|go] [-Tag latest|<tag>] [-Restore]
 #>
 
@@ -29,7 +29,7 @@ if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Adm
     exit 1
 }
 
-$Repo = "VLOD-ZDOV/portmaster"
+$Repo = "VLOD-ZDOV/portmaster-rust"
 $InstallDir = "C:\Program Files\Portmaster"
 $DataDir = "C:\ProgramData\safing\portmaster"
 $BackupDir = Join-Path $DataDir "core-backups"
