@@ -246,3 +246,20 @@ Ledger исполнения (git-ignored): `.superpowers/sdd/M0-foundation/progr
   (`pm-updates::Upgrader`), эндпоинт стран GeoIP, опции файрвола (`pm-firewall::register_options`) и вердикты
   split-tunnel (`check_split_tunneling`/`request_split_tunneling`, прокси инжектится через `SplitTunnelEnv`).
   Эталоны сканера и стран сняты с Go.
+
+- Волна закрытия находок полного ревью (2026-11-17, без Windows/пользовательских тестов, коммиты
+  `b6554c2f`..`80be3137`): conntrack cleanup (`delete_all_marked` на старте/стопе, `delete_unmarked`
+  на старте) и `reinsert_displaced` по расписанию 5/10/30 c подключены в `Firewall::start/stop`;
+  rollback флага `started` при ошибке iptables. UDP-прокси: per-session `CancellationToken` +
+  `EgressGuard`, relay останавливается при eviction и не обновляет новую сессию того же пира
+  (регрессионный тест). `core/apiKeys` перечитываются из конфига при каждом изменении (как Go
+  `EventConfigChange`), регрессионный тест. Xray: `plugin`/`pluginOpts` Shadowsocks больше не
+  эмитируются (xray-rs их отвергает), warning + тест. Интерактивный prompt: создаётся настоящее
+  уведомление через `create_prompt` + `PromptEnv` ядра, правило сохраняется action-хендлером;
+  текущий пакет deny'ится с причиной Go-timeout (асинхронное применение вердикта остаётся только в
+  тестах — синхронный хук не может ждать). Спец-профили (7 ID, конфиг/name/internal как в Go) и
+  tag-based профили (AppImage/Flatpak/interpreter/snap/net) создаются в `CoreProfiles::layered_for`
+  до совпадения по отпечаткам, 3 теста. clippy чистый, `cargo test --workspace` — 212 наборов ok,
+  0 FAILED. **Осталось (требует винды/тестов пользователя/внешнего кода):** runtime-проверка
+  Windows, eBPF C/Windows driver, bbolt, реальный Xray StatsService (нужен `xray-server`), полная
+  async-подстановка вердикта промпта в текущее соединение, проверка switch/истории и `ui {status,rust,typescript}`.
