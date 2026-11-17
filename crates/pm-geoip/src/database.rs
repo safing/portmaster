@@ -169,7 +169,9 @@ impl GeoIp {
     ///
     /// The result is enriched with the country information.
     pub fn get_location(&self, ip: IpAddr) -> Result<Location> {
-        let v6 = ip.is_ipv6();
+        // Go decides by `ip.To4() == nil`, so IPv4-mapped IPv6 addresses
+        // such as ::ffff:192.0.2.1 must use the IPv4 database.
+        let v6 = ip.to_canonical().is_ipv6();
         let reader = self.reader(v6).ok_or(Error::DatabaseNotAvailable)?;
         // A missing record leaves the location empty, like Go.
         let record: MmdbRecord = reader.lookup(ip)?.decode()?.unwrap_or_default();

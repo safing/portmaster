@@ -226,8 +226,11 @@ impl Notifications {
             let _ = &mut notification;
         }
 
-        // Notify waiters that the notification is gone.
+        // Notify waiters that the notification is gone. Go closes the action
+        // trigger channel here, so a pending prompt must wake with "dismissed"
+        // instead of waiting for the full decision timeout.
         let _ = handle.expired.send(true);
+        let _ = handle.response.send(None);
         self.notifications
             .write()
             .expect("lock poisoned")

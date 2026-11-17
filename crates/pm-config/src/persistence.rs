@@ -7,10 +7,15 @@ use serde_json::{Map, Number, Value};
 /// Parses and flattens a hierarchical JSON object, like Go `JSONToMap`.
 pub fn json_to_map(data: &[u8]) -> crate::Result<Map<String, Value>> {
     let value: Value = serde_json::from_slice(data)?;
-    let Value::Object(object) = value else {
-        return Err(crate::Error::InvalidJsonConfig(
-            "config file is not a JSON object".to_string(),
-        ));
+    // Go's JSONToMap unmarshals `null` into a nil map without an error.
+    let object = match value {
+        Value::Object(object) => object,
+        Value::Null => serde_json::Map::new(),
+        _ => {
+            return Err(crate::Error::InvalidJsonConfig(
+                "config file is not a JSON object".to_string(),
+            ))
+        }
     };
     Ok(flatten(&object))
 }
@@ -111,4 +116,15 @@ fn sort_keys(value: &Value) -> Value {
 pub fn map_to_json(flattened: &Map<String, Value>) -> crate::Result<Vec<u8>> {
     let config = sort_keys(&Value::Object(expand(flattened)));
     Ok(pm_dsd::gojson::to_vec_indent(&config, "", "  ")?)
+}
+
+#[cfg(test)]
+mod null_config_tests {
+    use super::*;
+
+    #[test]
+    fn json_null_is_an_empty_config_like_go() {
+        let map = json_to_map(b"null").unwrap();
+        assert!(map.is_empty());
+    }
 }

@@ -3,7 +3,7 @@
 use pm_database::{Interface, Key, Meta, Query, Record};
 
 use crate::profile::Profile;
-use crate::{make_profile_key, PROFILES_DB_PATH};
+use crate::{make_profile_key, make_scoped_id, PROFILES_DB_PATH, SOURCE_LOCAL};
 
 /// Errors of the profile store.
 #[derive(Debug, thiserror::Error)]
@@ -36,6 +36,13 @@ impl ProfileStore {
 
     /// Reads a profile by its scoped ID (`source/id`).
     pub fn get(&self, scoped_id: &str) -> Result<Profile> {
+        // Most callers pass a bare local ID; Go's getProfile() always builds
+        // a scoped ID first. Accept both forms.
+        let scoped_id = if scoped_id.contains('/') {
+            scoped_id.to_string()
+        } else {
+            make_scoped_id(SOURCE_LOCAL, scoped_id)
+        };
         let record = self.db.get(&format!("{PROFILES_DB_PATH}{scoped_id}"))?;
         Self::decode(&record)
     }

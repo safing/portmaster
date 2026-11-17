@@ -73,7 +73,7 @@ fn migrate_linked_path(db: &Interface, _from: &pm_updates::Version, _to: &pm_upd
             changed = true;
         }
         if profile.name.is_empty() && !profile.presentation_path.is_empty() {
-            profile.name = binary_name_from_path(&profile.presentation_path);
+            profile.name = crate::binmeta::generate_binary_name_from_path(&profile.presentation_path);
             changed = true;
         }
         if profile.fingerprints.is_empty() {
@@ -174,26 +174,6 @@ fn migrate_to_derived_ids(db: &Interface, _from: &pm_updates::Version, _to: &pm_
     Ok(())
 }
 
-/// Minimal equivalent of Go `binmeta.GenerateBinaryNameFromPath` for the
-/// migration: prettify the final path component.
-fn binary_name_from_path(path: &str) -> String {
-    let name = path.rsplit(['/', '\\']).next().unwrap_or(path);
-    let name = name.trim_end_matches(".exe");
-    let mut result = String::new();
-    for character in name.chars() {
-        if character == '-' || character == '_' {
-            result.push(' ');
-        } else {
-            result.push(character);
-        }
-    }
-    let mut chars = result.chars();
-    match chars.next() {
-        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-        None => String::new(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -207,8 +187,8 @@ mod tests {
 
     #[test]
     fn generates_readable_binary_names() {
-        assert_eq!(binary_name_from_path("/usr/bin/avahi-daemon"), "Avahi daemon");
-        assert_eq!(binary_name_from_path("C:\\Program Files\\App\\tool.exe"), "Tool");
+        assert_eq!(crate::binmeta::generate_binary_name_from_path("/usr/bin/avahi-daemon"), "Avahi Daemon");
+        assert_eq!(crate::binmeta::generate_binary_name_from_path("C:\\Program Files\\App\\tool.exe"), "Tool");
     }
 
     #[test]

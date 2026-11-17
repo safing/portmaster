@@ -233,3 +233,28 @@ fn profile_store_reads_and_writes() {
     // Invalid profiles are rejected.
     assert!(store.save(&Profile::default()).is_err());
 }
+
+#[test]
+fn store_get_accepts_a_bare_local_id() {
+    let dir = std::env::temp_dir().join(format!("pm-profile-bare-id-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let databases = std::sync::Arc::new(
+        pm_database::Databases::new(&dir).unwrap(),
+    );
+    databases
+        .register(pm_database::DatabaseInfo {
+            name: "core".into(),
+            description: String::new(),
+            storage_type: "sqlite".into(),
+            shadow_delete: false,
+        })
+        .unwrap();
+    let store = pm_profile::ProfileStore::new(databases.internal_interface());
+    let profile = pm_profile::Profile::new(pm_profile::Profile {
+        source: pm_profile::SOURCE_LOCAL.to_string(),
+        name: "Test".into(),
+        ..pm_profile::Profile::default()
+    });
+    store.save(&profile).unwrap();
+    assert_eq!(store.get(&profile.id).unwrap().id, profile.id);
+}

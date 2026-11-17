@@ -122,7 +122,7 @@ impl CoreProfiles {
                     )],
                     ..Profile::default()
                 });
-                created.name = name_from_path(&path);
+                created.name = pm_profile::binmeta::generate_binary_name_from_path(&path);
                 if let Err(error) = self.store.save(&created) {
                     tracing::warn!(%error, "profile: failed to save created profile");
                 } else {
@@ -596,29 +596,6 @@ pub struct Firewall {
     /// compiles the driver itself.
     #[cfg(windows)]
     winkext_path: std::path::PathBuf,
-}
-
-/// Human-readable profile name derived from a binary path, like Go
-/// `binmeta.GenerateBinaryNameFromPath` for the common case.
-fn name_from_path(path: &str) -> String {
-    let name = path
-        .rsplit(['/', '\\'])
-        .next()
-        .unwrap_or(path)
-        .trim_end_matches(".exe");
-    let mut result = String::new();
-    for character in name.chars() {
-        if character == '-' || character == '_' {
-            result.push(' ');
-        } else {
-            result.push(character);
-        }
-    }
-    let mut chars = result.chars();
-    match chars.next() {
-        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-        None => String::new(),
-    }
 }
 
 impl Firewall {

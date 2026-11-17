@@ -30,8 +30,9 @@ pub fn format_from_accept(accept: &str) -> Option<u8> {
     let mut wildcard = false;
     for part in accept.split(',') {
         let mut mime = part.trim();
-        if let Some((_, rest)) = mime.split_once(';') {
-            mime = rest;
+        // Go strings.Cut keeps the part BEFORE ';', dropping q/charset params.
+        if let Some((main, _)) = mime.split_once(';') {
+            mime = main;
         }
         if mime.contains('/') {
             mime = mime.split_once('/').map(|(_, rest)| rest).unwrap_or(mime);
@@ -560,5 +561,18 @@ mod tests {
         assert_eq!(format_from_accept("text/yaml, application/json"), Some(pm_dsd::format::YAML));
         assert_eq!(format_from_accept("application/xml, */*"), Some(pm_dsd::format::JSON));
         assert_eq!(format_from_accept("application/xml"), None);
+    }
+}
+
+#[cfg(test)]
+mod accept_tests {
+    use super::*;
+
+    #[test]
+    fn accept_with_quality_parameters_matches_json() {
+        assert_eq!(
+            format_from_accept("application/xml;q=0.9, application/json; charset=utf-8, */*;q=0.8"),
+            Some(pm_dsd::format::JSON)
+        );
     }
 }

@@ -383,8 +383,9 @@ fn decode_with_schema(name: &str, raw: ValueRef<'_>) -> Result<Value, DbError> {
 
     if col.is_time {
         return match raw {
-            ValueRef::Null if col.nullable => Ok(Value::Null),
-            ValueRef::Null => Ok(Value::String("0001-01-01T00:00:00Z".into())),
+            // Go's SQLite decoder returns nil for any NULL, regardless of the
+            // declared column type; the ORM writes JSON null.
+            ValueRef::Null => Ok(Value::Null),
             ValueRef::Text(t) => {
                 let s = String::from_utf8_lossy(t);
                 let unix = crate::timefmt::parse_sqlite(&s).ok_or_else(|| {
