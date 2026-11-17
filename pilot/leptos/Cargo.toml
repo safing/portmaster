@@ -1,0 +1,18 @@
+[package]
+name = "pm-leptos-pilot"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+publish = false
+
+# Standalone workspace: this pilot is WASM-only and must not affect the
+# main Rust core workspace MSRV/dependency graph.
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+leptos = { version = "0.8.23", features = ["csr"] }
+wasm-bindgen = "0.2.130"
+console_error_panic_hook = "0.1.7"
