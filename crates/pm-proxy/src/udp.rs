@@ -189,15 +189,17 @@ impl UdpProxy {
                                 }
                             };
 
+                            // Register egress before the first datagram so the
+                            // firewall can recognize it as a proxy session.
+                            self.egress.add(target_addr);
                             if let Err(e) = upstream.send(data).await {
+                                self.egress.remove(target_addr);
                                 error!("udp_proxy: failed to send initial datagram to {}: {}", target_addr, e);
                                 self.metrics.inc_errors();
                                 continue;
                             }
                             self.metrics.bytes_tx.fetch_add(len as u64, Ordering::Relaxed);
                             self.metrics.session_started();
-
-                            self.egress.add(target_addr);
                             sessions_guard.insert(peer_addr, UdpSession {
                                 upstream_socket: Arc::clone(&upstream),
                                 last_activity: Instant::now(),

@@ -60,13 +60,14 @@ pub fn register_api(xray: &Arc<Xray>, api: &Api) -> pm_api::Result<()> {
             match request.effective_method.as_str() {
                 "POST" => {
                     let payload: AddSubscriptionRequest = request.body_json()?;
-                    let subscription = subscriptions
+                    let mut subscription = subscriptions
                         .store
                         .add(&payload)
                         .map_err(crate::Error::api)?;
                     if subscription.enabled {
                         subscriptions.refresh(&subscription.id, None);
                     }
+                    subscription.url = redact_url(&subscription.url);
                     serde_json::to_value(subscription).map_err(pm_api::ApiError::Json)
                 }
                 "PUT" => {
@@ -159,6 +160,9 @@ pub fn register_api(xray: &Arc<Xray>, api: &Api) -> pm_api::Result<()> {
         )
         .with_write(PERMIT_ADMIN)
         .with_struct(move |request| {
+            if !connect.enabled {
+                return Err(crate::Error::Disabled.api());
+            }
             let payload: ConnectRequest = request.body_json()?;
             let node = connect.store.get_node(&payload.node_id).map_err(crate::Error::api)?;
             connect

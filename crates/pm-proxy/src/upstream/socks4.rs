@@ -5,6 +5,7 @@ use tokio::net::TcpStream;
 const SOCKS4_VERSION: u8 = 0x04;
 const SOCKS4_CMD_CONNECT: u8 = 0x01;
 const SOCKS4_REQ_GRANTED: u8 = 0x5a;
+const SOCKS4_REPLY_VERSION: u8 = 0;
 
 pub async fn socks4_connect(
     stream: &mut TcpStream,
@@ -54,6 +55,9 @@ pub async fn socks4_connect(
     // Read 8-byte response: VN (0), CD (0x5A = granted), Port (2), IP (4)
     let mut resp = [0u8; 8];
     stream.read_exact(&mut resp).await?;
+    if resp[0] != SOCKS4_REPLY_VERSION {
+        return Err(io::Error::other(format!("unexpected SOCKS4 reply version {}", resp[0])));
+    }
     if resp[1] != SOCKS4_REQ_GRANTED {
         let msg = match resp[1] {
             0x5b => "request rejected or failed",

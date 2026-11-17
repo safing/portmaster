@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use pm_updates::{check_sha256_sum, check_sha256_sum_file, decompress, HttpClient, HttpsClient, Index};
+use pm_updates::{check_sha256_sum, decompress, HttpClient, HttpsClient, Index};
 
 use crate::convert::{convert_v1, convert_v2, now};
 
@@ -107,7 +107,11 @@ pub fn mirror(
 
         let destination = target_dir.join(location);
         if !artifact.sha256.is_empty() && destination.exists() {
-            match check_sha256_sum_file(&destination, &artifact.sha256) {
+            match pm_updates::check_sha256_sum_file_unpacked(
+                &destination,
+                &artifact.unpack,
+                &artifact.sha256,
+            ) {
                 Ok(()) => {
                     println!(
                         "    skipping download, verified SHA256 checksum: {}",
@@ -142,10 +146,14 @@ pub fn mirror(
         if options.sigs {
             let signature = fetch(client.as_ref(), &format!("{url}.sig")).ok();
             if let Some(signature) = signature {
-                let path = destination.with_extension(format!(
-                    "{}.sig",
-                    destination.extension().map_or("", |ext| ext.to_str().unwrap_or(""))
-                ));
+                let path = match destination.extension().and_then(|ext| ext.to_str()) {
+                    Some(ext) if !ext.is_empty() => destination.with_extension(format!("{ext}.sig")),
+                    _ => {
+                        let mut name = destination.as_os_str().to_os_string();
+                        name.push(".sig");
+                        std::path::PathBuf::from(name)
+                    }
+                };
                 if let Err(error) = std::fs::write(&path, &signature) {
                     println!("    failed to write sig: {error}");
                 } else {

@@ -50,12 +50,20 @@ backup() {
 
 # Newest backup directory (timestamps sort lexicographically). Empty if none.
 newest_backup() {
-	local candidate
+	local candidate newest=""
 	[[ -d ${DATA_DIR}/core-switch-backup ]] || return 0
 	for candidate in "${DATA_DIR}"/core-switch-backup/*/; do
-		[[ -d ${candidate} ]] && printf '%s' "${candidate%/}"
+		[[ -d ${candidate} ]] && newest=${candidate%/}
 	done
+	printf '%s' "${newest}"
 	return 0
+}
+
+# API port can be overridden by core/listenAddress in config.json.
+api_port() {
+	local port
+	port=$(python3 -c 'import json,os,sys;d=json.load(open(os.argv[1]));print(str(d.get("core",{}).get("listenAddress","127.0.0.1:817")).rsplit(":",1)[-1])' "${DATA_DIR}/config.json" 2>/dev/null) || port=""
+	printf '%s' "${port:-817}"
 }
 
 restart() {
@@ -69,10 +77,10 @@ restart() {
 }
 
 wait_ready() {
-	local i
+	local i url="http://127.0.0.1:$(api_port)/api/v1/ready"
 	for i in $(seq 1 10); do
-		if curl -fsS --max-time 2 http://127.0.0.1:817/api/v1/ready >/dev/null 2>&1; then
-			echo "ready: $(curl -fsS --max-time 2 http://127.0.0.1:817/api/v1/ready)"
+		if curl -fsS --max-time 2 "${url}" >/dev/null 2>&1; then
+			echo "ready: $(curl -fsS --max-time 2 "${url}")"
 			return 0
 		fi
 		sleep 1
@@ -87,10 +95,16 @@ rollback() {
 	rmdir --ignore-fail-on-non-empty "${DROPIN_DIR}" || true
 	restart || echo "WARNING: could not restart ${UNIT}; start it manually" >&2
 	if [[ -n ${BACKUP_PATH} ]]; then
-		echo "Backup of config.json and databases/core: ${BACKUP_PATH}" >&2
-		echo "If the Go core cannot read the Rust-written config/database," >&2
-		echo "restore them with: sudo cp -a ${BACKUP_PATH}/config.json ${DATA_DIR}/config.json" >&2
-		echo "and: sudo cp -a ${BACKUP_PATH}/core ${DATA_DIR}/databases/core" >&2
+		# The Rust core may already have rewritten these files; restore the
+		# pre-switch snapshot before starting Go again.
+		if [[ -f ${BACKUP_PATH}/config.json ]]; then
+			cp -a "${BACKUP_PATH}/config.json" "${DATA_DIR}/config.json"
+		fi
+		if [[ -d ${BACKUP_PATH}/core ]]; then
+			rm -rf "${DATA_DIR}/databases/core"
+			cp -a "${BACKUP_PATH}/core" "${DATA_DIR}/databases/core"
+		fi
+		echo "restored config.json and databases/core from ${BACKUP_PATH}" >&2
 	fi
 }
 

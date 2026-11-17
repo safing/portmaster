@@ -64,7 +64,7 @@ fn save(db: &Interface, profile: &Profile) -> Result<(), String> {
 
 fn migrate_linked_path(db: &Interface, _from: &pm_updates::Version, _to: &pm_updates::Version) -> Result<(), String> {
     for mut profile in profiles(db)? {
-        if profile.linked_path.is_empty() {
+        if profile.linked_path.is_empty() && profile.presentation_path.is_empty() {
             continue;
         }
         let mut changed = false;
@@ -76,7 +76,7 @@ fn migrate_linked_path(db: &Interface, _from: &pm_updates::Version, _to: &pm_upd
             profile.name = crate::binmeta::generate_binary_name_from_path(&profile.presentation_path);
             changed = true;
         }
-        if profile.fingerprints.is_empty() {
+        if profile.fingerprints.is_empty() && !profile.linked_path.is_empty() {
             profile.fingerprints.push(crate::Fingerprint::new(
                 FINGERPRINT_TYPE_PATH,
                 "",

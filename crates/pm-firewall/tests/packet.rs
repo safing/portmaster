@@ -586,12 +586,7 @@ fn api_port_from_a_foreign_source_is_not_fast_tracked() {
 fn local_dns_fast_track_is_permanent_only_with_known_pid() {
     let fx = fx_with(api_env(), permit());
     fx.handler
-        .set_nameserver_ip_matcher(Box::new(|ip| ip == "127.0.0.1".parse::<IpAddr>().unwrap()))
-        .unwrap();
-    assert!(fx
-        .handler
-        .set_nameserver_ip_matcher(Box::new(|_| false))
-        .is_err());
+        .set_nameserver_ip_matcher(Box::new(|ip| ip == "127.0.0.1".parse::<IpAddr>().unwrap()));
 
     // Known PID from the packet: permanent, and saved for attribution.
     let mut pkt = FakePacket::new(17, "127.0.0.1", 50000, "127.0.0.1", 53, false);
@@ -763,8 +758,7 @@ fn rogue_dns_queries_are_redirected_to_the_nameserver() {
     env.interception.store(true, Ordering::SeqCst);
     let fx = fx_with(env, block_all());
     fx.handler
-        .set_nameserver_ip_matcher(Box::new(|ip| ip == "127.0.0.1".parse::<IpAddr>().unwrap()))
-        .unwrap();
+        .set_nameserver_ip_matcher(Box::new(|ip| ip == "127.0.0.1".parse::<IpAddr>().unwrap()));
     let pkt = FakePacket::udp("8.8.8.8", 53);
     fx.handler.handle_packet(&pkt);
     assert_eq!(pkt.last(), PktVerdict::RerouteToNameserver);
@@ -787,8 +781,7 @@ fn dns_to_the_nameserver_itself_is_not_redirected() {
     env.interception.store(true, Ordering::SeqCst);
     let fx = fx_with(env, permit());
     fx.handler
-        .set_nameserver_ip_matcher(Box::new(|ip| ip == "8.8.8.8".parse::<IpAddr>().unwrap()))
-        .unwrap();
+        .set_nameserver_ip_matcher(Box::new(|ip| ip == "8.8.8.8".parse::<IpAddr>().unwrap()));
     let pkt = FakePacket::udp("8.8.8.8", 53);
     fx.handler.handle_packet(&pkt);
     assert_ne!(pkt.last(), PktVerdict::RerouteToNameserver);

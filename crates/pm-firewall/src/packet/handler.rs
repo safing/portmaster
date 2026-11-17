@@ -3,7 +3,7 @@
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock};
 
 use pm_interception::Verdict as PktVerdict;
 use pm_netstate::{ip_scope, IpScope, UNDEFINED_PROCESS_ID};
@@ -72,7 +72,7 @@ pub struct HandlerCore {
     preauth: Arc<PreAuthPorts>,
     pub(super) conntrack: Arc<dyn ConntrackControl>,
     pub(super) bandwidth: Option<Arc<dyn BandwidthSink>>,
-    nameserver_matcher: OnceLock<NameserverMatcher>,
+    nameserver_matcher: RwLock<Option<NameserverMatcher>>,
     pub(super) pid_hints: PidHints,
     counters: Counters,
 }
@@ -97,20 +97,19 @@ impl HandlerCore {
             preauth,
             conntrack,
             bandwidth,
-            nameserver_matcher: OnceLock::new(),
+            nameserver_matcher: RwLock::new(None),
             pid_hints: PidHints::new(),
             counters: Counters::default(),
         }
     }
 
-    /// Go `SetNameserverIPMatcher`. Can only be set once.
-    pub fn set_nameserver_ip_matcher(
-        &self,
-        matcher: NameserverMatcher,
-    ) -> Result<(), MatcherAlreadySet> {
-        self.nameserver_matcher
-            .set(matcher)
-            .map_err(|_| MatcherAlreadySet)
+    /// Go `SetNameserverIPMatcher`. Replaces any previous matcher so that
+    /// nameserver changes can be propagated at runtime.
+    pub fn set_nameserver_ip_matcher(&self, matcher: NameserverMatcher) {
+        *self
+            .nameserver_matcher
+            .write()
+            .unwrap_or_else(|error| error.into_inner()) = Some(matcher);
     }
 
     pub fn stats(&self) -> PacketStats {
@@ -153,7 +152,11 @@ impl HandlerCore {
     }
 
     fn matches_nameserver(&self, ip: IpAddr) -> Option<bool> {
-        self.nameserver_matcher.get().map(|matcher| matcher(ip))
+        self.nameserver_matcher
+            .read()
+            .unwrap_or_else(|error| error.into_inner())
+            .as_ref()
+            .map(|matcher| matcher(ip))
     }
 
     /// Go `fastTrackedPermit`.

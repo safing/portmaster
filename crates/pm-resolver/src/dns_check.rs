@@ -63,7 +63,7 @@ impl DnsCheck for ResolverDnsCheck {
             }
             // A blocked upstream means DNS is not usable, even though the
             // query itself was answered.
-            Some(error) if error.is_blocked() => DnsCheckOutcome::Failed(error.to_string()),
+            Some(error) if error.is_blocked() => DnsCheckOutcome::AnsweredWithError(error.to_string()),
             Some(error) => DnsCheckOutcome::AnsweredWithError(error.to_string()),
         }
     }

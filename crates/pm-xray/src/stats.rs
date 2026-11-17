@@ -22,7 +22,7 @@ use bytes::Bytes;
 use http::{HeaderMap, Method, Request};
 
 /// Default port of the Xray gRPC API inbound (`api` in the Xray config).
-pub const DEFAULT_STATS_PORT: u16 = 62789;
+pub const DEFAULT_STATS_PORT: u16 = 0;
 /// Loopback address of the Xray API.
 pub const DEFAULT_STATS_ADDR: ([u8; 4], u16) = ([127, 0, 0, 1], DEFAULT_STATS_PORT);
 /// Full path of the `GetStats` RPC.

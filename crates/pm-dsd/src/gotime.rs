@@ -23,21 +23,41 @@ pub fn parse_rfc3339(text: &str) -> Option<i64> {
     if text == "0001-01-01T00:00:00Z" || text.is_empty() {
         return Some(0);
     }
-    let text = text.strip_suffix('Z').unwrap_or(text);
-    let (date, time) = text.split_once('T')?;
+    let (date, clock_with_offset) = text.split_once('T')?;
+
+    let mut clock = clock_with_offset;
+    let mut offset_seconds = 0i64;
+    if let Some(rest) = clock.strip_suffix('Z') {
+        clock = rest;
+    } else if let Some(pos) = clock.rfind(['+', '-']) {
+        let sign = if clock.as_bytes()[pos] == b'-' { -1 } else { 1 };
+        let offset = &clock[pos + 1..];
+        let (hours, minutes) = offset.split_once(':')?;
+        offset_seconds = sign
+            * (hours.parse::<i64>().ok()? * 3_600 + minutes.parse::<i64>().ok()? * 60);
+        clock = &clock[..pos];
+    }
+
     let mut date_parts = date.split('-');
     let year: i64 = date_parts.next()?.parse().ok()?;
     let month: u32 = date_parts.next()?.parse().ok()?;
     let day: u32 = date_parts.next()?.parse().ok()?;
+    if date_parts.next().is_some() {
+        return None;
+    }
 
-    let mut time_parts = time.split(':');
+    let mut time_parts = clock.split(':');
     let hour: i64 = time_parts.next()?.parse().ok()?;
     let minute: i64 = time_parts.next()?.parse().ok()?;
     let seconds_part = time_parts.next()?;
-    let second: i64 = seconds_part[..2].parse().ok()?;
+    if time_parts.next().is_some() {
+        return None;
+    }
+    // Drop fractional seconds; malformed short fields must not panic.
+    let second: i64 = seconds_part.split('.').next()?.parse().ok()?;
 
     let days = days_from_civil(year, month, day);
-    Some(days * 86_400 + hour * 3_600 + minute * 60 + second)
+    Some(days * 86_400 + hour * 3_600 + minute * 60 + second - offset_seconds)
 }
 
 /// Converts days since the Unix epoch to a civil date (Howard Hinnant).
@@ -81,5 +101,24 @@ mod tests {
         for seconds in [1, 1_600_000_000, 1_700_000_000, 2_000_000_000] {
             assert_eq!(parse_rfc3339(&format_rfc3339(seconds)), Some(seconds));
         }
+    }
+
+    #[test]
+    fn parses_offsets_and_malformed_seconds_without_panicking() {
+        // 19:00+07:00 == 12:00Z
+        assert_eq!(
+            parse_rfc3339("2026-11-17T19:00:00+07:00"),
+            parse_rfc3339("2026-11-17T12:00:00Z")
+        );
+        assert_eq!(
+            parse_rfc3339("2026-11-17T12:00:00.123Z"),
+            parse_rfc3339("2026-11-17T12:00:00Z")
+        );
+        assert_eq!(
+            parse_rfc3339("2026-11-17T12:00:0Z"),
+            parse_rfc3339("2026-11-17T12:00:00Z")
+        );
+        assert_eq!(parse_rfc3339("2026-11-17T12:00:Z"), None);
+        assert_eq!(parse_rfc3339("2026-11-17T12:00:00+bad"), None);
     }
 }

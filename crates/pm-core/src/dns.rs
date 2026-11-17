@@ -252,6 +252,8 @@ impl Listeners {
 }
 
 /// The running DNS stack.
+type MatcherSink = Arc<dyn Fn(NameserverIpMatcher) + Send + Sync>;
+
 pub struct Dns {
     resolver: ResolverService,
     running: Arc<tokio::sync::Mutex<Option<Running>>>,
@@ -259,6 +261,9 @@ pub struct Dns {
     matcher: Arc<RwLock<Option<NameserverIpMatcher>>>,
     /// Set by the core once the firewall is available.
     firewall_hook: Arc<OnceLock<Arc<dyn FirewallHook>>>,
+    /// Called whenever the nameserver matcher changes, so the firewall can
+    /// replace its old matcher instead of keeping a stale one.
+    matcher_sink: Arc<RwLock<Option<MatcherSink>>>,
     cancel: CancellationToken,
     tasks: Mutex<Vec<JoinHandle<()>>>,
 }
@@ -296,6 +301,7 @@ impl Dns {
         let system_env: Arc<dyn ServerEnv> = Arc::clone(&system_env_concrete) as Arc<dyn ServerEnv>;
         let firewall_hook = Arc::new(OnceLock::new());
         let matcher = Arc::new(RwLock::new(None));
+        let matcher_sink: Arc<RwLock<Option<MatcherSink>>> = Arc::new(RwLock::new(None));
         let listeners = Arc::new(Listeners {
             nameserver: Arc::new(Nameserver::new(NameserverDeps {
                 resolver: Arc::new(resolver.clone()),
@@ -331,6 +337,7 @@ impl Dns {
         // reading `netenv.GetNetworkChangedFlag`.
         tasks.push(tokio::spawn({
             let system_env = Arc::clone(&system_env_concrete);
+            let resolver_for_change = resolver.clone();
             let cancel = cancel.clone();
             let flag = network_changed_flag();
             async move {
@@ -341,6 +348,7 @@ impl Dns {
                         _ = ticker.tick() => {
                             if flag.is_set() {
                                 system_env.set_network_changed();
+                                reload(&resolver_for_change).await;
                                 flag.refresh();
                             }
                         }
@@ -356,6 +364,7 @@ impl Dns {
             let resolver = resolver.clone();
             let running = Arc::clone(&running);
             let matcher = Arc::clone(&matcher);
+            let matcher_sink: Arc<RwLock<Option<MatcherSink>>> = Arc::clone(&matcher_sink);
             let config = Arc::clone(config);
             let default_address = default_address.to_string();
             async move {
@@ -383,8 +392,16 @@ impl Dns {
                         }
                         let started = listeners.start(&address).await;
                         if let Some(running) = started.as_ref() {
+                            let updated = running.ip_matcher();
                             *matcher.write().unwrap_or_else(|error| error.into_inner()) =
-                                Some(running.ip_matcher());
+                                Some(updated.clone());
+                            if let Some(sink) = matcher_sink
+                                .read()
+                                .expect("matcher_sink lock poisoned")
+                                .as_ref()
+                            {
+                                sink(updated);
+                            }
                         }
                         *running = started;
                     }
@@ -414,6 +431,7 @@ impl Dns {
             running,
             matcher,
             firewall_hook,
+            matcher_sink,
             cancel,
             tasks: Mutex::new(tasks),
         })
@@ -458,6 +476,14 @@ impl Dns {
             .read()
             .unwrap_or_else(|error| error.into_inner())
             .clone()
+    }
+
+    /// Installs a callback that receives updated nameserver matchers.
+    pub fn set_matcher_sink(&self, sink: MatcherSink) {
+        *self
+            .matcher_sink
+            .write()
+            .unwrap_or_else(|error| error.into_inner()) = Some(sink);
     }
 
     /// The addresses the nameserver listens on.

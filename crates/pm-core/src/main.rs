@@ -5,6 +5,7 @@
 //! [`pm_core::cli::RESTART_EXIT_CODE`], like in the Go core.
 
 use std::process::ExitCode;
+use std::sync::Arc;
 
 use pm_core::cli;
 use pm_core::service::Service;
@@ -62,11 +63,12 @@ fn main() -> ExitCode {
             "core is running"
         );
 
-        // `run` consumes the Arc, so snapshot the flag before calling it.
-        let restart_requested = service.restart_requested();
+        // `run` consumes the Arc, but the flag lives in the shared Service,
+        // so keep another handle to read it AFTER run() returns.
+        let service_for_flag = Arc::clone(&service);
         match service.run().await {
             Ok(()) => {
-                if restart_requested {
+                if service_for_flag.restart_requested() {
                     // A restart is a graceful stop from the service's point of
                     // view, but the supervisor only spins up the new binary
                     // when we exit non-zero (see `RESTART_EXIT_CODE`). Plain

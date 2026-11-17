@@ -807,7 +807,16 @@ pub(crate) fn origin_allowed(origin: &str, host: &str, dev_mode: bool) -> bool {
         return false;
     };
     let origin_host = rest.trim_end_matches('/');
-    let origin_hostname = origin_host.split(':').next().unwrap_or("");
+    let origin_hostname = origin_host
+        .rsplit_once(':')
+        .map(|(host, port)| {
+            if port.bytes().all(|b| b.is_ascii_digit()) {
+                host
+            } else {
+                origin_host
+            }
+        })
+        .unwrap_or(origin_host);
 
     if scheme == "chrome-extension" {
         return true;

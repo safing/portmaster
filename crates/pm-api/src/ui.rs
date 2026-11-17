@@ -85,6 +85,15 @@ impl UiArchives {
             return Ok(archive);
         }
 
+        // Axum percent-decodes path captures, so reject anything that is not
+        // a plain module name before joining it to bin_dir.
+        if module.is_empty()
+            || !module
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+        {
+            return Err("invalid module".to_string());
+        }
         let path = self.bin_dir.join(format!("{module}.zip"));
         let archive = Arc::new(Archive::load(&path, module)?);
         self.archives

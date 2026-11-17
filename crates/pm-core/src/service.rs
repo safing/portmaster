@@ -623,8 +623,14 @@ impl Service {
             dns_ip_info,
             Some(Arc::clone(&firewall.network)),
         );
+        let matcher_handler = Arc::clone(&firewall);
+        dns.set_matcher_sink(Arc::new(move |matcher| {
+            matcher_handler
+                .handler
+                .set_nameserver_ip_matcher(Box::new(move |ip| matcher.matches_ip(ip)));
+        }));
         if let Some(matcher) = dns.nameserver_ip_matcher() {
-            let _ = firewall
+            firewall
                 .handler
                 .set_nameserver_ip_matcher(Box::new(move |ip| matcher.matches_ip(ip)));
         }

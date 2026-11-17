@@ -378,10 +378,17 @@ impl NetEnv {
     }
 }
 
+fn shared_arc() -> &'static Arc<NetEnv> {
+    static SHARED: OnceLock<Arc<NetEnv>> = OnceLock::new();
+    SHARED.get_or_init(|| Arc::new(NetEnv::new()))
+}
+
 /// Returns the process-wide network environment.
+///
+/// This must be the same instance as [`shared()`]: the resolver, compat and
+/// the online monitor all read status through these helpers.
 pub fn global() -> &'static NetEnv {
-    static NETENV: OnceLock<NetEnv> = OnceLock::new();
-    NETENV.get_or_init(NetEnv::new)
+    Arc::as_ref(shared_arc())
 }
 
 /// Returns the current online status, like Go `netenv.GetOnlineStatus`.
@@ -401,8 +408,7 @@ pub fn get_captive_portal() -> Option<CaptivePortal> {
 
 /// Returns a shared handle to the process-wide network environment.
 pub fn shared() -> Arc<NetEnv> {
-    static SHARED: OnceLock<Arc<NetEnv>> = OnceLock::new();
-    Arc::clone(SHARED.get_or_init(|| Arc::new(NetEnv::new())))
+    Arc::clone(shared_arc())
 }
 
 static CONNECTED_TO_SPN: AtomicBool = AtomicBool::new(false);

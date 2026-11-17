@@ -778,7 +778,13 @@ impl Firewall {
                     () = cancel.cancelled() => return,
                     update = subscription.recv() => {
                         let Some(update) = update else { return };
-                        let Some(conn) = network.get_connection(&update.key.key) else {
+                        // Subscription keys are `tree/<pid>/<scope>/<id>`,
+                        // while the connection store is keyed by the bare id.
+                        let parts = update.key.key.split('/').collect::<Vec<_>>();
+                        let Some(conn_id) = (parts.len() >= 4).then(|| parts[3]) else {
+                            continue;
+                        };
+                        let Some(conn) = network.get_connection(conn_id) else {
                             continue;
                         };
                         let manager = Arc::clone(&manager);
