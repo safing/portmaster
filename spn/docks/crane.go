@@ -664,8 +664,8 @@ func (crane *Crane) loader(workerCtx *mgr.WorkerCtx) (err error) {
 
 	// Make sure any received message is finished
 	var msg, firstMsg *terminal.Msg
-	defer msg.Finish()
-	defer firstMsg.Finish()
+	defer func() { msg.Finish() }()
+	defer func() { firstMsg.Finish() }()
 
 	for {
 		// Reset first message in shipment.

@@ -254,7 +254,7 @@ func (t *TerminalBase) Handler(_ *mgr.WorkerCtx) error {
 	defer t.Abandon(ErrInternalError.With("handler died"))
 
 	var msg *Msg
-	defer msg.Finish()
+	defer func() { msg.Finish() }()
 
 	for {
 		select {
@@ -348,7 +348,7 @@ func (t *TerminalBase) Sender(_ *mgr.WorkerCtx) error {
 	var flushFinished func()
 
 	// Finish any current unit when returning.
-	defer msgBufferMsg.Finish()
+	defer func() { msgBufferMsg.Finish() }()
 
 	// Only receive message when not sending the current msg buffer.
 	sendQueueOpMsgs := func() <-chan *Msg {

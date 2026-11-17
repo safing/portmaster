@@ -182,7 +182,7 @@ func (op *CapacityTestOp) handler(ctx *mgr.WorkerCtx) error {
 
 	// Setup unit handling
 	var msg *terminal.Msg
-	defer msg.Finish()
+	defer func() { msg.Finish() }()
 
 	// Handle receives.
 	for {

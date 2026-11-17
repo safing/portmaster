@@ -418,7 +418,7 @@ func (op *ConnectOp) connWriter(_ *mgr.WorkerCtx) error {
 	}()
 
 	var msg *terminal.Msg
-	defer msg.Finish()
+	defer func() { msg.Finish() }()
 
 	rateLimiter := terminal.NewRateLimiter(rateLimitMaxMbit)
 
