@@ -77,7 +77,9 @@ func (db *SQLite) putManyWithPreparedStmts() (chan<- record.Record, <-chan error
 	}
 
 	// start handler
+	db.batchWg.Add(1)
 	go func() {
+		defer db.batchWg.Done()
 		// Arguments of the records collected for the next statement.
 		args := make([]any, 0, upsertRowsPerStatement*len(recordColumns))
 		pending := 0

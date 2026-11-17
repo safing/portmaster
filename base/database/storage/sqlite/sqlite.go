@@ -47,6 +47,10 @@ type SQLite struct {
 	db  *sql.DB
 	bob bob.DB
 	wg  sync.WaitGroup
+	// batchWg tracks the handlers of PutMany batches, which keep running
+	// after PutMany returned. They must not use wg, as Shutdown may already
+	// wait on it.
+	batchWg sync.WaitGroup
 
 	ctx       context.Context
 	cancelCtx context.CancelFunc
@@ -157,13 +161,15 @@ func (db *SQLite) GetMeta(key string) (*record.Meta, error) {
 
 // Put stores a record in the database.
 func (db *SQLite) Put(r record.Record) (record.Record, error) {
-	return db.putRecord(r, nil)
-}
-
-func (db *SQLite) putRecord(r record.Record, tx *bob.Tx) (record.Record, error) {
 	db.wg.Add(1)
 	defer db.wg.Done()
 
+	return db.putRecord(r, nil)
+}
+
+// putRecord writes the record. It does not register as a database operation
+// that Shutdown waits for, as it is also used by the batch handlers.
+func (db *SQLite) putRecord(r record.Record, tx *bob.Tx) (record.Record, error) {
 	// Lock record if in a transaction.
 	if tx != nil {
 		r.Lock()
@@ -253,7 +259,9 @@ func (db *SQLite) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error
 	}
 
 	// start handler
+	db.batchWg.Add(1)
 	go func() {
+		defer db.batchWg.Done()
 		var err error
 
 		// Read all put records.
@@ -553,6 +561,9 @@ func (db *SQLite) MaintainThorough(ctx context.Context) error {
 func (db *SQLite) Shutdown() error {
 	db.wg.Wait()
 	db.cancelCtx()
+	// Wait for the batch handlers, which abort their batch when the context
+	// is canceled, before closing the database they use.
+	db.batchWg.Wait()
 
 	return db.bob.Close()
 }

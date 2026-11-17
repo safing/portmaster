@@ -150,3 +150,52 @@ func waitForTxWatchers(t *testing.T) {
 	}
 	t.Log("database/sql transaction watchers did not finish")
 }
+
+// TestPutManyShutdownWhileWriting checks that shutting down the database while
+// a batch is being written neither misuses the WaitGroup that Shutdown waits
+// on nor leaves the batch handler running.
+func TestPutManyShutdownWhileWriting(t *testing.T) { //nolint:paralleltest // Switches package-wide setting.
+	runPutManyVariants(t, testPutManyShutdownWhileWriting)
+}
+
+func testPutManyShutdownWhileWriting(t *testing.T) {
+	t.Helper()
+
+	for i := range 50 {
+		db, err := openSQLite("test", t.TempDir(), false)
+		require.NoError(t, err)
+
+		batch, errs := db.PutMany(false)
+
+		// Feed the batch until it is aborted.
+		fed := make(chan struct{})
+		feederDone := make(chan struct{})
+		go func() {
+			defer close(feederDone)
+			for n := 0; ; n++ {
+				select {
+				case batch <- newPutManyTestRecord(strconv.Itoa(n)):
+					if n == 20 {
+						close(fed)
+					}
+				case <-db.ctx.Done():
+					return
+				}
+			}
+		}()
+		<-fed
+
+		// Shut down while the handler writes records.
+		require.NoError(t, db.Shutdown())
+		<-feederDone
+
+		// The handler must have finished and reported the abort.
+		select {
+		case err := <-errs:
+			assert.Error(t, err, "aborted batch %d must not report success", i)
+		default:
+			t.Fatalf("batch handler %d is still running after Shutdown returned", i)
+		}
+		waitForTxWatchers(t)
+	}
+}
