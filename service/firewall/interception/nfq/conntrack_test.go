@@ -3,6 +3,7 @@
 package nfq
 
 import (
+	"errors"
 	"net"
 	"testing"
 
@@ -40,5 +41,31 @@ func TestConntrackUninitialized(t *testing.T) {
 	}
 	if DeleteMarkedConnection(testConnection()) == nil {
 		t.Error("DeleteMarkedConnection: expected error on uninitialized handle")
+	}
+}
+
+// TestDeleteMarkedConnectionIncomplete checks that a connection without
+// remote entity or local address is rejected instead of dereferencing nil.
+//
+//nolint:paralleltest // Modifies the package-level conntrack handle.
+func TestDeleteMarkedConnectionIncomplete(t *testing.T) {
+	h := &fakeHandle{}
+	installFakeConntrack(t, h)
+
+	noEntity := testConnection()
+	noEntity.Entity = nil
+	noEntityIP := testConnection()
+	noEntityIP.Entity.IP = nil
+	noLocalIP := testConnection()
+	noLocalIP.LocalIP = nil
+
+	for _, conn := range []*network.Connection{noEntity, noEntityIP, noLocalIP} {
+		err := DeleteMarkedConnection(conn)
+		if !errors.Is(err, errConnectionIncomplete) {
+			t.Errorf("expected errConnectionIncomplete, got %v", err)
+		}
+	}
+	if h.deletes != 0 {
+		t.Errorf("no request must be sent for incomplete connections, got %d", h.deletes)
 	}
 }

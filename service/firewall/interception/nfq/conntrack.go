@@ -36,7 +36,10 @@ var openConntrack = func() (conntrackHandle, error) {
 	return h, nil
 }
 
-var errNFCTNotInitialized = errors.New("nfq: nfct not initialized")
+var (
+	errNFCTNotInitialized   = errors.New("nfq: nfct not initialized")
+	errConnectionIncomplete = errors.New("local or remote address unknown")
+)
 
 var (
 	// nfct is the conntrack handler. NFCT: Network Filter Connection Tracking.
@@ -46,12 +49,14 @@ var (
 	// nfctReopen is set when nfct was closed because it desynchronized. The
 	// next operation tries to reopen it.
 	nfctReopen bool
-	// nfctLock serializes all use of nfct, including Close and reassignment,
-	// and guards nfctReopen.
-	// The handle is not safe for concurrent use: go-conntrack's Query and Get
-	// send the request and read the reply in two separately locked netlink
-	// calls (Conn.Send, then Conn.Receive) without matching the reply to the
-	// request, so concurrent callers can receive each other's replies.
+	// nfctLock guards nfct and nfctReopen. It is held for the whole of every
+	// exported function in this file, so that each request/reply exchange on
+	// the handle (including complete query+delete loops) is exclusive and
+	// Close, reopen and reassignment never overlap a request in flight.
+	// The handle is not safe for concurrent use: go-conntrack's Query sends
+	// the request and reads the reply in two separately locked netlink calls
+	// (Conn.Send, then Conn.Receive) without matching the reply to the
+	// request, so concurrent callers could receive each other's replies.
 	// nfctLock is a leaf lock: nothing called while holding it may acquire
 	// other Portmaster locks (callers hold connection locks).
 	nfctLock sync.Mutex
@@ -365,6 +370,11 @@ func deleteMarkedConnections(f ct.Family) (deleted int) {
 
 // DeleteMarkedConnection removes a specific connection from the conntrack table.
 func DeleteMarkedConnection(conn *network.Connection) error {
+	// Incomplete connections have no remote entity (and no local address) yet.
+	if conn.Entity == nil || conn.Entity.IP == nil || conn.LocalIP == nil {
+		return fmt.Errorf("nfq: cannot delete conntrack entry for connection %s: %w", conn.ID, errConnectionIncomplete)
+	}
+
 	nfctLock.Lock()
 	defer nfctLock.Unlock()
 
