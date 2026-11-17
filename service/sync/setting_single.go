@@ -250,6 +250,9 @@ func ImportSingeSetting(r *SingleSettingImportRequest) (*ImportResult, error) {
 		}
 
 		// Set imported setting on profile.
+		if p.Config == nil {
+			p.Config = make(map[string]any)
+		}
 		config.PutValueIntoHierarchicalConfig(p.Config, r.Export.ID, r.Export.Value)
 
 		// Mark profile as edited by user.

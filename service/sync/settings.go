@@ -286,6 +286,9 @@ func ImportSettings(r *SettingsImportRequest) (*ImportResult, error) {
 	if r.Reset {
 		p.Config = config.Expand(settings)
 	} else {
+		if p.Config == nil {
+			p.Config = make(map[string]any)
+		}
 		for k, v := range settings {
 			config.PutValueIntoHierarchicalConfig(p.Config, k, v)
 		}
