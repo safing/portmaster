@@ -1,6 +1,10 @@
 package config
 
 import (
+	"sync/atomic"
+
+	"github.com/tevino/abool"
+
 	"github.com/safing/portmaster/base/log"
 )
 
@@ -48,96 +52,68 @@ func getValueCache(name string, option *Option, requestedType OptionType) (*Opti
 	return option, option.activeFallbackValue
 }
 
-// GetAsString returns a function that returns the wanted string with high performance.
-func GetAsString(name string, fallback string) StringOption {
-	valid := getValidityFlag()
-	option, valueCache := getValueCache(name, nil, OptTypeString)
-	value := fallback
-	if valueCache != nil {
-		value = valueCache.stringVal
+// cachedValue is an immutable snapshot of an option value, valid as long as
+// its validity flag is set.
+type cachedValue[T any] struct {
+	valid  *abool.AtomicBool
+	option *Option
+	value  T
+}
+
+// newCachedGetter returns a lock-free getter for the given option.
+// The cached state is swapped atomically, so the returned function is safe
+// for concurrent use and never exposes a torn string or slice value.
+func newCachedGetter[T any](name string, optType OptionType, fallback T, extract func(*valueCache) T) func() T {
+	load := func(option *Option) *cachedValue[T] {
+		// Get the validity flag first, so that a change during loading
+		// invalidates the result and triggers another load.
+		c := &cachedValue[T]{
+			valid: getValidityFlag(),
+			value: fallback,
+		}
+		var vc *valueCache
+		c.option, vc = getValueCache(name, option, optType)
+		if vc != nil {
+			c.value = extract(vc)
+		}
+		return c
 	}
 
-	return func() string {
-		if !valid.IsSet() {
-			valid = getValidityFlag()
-			option, valueCache = getValueCache(name, option, OptTypeString)
-			if valueCache != nil {
-				value = valueCache.stringVal
-			} else {
-				value = fallback
-			}
+	var current atomic.Pointer[cachedValue[T]]
+	current.Store(load(nil))
+
+	return func() T {
+		c := current.Load()
+		if !c.valid.IsSet() {
+			c = load(c.option)
+			current.Store(c)
 		}
-		return value
+		return c.value
 	}
 }
 
-// GetAsStringArray returns a function that returns the wanted string with high performance.
-func GetAsStringArray(name string, fallback []string) StringArrayOption {
-	valid := getValidityFlag()
-	option, valueCache := getValueCache(name, nil, OptTypeStringArray)
-	value := fallback
-	if valueCache != nil {
-		value = valueCache.stringArrayVal
-	}
+// GetAsString returns a function that returns the wanted string with high performance.
+// The returned function is safe for concurrent use.
+func GetAsString(name string, fallback string) StringOption {
+	return newCachedGetter(name, OptTypeString, fallback, func(vc *valueCache) string { return vc.stringVal })
+}
 
-	return func() []string {
-		if !valid.IsSet() {
-			valid = getValidityFlag()
-			option, valueCache = getValueCache(name, option, OptTypeStringArray)
-			if valueCache != nil {
-				value = valueCache.stringArrayVal
-			} else {
-				value = fallback
-			}
-		}
-		return value
-	}
+// GetAsStringArray returns a function that returns the wanted string array with high performance.
+// The returned function is safe for concurrent use.
+func GetAsStringArray(name string, fallback []string) StringArrayOption {
+	return newCachedGetter(name, OptTypeStringArray, fallback, func(vc *valueCache) []string { return vc.stringArrayVal })
 }
 
 // GetAsInt returns a function that returns the wanted int with high performance.
+// The returned function is safe for concurrent use.
 func GetAsInt(name string, fallback int64) IntOption {
-	valid := getValidityFlag()
-	option, valueCache := getValueCache(name, nil, OptTypeInt)
-	value := fallback
-	if valueCache != nil {
-		value = valueCache.intVal
-	}
-
-	return func() int64 {
-		if !valid.IsSet() {
-			valid = getValidityFlag()
-			option, valueCache = getValueCache(name, option, OptTypeInt)
-			if valueCache != nil {
-				value = valueCache.intVal
-			} else {
-				value = fallback
-			}
-		}
-		return value
-	}
+	return newCachedGetter(name, OptTypeInt, fallback, func(vc *valueCache) int64 { return vc.intVal })
 }
 
-// GetAsBool returns a function that returns the wanted int with high performance.
+// GetAsBool returns a function that returns the wanted bool with high performance.
+// The returned function is safe for concurrent use.
 func GetAsBool(name string, fallback bool) BoolOption {
-	valid := getValidityFlag()
-	option, valueCache := getValueCache(name, nil, OptTypeBool)
-	value := fallback
-	if valueCache != nil {
-		value = valueCache.boolVal
-	}
-
-	return func() bool {
-		if !valid.IsSet() {
-			valid = getValidityFlag()
-			option, valueCache = getValueCache(name, option, OptTypeBool)
-			if valueCache != nil {
-				value = valueCache.boolVal
-			} else {
-				value = fallback
-			}
-		}
-		return value
-	}
+	return newCachedGetter(name, OptTypeBool, fallback, func(vc *valueCache) bool { return vc.boolVal })
 }
 
 /*

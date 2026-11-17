@@ -34,7 +34,7 @@ export class NavigationComponent implements OnInit {
   hasNewNotifications = false;
 
   /** The color to use for the notifcation-available hint (dot) */
-  notificationColor: string = 'text-green-300';
+  notificationColor = 'text-green-300';
 
   pauseState: ControlPauseStateData | null = null;
   get isPaused(): boolean { return this.pauseState?.Interception===true || this.pauseState?.SPN===true; }
@@ -334,12 +334,12 @@ export class NavigationComponent implements OnInit {
     
   /**
    * @private
-   * Opens the data-directory of the portmaster installation.
-   * Requires the application to run inside electron.
+   * Opens the data directory of the portmaster installation in the
+   * system file manager. Not supported when running in a browser.
    */
-  async openDataDir(event: Event) {
-    const dir = await this.integration.getInstallDir()
-    await this.integration.openExternal(dir);
+  openDataDir(event: Event) {
+    this.integration.openDir('data')
+      .catch(err => this.actionIndicator.error('Failed to open data directory', err));
   }
 
   openChangeLog() {

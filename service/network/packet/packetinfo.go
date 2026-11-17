@@ -1,8 +1,9 @@
 package packet
 
 import (
-	"fmt"
 	"net"
+	"net/netip"
+	"strconv"
 	"time"
 )
 
@@ -61,16 +62,42 @@ func (pi *Info) CreateConnectionID() string {
 
 // CreateConnectionID creates a connection ID.
 func CreateConnectionID(protocol IPProtocol, src net.IP, srcPort uint16, dst net.IP, dstPort uint16, inbound bool) string {
+	// The output format is identical to the former fmt.Sprintf based
+	// implementation ("%d-%s-%d-%s-%d" / "%d-%s-%s"), but is built in a
+	// stack buffer to avoid per-packet allocations.
+	var stack [96]byte
+	buf := strconv.AppendUint(stack[:0], uint64(protocol), 10)
+
 	// TODO: make this ID not depend on the packet direction for better support for forwarded packets.
-	if protocol == TCP || protocol == UDP {
-		if inbound {
-			return fmt.Sprintf("%d-%s-%d-%s-%d", protocol, dst, dstPort, src, srcPort)
-		}
-		return fmt.Sprintf("%d-%s-%d-%s-%d", protocol, src, srcPort, dst, dstPort)
+	if inbound {
+		src, dst = dst, src
+		srcPort, dstPort = dstPort, srcPort
 	}
 
-	if inbound {
-		return fmt.Sprintf("%d-%s-%s", protocol, dst, src)
+	buf = append(buf, '-')
+	buf = appendIP(buf, src)
+	if protocol == TCP || protocol == UDP {
+		buf = append(buf, '-')
+		buf = strconv.AppendUint(buf, uint64(srcPort), 10)
 	}
-	return fmt.Sprintf("%d-%s-%s", protocol, src, dst)
+	buf = append(buf, '-')
+	buf = appendIP(buf, dst)
+	if protocol == TCP || protocol == UDP {
+		buf = append(buf, '-')
+		buf = strconv.AppendUint(buf, uint64(dstPort), 10)
+	}
+
+	return string(buf)
+}
+
+// appendIP appends the text form of ip, identical to ip.String().
+func appendIP(buf []byte, ip net.IP) []byte {
+	if len(ip) == net.IPv4len || len(ip) == net.IPv6len {
+		if addr, ok := netip.AddrFromSlice(ip); ok {
+			// net.IP.String prints 4-in-6 addresses as dotted quad.
+			return addr.Unmap().AppendTo(buf)
+		}
+	}
+	// nil/empty and invalid lengths ("<nil>", "?hex").
+	return append(buf, ip.String()...)
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -174,6 +175,32 @@ func TestPermissions(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestCheckAPIKeyShortUnknownKey(t *testing.T) {
+	t.Parallel()
+
+	for _, header := range []string{
+		"Bearer ",
+		"Bearer a",
+		"Bearer abc",
+		"Basic ",     // Invalid base64: empty user and pass.
+		"Basic YTo=", // "a:"
+	} {
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.Header.Set("Authorization", header)
+
+		func() {
+			defer func() {
+				if v := recover(); v != nil {
+					t.Errorf("checkAPIKey panicked with Authorization %q: %v", header, v)
+				}
+			}()
+			if token := checkAPIKey(r); token != nil {
+				t.Errorf("checkAPIKey returned a token for unknown key %q", header)
+			}
+		}()
 	}
 }
 

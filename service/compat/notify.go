@@ -16,11 +16,11 @@ import (
 )
 
 type baseIssue struct {
-	id      string                  //nolint:structcheck // Inherited.
-	title   string                  //nolint:structcheck // Inherited.
-	message string                  //nolint:structcheck // Inherited.
-	level   notifications.Type      //nolint:structcheck // Inherited.
-	actions []*notifications.Action //nolint:structcheck // Inherited.
+	id      string
+	title   string
+	message string
+	level   notifications.Type
+	actions []*notifications.Action
 }
 
 type systemIssue baseIssue

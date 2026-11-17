@@ -127,7 +127,7 @@ func expand(t terminal.Terminal, opID uint32, data *container.Container) (termin
 	}
 
 	// Parse destination hub ID.
-	dstData, err := data.GetNextBlock()
+	dstData, err := terminal.GetNextBlock(data)
 	if err != nil {
 		return nil, terminal.ErrMalformedData.With("failed to parse destination: %w", err)
 	}

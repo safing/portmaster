@@ -1,8 +1,9 @@
-//nolint:maligned,unparam
+//nolint:unparam
 package accessor
 
 import (
 	"encoding/json"
+	"slices"
 	"testing"
 
 	"github.com/safing/portmaster/base/utils"
@@ -150,11 +151,18 @@ func testSet(t *testing.T, acc Accessor, key string, shouldSucceed bool, valueTo
 func TestAccessor(t *testing.T) {
 	t.Parallel()
 
+	// Work on copies of the test data, as the test modifies it through the
+	// accessors and must be repeatable (go test -count).
+	jsonCopy := testJSON
+	jsonBytesCopy := slices.Clone(testJSONBytes)
+	structCopy := *testStruct
+	structCopy.A = slices.Clone(testStruct.A)
+
 	// Test interface compliance.
 	accs := []Accessor{
-		NewJSONAccessor(&testJSON),
-		NewJSONBytesAccessor(&testJSONBytes),
-		NewStructAccessor(testStruct),
+		NewJSONAccessor(&jsonCopy),
+		NewJSONBytesAccessor(&jsonBytesCopy),
+		NewStructAccessor(&structCopy),
 	}
 
 	// get

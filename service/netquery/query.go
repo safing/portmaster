@@ -28,8 +28,6 @@ const (
 // Collection of Query and Matcher types.
 // NOTE: whenever adding support for new operators make sure
 // to update UnmarshalJSON as well.
-//
-//nolint:golint
 type (
 	Query map[string][]Matcher
 
@@ -191,12 +189,20 @@ func (query *Query) UnmarshalJSON(blob []byte) error {
 	return nil
 }
 
+// Named SQL parameters used for pagination. Matcher parameters always end
+// with a digit (see Matcher.toSQLConditionClause) and the text-search
+// parameter is ":t<suffix>", so these names cannot collide with them.
+const (
+	paginationLimitParam  = ":pageLimit"
+	paginationOffsetParam = ":pageOffset"
+)
+
 // TODO(ppacher): right now we only support LIMIT and OFFSET for pagination but that
 // has an issue that loading the same page twice might yield different results due to
 // new records shifting the result slice. To overcome this, return a "PageToken" to the
 // user that includes the time the initial query was created so paginated queries can
 // ensure new records don't end up in the result set.
-func (page *Pagination) toSQLLimitOffsetClause() string {
+func (page *Pagination) toSQLLimitOffsetClause() (string, map[string]any) {
 	limit := page.PageSize
 
 	// default and cap the limit to at most 100 items
@@ -206,13 +212,20 @@ func (page *Pagination) toSQLLimitOffsetClause() string {
 		limit = 100
 	}
 
-	sql := fmt.Sprintf("LIMIT %d", limit)
-
+	offset := 0
 	if page.Page > 0 {
-		sql += fmt.Sprintf(" OFFSET %d", page.Page*limit)
+		offset = page.Page * limit
 	}
 
-	return sql
+	// LIMIT and OFFSET are bound as parameters instead of being inlined
+	// into the SQL text. Queries are prepared via the per-connection
+	// statement cache which is keyed by the SQL text and never evicted,
+	// so inlining the numbers would create a new cached statement for
+	// every distinct page/page-size.
+	return "LIMIT " + paginationLimitParam + " OFFSET " + paginationOffsetParam, map[string]any{
+		paginationLimitParam:  limit,
+		paginationOffsetParam: offset,
+	}
 }
 
 func parseMatcher(raw json.RawMessage) (*Matcher, error) {

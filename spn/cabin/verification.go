@@ -8,6 +8,7 @@ import (
 	"github.com/safing/jess"
 	"github.com/safing/portmaster/base/rng"
 	"github.com/safing/portmaster/spn/hub"
+	"github.com/safing/portmaster/spn/peerdsd"
 	"github.com/safing/structures/dsd"
 )
 
@@ -68,7 +69,7 @@ func CreateVerificationRequest(purpose, clientReference, serverReference string)
 func (id *Identity) SignVerificationRequest(request []byte, purpose, clientReference, serverReference string) (response []byte, err error) {
 	// Parse request.
 	v := new(Verification)
-	_, err = dsd.Load(request, v)
+	_, err = peerdsd.Load(request, v)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse request: %w", err)
 	}
@@ -116,6 +117,11 @@ func (id *Identity) SignVerificationRequest(request []byte, purpose, clientRefer
 // Verify verifies the verification response and checks if everything is valid.
 func (v *Verification) Verify(response []byte, h *hub.Hub) error {
 	// Parse response.
+	// jess.LetterFromDSD uses dsd.Load, which decompresses without limit.
+	err := peerdsd.CheckFormat(response)
+	if err != nil {
+		return fmt.Errorf("failed to parse response: %w", err)
+	}
 	letter, err := jess.LetterFromDSD(response)
 	if err != nil {
 		return fmt.Errorf("failed to parse response: %w", err)
@@ -134,7 +140,7 @@ func (v *Verification) Verify(response []byte, h *hub.Hub) error {
 
 	// Parse verified response.
 	responseV := new(Verification)
-	_, err = dsd.Load(responseData, responseV)
+	_, err = peerdsd.Load(responseData, responseV)
 	if err != nil {
 		return fmt.Errorf("failed to parse verified response: %w", err)
 	}

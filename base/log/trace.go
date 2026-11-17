@@ -66,18 +66,26 @@ func (tracer *ContextTracer) Submit() {
 		return
 	}
 
-	if len(tracer.logs) == 0 {
+	// Detach the collected lines under the lock, so that concurrent or later
+	// log calls on this tracer cannot touch the lines handed to the writer and
+	// a repeated Submit does not emit them again.
+	tracer.Lock()
+	lines := tracer.logs
+	tracer.logs = nil
+	tracer.Unlock()
+
+	if len(lines) == 0 {
 		return
 	}
 
 	// extract last line as main line
-	mainLine := tracer.logs[len(tracer.logs)-1]
-	tracer.logs = tracer.logs[:len(tracer.logs)-1]
+	mainLine := lines[len(lines)-1]
 
 	// create log object
 	log := &logLine{
-		msg:       mainLine.msg,
-		tracer:    tracer,
+		msg: mainLine.msg,
+		// Give the writer a private snapshot of the trace lines.
+		tracer:    &ContextTracer{logs: lines[:len(lines)-1]},
 		level:     mainLine.level,
 		timestamp: mainLine.timestamp,
 		file:      mainLine.file,

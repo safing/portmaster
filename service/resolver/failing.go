@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"slices"
 	"time"
 
 	"github.com/safing/portmaster/base/log"
@@ -70,6 +71,28 @@ func (brc *BasicResolverConn) ResetFailure() {
 	}
 }
 
+// orderResolvers returns the resolvers with the failing ones moved to the end,
+// so that they are asked only when no other resolver answers. This way, a
+// wrongly marked resolver is used again, and its failing state cleared, by
+// normal queries and not only by the periodic recovery check.
+// The given slice is not modified, as it may be shared.
+func orderResolvers(resolvers []*Resolver) []*Resolver {
+	if !slices.ContainsFunc(resolvers, func(r *Resolver) bool { return r.Conn.IsFailing() }) {
+		return resolvers
+	}
+
+	ordered := make([]*Resolver, 0, len(resolvers))
+	var failing []*Resolver
+	for _, resolver := range resolvers {
+		if resolver.Conn.IsFailing() {
+			failing = append(failing, resolver)
+		} else {
+			ordered = append(ordered, resolver)
+		}
+	}
+	return append(ordered, failing...)
+}
+
 func checkFailingResolvers(wc *mgr.WorkerCtx) error {
 	var resolvers []*Resolver
 
@@ -99,17 +122,14 @@ func checkFailingResolvers(wc *mgr.WorkerCtx) error {
 
 		tracer.Tracef("resolver: testing failed resolver [%d/%d] %s", i+1, len(resolvers), resolver)
 
-		// Test if we can resolve via this resolver.
-		ips, _, err := testConnectivity(ctx, netenv.DNSTestDomain, resolver)
-		switch {
-		case err != nil:
-			tracer.Debugf("resolver: failed resolver %s is still failing: %s", resolver, err)
-		case len(ips) == 0 || !ips[0].Equal(netenv.DNSTestExpectedIP):
-			tracer.Debugf("resolver: failed resolver %s received unexpected A records: %s", resolver, ips)
-		default:
-			// Resolver test successful.
-			tracer.Infof("resolver: check successful, resolver %s is available again", resolver)
+		// Test if the resolver answers. It is failing because it did not answer,
+		// so any answer clears it, whatever the answer is.
+		ips, answered, err := testConnectivity(ctx, netenv.DNSTestDomain, resolver)
+		if answered {
+			tracer.Infof("resolver: check successful, resolver %s is available again (answer: %v, %v)", resolver, ips, err)
 			resolver.Conn.ResetFailure()
+		} else {
+			tracer.Debugf("resolver: failed resolver %s is still failing: %s", resolver, err)
 		}
 
 		// Check if context was canceled.

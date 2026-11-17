@@ -1,6 +1,8 @@
 package terminal
 
 import (
+	"encoding/binary"
+
 	"github.com/safing/structures/container"
 	"github.com/safing/structures/varint"
 )
@@ -50,8 +52,14 @@ func AddIDType(c *container.Container, id uint32, msgType MsgType) {
 
 // MakeMsg prepends the message header (Length and ID+Type) to the data.
 func MakeMsg(c *container.Container, id uint32, msgType MsgType) {
-	AddIDType(c, id, msgType)
-	c.PrependLength()
+	// Build the complete header in one buffer.
+	// This is equivalent to AddIDType followed by c.PrependLength().
+	idType := uint64(id | uint32(msgType))
+	length := uint64(varint.EncodedSize(idType) + c.Length()) //nolint:gosec // Length is never negative.
+	header := make([]byte, 0, varint.EncodedSize(length)+varint.EncodedSize(idType))
+	header = binary.AppendUvarint(header, length)
+	header = binary.AppendUvarint(header, idType)
+	c.Prepend(header)
 }
 
 // ParseIDType parses the combined message ID and type.

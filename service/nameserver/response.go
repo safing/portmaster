@@ -64,9 +64,10 @@ func writeDNSResponse(ctx context.Context, w dns.ResponseWriter, m *dns.Msg) (er
 		log.Tracer(ctx).Tracef("nameserver: retrying to write dns message without extra section, error was: %s", err)
 		m.Extra = nil
 		noExtraErr := w.WriteMsg(m)
-		if noExtraErr == nil {
-			return fmt.Errorf("failed to write dns message without extra section: %w", err)
+		if noExtraErr != nil {
+			return fmt.Errorf("failed to write dns message without extra section: %w (with extra section: %w)", noExtraErr, err)
 		}
+		return nil
 	}
-	return
+	return nil
 }

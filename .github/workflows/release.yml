@@ -56,7 +56,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build linux installers
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +installer-linux
+      run: earthly --ci ${{ github.repository_owner == 'safing' && '--remote-cache=ghcr.io/safing/build-cache --push' || '' }} +installer-linux
       # --ci include --no-output flag
 
     - name: Upload Installers

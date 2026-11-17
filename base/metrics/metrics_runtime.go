@@ -88,6 +88,8 @@ func (r *runtimeMetrics) WritePrometheus(w io.Writer) {
 				fmt.Fprint(w, "}")
 			}
 			fmt.Fprintln(w, line[insertAt:])
+		} else {
+			_, _ = fmt.Fprintln(w, line)
 		}
 	}
 

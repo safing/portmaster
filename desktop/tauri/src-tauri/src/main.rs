@@ -17,6 +17,11 @@ mod xdg;
 #[cfg(target_os = "linux")]
 mod linux_graphics_workarounds;
 
+// Windows-only: compile-time guard for the patched tao dependency (random UI
+// crash fix, issues #2185 / #2255) and a debug-only stress test for it.
+#[cfg(target_os = "windows")]
+mod windows_tao_patch;
+
 // App modules
 mod cli;
 mod config;
@@ -246,6 +251,7 @@ fn main() {
             portmaster::commands::should_show,
             portmaster::commands::should_handle_prompts,
             commands::tauri_http::send_tauri_http_request,
+            commands::open_dir::open_dir,
         ])
         // Setup the app an any listeners
         .setup(move |app| {
@@ -255,6 +261,11 @@ fn main() {
             }
 
             setup_tray_menu(app)?;
+
+            // Debug builds only, enabled with --verify-tao-patch; no-op otherwise.
+            #[cfg(target_os = "windows")]
+            windows_tao_patch::maybe_start_handle_clone_stress_test(app.handle());
+
             portmaster::setup(app.handle().clone());
             // Setup the single-instance event listener that will create/focus the main window
             // or the splash-screen.

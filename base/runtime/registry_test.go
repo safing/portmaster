@@ -155,3 +155,33 @@ func TestRegistryRegister(t *testing.T) {
 		}
 	}
 }
+
+func TestRegistryCollectProviderByPrefix(t *testing.T) {
+	t.Parallel()
+
+	const nested = "foo/bar/"
+
+	reg := NewRegistry()
+	for _, k := range []string{"foo", nested, "foobar", "a/b/"} {
+		_, err := reg.Register(k, &testProvider{k: k})
+		require.NoError(t, err, k)
+	}
+
+	keys := func(prefix string) []string {
+		ps := reg.collectProviderByPrefix(prefix)
+		res := make([]string, 0, len(ps))
+		for _, p := range ps {
+			res = append(res, p.key)
+		}
+		return res
+	}
+
+	// An exact-key provider must not hide the providers below the prefix.
+	assert.ElementsMatch(t, []string{"foo", nested, "foobar"}, keys("foo"))
+	assert.ElementsMatch(t, []string{nested}, keys("foo/"))
+	// A prefix provider that contains the query prefix is the only one asked.
+	assert.Equal(t, []string{nested}, keys("foo/bar/baz"))
+	assert.Equal(t, []string{"a/b/"}, keys("a/b/c"))
+	// Nothing manages this.
+	assert.Empty(t, keys("fo0"))
+}

@@ -1,6 +1,7 @@
 package sluice
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strconv"
@@ -63,9 +64,11 @@ func (s *Sluice) AwaitRequest(r *Request) error {
 	defer s.lock.Unlock()
 
 	// Check if a pending request already exists for this local address.
+	// Expired requests are only cleaned up when a connection is accepted, so
+	// replace them here instead of blocking new requests for the address.
 	key := net.JoinHostPort(r.ConnInfo.LocalIP.String(), strconv.Itoa(int(r.ConnInfo.LocalPort)))
-	_, exists := s.pendingRequests[key]
-	if exists {
+	existing, exists := s.pendingRequests[key]
+	if exists && !time.Now().After(existing.Expires) {
 		return fmt.Errorf("a pending request for %s already exists", key)
 	}
 
@@ -79,10 +82,16 @@ func (s *Sluice) getRequest(address string) (r *Request, ok bool) {
 	defer s.lock.Unlock()
 
 	r, ok = s.pendingRequests[address]
-	if ok {
-		delete(s.pendingRequests, address)
+	if !ok {
+		return nil, false
 	}
-	return
+	delete(s.pendingRequests, address)
+
+	// Do not hand connections to expired requests.
+	if time.Now().After(r.Expires) {
+		return nil, false
+	}
+	return r, true
 }
 
 func (s *Sluice) init() error {
@@ -105,10 +114,21 @@ func (s *Sluice) init() error {
 }
 
 func (s *Sluice) abandon() {
+	pending := s.abandonLocked()
+
+	// Notify pending requests outside of the sluice lock, as the callback
+	// locks the connection and AwaitRequest is called with the connection
+	// lock held.
+	for _, r := range pending {
+		r.CallbackFn(r.ConnInfo, nil)
+	}
+}
+
+func (s *Sluice) abandonLocked() []*Request {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if s.abandoned {
-		return
+		return nil
 	}
 	s.abandoned = true
 
@@ -120,11 +140,13 @@ func (s *Sluice) abandon() {
 		_ = s.listener.Close()
 	}
 
-	// Notify pending requests.
+	// Take pending requests.
+	pending := make([]*Request, 0, len(s.pendingRequests))
 	for i, r := range s.pendingRequests {
-		r.CallbackFn(r.ConnInfo, nil)
+		pending = append(pending, r)
 		delete(s.pendingRequests, i)
 	}
+	return pending
 }
 
 func (s *Sluice) handleConnection(conn net.Conn) {
@@ -188,12 +210,18 @@ func (s *Sluice) handleConnection(conn net.Conn) {
 	success = true
 }
 
-func (s *Sluice) listenHandler(_ *mgr.WorkerCtx) error {
+func (s *Sluice) listenHandler(wc *mgr.WorkerCtx) error {
 	defer s.abandon()
 	err := s.init()
 	if err != nil {
 		return err
 	}
+
+	// Also abandon (and thus close the listener) when the worker is canceled.
+	// The module's stop function only abandons registered sluices, so a sluice
+	// that registers after stop ran would otherwise block in Accept forever.
+	stopAbandonOnCancel := context.AfterFunc(wc.Ctx(), s.abandon)
+	defer stopAbandonOnCancel()
 
 	// Handle new connections.
 	log.Infof("spn/sluice: started listening for %s requests on %s", s.network, s.listener.Addr())

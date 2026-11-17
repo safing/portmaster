@@ -2,6 +2,7 @@ package geoip
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -16,7 +17,8 @@ var worker *updateWorker
 
 func init() {
 	worker = &updateWorker{
-		trigger: make(chan struct{}),
+		// Buffered, so a trigger sent while the worker is busy is not dropped.
+		trigger: make(chan struct{}, 1),
 		v4: updateBroadcaster{
 			dbName: v4MMDBResource,
 		},
@@ -33,7 +35,8 @@ const (
 
 type geoIPDB struct {
 	*maxminddb.Reader
-	update *updates.Artifact
+	// file is the identity of the mapped file, to detect its replacement.
+	file os.FileInfo
 }
 
 // updateBroadcaster stores a geoIPDB and provides synchronized
@@ -50,8 +53,11 @@ type updateBroadcaster struct {
 // AvailableUpdate returns a new update artifact if the current broadcaster
 // needs a database update.
 func (ub *updateBroadcaster) AvailableUpdate() *updates.Artifact {
+	// Do not hold the lock during file access: GetReader locks on every lookup.
+	// The snapshot cannot go stale, as only the update worker replaces ub.db.
 	ub.rw.RLock()
-	defer ub.rw.RUnlock()
+	db := ub.db
+	ub.rw.RUnlock()
 
 	// Get artifact.
 	artifact, err := module.instance.IntelUpdates().GetFile(ub.dbName)
@@ -61,15 +67,50 @@ func (ub *updateBroadcaster) AvailableUpdate() *updates.Artifact {
 	}
 
 	// Return artifact if not yet initialized.
-	if ub.db == nil {
+	if db == nil {
 		return artifact
 	}
 
-	// Compare and return artifact only when confirmed newer.
-	if newer, _ := artifact.IsNewerThan(ub.db.update); newer {
+	// Reload if the file was replaced. The updater moves every intel file on
+	// every update, even when unchanged. On Windows the mapped file can be
+	// replaced by a rename, after which its evicted pages read as zeros.
+	replaced, err := fileReplaced(db.file, artifact.Path())
+	if err != nil {
+		log.Warningf("geoip: failed to check %s for replacement: %s", artifact.Path(), err)
+		return nil
+	}
+	if replaced {
+		log.Infof("geoip: %s was replaced on disk, reloading", artifact.Filename)
 		return artifact
 	}
 	return nil
+}
+
+// fileIdentity returns the FileInfo of the file at path from an open handle.
+// On Windows, os.Stat resolves the file ID lazily on the first os.SameFile
+// call by reopening the path, which would then see the replacement file.
+// File.Stat fills the ID immediately.
+func fileIdentity(path string) (os.FileInfo, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+
+	return f.Stat()
+}
+
+// fileReplaced reports whether the file now at path differs from mapped.
+// Size and mtime are compared as well, as FAT and exFAT may reuse file IDs.
+func fileReplaced(mapped os.FileInfo, path string) (bool, error) {
+	current, err := os.Stat(path)
+	if err != nil {
+		return false, err
+	}
+
+	return !os.SameFile(mapped, current) ||
+		mapped.Size() != current.Size() ||
+		!mapped.ModTime().Equal(current.ModTime()), nil
 }
 
 // ReplaceDatabase replaces (or initially sets) the mmdb database.
@@ -79,9 +120,8 @@ func (ub *updateBroadcaster) ReplaceDatabase(db *geoIPDB) {
 	ub.rw.Lock()
 	defer ub.rw.Unlock()
 
-	if ub.db != nil {
-		_ = ub.db.Close()
-	}
+	// The previous reader is not closed here, as a lookup may still use it.
+	// The finalizer set by maxminddb.Open closes it once it is unreferenced.
 	ub.db = db
 	ub.notifyWaiters()
 }
@@ -205,6 +245,12 @@ func (upd *updateWorker) run(ctx *mgr.WorkerCtx) error {
 func getGeoIPDB(update *updates.Artifact) (*geoIPDB, error) {
 	log.Debugf("geoip: opening database %s", update.Path())
 
+	// Taken before opening, so a replacement in between is caught next time.
+	file, err := fileIdentity(update.Path())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get file identity: %w", err)
+	}
+
 	reader, err := maxminddb.Open(update.Path())
 	if err != nil {
 		return nil, fmt.Errorf("failed to open: %w", err)
@@ -213,6 +259,6 @@ func getGeoIPDB(update *updates.Artifact) (*geoIPDB, error) {
 
 	return &geoIPDB{
 		Reader: reader,
-		update: update,
+		file:   file,
 	}, nil
 }

@@ -143,9 +143,17 @@ func (s *StorageInterface) Put(r record.Record) (record.Record, error) {
 func applyUpdate(n *Notification, key string) (*Notification, error) {
 	// separate goroutine in order to correctly lock notsLock
 	existing, ok := getNotification(key)
+	if ok {
+		existing.Lock()
+		// Check under lock, as the notification may be deleted concurrently.
+		if existing.Meta().IsDeleted() {
+			existing.Unlock()
+			ok = false
+		}
+	}
 
 	// ignore if already deleted
-	if !ok || existing.Meta().IsDeleted() {
+	if !ok {
 		// this is a completely new notification
 		// we pass pushUpdate==false because the storage
 		// controller will push an update on put anyway.
@@ -161,7 +169,7 @@ func applyUpdate(n *Notification, key string) (*Notification, error) {
 		}
 	}()
 
-	existing.Lock()
+	// existing is locked above.
 	defer existing.Unlock()
 
 	if existing.State == Executed {

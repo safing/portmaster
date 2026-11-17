@@ -193,3 +193,66 @@ func GenerateMockFolder(dir, name, version string, published time.Time) error {
 	}
 	return nil
 }
+
+func TestFailedPostUpgradeCommandRestoresIndex(t *testing.T) {
+	t.Parallel()
+
+	stub := &testInstance{}
+	installedDir := t.TempDir()
+	updateDir := t.TempDir()
+	purgeDir := t.TempDir()
+	now := time.Now()
+
+	err := GenerateMockFolder(installedDir, "Test", "1.0.0", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = GenerateMockFolder(updateDir, "Test", "1.0.1", now.Add(1*time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	updater, err := New(stub, "Test", Config{
+		Name:              "Test",
+		Directory:         installedDir,
+		DownloadDirectory: updateDir,
+		PurgeDirectory:    purgeDir,
+		IndexFile:         "index.json",
+		AutoDownload:      true,
+		AutoApply:         true,
+		PostUpgradeCommands: []UpdateCommandConfig{{
+			Command:     "false",
+			FailOnError: true,
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The upgrade must fail because of the post-upgrade command and be rolled back.
+	m := mgr.New("updates rollback test")
+	err = m.Do("failing update and upgrade", func(w *mgr.WorkerCtx) error {
+		return updater.updateAndUpgrade(w, nil, false, false)
+	})
+	if err == nil {
+		t.Fatal("expected upgrade to fail")
+	}
+
+	// The files on disk have been rolled back to the old version.
+	diskIndex, err := LoadIndex(filepath.Join(installedDir, "index.json"), updater.cfg.Platform, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diskIndex.Version != "1.0.0" {
+		t.Fatalf("expected rolled back index v1.0.0 on disk, found v%s", diskIndex.Version)
+	}
+
+	// The active index must match the rolled back files.
+	index, err := updater.GetIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if index.Version != diskIndex.Version {
+		t.Fatalf("active index is v%s, but installed files were rolled back to v%s", index.Version, diskIndex.Version)
+	}
+}

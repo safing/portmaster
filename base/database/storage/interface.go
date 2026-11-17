@@ -42,6 +42,27 @@ type Batcher interface {
 	PutMany(shadowDelete bool) (batch chan<- record.Record, errs <-chan error)
 }
 
+// AbortableBatcher defines the database storage API for backends that can
+// discard a batch instead of storing it.
+//
+// PutManyAbortable works like Batcher.PutMany: the batch is fed through the
+// batch channel and ends when that channel is closed, and exactly one value
+// is sent on the error channel. In addition, the batch is aborted when ctx is
+// done before the batch channel is closed: none of its records are stored,
+// records stored before are left untouched and the result is an error that
+// wraps ErrBatchAborted. An aborted batch is never reported as success.
+//
+// To abort, cancel ctx first and then close the batch channel as usual. The
+// storage must check ctx when it sees the closed batch channel, so that this
+// order always aborts. Cancelling ctx after the batch channel was closed
+// does not reliably abort the batch anymore, and has no effect once the
+// result was sent. Without a cancellation, PutManyAbortable must behave
+// exactly like PutMany.
+type AbortableBatcher interface {
+	Batcher
+	PutManyAbortable(ctx context.Context, shadowDelete bool) (batch chan<- record.Record, errs <-chan error)
+}
+
 // Purger defines the database storage API for backends that support the purge operation.
 type Purger interface {
 	Purge(ctx context.Context, q *query.Query, local, internal, shadowDelete bool) (int, error)

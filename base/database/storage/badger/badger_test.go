@@ -18,7 +18,7 @@ var (
 	_ storage.Maintainer = &Badger{}
 )
 
-type TestRecord struct { //nolint:maligned
+type TestRecord struct {
 	record.Base
 	sync.Mutex
 	S    string

@@ -10,7 +10,6 @@ import (
 )
 
 // Windows specific constants for the WSAIoctl interface.
-//nolint:golint,stylecheck
 const (
 	SIO_RCVALL = syscall.IOC_IN | syscall.IOC_VENDOR | 1
 

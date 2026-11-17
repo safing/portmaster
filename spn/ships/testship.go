@@ -145,10 +145,10 @@ func (ship *TestShip) Sink() {
 
 // Dummy methods to conform to interface for testing.
 
-func (ship *TestShip) LocalAddr() net.Addr              { return nil }                  //nolint:golint
-func (ship *TestShip) RemoteAddr() net.Addr             { return nil }                  //nolint:golint
-func (ship *TestShip) Public() bool                     { return true }                 //nolint:golint
-func (ship *TestShip) MarkPublic()                      {}                              //nolint:golint
-func (ship *TestShip) MaskAddress(addr net.Addr) string { return addr.String() }        //nolint:golint
-func (ship *TestShip) MaskIP(ip net.IP) string          { return ip.String() }          //nolint:golint
-func (ship *TestShip) Mask(value []byte) string         { return base58.Encode(value) } //nolint:golint
+func (ship *TestShip) LocalAddr() net.Addr              { return nil }
+func (ship *TestShip) RemoteAddr() net.Addr             { return nil }
+func (ship *TestShip) Public() bool                     { return true }
+func (ship *TestShip) MarkPublic()                      {}
+func (ship *TestShip) MaskAddress(addr net.Addr) string { return addr.String() }
+func (ship *TestShip) MaskIP(ip net.IP) string          { return ip.String() }
+func (ship *TestShip) Mask(value []byte) string         { return base58.Encode(value) }

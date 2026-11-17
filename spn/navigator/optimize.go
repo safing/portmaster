@@ -26,7 +26,7 @@ const (
 )
 
 // AnalysisState holds state for analyzing the network for optimizations.
-type AnalysisState struct { //nolint:maligned
+type AnalysisState struct {
 	// Suggested signifies that a direct connection to this Hub is suggested by
 	// the optimization algorithm.
 	Suggested bool

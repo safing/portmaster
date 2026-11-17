@@ -26,10 +26,16 @@ var (
 	// mainMux is the main mux router.
 	mainMux = mux.NewRouter()
 
+	// serverReadHeaderTimeout is the maximum time a client may take to send
+	// the request headers. It protects against slow header (slowloris)
+	// connections. There are deliberately no read, write or idle timeouts, as
+	// these would break long-lived websocket connections.
+	// It is a variable only so that tests can lower it.
+	serverReadHeaderTimeout = 10 * time.Second
+
 	// server is the main server.
-	server = &http.Server{
-		ReadHeaderTimeout: 10 * time.Second,
-	}
+	server = newServer()
+
 	handlerLock sync.RWMutex
 
 	allowedDevCORSOrigins = []string{
@@ -37,6 +43,13 @@ var (
 		"localhost",
 	}
 )
+
+// newServer returns a new, unstarted API HTTP server.
+func newServer() *http.Server {
+	return &http.Server{
+		ReadHeaderTimeout: serverReadHeaderTimeout,
+	}
+}
 
 // RegisterHandler registers a handler with the API endpoint.
 func RegisterHandler(path string, handler http.Handler) *mux.Route {
@@ -227,7 +240,12 @@ func (mh *mainHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	// See github.com/gorilla/mux.ServeHTTP for reference.
 	var match mux.RouteMatch
 	var handler http.Handler
-	if mh.mux.Match(r, &match) {
+	// Routes may be registered while the server is running, so guard the
+	// route table against concurrent modification.
+	handlerLock.RLock()
+	matched := mh.mux.Match(r, &match)
+	handlerLock.RUnlock()
+	if matched {
 		handler = match.Handler
 		apiRequest.Route = match.Route
 		apiRequest.URLVars = match.Vars

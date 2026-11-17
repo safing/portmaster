@@ -100,19 +100,13 @@ func start() error {
 		})
 
 	// reload after config change
-	prevNameservers := strings.Join(configuredNameServers(), " ")
 	module.instance.Config().EventConfigChange.AddCallback(
 		"update nameservers",
-		func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
-			newNameservers := strings.Join(configuredNameServers(), " ")
-			if newNameservers != prevNameservers {
-				prevNameservers = newNameservers
-
-				loadResolvers()
-				log.Debug("resolver: reloaded nameservers due to config change")
-			}
-			return false, nil
-		})
+		newNameserverConfigChangeHandler(
+			func() []string { return configuredNameServers() },
+			loadResolvers,
+		),
+	)
 
 	// Check failing resolvers regularly and when the network changes.
 	module.failingResolverWorkerMgr = module.mgr.NewWorkerMgr("check failing resolvers", checkFailingResolvers, nil)
@@ -137,20 +131,61 @@ func start() error {
 	return nil
 }
 
-var localAddrFactory func(network string) net.Addr
+var localAddrFactory atomic.Pointer[func(network string) net.Addr]
 
 // SetLocalAddrFactory supplies the intel package with a function to get permitted local addresses for connections.
 func SetLocalAddrFactory(laf func(network string) net.Addr) {
-	if localAddrFactory == nil {
-		localAddrFactory = laf
+	if laf == nil {
+		// Setting no factory leaves it unset, so that it can still be set.
+		return
 	}
+	localAddrFactory.CompareAndSwap(nil, &laf)
 }
 
 func getLocalAddr(network string) net.Addr {
-	if localAddrFactory != nil {
-		return localAddrFactory(network)
+	if laf := localAddrFactory.Load(); laf != nil && *laf != nil {
+		return (*laf)(network)
 	}
 	return nil
+}
+
+// Network names used with the local port hooks.
+const (
+	networkUDP = "udp"
+	networkTCP = "tcp"
+)
+
+// LocalPortHooks are supplied by the firewall so that the resolver can
+// attribute its own connections to Portmaster before the first packet leaves.
+type LocalPortHooks struct {
+	// Authorize pre-authenticates the given local port for one connection.
+	Authorize func(network string, port uint16)
+	// Release drops a pre-authentication that was not used, because the
+	// connection could not be established. If unusable is set, the port could
+	// not be bound and is skipped by future port selection for a while.
+	Release func(network string, port uint16, unusable bool)
+}
+
+var localPortHooks atomic.Pointer[LocalPortHooks]
+
+// SetLocalPortHooks supplies the resolver with hooks to pre-authenticate local ports.
+func SetLocalPortHooks(hooks LocalPortHooks) {
+	current := localPortHooks.Load()
+	if current == nil || (current.Authorize == nil && current.Release == nil) {
+		localPortHooks.CompareAndSwap(current, &hooks)
+	}
+}
+
+func authorizeLocalPort(network string, port uint16) {
+	if hooks := localPortHooks.Load(); hooks != nil && hooks.Authorize != nil {
+		hooks.Authorize(network, port)
+	}
+}
+
+func releaseLocalPort(network string, port uint16, unusable bool) {
+	if hooks := localPortHooks.Load(); hooks != nil && hooks.Release != nil {
+		hooks.Release(network, port, unusable)
+	}
 }
 
 var (
@@ -288,4 +323,31 @@ type instance interface {
 	NetEnv() *netenv.NetEnv
 	Config() *config.Config
 	GetEventSPNConnected() *mgr.EventMgr[struct{}]
+	ShuttingDown() <-chan struct{}
+}
+
+// newNameserverConfigChangeHandler returns a config change callback that calls
+// reload when the configured nameservers (as returned by getNameservers)
+// changed since the last reload.
+// Event callbacks run concurrently, so the check and the reload are serialized:
+// otherwise a callback that read an older config could store it as the last
+// state after a newer callback already reloaded, and a later change back to
+// that older value would then be skipped.
+func newNameserverConfigChangeHandler(getNameservers func() []string, reload func()) mgr.EventCallbackFunc[struct{}] {
+	var lock sync.Mutex
+	prevNameservers := strings.Join(getNameservers(), " ")
+
+	return func(_ *mgr.WorkerCtx, _ struct{}) (bool, error) {
+		lock.Lock()
+		defer lock.Unlock()
+
+		newNameservers := strings.Join(getNameservers(), " ")
+		if newNameservers != prevNameservers {
+			prevNameservers = newNameservers
+
+			reload()
+			log.Debug("resolver: reloaded nameservers due to config change")
+		}
+		return false, nil
+	}
 }

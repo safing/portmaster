@@ -137,7 +137,7 @@ func (g *Group) Start() error {
 		startTime := time.Now()
 
 		err := m.mgr.Do("start module "+m.mgr.name, func(_ *WorkerCtx) error {
-			return m.module.Start() //nolint:scopelint // Execution is synchronous.
+			return m.module.Start()
 		})
 		if err != nil {
 			m.mgr.Error(

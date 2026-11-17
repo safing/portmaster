@@ -127,14 +127,14 @@ func getTableFromSource(stack uint8, procFile string) (connections []*socket.Con
 			continue
 		}
 
-		uid, err := strconv.ParseInt(fields[fieldIndexUID], 10, 32)
+		uid, err := strconv.ParseUint(fields[fieldIndexUID], 10, 32)
 		// log.Tracef("uid: %s", fields[fieldIndexUID])
 		if err != nil {
 			log.Warningf("proc: could not parse uid %s: %s", fields[11], err)
 			continue
 		}
 
-		inode, err := strconv.ParseInt(fields[fieldIndexInode], 10, 32)
+		inode, err := strconv.ParseUint(fields[fieldIndexInode], 10, 32)
 		// log.Tracef("inode: %s", fields[fieldIndexInode])
 		if err != nil {
 			log.Warningf("proc: could not parse inode %s: %s", fields[13], err)

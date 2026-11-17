@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -55,6 +56,9 @@ type (
 
 		l         sync.Mutex
 		writeConn *sqlite.Conn
+
+		// saveQuery caches the statements built by Save.
+		saveQuery atomic.Pointer[saveQuery]
 	}
 
 	// BatchExecute executes multiple queries in one transaction.
@@ -72,7 +76,7 @@ type (
 	//
 	// Use ConvertConnection from this package to convert a network.Connection to this
 	// representation.
-	Conn struct { //nolint:maligned
+	Conn struct {
 		// ID is a device-unique identifier for the connection. It is built
 		// from network.Connection by hashing the connection ID and the start
 		// time. We cannot just use the network.Connection.ID because it is only unique
@@ -151,6 +155,16 @@ func New(dbPath string) (*Database, error) {
 
 		if err := sqlitex.ExecuteTransient(c, "ATTACH DATABASE '"+historyURI+"?mode=ro' AS history", nil); err != nil {
 			return nil, fmt.Errorf("failed to attach history database: %w", err)
+		}
+
+		// All connections share the pager of the history database (shared
+		// cache). Attaching applies the default synchronous=FULL to that shared
+		// pager again, which silently undoes the setting of the write connection
+		// and makes every history write wait for an fsync.
+		err = sqlitex.ExecuteTransient(c, "PRAGMA history.synchronous=NORMAL;", nil)
+		if err != nil {
+			_ = c.Close()
+			return nil, fmt.Errorf("failed to configure history database: %w", err)
 		}
 
 		return c, nil
@@ -270,6 +284,22 @@ func (db *Database) ApplyMigrations() error {
 		return fmt.Errorf("failed to attach history database: %w", err)
 	}
 
+	// The OpenWAL flag of the write connection only applies to the main
+	// database. Configure the attached history database explicitly: the
+	// write-ahead log with synchronous=NORMAL commits without an fsync, which
+	// is what the bandwidth updates (once per second per connection) need.
+	// NORMAL can lose the last transactions on power loss, but keeps the
+	// database consistent, which is fine for connection history.
+	for _, pragma := range []string{
+		"PRAGMA history.journal_mode=WAL;",
+		"PRAGMA history.synchronous=NORMAL;",
+	} {
+		err := sqlitex.ExecuteTransient(db.writeConn, pragma, nil)
+		if err != nil {
+			return fmt.Errorf("failed to configure history database (%s): %w", pragma, err)
+		}
+	}
+
 	dbNames := []string{"main", "history"}
 	for _, dbName := range dbNames {
 		// get the create-table SQL statement from the inferred schema
@@ -314,6 +344,13 @@ func (db *Database) ApplyMigrations() error {
 		return fmt.Errorf("failed to create main.bandwidth database: %w", err)
 	}
 
+	// The bandwidth chart joins on conn_id, and Cleanup deletes through it.
+	bwIndex := `CREATE INDEX IF NOT EXISTS main.bandwidth_conn_id_index ON bandwidth (conn_id)`
+	err := sqlitex.ExecuteTransient(db.writeConn, bwIndex, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create index on main.bandwidth: %w", err)
+	}
+
 	return nil
 }
 
@@ -324,7 +361,24 @@ func (db *Database) withConn(ctx context.Context, fn func(conn *sqlite.Conn) err
 	}
 	defer res.Release()
 
-	return fn(res.Value())
+	conn := res.Value()
+
+	// Interrupt the running statement when ctx is done (e.g. the HTTP request
+	// was abandoned by the UI), so that an expensive query does not keep the
+	// pooled connection busy. The previous interrupt is restored before the
+	// connection goes back to the pool (deferred calls run in reverse order).
+	if done := ctx.Done(); done != nil {
+		prevDone := conn.SetInterrupt(done)
+		defer conn.SetInterrupt(prevDone)
+	}
+
+	err = fn(conn)
+	if err != nil && ctx.Err() != nil {
+		// Report the cause of the interruption to the caller.
+		return fmt.Errorf("query aborted: %w: %w", ctx.Err(), err)
+	}
+
+	return err
 }
 
 // ExecuteWrite executes a custom SQL query using a writable connection against the SQLite
@@ -411,7 +465,16 @@ func (db *Database) Cleanup(ctx context.Context, threshold time.Time) (int, erro
 		return 0, fmt.Errorf("unexpected number of rows, expected 1 got %d", len(result))
 	}
 
-	err := db.ExecuteWrite(ctx, sql, args)
+	// Foreign keys are not enabled on the connection, so the ON DELETE CASCADE
+	// of main.bandwidth never runs. Remove the bandwidth data of the connections
+	// about to be deleted, otherwise the in-memory table grows without bound.
+	// This must run before the connections are deleted, as it selects by them.
+	err := db.ExecuteWrite(ctx, "DELETE FROM main.bandwidth WHERE conn_id IN (SELECT id FROM main.connections "+where+");", args)
+	if err != nil {
+		return 0, fmt.Errorf("failed to remove bandwidth data of deleted connections: %w", err)
+	}
+
+	err = db.ExecuteWrite(ctx, sql, args)
 	if err != nil {
 		return 0, err
 	}
@@ -616,25 +679,20 @@ func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) err
 		return fmt.Errorf("failed to encode connection for SQL: %w", err)
 	}
 
-	columns := make([]string, 0, len(connMap))
-	placeholders := make([]string, 0, len(connMap))
-	values := make(map[string]interface{}, len(connMap))
-	updateSets := make([]string, 0, len(connMap))
-
-	// sort keys so we get a stable SQLite query that can be better cached.
-	keys := make([]string, 0, len(connMap))
-	for key := range connMap {
-		keys = append(keys, key)
+	// The statements only depend on the set of columns, which is the same for
+	// every connection. Only rebuild them if the columns changed.
+	query := db.saveQuery.Load()
+	if query == nil || !query.matches(connMap) {
+		query = newSaveQuery(connMap)
+		db.saveQuery.Store(query)
 	}
-	sort.Strings(keys)
 
-	for _, key := range keys {
-		value := connMap[key]
-
-		columns = append(columns, key)
-		placeholders = append(placeholders, ":"+key)
-		values[":"+key] = value
-		updateSets = append(updateSets, fmt.Sprintf("%s = :%s", key, key))
+	// Bind the values by position, in the order of the columns. Binding them
+	// by name makes sqlitex look up the name of every parameter of the
+	// statement in SQLite for every execution.
+	values := make([]any, len(query.columns))
+	for i, key := range query.columns {
+		values[i] = connMap[key]
 	}
 
 	db.l.Lock()
@@ -655,20 +713,10 @@ func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) err
 	}
 
 	for _, dbName := range dbNames {
-		sql := fmt.Sprintf(
-			`INSERT INTO %s.connections (%s)
-				VALUES(%s)
-				ON CONFLICT(id) DO UPDATE SET
-				%s
-			`,
-			dbName,
-			strings.Join(columns, ", "),
-			strings.Join(placeholders, ", "),
-			strings.Join(updateSets, ", "),
-		)
+		sql := query.sql(dbName)
 
 		if err := sqlitex.Execute(db.writeConn, sql, &sqlitex.ExecOptions{
-			Named: values,
+			Args: values,
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				log.Errorf("netquery: got result statement with %d columns", stmt.ColumnCount())
 				return nil
@@ -680,4 +728,104 @@ func (db *Database) Save(ctx context.Context, conn Conn, enableHistory bool) err
 	}
 
 	return nil
+}
+
+// saveQuery holds the statements used by Database.Save for a set of columns.
+type saveQuery struct {
+	// columns holds the sorted column names.
+	columns []string
+
+	columnList      string
+	placeholderList string
+	updateSetList   string
+
+	liveSQL    string
+	historySQL string
+}
+
+// saveInsertOnlyColumns are the columns that are only written when a
+// connection is inserted, as they never change afterwards: the ID is the
+// conflict target of the upsert and network.Connection.Started is only set
+// when the connection is created.
+// SQLite decides by the columns of the SET list which indexes an UPDATE has
+// to rewrite, not by whether the values change: setting these two rewrote the
+// primary key index and the started index for every update of a connection.
+var saveInsertOnlyColumns = map[string]bool{
+	"id":      true,
+	"started": true, //nolint:goconst // SQL column name.
+}
+
+// newSaveQuery builds the statements to save the given column map.
+func newSaveQuery(connMap map[string]any) *saveQuery {
+	columns := make([]string, 0, len(connMap))
+	placeholders := make([]string, 0, len(connMap))
+	updateSets := make([]string, 0, len(connMap))
+
+	// sort keys so we get a stable SQLite query that can be better cached.
+	keys := make([]string, 0, len(connMap))
+	for key := range connMap {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		columns = append(columns, key)
+		// The values are bound by position: one parameter per column, in
+		// the order of the columns. An update sets the values of the row that
+		// could not be inserted.
+		placeholders = append(placeholders, "?")
+		if saveInsertOnlyColumns[key] {
+			continue
+		}
+		updateSets = append(updateSets, fmt.Sprintf("%s = excluded.%s", key, key))
+	}
+
+	q := &saveQuery{
+		columns:         columns,
+		columnList:      strings.Join(columns, ", "),
+		placeholderList: strings.Join(placeholders, ", "),
+		updateSetList:   strings.Join(updateSets, ", "),
+	}
+	q.liveSQL = q.buildSQL(LiveDatabase)
+	q.historySQL = q.buildSQL(HistoryDatabase)
+	return q
+}
+
+// matches returns whether the query has exactly the columns of connMap.
+func (q *saveQuery) matches(connMap map[string]any) bool {
+	if len(connMap) != len(q.columns) {
+		return false
+	}
+	for _, column := range q.columns {
+		if _, ok := connMap[column]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// sql returns the statement to save to the given database.
+func (q *saveQuery) sql(dbName DatabaseName) string {
+	switch dbName {
+	case LiveDatabase:
+		return q.liveSQL
+	case HistoryDatabase:
+		return q.historySQL
+	default:
+		return q.buildSQL(dbName)
+	}
+}
+
+func (q *saveQuery) buildSQL(dbName DatabaseName) string {
+	return fmt.Sprintf(
+		`INSERT INTO %s.connections (%s)
+				VALUES(%s)
+				ON CONFLICT(id) DO UPDATE SET
+				%s
+			`,
+		dbName,
+		q.columnList,
+		q.placeholderList,
+		q.updateSetList,
+	)
 }

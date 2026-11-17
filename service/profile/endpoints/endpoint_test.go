@@ -59,6 +59,13 @@ func TestEndpointParsing(t *testing.T) {
 	testParsing(t, "+ * UDP/1234")
 	testParsing(t, "+ * TCP/HTTP")
 	testParsing(t, "+ * TCP/80-443")
+	testParsing(t, "+ * TCP/FTP-DATA") // Port name with hyphen.
+	ep, err := parseEndpoint("+ * UDP/DHCP-SERVER")
+	if err != nil {
+		t.Error(err)
+	} else if ep.String() != "+ * UDP/DHCP_SERVER" {
+		t.Errorf(`unexpected rendering of hyphenated port name: "%s"`, ep.String())
+	}
 
 	// TODO: Test fails:
 	// testParsing(t, "+ 1234")

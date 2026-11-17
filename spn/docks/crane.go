@@ -2,10 +2,12 @@ package docks
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"slices"
 	"sync"
 	"time"
 
@@ -414,7 +416,7 @@ func (crane *Crane) decrypt(shipment *container.Container) (decrypted *container
 	crane.jessionLock.Lock()
 	defer crane.jessionLock.Unlock()
 
-	letter, err := jess.LetterFromWire(shipment)
+	letter, err := terminal.LetterFromWire(shipment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse letter: %w", err)
 	}
@@ -647,8 +649,9 @@ handling:
 }
 
 func (crane *Crane) loader(workerCtx *mgr.WorkerCtx) (err error) {
-	shipment := container.New()
-	var partialShipment *container.Container
+	// shipment holds the segments waiting to be loaded. It is only used for
+	// assembling and is reused, as load() copies the data it loads.
+	shipment := make([]byte, 0, crane.targetLoadSize+maxSegmentLength)
 	var loadingTimer *time.Timer
 
 	// Unclean shutdown safeguard.
@@ -664,8 +667,8 @@ func (crane *Crane) loader(workerCtx *mgr.WorkerCtx) (err error) {
 
 	// Make sure any received message is finished
 	var msg, firstMsg *terminal.Msg
-	defer msg.Finish()
-	defer firstMsg.Finish()
+	defer func() { msg.Finish() }()
+	defer func() { firstMsg.Finish() }()
 
 	for {
 		// Reset first message in shipment.
@@ -673,7 +676,7 @@ func (crane *Crane) loader(workerCtx *mgr.WorkerCtx) (err error) {
 		firstMsg = nil
 
 	fillingShipment:
-		for shipment.Length() < crane.targetLoadSize {
+		for len(shipment) < crane.targetLoadSize {
 			// Gather segments until shipment is filled.
 
 			// Prioritize messages from the controller.
@@ -701,9 +704,12 @@ func (crane *Crane) loader(workerCtx *mgr.WorkerCtx) (err error) {
 
 			// Handle new message.
 			if msg != nil {
-				// Pack msg and add to segment.
-				msg.Pack()
-				newSegment := msg.Data
+				// Calculate segment size.
+				// The segment is the msg packed with terminal.MakeMsg: Length, ID+Type, Data.
+				idType := uint64(msg.FlowID | uint32(msg.Type))
+				dataLength := msg.Data.Length()
+				contentLength := uint64(varint.EncodedSize(idType) + dataLength)        //nolint:gosec // Length is never negative.
+				segmentLength := varint.EncodedSize(contentLength) + int(contentLength) //nolint:gosec // Converted from int.
 
 				// Check if this is the first message.
 				// This is the only message where we wait for a slot.
@@ -715,13 +721,17 @@ func (crane *Crane) loader(workerCtx *mgr.WorkerCtx) (err error) {
 				}
 
 				// Check length.
-				if newSegment.Length() > maxSegmentLength {
-					log.Warningf("spn/docks: %s ignored oversized segment with length %d", crane, newSegment.Length())
+				if segmentLength > maxSegmentLength {
+					log.Warningf("spn/docks: %s ignored oversized segment with length %d", crane, segmentLength)
 					continue fillingShipment
 				}
 
-				// Append to shipment.
-				shipment.AppendContainer(newSegment)
+				// Append segment to shipment.
+				shipment = binary.AppendUvarint(shipment, contentLength)
+				shipment = binary.AppendUvarint(shipment, idType)
+				shipment = slices.Grow(shipment, dataLength)
+				msg.Data.WriteToSlice(shipment[len(shipment) : len(shipment)+dataLength])
+				shipment = shipment[:len(shipment)+dataLength]
 
 				// Set loading max wait timer on first segment.
 				if loadingTimer == nil {
@@ -738,17 +748,10 @@ func (crane *Crane) loader(workerCtx *mgr.WorkerCtx) (err error) {
 	sendingShipment:
 		for {
 			// Check if we are over the target load size and split the shipment.
-			if shipment.Length() > crane.targetLoadSize {
-				partialShipment, err = shipment.GetAsContainer(crane.targetLoadSize)
-				if err != nil {
-					crane.Stop(terminal.ErrInternalError.With("failed to split segment: %w", err))
-					return nil
-				}
-				shipment, partialShipment = partialShipment, shipment
-			}
+			loadSize := min(len(shipment), crane.targetLoadSize)
 
 			// Load shipment.
-			err = crane.load(shipment)
+			err = crane.load(shipment[:loadSize])
 			if err != nil {
 				crane.Stop(terminal.ErrShipSunk.With("failed to load shipment: %w", err))
 				return nil
@@ -757,82 +760,24 @@ func (crane *Crane) loader(workerCtx *mgr.WorkerCtx) (err error) {
 			// Reset loading timer.
 			loadingTimer = nil
 
-			// Continue loading with partial shipment, or a new one.
-			if partialShipment != nil {
-				// Continue loading with a partial previous shipment.
-				shipment, partialShipment = partialShipment, nil
+			// Continue loading with the remainder of the shipment, or a new one.
+			if loadSize < len(shipment) {
+				// Continue loading with the remainder of the previous shipment.
+				shipment = shipment[:copy(shipment, shipment[loadSize:])]
 
 				// If shipment is not big enough to send immediately, wait for more data.
-				if shipment.Length() < crane.targetLoadSize {
+				if len(shipment) < crane.targetLoadSize {
 					loadingTimer = time.NewTimer(loadingMaxWaitDuration)
 					break sendingShipment
 				}
 
 			} else {
 				// Continue loading with new shipment.
-				shipment = container.New()
+				shipment = shipment[:0]
 				break sendingShipment
 			}
 		}
 	}
-}
-
-func (crane *Crane) load(c *container.Container) error {
-	// Add Padding if needed.
-	if crane.opts.Padding > 0 {
-		paddingNeeded := int(crane.opts.Padding) -
-			((c.Length() + varint.EncodedSize(uint64(c.Length()))) % int(crane.opts.Padding))
-		// As the length changes slightly with the padding, we should avoid loading
-		// lengths around the varint size hops:
-		// - 128
-		// - 16384
-		// - 2097152
-		// - 268435456
-
-		// Pad to target load size at maximum.
-		maxPadding := crane.targetLoadSize - c.Length()
-		if paddingNeeded > maxPadding {
-			paddingNeeded = maxPadding
-		}
-
-		if paddingNeeded > 0 {
-			// Add padding indicator.
-			c.Append([]byte{0})
-			paddingNeeded--
-
-			// Add needed padding data.
-			if paddingNeeded > 0 {
-				padding, err := rng.Bytes(paddingNeeded)
-				if err != nil {
-					log.Debugf("spn/docks: %s failed to get random padding data, using zeros instead", crane)
-					padding = make([]byte, paddingNeeded)
-				}
-				c.Append(padding)
-			}
-		}
-	}
-
-	// Encrypt shipment.
-	c, err := crane.encrypt(c)
-	if err != nil {
-		return fmt.Errorf("failed to encrypt: %w", err)
-	}
-
-	// Finalize data.
-	c.PrependLength()
-	readyToSend := c.CompileData()
-
-	// Submit metrics.
-	crane.submitCraneTrafficStats(len(readyToSend))
-	crane.NetState.ReportTraffic(uint64(len(readyToSend)), false)
-
-	// Load onto ship.
-	err = crane.ship.Load(readyToSend)
-	if err != nil {
-		return fmt.Errorf("failed to load ship: %w", err)
-	}
-
-	return nil
 }
 
 // Stop stops the crane.
@@ -911,4 +856,85 @@ func (crane *Crane) String() string {
 // Stopped returns whether the crane has stopped.
 func (crane *Crane) Stopped() bool {
 	return crane.stopped.IsSet()
+}
+
+// load pads, encrypts, length-prefixes and loads the given shipment onto the
+// ship. The given data is copied and not retained.
+func (crane *Crane) load(data []byte) error {
+	// Calculate padding.
+	var paddingNeeded int
+	if crane.opts.Padding > 0 {
+		paddingNeeded = int(crane.opts.Padding) -
+			((len(data) + varint.EncodedSize(uint64(len(data)))) % int(crane.opts.Padding))
+		// As the length changes slightly with the padding, we should avoid loading
+		// lengths around the varint size hops:
+		// - 128
+		// - 16384
+		// - 2097152
+		// - 268435456
+
+		// Pad to target load size at maximum.
+		maxPadding := crane.targetLoadSize - len(data)
+		if paddingNeeded > maxPadding {
+			paddingNeeded = maxPadding
+		}
+		if paddingNeeded < 0 {
+			paddingNeeded = 0
+		}
+	}
+
+	// Build the final shipment in a new buffer, as the ship may retain it.
+	// Without encryption, reserve space for the length prefix in front.
+	// The jess session is set before the loader starts and never changes.
+	encrypting := crane.jession != nil
+	shipmentLength := len(data) + paddingNeeded
+	var prefixLength int
+	if !encrypting {
+		prefixLength = varint.EncodedSize(uint64(shipmentLength))
+	}
+	buf := make([]byte, prefixLength+shipmentLength)
+	shipment := buf[prefixLength:]
+	copy(shipment, data)
+
+	// Add Padding if needed.
+	if paddingNeeded > 0 {
+		// The padding indicator (0) is already in place, as buf is zeroed.
+		// Add needed padding data.
+		if paddingNeeded > 1 {
+			_, err := rng.Read(shipment[len(data)+1:])
+			if err != nil {
+				log.Debugf("spn/docks: %s failed to get random padding data, using zeros instead", crane)
+				clear(shipment[len(data)+1:])
+			}
+		}
+	}
+
+	var readyToSend []byte
+	if !encrypting {
+		// Finalize data.
+		binary.PutUvarint(buf, uint64(shipmentLength))
+		readyToSend = buf
+	} else {
+		// Encrypt shipment.
+		c, err := crane.encrypt(container.New(shipment))
+		if err != nil {
+			return fmt.Errorf("failed to encrypt: %w", err)
+		}
+
+		// Finalize data.
+		c.PrependLength()
+		readyToSend = c.CompileData()
+	}
+
+	// Submit metrics.
+	crane.submitCraneTrafficStats(len(readyToSend))
+	crane.NetState.ReportTraffic(uint64(len(readyToSend)), false)
+
+	// Load onto ship.
+	err := crane.ship.Load(readyToSend)
+	if err != nil {
+		return fmt.Errorf("failed to load ship: %w", err)
+	}
+
+	return nil
 }

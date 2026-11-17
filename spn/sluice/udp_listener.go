@@ -21,6 +21,7 @@ const onWindows = runtime.GOOS == "windows"
 type UDPListener struct {
 	sock     *net.UDPConn
 	closed   *abool.AtomicBool
+	closing  chan struct{}
 	newConns chan *UDPConn
 	oobSize  int
 
@@ -53,6 +54,7 @@ func ListenUDP(network, address string) (net.Listener, error) {
 	ln := &UDPListener{
 		sock:     sock,
 		closed:   abool.New(),
+		closing:  make(chan struct{}),
 		newConns: make(chan *UDPConn),
 		oobSize:  oobSize,
 		conns:    make(map[string]*UDPConn),
@@ -73,9 +75,10 @@ func ListenUDP(network, address string) (net.Listener, error) {
 
 // Accept waits for and returns the next connection to the listener.
 func (ln *UDPListener) Accept() (net.Conn, error) {
-	conn := <-ln.newConns
-	if conn != nil {
+	select {
+	case conn := <-ln.newConns:
 		return conn, nil
+	case <-ln.closing:
 	}
 
 	// Check if there is a socket error.
@@ -95,8 +98,9 @@ func (ln *UDPListener) Close() error {
 		return nil
 	}
 
-	// Close all channels.
-	close(ln.newConns)
+	// Signal closing and close all connection channels.
+	// newConns is never closed, as the reader might be sending on it.
+	close(ln.closing)
 	ln.lock.Lock()
 	defer ln.lock.Unlock()
 	for _, conn := range ln.conns {
@@ -150,23 +154,13 @@ func (ln *UDPListener) reader(_ *mgr.WorkerCtx) error {
 		buf = buf[:n]
 		oob = oob[:oobn]
 
-		// Get connection and supply data.
-		conn, ok := ln.getConn(addr.String())
-		if ok {
-			// Ignore if conn is closed.
-			if conn.closed.IsSet() {
-				continue
-			}
-
-			select {
-			case conn.in <- buf:
-			default:
-			}
+		// Supply data to existing connection.
+		if ln.supplyData(addr.String(), buf) {
 			continue
 		}
 
 		// Or create a new connection.
-		conn = &UDPConn{
+		conn := &UDPConn{
 			ln:            ln,
 			addr:          addr,
 			oob:           oob,
@@ -177,8 +171,36 @@ func (ln *UDPListener) reader(_ *mgr.WorkerCtx) error {
 			inactivityCnt: new(uint32),
 		}
 		ln.setConn(conn)
-		ln.newConns <- conn
+		select {
+		case ln.newConns <- conn:
+		case <-ln.closing:
+		}
 	}
+}
+
+// supplyData supplies the given data to an existing connection and reports
+// whether a connection exists for the given remote address.
+// The send happens under the lock so that it cannot race with Close closing
+// the connection's channel.
+func (ln *UDPListener) supplyData(remoteAddr string, data []byte) (connExists bool) {
+	ln.lock.Lock()
+	defer ln.lock.Unlock()
+
+	conn, ok := ln.conns[remoteAddr]
+	if !ok {
+		return false
+	}
+
+	// Ignore if conn or listener is closed.
+	if conn.closed.IsSet() || ln.closed.IsSet() {
+		return true
+	}
+
+	select {
+	case conn.in <- data:
+	default:
+	}
+	return true
 }
 
 func (ln *UDPListener) cleaner(ctx *mgr.WorkerCtx) error {

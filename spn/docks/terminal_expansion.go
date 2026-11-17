@@ -67,6 +67,13 @@ func ExpandTo(from terminal.Terminal, routeTo string, encryptFor *hub.Hub) (*Exp
 	base.SetTerminalExtension(expansion)
 	base.SetTimeout(defaultTerminalIdleTimeout)
 
+	// Start Workers.
+	// Do this before starting the relay operation: If starting it fails, the
+	// relay operation is stopped, which abandons the expansion terminal. The
+	// abandon procedure needs the workers to flush and finish, otherwise it
+	// would only end after its flush timeouts (5 minutes each).
+	base.StartWorkers(module.mgr, "expansion terminal")
+
 	// Second, start the actual relay operation.
 
 	// Create setup message for relay operation.
@@ -79,9 +86,6 @@ func ExpandTo(from terminal.Terminal, routeTo string, encryptFor *hub.Hub) (*Exp
 	if tErr != nil {
 		return nil, tErr.Wrap("failed to start expansion operation")
 	}
-
-	// Start Workers.
-	base.StartWorkers(module.mgr, "expansion terminal")
 
 	return expansion, nil
 }

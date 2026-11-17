@@ -220,12 +220,17 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 	interceptionStartStopStatus := i.owner.Interception().EventStartStopState.Subscribe("ivpn", 10)
 	defer interceptionStartStopStatus.Cancel()
 
+	// Subscribe to config changes once. EvtConfigChange creates a new
+	// subscription on every call, so it must not be called in the select
+	// below, whose channel operands are evaluated on every iteration.
+	configChanges := i.owner.EvtConfigChange()
+
 	done := false
 	for !done {
 		select {
 		case <-interceptionStartStopStatus.Events():
 			i.updateIvpnClientDnsSettings(wc, client)
-		case <-i.owner.EvtConfigChange():
+		case <-configChanges:
 			i.updateIvpnClientDnsSettings(wc, client)
 			i.reconcileCompatibilityState(wc)
 		case <-wc.Done():

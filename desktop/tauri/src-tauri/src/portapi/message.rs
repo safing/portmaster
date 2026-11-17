@@ -137,6 +137,20 @@ impl std::convert::From<Message> for String {
     }
 }
 
+/// Reports whether messages of type `cmd` have the form `<id>|<cmd>|<key>|<payload>`.
+///
+/// For the other known types everything after `<id>|<cmd>|` is a single key,
+/// query or message, which may contain '|' itself.
+fn has_payload(cmd: &str) -> bool {
+    match cmd {
+        "del" | "error" | "warning" => false,
+        "success" | "done" => false,
+        "get" | "query" | "sub" | "qsub" | "delete" | "cancel" => false,
+        // "ok", "upd", "new", "create", "update", "insert" and unknown commands.
+        _ => true,
+    }
+}
+
 /// An implementation for `String::parse()` to convert a wire-format representation
 /// of a PortAPI message to a Message instance.
 ///
@@ -145,7 +159,14 @@ impl std::str::FromStr for Message {
     type Err = MessageError;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let parts = line.split('|').collect::<Vec<&str>>();
+        // Only split on the separators of the wire format: payloads (JSON),
+        // queries and messages may contain '|' themselves. This mirrors the Go
+        // side (base/api/database.go), which uses SplitN(msg, "|", 3) and, for
+        // messages carrying a payload, splits the rest once more into <key>|<data>.
+        // The command is always the second field.
+        let cmd = line.split('|').nth(1).unwrap_or("");
+        let limit = if has_payload(cmd) { 4 } else { 3 };
+        let parts = line.splitn(limit, '|').collect::<Vec<&str>>();
 
         let id = match parts.first() {
             Some(s) => match (*s).parse::<usize>() {
@@ -261,5 +282,112 @@ mod tests {
         } else {
             panic!("unexpected error value: {}", m)
         }
+    }
+
+    fn msg(id: usize, cmd: &str, key: Option<&str>, payload: Option<Payload>) -> Message {
+        Message {
+            id,
+            cmd: cmd.to_string(),
+            key: key.map(|k| k.to_string()),
+            payload,
+        }
+    }
+
+    fn json(s: &str) -> Option<Payload> {
+        Some(Payload::Json(s.to_string()))
+    }
+
+    fn unknown(s: &str) -> Option<Payload> {
+        Some(Payload::Unknown(s.to_string()))
+    }
+
+    #[test]
+    fn parse_payload_containing_separator() {
+        let data = r#"{"a": 1, "s": "x|y||z|"}"#;
+        for cmd in ["ok", "upd", "new", "create", "update", "insert"] {
+            let line = format!("7|{}|some:key|J{}", cmd, data);
+            let m = line.parse::<Message>().expect("Expected message to parse");
+            assert_eq!(m, msg(7, cmd, Some("some:key"), json(data)), "{}", line);
+
+            // Marshaling yields the identical wire format again.
+            assert_eq!(String::from(m), line);
+        }
+
+        let m = r#"3|ok|k|J{"a": 5, "s": "|"}"#.parse::<Message>();
+        let p = m.expect("Expected message to parse").payload;
+        let t: Test = p.unwrap().parse().expect("Expected payload parsing to work");
+        let want = Test {
+            a: 5,
+            s: "|".to_string(),
+        };
+        assert_eq!(t, want);
+    }
+
+    #[test]
+    fn parse_key_or_message_containing_separator() {
+        let text = "a|b | c|";
+        for cmd in ["del", "error", "warning", "get", "query", "sub", "qsub", "delete"] {
+            let line = format!("9|{}|{}", cmd, text);
+            let m = line.parse::<Message>().expect("Expected message to parse");
+            assert_eq!(m, msg(9, cmd, Some(text), None), "{}", line);
+
+            // Marshaling yields the identical wire format again.
+            assert_eq!(String::from(m), line);
+        }
+    }
+
+    #[test]
+    fn parse_simple_messages_unchanged() {
+        let k = Some("k");
+        let cases = [
+            ("1|ok|k|J{}", msg(1, "ok", k, json("{}"))),
+            ("2|upd|k|J{}", msg(2, "upd", k, json("{}"))),
+            ("3|new|k|J{}", msg(3, "new", k, json("{}"))),
+            ("4|del|k", msg(4, "del", k, None)),
+            ("5|success", msg(5, "success", None, None)),
+            ("6|error|boom", msg(6, "error", Some("boom"), None)),
+            ("7|warning|careful", msg(7, "warning", Some("careful"), None)),
+            ("8|done", msg(8, "done", None, None)),
+            ("9|get|k", msg(9, "get", k, None)),
+            ("10|query|q", msg(10, "query", Some("q"), None)),
+            ("11|sub|q", msg(11, "sub", Some("q"), None)),
+            ("12|qsub|q", msg(12, "qsub", Some("q"), None)),
+            ("13|create|k|J{}", msg(13, "create", k, json("{}"))),
+            ("14|update|k|J{}", msg(14, "update", k, json("{}"))),
+            ("15|insert|k|J{}", msg(15, "insert", k, json("{}"))),
+            ("16|delete|k", msg(16, "delete", k, None)),
+            ("17|cancel", msg(17, "cancel", None, None)),
+            ("18|ok|k|xraw", msg(18, "ok", k, unknown("xraw"))),
+            ("19|ok|k|", msg(19, "ok", k, unknown(""))),
+            ("20|ok|k", msg(20, "ok", k, None)),
+            ("21|ok", msg(21, "ok", None, None)),
+            ("22|foo|k|p", msg(22, "foo", k, unknown("p"))),
+            ("23|", msg(23, "", None, None)),
+        ];
+
+        for (line, want) in cases {
+            let m = line.parse::<Message>().expect("Expected message to parse");
+            assert_eq!(m, want, "{}", line);
+        }
+
+        let m = "x|ok|k|J{}".parse::<Message>();
+        if let Err(MessageError::InvalidID) = m {
+        } else {
+            panic!("unexpected result: {:?}", m)
+        }
+    }
+
+    #[test]
+    fn response_with_separator_in_payload_or_message() {
+        use super::super::types::Response;
+
+        let m = r#"1|upd|core:status|J{"msg":"a|b"}"#.parse::<Message>();
+        let r: Response = m.unwrap().try_into().unwrap();
+        let want = Payload::Json(r#"{"msg":"a|b"}"#.to_string());
+        assert_eq!(r, Response::Update("core:status".to_string(), want));
+
+        let m = "2|error|bad request: x|y".parse::<Message>();
+        let r: Response = m.unwrap().try_into().unwrap();
+        assert_eq!(r, Response::Error("bad request: x|y".to_string()));
     }
 }

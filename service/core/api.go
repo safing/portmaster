@@ -30,7 +30,14 @@ import (
 	"github.com/safing/portmaster/spn/captain"
 )
 
-var errInvalidReadPermission = errors.New("invalid read permission")
+var (
+	errInvalidReadPermission = errors.New("invalid read permission")
+	errAppAccessDenied       = errors.New("access denied")
+	errAppAuthTimeout        = errors.New("timeout")
+)
+
+// appAuthAllowActionID is the notification action ID to authorize an app.
+const appAuthAllowActionID = "allow"
 
 func registerAPIEndpoints() error {
 	if err := api.RegisterEndpoint(api.Endpoint{
@@ -104,12 +111,24 @@ func registerAPIEndpoints() error {
 		return err
 	}
 
-	if err := api.RegisterEndpoint(api.Endpoint{
+	err := api.RegisterEndpoint(api.Endpoint{
 		Path:       "app/profile",
 		Read:       api.PermitUser,
 		StructFunc: getMyProfile,
 		Name:       "Get the ID of the calling profile",
-	}); err != nil {
+	})
+	if err != nil {
+		return err
+	}
+
+	err = api.RegisterEndpoint(api.Endpoint{
+		Path:        "core/paths",
+		Read:        api.PermitUser,
+		StructFunc:  getPaths,
+		Name:        "Get Directories",
+		Description: "Returns the directories used by Portmaster: binaries (bin), variable data (data) and log files (logs).",
+	})
+	if err != nil {
 		return err
 	}
 
@@ -137,22 +156,6 @@ func registerAPIEndpoints() error {
 			return "upgrade triggered", nil
 		},
 		Name: "Trigger updates apply event",
-	}); err != nil {
-		return err
-	}
-
-	if err := api.RegisterEndpoint(api.Endpoint{
-		Path:        "updates/from-url",
-		WriteMethod: "POST",
-		Write:       api.PermitAnyone,
-		ActionFunc: func(ar *api.Request) (string, error) {
-			err := module.instance.BinaryUpdates().UpdateFromURL(string(ar.InputData))
-			if err != nil {
-				return err.Error(), err
-			}
-			return "upgrade triggered", nil
-		},
-		Name: "Replace current version from the version supplied in the URL",
 	}); err != nil {
 		return err
 	}
@@ -346,6 +349,14 @@ func getSavePermission(p string) api.Permission {
 	}
 }
 
+func getPaths(_ *api.Request) (any, error) {
+	return map[string]string{
+		"bin":  module.instance.BinDir(),
+		"data": module.instance.DataDir(),
+		"logs": module.instance.LogDir(),
+	}, nil
+}
+
 func getMyProfile(ar *api.Request) (interface{}, error) {
 	proc, err := process.GetProcessByRequestOrigin(ar)
 	if err != nil {
@@ -398,7 +409,7 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 		Expires:      time.Now().Add(time.Minute).Unix(),
 		AvailableActions: []*notifications.Action{
 			{
-				ID:   "allow",
+				ID:   appAuthAllowActionID,
 				Text: "Authorize",
 			},
 			{
@@ -408,15 +419,43 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 		},
 	}
 
-	ch := make(chan string)
-
 	validUntil := time.Now().Add(ttl)
 
-	n.SetActionFunction(func(ctx context.Context, n *notifications.Notification) error {
+	ch, actionFn := newAppAuthorization(readPermStr, writePermStr, validUntil)
+	n.SetActionFunction(actionFn)
+
+	n.Save()
+
+	select {
+	case key := <-ch:
+		if len(key) == 0 {
+			return nil, errAppAccessDenied
+		}
+
+		return map[string]any{
+			"key":        key,
+			"validUntil": validUntil,
+		}, nil
+	case <-ar.Context().Done():
+		return nil, errAppAuthTimeout
+	}
+}
+
+// newAppAuthorization returns the notification action function for an app
+// authorization prompt and the channel on which it reports the result: the new
+// API key if the user allowed access, or a closed channel otherwise.
+func newAppAuthorization(readPermStr, writePermStr string, validUntil time.Time) (<-chan string, notifications.NotificationActionFn) {
+	// The channel is buffered, as the requester may have gone away (request
+	// canceled or timed out) by the time the user responds. An unbuffered send
+	// would then block the action function forever while it holds the
+	// notification lock, which also blocks the notification cleaner.
+	ch := make(chan string, 1)
+
+	return ch, func(ctx context.Context, n *notifications.Notification) error {
 		n.Lock()
 		defer n.Unlock()
 
-		if n.SelectedActionID != "allow" {
+		if n.SelectedActionID != appAuthAllowActionID {
 			close(ch)
 			return nil
 		}
@@ -445,21 +484,5 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 		ch <- newKeyHex
 
 		return nil
-	})
-
-	n.Save()
-
-	select {
-	case key := <-ch:
-		if len(key) == 0 {
-			return nil, errors.New("access denied")
-		}
-
-		return map[string]interface{}{
-			"key":        key,
-			"validUntil": validUntil,
-		}, nil
-	case <-ar.Context().Done():
-		return nil, errors.New("timeout")
 	}
 }

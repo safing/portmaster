@@ -24,7 +24,7 @@ const (
 
 // Scheduler creates and schedules units.
 // Must be created using NewScheduler().
-type Scheduler struct { //nolint:maligned
+type Scheduler struct {
 	// Configuration.
 	config SchedulerConfig
 
@@ -191,8 +191,8 @@ func (s *Scheduler) SlotScheduler(ctx *mgr.WorkerCtx) error {
 	ticker := time.NewTicker(s.config.SlotDuration / 2)
 	defer ticker.Stop()
 
-	// Give clearance to all when stopping.
-	defer s.clearanceUpTo.Store(math.MaxInt64 - math.MaxInt32)
+	// Give clearance to all when stopping and release all waiting units.
+	defer s.releaseAllSlotWaiters()
 
 	var (
 		halfSlotID        uint64
@@ -356,4 +356,24 @@ func (s *Scheduler) SlotScheduler(ctx *mgr.WorkerCtx) error {
 // Stop stops the scheduler and gives clearance to all units.
 func (s *Scheduler) Stop() {
 	s.stopping.Set()
+}
+
+// releaseAllSlotWaiters gives clearance to all units and permanently releases
+// all units waiting for a slot. It must only be called when the slot scheduler
+// stops, as no further slots may be announced afterwards.
+func (s *Scheduler) releaseAllSlotWaiters() {
+	// Give clearance to all units.
+	s.clearanceUpTo.Store(math.MaxInt64 - math.MaxInt32)
+
+	s.slotSignalsLock.Lock()
+	defer s.slotSignalsLock.Unlock()
+
+	// Close the signal of the next slot without replacing it, so that units
+	// currently waiting are released and any unit that waits later receives an
+	// already closed channel and re-checks its (now granted) clearance.
+	if s.slotSignalSwitch {
+		close(s.slotSignalA)
+	} else {
+		close(s.slotSignalB)
+	}
 }

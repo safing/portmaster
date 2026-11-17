@@ -23,12 +23,14 @@
 //!
 //! | Variable                            | Effect                                   | GPU accel | Confirmed in Portmaster |
 //! |-------------------------------------|------------------------------------------|-----------|-------------------------|
-//! | `__NV_DISABLE_EXPLICIT_SYNC`        | NVIDIA driver falls back to implicit sync| kept      | no                      |
+//! | `__NV_DISABLE_EXPLICIT_SYNC`        | NVIDIA driver falls back to implicit sync| kept      | no, did not fix         |
 //! | `WEBKIT_DISABLE_DMABUF_RENDERER`    | WebKit rasterises on CPU, shared memory  | lost      | #1898, #1806            |
 //! | `WEBKIT_DISABLE_COMPOSITING_MODE`   | WebKit disables accelerated compositing  | lost      | #2021                   |
 //!
-//! `WORKAROUND_ENV_VAR` selects the one applied. The NVIDIA variable is used
-//! because it has no performance cost.
+//! `WORKAROUND_ENV_VAR` selects the one applied. The DMA-BUF variable is used
+//! because it is the confirmed fix; the cost is that the webview loses GPU
+//! acceleration on affected systems. The NVIDIA variable, which keeps GPU
+//! acceleration, was tried first but users reported it did not fix the crash.
 //!
 //! What each variable can fix, should another one be chosen later:
 //! - `__NV_DISABLE_EXPLICIT_SYNC`: only the Wayland crash on NVIDIA. No effect
@@ -51,8 +53,8 @@
 use std::path::Path;
 
 /// The workaround to apply. See the module documentation for the alternatives
-/// (`WEBKIT_DISABLE_DMABUF_RENDERER`, `WEBKIT_DISABLE_COMPOSITING_MODE`).
-const WORKAROUND_ENV_VAR: &str = "__NV_DISABLE_EXPLICIT_SYNC";
+/// (`__NV_DISABLE_EXPLICIT_SYNC`, `WEBKIT_DISABLE_COMPOSITING_MODE`).
+const WORKAROUND_ENV_VAR: &str = "WEBKIT_DISABLE_DMABUF_RENDERER";
 /// "1" enables all three known variables, so this does not need to change
 /// when switching `WORKAROUND_ENV_VAR`.
 const WORKAROUND_ENV_VALUE: &str = "1";
@@ -86,7 +88,7 @@ pub fn apply() -> Vec<String> {
     // Safe: called from the start of main() before any other thread exists.
     std::env::set_var(WORKAROUND_ENV_VAR, WORKAROUND_ENV_VALUE);
     messages.push(format!(
-        "linux graphics workarounds: NVIDIA driver on Wayland detected, set {}={} to avoid WebKitGTK 'Error 71' crash (see issue #1898)",
+        "linux graphics workarounds: NVIDIA driver on Wayland detected, set {}={} to avoid WebKitGTK 'Error 71' crash (see issue #1898); webview GPU acceleration is disabled",
         WORKAROUND_ENV_VAR, WORKAROUND_ENV_VALUE
     ));
 

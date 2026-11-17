@@ -25,6 +25,7 @@ type Control struct {
 	locker            sync.Mutex
 	resumeWorker      *mgr.WorkerMgr
 	pauseNotification *notifications.Notification
+	errorNotification *notifications.Notification
 	pauseInfo         PauseInfo
 }
 

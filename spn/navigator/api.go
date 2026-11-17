@@ -441,7 +441,9 @@ func handleMapGraphRequest(w http.ResponseWriter, hr *http.Request) {
 	_ = graph.AddAttr("", "overlap", "scale")
 	_ = graph.AddAttr("", "center", "true")
 	_ = graph.AddAttr("", "ratio", "fill")
-	for _, pin := range m.sortedPins(true) {
+	// Lock the map, as pin states and lanes are guarded by the map lock.
+	m.RLock()
+	for _, pin := range m.sortedPins(false) {
 		_ = graph.AddNode("", pin.Hub.ID, map[string]string{
 			"label":     graphNodeLabel(pin),
 			"tooltip":   graphNodeTooltip(pin),
@@ -467,6 +469,7 @@ func handleMapGraphRequest(w http.ResponseWriter, hr *http.Request) {
 			}
 		}
 	}
+	m.RUnlock()
 
 	var mimeType string
 	var responseData []byte

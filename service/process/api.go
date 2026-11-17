@@ -2,7 +2,9 @@ package process
 
 import (
 	"errors"
+	"maps"
 	"net/http"
+	"slices"
 	"strconv"
 
 	"github.com/safing/portmaster/base/api"
@@ -70,7 +72,14 @@ func handleGetProcessesByProfile(ar *api.Request) (any, error) {
 	}
 
 	result := GetProcessesWithProfile(ar.Context(), profile.ProfileSource(source), id, true)
-	return result, nil
+
+	// Return snapshots, as the result is encoded after returning, without
+	// holding the process locks.
+	snapshots := make([]*Process, 0, len(result))
+	for _, p := range result {
+		snapshots = append(snapshots, p.snapshotForAPI())
+	}
+	return snapshots, nil
 }
 
 func handleGetProcessGroupLeader(ar *api.Request) (any, error) {
@@ -84,12 +93,64 @@ func handleGetProcessGroupLeader(ar *api.Request) (any, error) {
 		return nil, api.ErrorWithStatus(err, http.StatusInternalServerError)
 	}
 	err = process.FindProcessGroupLeader(ar.Context())
+	leader := process.Leader()
 	switch {
-	case process.Leader() != nil:
-		return process.Leader(), nil
+	case leader != nil:
+		// Return a snapshot, as the result is encoded after returning, without
+		// holding the process lock.
+		return leader.snapshotForAPI(), nil
 	case err != nil:
 		return nil, api.ErrorWithStatus(err, http.StatusInternalServerError)
 	default:
 		return nil, api.ErrorWithStatus(errors.New("leader not found"), http.StatusNotFound)
+	}
+}
+
+// snapshotForAPI returns a copy of the exported (serialized) attributes of
+// the process, made while holding the process lock. Some of these attributes
+// (eg. LastSeen, PrimaryProfileID) are changed under the process lock while
+// the process is in use, so the live process must not be encoded by the API
+// without holding its lock.
+// The copy is only meant for encoding: it has no database key, metadata or
+// profile and is not stored anywhere.
+// Only the lock of this process is taken, no other locks are acquired while
+// holding it.
+func (p *Process) snapshotForAPI() *Process {
+	p.Lock()
+	defer p.Unlock()
+
+	return &Process{
+		Name:     p.Name,
+		UserID:   p.UserID,
+		UserName: p.UserName,
+		UserHome: p.UserHome,
+
+		Pid:       p.Pid,
+		CreatedAt: p.CreatedAt,
+
+		ParentPid:       p.ParentPid,
+		ParentCreatedAt: p.ParentCreatedAt,
+
+		LeaderPid: p.LeaderPid,
+
+		Path:     p.Path,
+		ExecName: p.ExecName,
+		Cwd:      p.Cwd,
+		CmdLine:  p.CmdLine,
+		FirstArg: p.FirstArg,
+		Env:      maps.Clone(p.Env),
+
+		processKey: p.processKey,
+
+		Tags:         slices.Clone(p.Tags),
+		MatchingPath: p.MatchingPath,
+
+		PrimaryProfileID: p.PrimaryProfileID,
+
+		FirstSeen: p.FirstSeen,
+		LastSeen:  p.LastSeen,
+		Error:     p.Error,
+
+		ExecHashes: maps.Clone(p.ExecHashes),
 	}
 }

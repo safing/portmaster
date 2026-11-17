@@ -1,12 +1,14 @@
 package terminal
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/spn/peerdsd"
 	"github.com/safing/structures/container"
 	"github.com/safing/structures/dsd"
 	"github.com/safing/structures/varint"
@@ -15,8 +17,10 @@ import (
 // CounterOpType is the type ID for the Counter Operation.
 const CounterOpType string = "debug/count"
 
+var errCounterNotFinished = errors.New("did not finish counting")
+
 // CounterOp sends increasing numbers on both sides.
-type CounterOp struct { //nolint:maligned
+type CounterOp struct {
 	OperationBase
 
 	wg     sync.WaitGroup
@@ -83,7 +87,7 @@ func startCounterOp(t Terminal, opID uint32, data *container.Container) (Operati
 
 	// Parse arguments.
 	opts := &CounterOpts{}
-	_, err := dsd.Load(data.CompileData(), opts)
+	_, err := peerdsd.Load(data.CompileData(), opts)
 	if err != nil {
 		return nil, ErrInternalError.With("failed to unpack options: %w", err)
 	}
@@ -178,15 +182,22 @@ func (op *CounterOp) Deliver(msg *Msg) *Error {
 // HandleStop handles stopping the operation.
 func (op *CounterOp) HandleStop(err *Error) (errorToSend *Error) {
 	// Check if counting finished.
-	if !op.isDone() {
-		err := fmt.Errorf(
-			"counter op %d: did not finish counting (%d<-%d %d->%d)",
-			op.id,
-			op.opts.ClientCountTo, op.ClientCounter,
-			op.ServerCounter, op.opts.ServerCountTo,
-		)
-		op.Error = err
-	}
+	// The counters may still be changed concurrently by Deliver, so read them
+	// while holding the lock.
+	func() {
+		op.counterLock.Lock()
+		defer op.counterLock.Unlock()
+
+		if op.ClientCounter < op.opts.ClientCountTo ||
+			op.ServerCounter < op.opts.ServerCountTo {
+			op.Error = fmt.Errorf(
+				"counter op %d: %w (%d<-%d %d->%d)",
+				op.id, errCounterNotFinished,
+				op.opts.ClientCountTo, op.ClientCounter,
+				op.ServerCounter, op.opts.ServerCountTo,
+			)
+		}
+	}()
 
 	op.wg.Done()
 	return err
@@ -232,7 +243,9 @@ func (op *CounterOp) CounterWorker(ctx *mgr.WorkerCtx) error {
 		default:
 			// Something went wrong.
 			err := fmt.Errorf("counter op %d: failed to send counter: %w", op.id, err)
+			op.counterLock.Lock()
 			op.Error = err
+			op.counterLock.Unlock()
 			op.Stop(op, ErrInternalError.With(err.Error()))
 			return nil
 		}

@@ -14,9 +14,8 @@ import (
 // key does not exist, instead, an empty slice is
 // returned.
 func lookupBlockLists(entity, value string) ([]string, error) {
-	key := makeListCacheKey(entity, value)
 	if !isLoaded() {
-		log.Warningf("intel/filterlists: not searching for %s because filterlists not loaded", key)
+		log.Warningf("intel/filterlists: not searching for %s because filterlists not loaded", makeListCacheKey(entity, value))
 		// filterLists have not yet been loaded so
 		// there's no point querying into the cache
 		// database.
@@ -29,6 +28,10 @@ func lookupBlockLists(entity, value string) ([]string, error) {
 	if !defaultFilter.test(entity, value) {
 		return nil, nil
 	}
+
+	// Only build the key for values that may be in a list: Almost all lookups
+	// end at the bloom filter above.
+	key := makeListCacheKey(entity, value)
 
 	// log.Debugf("intel/filterlists: searching for entries with %s", key)
 	entry, err := getEntityRecordByKey(key)

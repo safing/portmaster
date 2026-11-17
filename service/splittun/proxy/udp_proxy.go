@@ -330,6 +330,11 @@ func (p *UDPProxy) forwardFromRemote(ctx context.Context, sess *udpSession, clie
 				return
 			default:
 				if isTimeoutErr(err) {
+					// The read deadline only covers upstream → client. If the
+					// client sent data recently, the session is not idle.
+					if time.Since(sess.connCtx.LastSeen()) < p.cfg.ReadTimeout {
+						continue
+					}
 					p.log.Debug(p.logPrefix+"session idle timeout", "session", sess.connCtx.id, "dest_ip", sess.connCtx.destIP, "dest_port", sess.connCtx.destPort, "client", clientAddr)
 					return
 				}

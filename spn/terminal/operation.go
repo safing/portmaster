@@ -119,7 +119,7 @@ func (t *TerminalBase) handleOperationStart(opID uint32, initData *container.Con
 	}
 
 	// Extract the requested operation name.
-	opType, err := initData.GetNextBlock()
+	opType, err := GetNextBlock(initData)
 	if err != nil {
 		t.StopOperation(newUnknownOp(opID, ""), ErrMalformedData.With("failed to get init data: %w", err))
 		return
@@ -197,6 +197,12 @@ func (t *TerminalBase) StartOperation(op Operation, initData *container.Containe
 	err := op.Send(msg, timeout)
 	if err != nil {
 		msg.Finish()
+
+		// The init msg was not sent, so the operation was never started. Remove
+		// it from the active operations immediately, as no reply will ever end
+		// it, and stop it so that it can clean up.
+		t.DeleteActiveOp(op.ID())
+		t.StopOperation(op, err)
 	}
 	return err
 }
@@ -215,10 +221,17 @@ func (t *TerminalBase) Send(msg *Msg, timeout time.Duration) *Error {
 	}
 
 	// Submit message to buffer, if space is available.
+	// This is a hot path, so use a pooled timer instead of allocating a new one.
+	var timedOut <-chan time.Time
+	if timeout != 0 {
+		timer := getPooledTimer(timeout)
+		defer putPooledTimer(timer)
+		timedOut = timer.C
+	}
 	select {
 	case t.sendQueue <- msg:
 		return nil
-	case <-TimedOut(timeout):
+	case <-timedOut:
 		msg.Finish()
 		return ErrTimeout.With("sending via terminal")
 	case <-t.Ctx().Done():

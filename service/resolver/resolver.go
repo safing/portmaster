@@ -82,7 +82,7 @@ type Resolver struct {
 // ResolverInfo is a subset of resolver attributes that is attached to answers
 // from that server in order to use it later for decision making. It must not
 // be changed by anyone after creation and initialization is complete.
-type ResolverInfo struct { //nolint:golint,maligned // TODO
+type ResolverInfo struct {
 	// Name describes the name given to the resolver. The name is configured in the config URL using the name parameter.
 	Name string
 
@@ -211,7 +211,7 @@ func (resolver *Resolver) String() string {
 }
 
 // ResolverConn is an interface to implement different types of query backends.
-type ResolverConn interface { //nolint:golint // TODO
+type ResolverConn interface {
 	Query(ctx context.Context, q *Query) (*RRCache, error)
 	ReportFailure()
 	IsFailing() bool

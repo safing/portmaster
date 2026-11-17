@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -20,7 +21,7 @@ var (
 	_ storage.Purger    = &SQLite{}
 )
 
-type TestRecord struct { //nolint:maligned
+type TestRecord struct {
 	record.Base
 	sync.Mutex
 	S    string
@@ -240,4 +241,118 @@ func TestMigrationTimezoneRoundTrip(t *testing.T) { //nolint:paralleltest
 	db, err = openSQLite("test", testDir, false)
 	require.NoError(t, err)
 	require.NoError(t, db.Shutdown())
+}
+
+func TestPutManyBatches(t *testing.T) { //nolint:paralleltest
+	// Not parallel: this test switches the package-wide UsePreparedStatements
+	// setting, which other tests using PutMany would observe.
+	origSetting := UsePreparedStatements
+	t.Cleanup(func() { UsePreparedStatements = origSetting })
+
+	for _, usePrepared := range []bool{true, false} { //nolint:paralleltest
+		t.Run("prepared="+strconv.FormatBool(usePrepared), func(t *testing.T) {
+			UsePreparedStatements = usePrepared
+			testPutManyBatches(t)
+		})
+	}
+}
+
+func testPutManyBatches(t *testing.T) {
+	t.Helper()
+
+	db, err := openSQLite("test", t.TempDir(), false)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Shutdown())
+	}()
+
+	// Write two full statements and a partial one.
+	const count = upsertRowsPerStatement*2 + 20
+	putRecords := func(value string) {
+		put, errs := db.PutMany(false)
+		for i := range count {
+			r := &TestRecord{S: value, I: i}
+			r.SetKey("test:batch/" + strconv.Itoa(i))
+			r.UpdateMeta()
+			put <- r
+		}
+		close(put)
+		require.NoError(t, <-errs)
+	}
+	putRecords("first")
+
+	// Writing the same keys again must update the records.
+	putRecords("second")
+
+	for i := range count {
+		r, err := db.Get("batch/" + strconv.Itoa(i))
+		require.NoError(t, err)
+		got := &TestRecord{}
+		require.NoError(t, record.Unwrap(r, got))
+		assert.Equal(t, "second", got.S)
+		assert.Equal(t, i, got.I)
+	}
+}
+
+// TestQueryConsumerUsesSameDB checks that a query consumer can read from and
+// write to the same database while ranging over the query iterator, as the
+// profile migrations do. A running query must not hold the (single) SQLite
+// connection while it waits for the consumer.
+func TestQueryConsumerUsesSameDB(t *testing.T) {
+	t.Parallel()
+
+	db, err := openSQLite("test", t.TempDir(), false)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Shutdown())
+	}()
+
+	// More records than fit into the iterator buffer and more than one query page.
+	const count = queryPageSize*2 + 50
+	for i := range count {
+		r := &TestRecord{S: "orig", I: i}
+		r.SetKey("test:consumer/" + strconv.Itoa(i))
+		r.UpdateMeta()
+		_, err := db.Put(r)
+		require.NoError(t, err)
+	}
+
+	it, err := db.Query(query.New("test:consumer/").MustBeValid(), true, true)
+	require.NoError(t, err)
+
+	var (
+		start      = time.Now()
+		seen       = make(map[string]struct{}, count)
+		slowestOp  time.Duration
+		nestedErrs int
+	)
+	for r := range it.Next {
+		seen[r.DatabaseKey()] = struct{}{}
+
+		opStart := time.Now()
+		_, err := db.Get(r.DatabaseKey())
+		if err != nil {
+			nestedErrs++
+		}
+		updated := &TestRecord{S: "updated"}
+		updated.SetKey(r.Key())
+		updated.UpdateMeta()
+		_, err = db.Put(updated)
+		if err != nil {
+			nestedErrs++
+		}
+		slowestOp = max(slowestOp, time.Since(opStart))
+	}
+	require.NoError(t, it.Err())
+	assert.Len(t, seen, count, "all records must be delivered")
+	assert.Zero(t, nestedErrs, "nested Get/Put must succeed")
+	assert.Less(t, slowestOp, 250*time.Millisecond, "nested Get/Put blocked by running query")
+	assert.Less(t, time.Since(start), 5*time.Second)
+
+	// Writes from the consumer must have been applied.
+	r, err := db.Get("consumer/0")
+	require.NoError(t, err)
+	got := &TestRecord{}
+	require.NoError(t, record.Unwrap(r, got))
+	assert.Equal(t, "updated", got.S)
 }

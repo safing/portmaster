@@ -137,11 +137,14 @@ func createRandomTestMap(seed int64, size int) *Map {
 		m.UpdateHub(h)
 	}
 
+	// Lock the map, as pin changes are pushed (and exported) concurrently.
+	m.Lock()
+	defer m.Unlock()
+
 	// Fake communication error with three Hubs.
 	var i int
 	for _, pin := range m.all {
-		pin.MarkAsFailingFor(1 * time.Hour)
-		pin.addStates(StateFailing)
+		pin.markAsFailingFor(1 * time.Hour)
 
 		if i++; i >= 3 {
 			break

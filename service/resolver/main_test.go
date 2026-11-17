@@ -1,9 +1,11 @@
 package resolver
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/config"
@@ -34,6 +36,7 @@ func (stub *testInstance) Ready() bool                        { return true }
 func (stub *testInstance) SetCmdLineOperation(f func() error) {}
 func (stub *testInstance) UI() *ui.UI                         { return nil }
 func (stub *testInstance) DataDir() string                    { return _dataDir }
+func (stub *testInstance) ShuttingDown() <-chan struct{}      { return nil }
 
 var _dataDir string
 
@@ -47,6 +50,14 @@ func runTest(m *testing.M) error {
 		os.Exit(0)
 	}
 	defer func() { _ = os.RemoveAll(_dataDir) }()
+
+	// The network-dependent tests (skipped with -short) need a more lenient
+	// request timeout. Set it here, before any module or test goroutine is
+	// started, as it is read concurrently by the resolvers.
+	flag.Parse()
+	if !testing.Short() {
+		defaultRequestTimeout = 30 * time.Second
+	}
 
 	// Set the default API listen address
 	api.SetDefaultAPIListenAddress("0.0.0.0:8080")
@@ -73,6 +84,14 @@ func runTest(m *testing.M) error {
 	if err != nil {
 		return fmt.Errorf("failed to create module: %w", err)
 	}
+	// Do not resolve the DNS test query in the online status check. The check
+	// runs in the background whenever netenv triggers it and resolves through
+	// the global resolvers, which read the package-level local address and
+	// port hooks that tests replace without synchronization. The check then
+	// skips the DNS query and reports the remaining checks only. This must
+	// happen before netenv starts its online status worker.
+	netenv.DNSTestQueryFunc = nil
+
 	err = stub.db.Start()
 	if err != nil {
 		return fmt.Errorf("Failed to start database: %w", err)
@@ -93,6 +112,12 @@ func runTest(m *testing.M) error {
 	if err != nil {
 		return fmt.Errorf("Failed to start module: %w", err)
 	}
+
+	// Stop the regular check of failing resolvers. Its first run starts with
+	// the module and, on a loaded machine, may only get to the resolver list
+	// after a test replaced it. It then asks the test's failing resolvers and
+	// clears their failing state. Tests that need the check run it themselves.
+	module.failingResolverWorkerMgr.Stop()
 
 	m.Run()
 	return nil

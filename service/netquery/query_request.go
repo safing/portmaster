@@ -100,7 +100,10 @@ func (req *QueryRequestPayload) generateSQL(ctx context.Context, schema *orm.Tab
 
 	query := `SELECT ` + selectClause + ` FROM ( ` + source + ` ) `
 
-	query += " " + groupByClause + " " + orderByClause + " " + req.Pagination.toSQLLimitOffsetClause()
+	limitOffsetClause, limitOffsetParams := req.toSQLLimitOffsetClause()
+	req.mergeParams(limitOffsetParams)
+
+	query += " " + groupByClause + " " + orderByClause + " " + limitOffsetClause
 
 	return strings.TrimSpace(query), req.paramMap, nil
 }

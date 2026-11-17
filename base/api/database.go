@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/tevino/abool"
@@ -40,6 +42,30 @@ const (
 var (
 	dbAPISeperatorBytes       = []byte(dbAPISeperator)
 	dbCompatibilityPermission = PermitAdmin
+
+	// dbAPIWriteTimeout is the maximum time a single websocket message write
+	// may take. It is deliberately generous: it only exists to detect a peer
+	// that keeps the connection open but stopped reading (frozen process,
+	// half-open TCP), which would otherwise block the writer forever.
+	dbAPIWriteTimeout = 60 * time.Second
+
+	// dbAPIReadLimit is the maximum size of a single message a client may send
+	// over the database websocket API. Without a limit, a single message of
+	// arbitrary size is buffered completely in memory.
+	//
+	// The largest legitimate client messages are record creates, updates and
+	// inserts (opID|cmd|key|<record>), eg. profiles with their settings or
+	// config values. These are in the range of kilobytes up to a few hundred
+	// kilobytes for very large rule lists; profile icons are not part of the
+	// profile record, they are uploaded via the HTTP API (profile/icon) and
+	// only referenced by file name.
+	//
+	// The limit is deliberately generous and the same as the HTTP API request
+	// body limit (maxRequestBodySize), so that anything that can be written
+	// via the HTTP API can also be written via the websocket API. It only
+	// exists to keep a single client from exhausting the memory of the
+	// service. It is a variable only so that tests can lower it.
+	dbAPIReadLimit int64 = maxRequestBodySize
 )
 
 func init() {
@@ -104,6 +130,9 @@ func startDatabaseWebsocketAPI(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
+	// Limit the size of incoming messages. When exceeded, the connection is
+	// closed with 1009 (message too big) and the reader fails.
+	wsConn.SetReadLimit(dbAPIReadLimit)
 
 	newDBAPI := &DatabaseWebsocketAPI{
 		DatabaseAPI: DatabaseAPI{
@@ -118,14 +147,23 @@ func startDatabaseWebsocketAPI(w http.ResponseWriter, r *http.Request) {
 		conn:      wsConn,
 	}
 
-	newDBAPI.sendBytes = func(data []byte) {
-		newDBAPI.sendQueue <- data
-	}
+	newDBAPI.sendBytes = newDBAPI.queueMessage
 
 	module.mgr.Go("database api handler", newDBAPI.handler)
 	module.mgr.Go("database api writer", newDBAPI.writer)
 
 	log.Tracer(r.Context()).Infof("api request: init websocket %s %s", r.RemoteAddr, r.RequestURI)
+}
+
+// queueMessage queues a message for sending to the client.
+// If the connection is shutting down, the message is dropped. Without this,
+// senders would block forever on a full queue after the writer has exited,
+// leaking the goroutine and the queries and subscriptions it holds.
+func (api *DatabaseWebsocketAPI) queueMessage(data []byte) {
+	select {
+	case api.sendQueue <- data:
+	case <-api.shutdownSignal:
+	}
 }
 
 func (api *DatabaseWebsocketAPI) handler(_ *mgr.WorkerCtx) error {
@@ -165,8 +203,20 @@ func (api *DatabaseWebsocketAPI) writer(ctx *mgr.WorkerCtx) error {
 		}
 
 		// log.Tracef("api: sending %s", string(*msg))
+		// Set a deadline for every single write, so that a peer that stopped
+		// reading cannot block the writer (and everything feeding the send
+		// queue) forever. After a write timeout the connection is corrupt and
+		// must not be used anymore: shutdown closes it.
+		err = api.conn.SetWriteDeadline(time.Now().Add(dbAPIWriteTimeout))
+		if err != nil {
+			return api.shutdown(err)
+		}
 		err = api.conn.WriteMessage(websocket.BinaryMessage, data)
 		if err != nil {
+			var netErr net.Error
+			if errors.As(err, &netErr) && netErr.Timeout() {
+				err = fmt.Errorf("write timed out after %s, closing connection: %w", dbAPIWriteTimeout, err)
+			}
 			return api.shutdown(err)
 		}
 	}
@@ -507,6 +557,9 @@ func (api *DatabaseAPI) handleQsub(opID []byte, queryText string) {
 	}
 	ok = api.processQuery(opID, q)
 	if !ok {
+		// The subscription was already registered with the database and must
+		// be canceled, or it will be fed (and matched against) forever.
+		_ = sub.Cancel()
 		return
 	}
 	api.processSub(opID, sub)
@@ -605,7 +658,17 @@ func (api *DatabaseAPI) handleInsert(opID []byte, key string, data []byte) {
 		return
 	}
 
+	// The database may return a record instance that is shared with other
+	// users, so it may only be modified while holding its lock.
+	// It must be unlocked again before saving, as Put locks it itself.
+	r.Lock()
 	acc := r.GetAccessor(r)
+	if acc == nil {
+		// Eg. wrapped records in a format other than JSON have no accessor.
+		r.Unlock()
+		api.send(opID, dbMsgTypeError, "record does not support inserting values", nil)
+		return
+	}
 
 	result := gjson.ParseBytes(data)
 	anythingPresent := false
@@ -627,6 +690,7 @@ func (api *DatabaseAPI) handleInsert(opID []byte, key string, data []byte) {
 		insertError = acc.Set(key.String(), value.Value())
 		return insertError == nil
 	})
+	r.Unlock()
 
 	if insertError != nil {
 		api.send(opID, dbMsgTypeError, insertError.Error(), nil)

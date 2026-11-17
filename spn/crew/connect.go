@@ -28,7 +28,9 @@ func HandleSluiceRequest(connInfo *network.Connection, conn net.Conn) {
 	if conn == nil {
 		log.Debugf("spn/crew: closing tunnel for %s before starting because of shutdown", connInfo)
 
-		// This is called within the connInfo lock.
+		// The sluice calls this without holding the connInfo lock.
+		connInfo.Lock()
+		defer connInfo.Unlock()
 		connInfo.Failed("tunnel entry closed", "")
 		connInfo.SaveWhenFinished()
 		return
@@ -215,6 +217,9 @@ type hopCheck struct {
 	expansion *docks.ExpansionTerminal
 	authOp    *access.AuthorizeOp
 	pingOp    *PingOp
+
+	// expansionInUse is set when the new expansion was taken into use.
+	expansionInUse bool
 }
 
 func establishRoute(route *navigator.Route) (dstPin *navigator.Pin, dstTerminal terminal.Terminal, err error) {
@@ -255,6 +260,19 @@ func establishRoute(route *navigator.Route) (dstPin *navigator.Pin, dstTerminal 
 
 	// Build path and save created paths.
 	hopChecks := make([]*hopCheck, 0, len(route.Path)-1)
+	// If building the route fails, abandon all new expansions that were not
+	// taken into use. Nothing else references them, so they would otherwise
+	// linger until their idle timeout.
+	defer func() {
+		if err == nil {
+			return
+		}
+		for _, check := range hopChecks {
+			if check.authOp != nil && !check.expansionInUse {
+				check.expansion.Abandon(nil)
+			}
+		}
+	}()
 	for i, hop := range route.Path[1:] {
 		// Check if we already have a connection to the Hub.
 		activeTerminal := hop.Pin().GetActiveTerminal()
@@ -317,9 +335,7 @@ func establishRoute(route *navigator.Route) (dstPin *navigator.Pin, dstTerminal 
 
 				default:
 					// Authentication was aborted.
-					if tErr != nil {
-						tErr = terminal.ErrUnknownError
-					}
+					tErr = abortedAuthError(tErr)
 					log.Warningf("spn/crew: auth to %s aborted with %s", check.pin.Hub, tErr)
 					return nil, nil, tErr.Wrap("authentication to %s aborted: %w", check.pin.Hub, tErr)
 				}
@@ -337,6 +353,7 @@ func establishRoute(route *navigator.Route) (dstPin *navigator.Pin, dstTerminal 
 				Terminal: check.expansion,
 				Route:    check.route,
 			})
+			check.expansionInUse = true
 			check.expansion.MarkReachable()
 			log.Infof("spn/crew: added conn to %s via %s", check.pin, check.route)
 
@@ -377,6 +394,18 @@ func establishRoute(route *navigator.Route) (dstPin *navigator.Pin, dstTerminal 
 
 	// Return last hop.
 	return previousHop, previousTerminal, nil
+}
+
+// abortedAuthError returns the error to report for an aborted authentication.
+// The result of an operation that was stopped without an error is nil. As a
+// nil *terminal.Error stays nil when wrapped and turns into a non-nil error
+// interface with a nil pointer when returned as an error, it must be replaced
+// with an actual error.
+func abortedAuthError(tErr *terminal.Error) *terminal.Error {
+	if tErr == nil {
+		return terminal.ErrUnknownError
+	}
+	return tErr
 }
 
 func expand(fromTerminal terminal.Terminal, from, to *navigator.Pin) (expansion *docks.ExpansionTerminal, authOp *access.AuthorizeOp, tErr *terminal.Error) {

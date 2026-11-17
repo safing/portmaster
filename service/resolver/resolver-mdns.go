@@ -29,6 +29,9 @@ var (
 	multicast6Conn *net.UDPConn
 	unicast4Conn   *net.UDPConn
 	unicast6Conn   *net.UDPConn
+	// unicastConnsLock locks unicast4Conn and unicast6Conn, which are set by
+	// the mDNS listener and used by queries.
+	unicastConnsLock sync.RWMutex
 
 	questions     = make(map[uint16]*savedQuestion)
 	questionsLock sync.Mutex
@@ -97,7 +100,9 @@ func listenToMDNS(wc *mgr.WorkerCtx) error {
 		}()
 	}
 
+	unicastConnsLock.Lock()
 	unicast4Conn, err = net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+	unicastConnsLock.Unlock()
 	if err != nil {
 		// TODO: retry after some time
 		log.Warningf("intel(mdns): failed to create udp4 listen socket: %s", err)
@@ -124,7 +129,9 @@ func listenToMDNS(wc *mgr.WorkerCtx) error {
 			}()
 		}
 
+		unicastConnsLock.Lock()
 		unicast6Conn, err = net.ListenUDP("udp6", &net.UDPAddr{IP: net.IPv6zero, Port: 0})
+		unicastConnsLock.Unlock()
 		if err != nil {
 			// TODO: retry after some time
 			log.Warningf("intel(mdns): failed to create udp6 listen socket: %s", err)
@@ -378,6 +385,11 @@ func listenForDNSPackets(ctx context.Context, conn *net.UDPConn, messages chan *
 }
 
 func queryMulticastDNS(ctx context.Context, q *Query) (*RRCache, error) {
+	// get connections
+	unicastConnsLock.RLock()
+	unicast4Conn, unicast6Conn := unicast4Conn, unicast6Conn
+	unicastConnsLock.RUnlock()
+
 	// check for active connections
 	if unicast4Conn == nil && unicast6Conn == nil {
 		return nil, errors.New("unicast mdns connections not initialized")

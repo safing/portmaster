@@ -16,8 +16,6 @@ import (
 // RRCache is a single-use structure to hold a DNS response.
 // Persistence is handled through NameRecords because of a limitation of the
 // underlying dns library.
-//
-//nolint:maligned
 type RRCache struct {
 	// Respnse Header
 	Domain   string
@@ -199,20 +197,51 @@ func GetRRCache(domain string, question dns.Type) (*RRCache, error) {
 
 	rrCache.RCode = nameRecord.RCode
 	rrCache.Expires = nameRecord.Expires
-	for _, entry := range nameRecord.Answer {
-		rrCache.Answer = parseRR(rrCache.Answer, entry)
-	}
-	for _, entry := range nameRecord.Ns {
-		rrCache.Ns = parseRR(rrCache.Ns, entry)
-	}
-	for _, entry := range nameRecord.Extra {
-		rrCache.Extra = parseRR(rrCache.Extra, entry)
+	if parsed := nameRecord.parsed.Load(); parsed != nil {
+		// The entries were already parsed, use copies of the parsed records.
+		rrCache.Answer = copyRRs(parsed.answer)
+		rrCache.Ns = copyRRs(parsed.ns)
+		rrCache.Extra = copyRRs(parsed.extra)
+	} else {
+		for _, entry := range nameRecord.Answer {
+			rrCache.Answer = parseRR(rrCache.Answer, entry)
+		}
+		for _, entry := range nameRecord.Ns {
+			rrCache.Ns = parseRR(rrCache.Ns, entry)
+		}
+		for _, entry := range nameRecord.Extra {
+			rrCache.Extra = parseRR(rrCache.Extra, entry)
+		}
+		// Keep copies of the parsed records if all entries could be parsed.
+		// Otherwise, parse again next time, so that failures are logged again.
+		if len(rrCache.Answer) == len(nameRecord.Answer) &&
+			len(rrCache.Ns) == len(nameRecord.Ns) &&
+			len(rrCache.Extra) == len(nameRecord.Extra) {
+			nameRecord.parsed.Store(&parsedNameRecord{
+				answer: copyRRs(rrCache.Answer),
+				ns:     copyRRs(rrCache.Ns),
+				extra:  copyRRs(rrCache.Extra),
+			})
+		}
 	}
 
 	rrCache.Resolver = nameRecord.Resolver
 	rrCache.ServedFromCache = true
 	rrCache.Modified = nameRecord.Meta().Modified
 	return rrCache, nil
+}
+
+// copyRRs returns a deep copy of the given resource records. It returns nil
+// for an empty section, like a section without any parsed entries.
+func copyRRs(section []dns.RR) []dns.RR {
+	if len(section) == 0 {
+		return nil
+	}
+	copied := make([]dns.RR, len(section))
+	for i, rr := range section {
+		copied[i] = dns.Copy(rr)
+	}
+	return copied
 }
 
 func parseRR(section []dns.RR, entry string) []dns.RR {

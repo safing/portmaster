@@ -123,6 +123,9 @@ func parseBroadcastSource(yamlData []byte) (*BroadcastNotifications, error) {
 
 	// Add IDs to struct for easier handling.
 	for id, bn := range broadcasts.Notifications {
+		if bn == nil {
+			return nil, fmt.Errorf("%w: %s", errEmptyBroadcast, id)
+		}
 		bn.id = id
 
 		// Parse matching query.
@@ -150,6 +153,11 @@ func parseBroadcastSource(yamlData []byte) (*BroadcastNotifications, error) {
 
 	return broadcasts, nil
 }
+
+var (
+	errEmptyBroadcast        = errors.New("broadcast notification is empty")
+	errNoNotificationContent = errors.New("broadcast has no notification content")
+)
 
 func handleBroadcast(bn *BroadcastNotification, matchingDataAccessor accessor.Accessor, bss *BroadcastStates) error {
 	// Check if broadcast was already shown.
@@ -180,6 +188,11 @@ func handleBroadcast(bn *BroadcastNotification, matchingDataAccessor accessor.Ac
 			return ErrSkipRemovedByMismatch
 		}
 		return ErrSkipDoesNotMatch
+	}
+
+	// Removals may come without notification, but displaying needs one.
+	if bn.Notification == nil {
+		return errNoNotificationContent
 	}
 
 	// Check if there is already an active notification for this.

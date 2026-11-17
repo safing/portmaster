@@ -31,6 +31,12 @@ pub struct PortAPI {
     dispatch: Sender<Command>,
 }
 
+/// Upper bound for connecting to PortAPI (name resolution, TCP connect and WebSocket
+/// handshake). The API is served on localhost, where this normally takes milliseconds;
+/// callers retry on error (every 2s in portmaster::websocket), and the same 5s limit is
+/// used to declare an established connection dead (pong timeout).
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+
 /// The map type used to store message subscribers.
 type SubscriberMap = RwLock<HashMap<usize, Sender<Response>>>;
 
@@ -47,7 +53,16 @@ pub async fn connect(uri: &str) -> Result<PortAPI, Error> {
         }
     };
 
-    let (mut client, _) = ClientBuilder::from_uri(parsed).connect().await?;
+    // Without a timeout a server that accepts the TCP connection but never answers the
+    // WebSocket handshake would block the caller's reconnect loop forever.
+    let builder = ClientBuilder::from_uri(parsed);
+    let (mut client, _) = match tokio::time::timeout(CONNECT_TIMEOUT, builder.connect()).await {
+        Ok(result) => result?,
+        Err(_elapsed) => {
+            let msg = format!("connecting timed out after {:?}", CONNECT_TIMEOUT);
+            return Err(Error::Io(std::io::Error::new(std::io::ErrorKind::TimedOut, msg)));
+        }
+    };
     let (tx, mut dispatch) = channel::<Command>(64);
 
     tauri::async_runtime::spawn(async move {
@@ -114,8 +129,25 @@ pub async fn connect(uri: &str) -> Result<PortAPI, Error> {
                                 continue;
                             }
                             
-                            let text = unsafe {
-                                std::str::from_utf8_unchecked(msg.as_payload())
+                            if msg.is_close() {
+                                // tokio-websockets already queued the close acknowledgement;
+                                // the next poll flushes it and yields None, which ends the
+                                // connection above.
+                                debug!("websocket connection closed by server");
+                                continue;
+                            }
+
+                            // The Portmaster API sends binary frames, so their payload
+                            // has to be checked for valid UTF-8 (text frames already are).
+                            let text = match msg.as_text() {
+                                Some(text) => text,
+                                None => match std::str::from_utf8(msg.as_payload()) {
+                                    Ok(text) => text,
+                                    Err(err) => {
+                                        error!("dropping non-UTF-8 websocket frame: {}", err);
+                                        continue;
+                                    }
+                                },
                             };
 
                             match text.parse::<Message>() {

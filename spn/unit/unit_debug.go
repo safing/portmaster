@@ -8,13 +8,13 @@ import (
 )
 
 // UnitDebugger is used to debug unit leaks.
-type UnitDebugger struct { //nolint:golint
+type UnitDebugger struct {
 	units     map[int64]*UnitDebugData
 	unitsLock sync.Mutex
 }
 
 // UnitDebugData represents a unit that is being debugged.
-type UnitDebugData struct { //nolint:golint
+type UnitDebugData struct {
 	unit       *Unit
 	unitSource string
 }

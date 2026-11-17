@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
+
+	"github.com/miekg/dns"
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/database"
@@ -50,6 +53,21 @@ type NameRecord struct {
 	Expires  int64
 
 	Resolver *ResolverInfo
+
+	// parsed holds the parsed resource records of Answer, Ns and Extra. It is
+	// set by GetRRCache when all entries could be parsed, so that a record
+	// served again from the database cache does not need to be parsed again.
+	// A NameRecord is not changed after it is created, so the parsed records
+	// stay in sync with the string entries. The parsed records are never
+	// handed out, only copies of them.
+	parsed atomic.Pointer[parsedNameRecord]
+}
+
+// parsedNameRecord holds the parsed resource records of a NameRecord.
+type parsedNameRecord struct {
+	answer []dns.RR
+	ns     []dns.RR
+	extra  []dns.RR
 }
 
 // IsValid returns whether the NameRecord is valid and may be used. Otherwise,

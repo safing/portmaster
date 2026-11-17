@@ -3,6 +3,7 @@ package docks
 import (
 	"time"
 
+	"github.com/safing/portmaster/spn/peerdsd"
 	"github.com/safing/portmaster/spn/terminal"
 	"github.com/safing/structures/container"
 	"github.com/safing/structures/dsd"
@@ -83,7 +84,7 @@ func (op *WhoAmIOp) Deliver(msg *terminal.Msg) *terminal.Error {
 
 	// Parse response.
 	response := &WhoAmIResponse{}
-	_, err := dsd.Load(msg.Data.CompileData(), response)
+	_, err := peerdsd.Load(msg.Data.CompileData(), response)
 	if err != nil {
 		return terminal.ErrMalformedData.With("failed to parse ping response: %w", err)
 	}

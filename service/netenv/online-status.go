@@ -147,10 +147,22 @@ var (
 	onlineStatus           *int32
 	onlineStatusQuickCheck = abool.NewBool(false)
 
-	onlineStatusInvestigationTrigger    = make(chan struct{}, 1)
-	onlineStatusInvestigationInProgress = abool.NewBool(false)
-	onlineStatusInvestigationWg         sync.WaitGroup
-	onlineStatusNotification            *notifications.Notification
+	onlineStatusInvestigationTrigger = make(chan struct{}, 1)
+	onlineStatusNotification         *notifications.Notification
+
+	// investigationLock guards the investigation bookkeeping below.
+	investigationLock sync.Mutex
+	// investigationsStarted and investigationsCompleted count the investigations
+	// of the monitor worker. An investigation counts as started before its
+	// checks run, so everything it observes is newer than any caller that saw
+	// the counter before.
+	investigationsStarted   uint64
+	investigationsCompleted uint64
+	// investigationDone is closed and replaced whenever an investigation
+	// completes or the monitor stops.
+	investigationDone = make(chan struct{})
+	// investigationMonitorRunning is set while the monitor worker is running.
+	investigationMonitorRunning bool
 
 	captivePortal             = &CaptivePortal{}
 	captivePortalLock         sync.Mutex
@@ -180,13 +192,63 @@ func GetOnlineStatus() OnlineStatus {
 }
 
 // CheckAndGetOnlineStatus triggers a new online status check and returns the result.
+// It waits for an investigation that starts after the call to complete.
+// If the online status monitor is not running (or stops meanwhile), it does
+// not wait and returns the current status.
 func CheckAndGetOnlineStatus() OnlineStatus {
+	// An investigation that is already running may have started before this
+	// call, so wait for the one after it. The queued trigger below guarantees
+	// that one starts.
+	investigationLock.Lock()
+	target := investigationsStarted + 1
+	investigationLock.Unlock()
+
 	// trigger new investigation
 	TriggerOnlineStatusInvestigation()
+
 	// wait for completion
-	onlineStatusInvestigationWg.Wait()
+	for {
+		investigationLock.Lock()
+		finished := investigationsCompleted >= target || !investigationMonitorRunning
+		done := investigationDone
+		investigationLock.Unlock()
+		if finished {
+			break
+		}
+		<-done
+	}
+
 	// return current status
 	return GetOnlineStatus()
+}
+
+// setInvestigationMonitorRunning records whether the monitor worker runs and
+// wakes up waiting callers if it stopped.
+func setInvestigationMonitorRunning(running bool) {
+	investigationLock.Lock()
+	defer investigationLock.Unlock()
+
+	investigationMonitorRunning = running
+	if !running {
+		close(investigationDone)
+		investigationDone = make(chan struct{})
+	}
+}
+
+func startInvestigation() {
+	investigationLock.Lock()
+	defer investigationLock.Unlock()
+
+	investigationsStarted++
+}
+
+func completeInvestigation() {
+	investigationLock.Lock()
+	defer investigationLock.Unlock()
+
+	investigationsCompleted++
+	close(investigationDone)
+	investigationDone = make(chan struct{})
 }
 
 func updateOnlineStatus(status OnlineStatus, portalURL *url.URL, comment string) {
@@ -346,10 +408,6 @@ func ReportFailedConnection() {
 // TriggerOnlineStatusInvestigation manually triggers the online status check.
 // It will not trigger it again, if it is already in progress.
 func TriggerOnlineStatusInvestigation() {
-	if onlineStatusInvestigationInProgress.SetToIf(false, true) {
-		onlineStatusInvestigationWg.Add(1)
-	}
-
 	select {
 	case onlineStatusInvestigationTrigger <- struct{}{}:
 	default:
@@ -357,6 +415,15 @@ func TriggerOnlineStatusInvestigation() {
 }
 
 func monitorOnlineStatus(ctx *mgr.WorkerCtx) error {
+	return runOnlineStatusMonitor(ctx.Ctx(), checkOnlineStatus)
+}
+
+// runOnlineStatusMonitor runs the online status investigations until ctx is done.
+// The check function is replaced in tests.
+func runOnlineStatusMonitor(ctx context.Context, check func(context.Context)) error {
+	setInvestigationMonitorRunning(true)
+	defer setInvestigationMonitorRunning(false)
+
 	TriggerOnlineStatusInvestigation()
 	for {
 		// wait for trigger
@@ -367,16 +434,9 @@ func monitorOnlineStatus(ctx *mgr.WorkerCtx) error {
 		case <-getDynamicStatusTrigger():
 		}
 
-		// enable waiting
-		if onlineStatusInvestigationInProgress.SetToIf(false, true) {
-			onlineStatusInvestigationWg.Add(1)
-		}
-
-		checkOnlineStatus(ctx.Ctx())
-
-		// finished!
-		onlineStatusInvestigationWg.Done()
-		onlineStatusInvestigationInProgress.UnSet()
+		startInvestigation()
+		check(ctx)
+		completeInvestigation()
 	}
 }
 
@@ -475,9 +535,10 @@ func checkOnlineStatus(ctx context.Context) {
 
 	// 2) try a http request
 
+	localAddr := getLocalAddr("tcp")
 	dialer := &net.Dialer{
 		Timeout:   5 * time.Second,
-		LocalAddr: getLocalAddr("tcp"),
+		LocalAddr: localAddr,
 	}
 
 	client := &http.Client{
@@ -502,6 +563,10 @@ func checkOnlineStatus(ctx context.Context) {
 
 	response, err := client.Do(request)
 	if err != nil {
+		// The first packet consumes the permitted local port, if one was sent.
+		// Release it otherwise, so it cannot be used by another process.
+		releaseLocalAddr(localAddr, netutils.IsLocalBindError(err))
+
 		var netErr net.Error
 		if !errors.As(err, &netErr) || !netErr.Timeout() {
 			// Timeout is the expected error when there is no portal

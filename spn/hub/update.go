@@ -5,13 +5,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mr-tron/base58"
+
 	"github.com/safing/jess"
 	"github.com/safing/jess/lhash"
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/network/netutils"
+	"github.com/safing/portmaster/spn/peerdsd"
 	"github.com/safing/structures/container"
 	"github.com/safing/structures/dsd"
+	"github.com/safing/structures/varint"
 )
 
 var (
@@ -73,6 +77,11 @@ func SignHubMsg(msg []byte, env *jess.Envelope, enableTofu bool) ([]byte, error)
 // provided hub or the local database. If TOFU is enabled, the signature is
 // always accepted, if valid.
 func OpenHubMsg(hub *Hub, data []byte, mapName string, tofu bool) (msg []byte, sendingHub *Hub, known bool, err error) {
+	// jess.LetterFromDSD uses dsd.Load, which decompresses without limit.
+	err = peerdsd.CheckFormat(data)
+	if err != nil {
+		return nil, nil, false, fmt.Errorf("malformed letter: %w", err)
+	}
 	letter, err := jess.LetterFromDSD(data)
 	if err != nil {
 		return nil, nil, false, fmt.Errorf("malformed letter: %w", err)
@@ -90,7 +99,7 @@ func OpenHubMsg(hub *Hub, data []byte, mapName string, tofu bool) (msg []byte, s
 	}
 
 	// check signature signer ID
-	if seal.ID == "" {
+	if seal == nil || seal.ID == "" {
 		return nil, nil, false, errors.New("signature is missing signer ID")
 	}
 
@@ -138,7 +147,7 @@ func OpenHubMsg(hub *Hub, data []byte, mapName string, tofu bool) (msg []byte, s
 		}
 
 		// check ID integrity
-		if !verifyHubID(seal.ID, seal.Scheme, pubkey.Value) {
+		if pubkey == nil || !verifyHubID(seal.ID, seal.Scheme, pubkey.Value) {
 			return nil, nil, false, fmt.Errorf("ID integrity of %s violated with new key", seal.ID)
 		}
 
@@ -216,7 +225,7 @@ func ApplyAnnouncement(existingHub *Hub, data []byte, mapName string, scope Scop
 
 	// parse
 	announcement = &Announcement{}
-	_, err = dsd.Load(msg, announcement)
+	_, err = peerdsd.Load(msg, announcement)
 	if err != nil {
 		return //nolint:nakedret
 	}
@@ -395,7 +404,7 @@ func ApplyStatus(existingHub *Hub, data []byte, mapName string, scope Scope, sel
 
 	// parse
 	status := &Status{}
-	_, err = dsd.Load(msg, status)
+	_, err = peerdsd.Load(msg, status)
 	if err != nil {
 		return //nolint:nakedret
 	}
@@ -507,9 +516,53 @@ func createHubID(scheme string, pubkey []byte) string {
 	return lhash.Digest(lhash.BLAKE2b_256, c.CompileData()).Base58()
 }
 
+// labeledHashFromBase58 is like lhash.FromBase58, but first checks that the
+// encoded digest length matches the available data. lhash allocates the
+// encoded length before checking it, so a short attacker-supplied ID could
+// otherwise make it allocate terabytes and crash the process.
+//
+// It also limits the length of the encoded hash, as decoding base58 takes
+// quadratic time: decoding a 16000 character ID, which fits into a single
+// message, takes about 80ms of CPU time.
+func labeledHashFromBase58(encoded string) (*lhash.LabeledHash, error) {
+	if len(encoded) > maxEncodedLabeledHashLength {
+		return nil, errLabeledHashTooLong
+	}
+	raw, err := base58.Decode(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base58: %w", err)
+	}
+
+	// Skip algorithm ID.
+	_, algIDSize, err := varint.Unpack64(raw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse algorithm ID: %w", err)
+	}
+	// Check digest length.
+	digestSize, digestSizeSize, err := varint.Unpack64(raw[algIDSize:])
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse digest length: %w", err)
+	}
+	if digestSize != uint64(len(raw[algIDSize+digestSizeSize:])) {
+		return nil, errInvalidDigestLength
+	}
+
+	return lhash.Load(raw)
+}
+
+// maxEncodedLabeledHashLength is the maximum length of a base58 encoded
+// labeled hash. The biggest supported digest (512 bits) is encoded in 91
+// characters.
+const maxEncodedLabeledHashLength = 256
+
+var (
+	errInvalidDigestLength = errors.New("labeled hash has invalid digest length")
+	errLabeledHashTooLong  = errors.New("encoded labeled hash is too long")
+)
+
 func verifyHubID(id string, scheme string, pubkey []byte) (ok bool) {
 	// load labeled hash from ID
-	labeledHash, err := lhash.FromBase58(id)
+	labeledHash, err := labeledHashFromBase58(id)
 	if err != nil {
 		return false
 	}

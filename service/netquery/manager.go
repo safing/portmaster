@@ -10,6 +10,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/runtime"
 	"github.com/safing/portmaster/service/network"
+	"github.com/safing/portmaster/service/resolver"
 	"github.com/safing/structures/dsd"
 )
 
@@ -107,46 +108,72 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 				return
 			}
 
-			func() {
-				conn.Lock()
-				defer conn.Unlock()
-
-				if !conn.DataIsComplete() {
-					return
-				}
-
-				model, err := convertConnection(conn)
-				if err != nil {
-					log.Errorf("netquery: failed to convert connection %s to sqlite model: %s", conn.ID, err)
-
-					return
-				}
-
-				// DEBUG:
-				// log.Tracef("netquery: updating connection %s", conn.ID)
-
-				// Save to netquery database.
-				// Do not include internal connections in history.
-				if err := mng.store.Save(ctx, *model, conn.HistoryEnabled); err != nil {
-					log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)
-					return
-				}
-
-				// we clone the record metadata from the connection
-				// into the new model so the portbase/database layer
-				// can handle NEW/UPDATE correctly.
-				cloned := conn.Meta().Duplicate()
-
-				// push an update for the connection
-				if err := mng.pushConnUpdate(ctx, *cloned, *model); err != nil {
-					log.Errorf("netquery: failed to push update for conn %s via database system: %s", conn.ID, err)
-				}
-			}()
+			mng.handleConnection(ctx, conn)
 		}
 	}
 }
 
+// handleConnection persists a new or updated connection and pushes the update
+// to the database subscribers.
+func (mng *Manager) handleConnection(ctx context.Context, conn *network.Connection) {
+	model, meta, historyEnabled, ok := snapshotConnection(conn)
+	if !ok {
+		return
+	}
+
+	// DEBUG:
+	// log.Tracef("netquery: updating connection %s", conn.ID)
+
+	// Save to netquery database.
+	// Do not include internal connections in history.
+	// The connection is not locked anymore: writing to SQLite must not block
+	// the packet handling of the connection. Updates of a connection stay in
+	// order, as the feed is handled by a single worker.
+	err := mng.store.Save(ctx, *model, historyEnabled)
+	if err != nil {
+		log.Errorf("netquery: failed to save connection %s in sqlite database: %s", model.ID, err)
+		return
+	}
+
+	// push an update for the connection
+	err = mng.pushConnUpdate(ctx, *meta, *model)
+	if err != nil {
+		log.Errorf("netquery: failed to push update for conn %s via database system: %s", model.ID, err)
+	}
+}
+
+// snapshotConnection returns everything that is needed to persist and push
+// the connection. It only holds the lock of the connection while copying, and
+// the returned values do not reference the connection anymore.
+// It returns false if the connection is not to be persisted (yet).
+func snapshotConnection(conn *network.Connection) (model *Conn, meta *record.Meta, historyEnabled bool, ok bool) {
+	conn.Lock()
+	defer conn.Unlock()
+
+	if !conn.DataIsComplete() {
+		return nil, nil, false, false
+	}
+
+	model, err := convertConnection(conn)
+	if err != nil {
+		log.Errorf("netquery: failed to convert connection %s to sqlite model: %s", conn.ID, err)
+
+		return nil, nil, false, false
+	}
+
+	// we clone the record metadata from the connection
+	// into the new model so the portbase/database layer
+	// can handle NEW/UPDATE correctly.
+	return model, conn.Meta().Duplicate(), conn.HistoryEnabled, true
+}
+
 func (mng *Manager) pushConnUpdate(_ context.Context, meta record.Meta, conn Conn) error {
+	// A push only notifies the current subscribers: do not marshal the
+	// connection if there is nobody to receive it.
+	if !mng.runtimeReg.HasSubscribers(mng.pushPrefix + conn.ID) {
+		return nil
+	}
+
 	blob, err := json.Marshal(conn)
 	if err != nil {
 		return fmt.Errorf("failed to marshal connection: %w", err)
@@ -165,6 +192,29 @@ func (mng *Manager) pushConnUpdate(_ context.Context, meta record.Meta, conn Con
 
 	mng.push(wrapper)
 	return nil
+}
+
+// connExtraData is the extra data of a connection that is stored as JSON in
+// the extra_data column.
+//
+// It is encoded exactly like the map[string]any it replaces: The fields are
+// in the sorted order of the map keys, and a field is omitted if and only if
+// its key was not set in the map. The entity fields are pointers, so that
+// they are set to null instead of being omitted if the entity has no value.
+// New fields must keep the key order, and their types must not have
+// MarshalJSON or MarshalText methods with pointer receivers, which the map
+// did not use. TestConvertConnectionExtraData compares the encoding with the
+// map.
+type connExtraData struct {
+	BlockedByLists   *[]string                   `json:"blockedByLists,omitempty"`
+	BlockedEntities  *[]string                   `json:"blockedEntities,omitempty"`
+	CNAME            *[]string                   `json:"cname,omitempty"`
+	DNS              *resolver.DNSRequestContext `json:"dns,omitempty"`
+	PID              int                         `json:"pid"`
+	ProcessCreatedAt int64                       `json:"processCreatedAt"`
+	Reason           *network.Reason             `json:"reason,omitempty"`
+	SplitTun         *network.SplitTunContext    `json:"split_tun,omitempty"`
+	Tunnel           any                         `json:"tunnel,omitempty"`
 }
 
 // convertConnection converts conn to the local representation used
@@ -205,7 +255,9 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		c.Type = ""
 	}
 
-	c.Allowed = &conn.ConnectionEstablished
+	// Copy the value: the model is used after the connection is unlocked.
+	allowed := conn.ConnectionEstablished
+	c.Allowed = &allowed
 
 	if conn.Ended > 0 {
 		ended := time.Unix(conn.Ended, 0)
@@ -215,35 +267,35 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		c.Active = true
 	}
 
-	extraData := map[string]interface{}{
-		"pid":              conn.ProcessContext.PID,
-		"processCreatedAt": conn.ProcessContext.CreatedAt,
+	extraData := connExtraData{
+		PID:              conn.ProcessContext.PID,
+		ProcessCreatedAt: conn.ProcessContext.CreatedAt,
 	}
 
 	if conn.TunnelContext != nil {
-		extraData["tunnel"] = conn.TunnelContext
+		extraData.Tunnel = conn.TunnelContext
 		exitNode := conn.TunnelContext.GetExitNodeID()
 		c.ExitNode = &exitNode
 	}
 
 	if conn.SplitTunContext != nil {
-		extraData["split_tun"] = conn.SplitTunContext
+		extraData.SplitTun = conn.SplitTunContext
 	}
 
 	if conn.DNSContext != nil {
-		extraData["dns"] = conn.DNSContext
+		extraData.DNS = conn.DNSContext
 	}
 
 	// TODO(ppacher): enable when TLS inspection is merged
 	// if conn.TLSContext != nil {
-	// 	extraData["tls"] = conn.TLSContext
+	// 	extraData.TLS = conn.TLSContext
 	// }
 
 	if conn.Entity != nil {
-		extraData["cname"] = conn.Entity.CNAME
-		extraData["blockedByLists"] = conn.Entity.BlockedByLists
-		extraData["blockedEntities"] = conn.Entity.BlockedEntities
-		extraData["reason"] = conn.Reason
+		extraData.CNAME = &conn.Entity.CNAME
+		extraData.BlockedByLists = &conn.Entity.BlockedByLists
+		extraData.BlockedEntities = &conn.Entity.BlockedEntities
+		extraData.Reason = &conn.Reason
 
 		c.RemoteIP = conn.Entity.IP.String()
 		c.RemotePort = conn.Entity.Port
@@ -260,7 +312,7 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 
 	// pre-compute the JSON blob for the extra data column
 	// and assign it.
-	extraDataBlob, err := json.Marshal(extraData)
+	extraDataBlob, err := json.Marshal(&extraData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal extra data: %w", err)
 	}

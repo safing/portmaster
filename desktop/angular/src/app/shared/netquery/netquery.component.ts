@@ -206,13 +206,13 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
   paginator!: DynamicItemsPaginator<LocalQueryResult>;
 
   /** @private - The total amount of connections without the filter applied */
-  totalConnCount: number = 0;
+  totalConnCount = 0;
 
   /** @private - The total amount of connections with the filter applied */
-  totalResultCount: number = 0;
+  totalResultCount = 0;
 
   /** The value of the free-text search */
-  textSearch: string = '';
+  textSearch = '';
 
   /** The date filter */
   dateFilter: Date[] = []
@@ -261,7 +261,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
   /** Auto-reload: The list of all intervals */
   readonly reloadIntervals = Object.keys(reloadIntervalValues);
   /** Auto-reload: The name of the currently selected auto-reload interval */
-  autoReloadIntervalName: string = ''; 
+  autoReloadIntervalName = ''; 
   /** Auto-reload: The timestamp of auto-reload being enabled */
   autoReloadEnabledTimestamp: Date | null = null;
   /** Auto-reload: Enable/disable auto-reload and set the interval */
@@ -589,10 +589,10 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
                   grpFilter[key] = r[key];
                 })
 
-                let page = {
+                const page = {
                   ...r,
-                  _chart: !!this.groupByKeys.length ? this.getGroupChart(grpFilter) : null,
-                  _group: !!this.groupByKeys.length ? this.lazyLoadGroup(grpFilter) : null,
+                  _chart: this.groupByKeys.length ? this.getGroupChart(grpFilter) : null,
+                  _group: this.groupByKeys.length ? this.lazyLoadGroup(grpFilter) : null,
                 }
 
                 return page;
@@ -665,7 +665,6 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
         this.paginator.pageLoading$
           .pipe(
             skip(1),
-            takeUntil(this.search$), // skip loading the chart if the user trigger a subsequent search
             filter(loading => !loading),
             take(1),
             switchMap(() => forkJoin({
@@ -681,7 +680,22 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
                   }),
                 ),
               bwChart: this.netquery.bandwidthChart(result.query.query!, [], 60)
+                .pipe(
+                  catchError(err => {
+                    this.actionIndicator.error(
+                      'Internal Error',
+                      'Failed to load bandwidth chart: ' + this.actionIndicator.getErrorMessgae(err)
+                    );
+
+                    return of([] as BandwidthChartResult<any>[]);
+                  }),
+                ),
             })),
+            // Drop the charts of this search when the user triggers a subsequent
+            // search. This must come after the requests above: otherwise a chart
+            // response that is already in flight is still delivered and overwrites
+            // the charts of the new search with the data of the previous one.
+            takeUntil(this.search$),
           )
           .subscribe(chart => {
             this.connectionChartData = chart.connectionChart;
@@ -843,7 +857,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
 
     // handle any filter preset
     //
-    if (!!this.filterPreset) {
+    if (this.filterPreset) {
       try {
         const result = Parser.parse(this.filterPreset);
         this.onFieldsParsed({
@@ -976,7 +990,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
         // create a set that we can use to lookup if a value
         // is currently selected.
         // This is needed to ensure selected values are sorted to the top.
-        let currentlySelected = new Set<any>();
+        const currentlySelected = new Set<any>();
         this.models[field]!.searchValues.forEach(
           val => currentlySelected.add(val)
         );
@@ -1189,7 +1203,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     }
 
     let select: Query['select'] | undefined = undefined;
-    if (!!this.groupByKeys.length) {
+    if (this.groupByKeys.length) {
       // we always want to show the total and the number of allowed connections
       // per group so we need to add those to the select part of the query
       select = [
@@ -1218,7 +1232,7 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
       ]
     }
 
-    let normalizedQuery = mergeConditions(query, this.mergeFilter || {})
+    const normalizedQuery = mergeConditions(query, this.mergeFilter || {})
 
     let orderBy: string[] | OrderBy[] = this.orderByKeys;
     if (!orderBy || orderBy.length === 0) {

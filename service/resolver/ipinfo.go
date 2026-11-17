@@ -148,7 +148,7 @@ func (info *IPInfo) MostRecentDomain() *ResolvedDomain {
 }
 
 func makeIPInfoKey(profileID, ip string) string {
-	return fmt.Sprintf("cache:intel/ipInfo/%s/%s", profileID, ip)
+	return "cache:intel/ipInfo/" + profileID + "/" + ip
 }
 
 // GetIPInfo gets an IPInfo record from the database.

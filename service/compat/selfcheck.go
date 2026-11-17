@@ -153,6 +153,8 @@ func selfcheck(ctx context.Context) (issue *systemIssue, err error) {
 		}
 	case <-time.After(dnsCheckWaitDuration):
 		return systemCompatOrManualDNSIssue(), fmt.Errorf("self-check #2: dns integration check failed: did not receive test query after %s", dnsCheckWaitDuration)
+	case <-ctx.Done():
+		return nil, context.Canceled
 	}
 	log.Tracer(ctx).Tracef("compat: self-check #2: dns integration query check passed")
 

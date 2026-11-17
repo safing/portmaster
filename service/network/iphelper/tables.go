@@ -182,7 +182,7 @@ func (lbf *learningBufSize) increaseBufSize(minSize int) int {
 }
 
 // getTable returns the current connection state table of Windows of the given protocol and IP version.
-func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*socket.ConnectionInfo, binds []*socket.BindInfo, err error) { //nolint:gocognit,gocycle // TODO
+func (ipHelper *IPHelper) getTable(ipVersion, protocol uint8) (connections []*socket.ConnectionInfo, binds []*socket.BindInfo, err error) { //nolint:gocognit // TODO
 	// docs: https://docs.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-getextendedtcptable
 
 	if !ipHelper.valid.IsSet() {

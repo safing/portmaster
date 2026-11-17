@@ -34,6 +34,10 @@ jobs:
     steps:
     - name: Check out code
       uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      with:
+        # Full history, so that pull requests can be linted against the
+        # merge base with their base branch.
+        fetch-depth: 0
 
     - name: Setup Go
       uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
@@ -41,12 +45,16 @@ jobs:
         go-version: '^1.26'
         cache: false
 
+    # For pull requests, new issues are determined via git against the merge
+    # base. The action's only-new-issues fetches the PR diff from the GitHub
+    # API instead, which fails for diffs over 20000 lines and then reports
+    # every pre-existing issue of the code base.
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
       with:
         version: v2.12.2
-        only-new-issues: true
-        args: -c ./.golangci.yml --timeout 15m
+        only-new-issues: ${{ github.event_name != 'pull_request' }}
+        args: -c ./.golangci.yml --timeout 15m ${{ github.event_name == 'pull_request' && format('--new-from-merge-base=origin/{0}', github.base_ref) || '' }}
 
     - name: Run go vet
       run: go vet ./...
@@ -68,4 +76,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Run Go Tests & Build
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +go-ci
+      run: earthly --ci ${{ github.repository_owner == 'safing' && '--remote-cache=ghcr.io/safing/build-cache --push' || '' }} +go-ci

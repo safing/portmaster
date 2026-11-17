@@ -90,14 +90,26 @@ func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
 	return nil
 }
 
-func (c *Control) resume() (retErr error) {
+func (c *Control) resume() error {
+	_, err := c.doResume(nil)
+	return err
+}
+
+// doResume resumes normal operation. If called from a resume worker (wc is
+// set), it does nothing and reports superseded if that worker was stopped
+// (e.g. replaced by a new pause request) while waiting for the lock.
+func (c *Control) doResume(wc *mgr.WorkerCtx) (superseded bool, retErr error) {
 	if c.instance.IsShuttingDown() {
 		c.mgr.Debug("Cannot resume: system is shutting down")
-		return nil
+		return false, nil
 	}
 
 	c.locker.Lock()
 	defer c.locker.Unlock()
+
+	if wc != nil && wc.IsDone() {
+		return true, nil
+	}
 
 	defer func() {
 		if retErr != nil {
@@ -112,7 +124,7 @@ func (c *Control) resume() (retErr error) {
 
 	if c.pauseInfo.Interception {
 		if err := c.instance.InterceptionGroup().Start(); err != nil {
-			return err
+			return false, err
 		}
 		c.mgr.Info("interception resumed")
 		c.pauseInfo.Interception = false
@@ -129,7 +141,7 @@ func (c *Control) resume() (retErr error) {
 		c.pauseInfo.SPN = false
 	}
 
-	return nil
+	return false, nil
 }
 
 // stopResumeWorker stops any existing resume worker.
@@ -191,7 +203,11 @@ func (c *Control) startResumeWorker(duration time.Duration) {
 
 		// Time to resume
 		wc.Info("Resuming...")
-		err := c.resume()
+		superseded, err := c.doResume(wc)
+		if superseded {
+			wc.Info("Resume canceled, pause was changed meanwhile.")
+			return nil
+		}
 		if err == nil {
 			n := &notifications.Notification{
 				EventID:      "control:resumed",
@@ -219,6 +235,9 @@ func (c *Control) startResumeWorker(duration time.Duration) {
 // updateStatesAndNotify updates the paused states and sends notifications accordingly.
 // No thread safety, caller must hold c.locker.
 func (c *Control) updateStatesAndNotify() {
+	// A new pause/resume attempt supersedes the error of a previous one.
+	c.deleteErrorNotification()
+
 	if !c.pauseInfo.Interception && !c.pauseInfo.SPN {
 		if c.pauseNotification != nil {
 			c.pauseNotification.Delete()
@@ -273,16 +292,28 @@ func (c *Control) updateStatesAndNotifyError(errDescription string, err error) {
 		errDescription = "Error"
 	}
 
-	// Error notification
-	c.pauseNotification = &notifications.Notification{
+	// Error notification. It is tracked separately so that it does not replace
+	// (and thereby orphan) the pause notification, which stays valid while the
+	// pause state is unchanged.
+	c.deleteErrorNotification()
+	c.errorNotification = &notifications.Notification{
 		EventID:   "control:error",
 		Type:      notifications.Error,
 		Title:     errDescription,
 		Message:   err.Error(),
 		EventData: &c.pauseInfo,
 	}
-	notifications.Notify(c.pauseNotification)
-	c.pauseNotification.SyncWithState(c.states)
+	notifications.Notify(c.errorNotification)
+	c.errorNotification.SyncWithState(c.states)
+}
+
+// deleteErrorNotification deletes the error notification, if any.
+// No thread safety, caller must hold c.locker.
+func (c *Control) deleteErrorNotification() {
+	if c.errorNotification != nil {
+		c.errorNotification.Delete()
+		c.errorNotification = nil
+	}
 }
 
 func (c *Control) showNotification(title, message string) *notifications.Notification {

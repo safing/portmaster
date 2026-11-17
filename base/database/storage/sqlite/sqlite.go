@@ -14,8 +14,9 @@ import (
 	migrate "github.com/rubenv/sql-migrate"
 	sqldblogger "github.com/simukti/sqldb-logger"
 	"github.com/stephenafamo/bob"
-	"github.com/stephenafamo/bob/dialect/sqlite"
+	"github.com/stephenafamo/bob/dialect/sqlite/dialect"
 	"github.com/stephenafamo/bob/dialect/sqlite/im"
+	"github.com/stephenafamo/bob/dialect/sqlite/sm"
 	"github.com/stephenafamo/bob/dialect/sqlite/um"
 	_ "modernc.org/sqlite"
 
@@ -32,7 +33,12 @@ import (
 // Errors.
 var (
 	ErrQueryTimeout = errors.New("query timeout")
+
+	errShuttingDown = errors.New("database is shutting down")
 )
+
+// queryPageSize is the number of rows a query loads from the database at once.
+const queryPageSize = 100
 
 // SQLite storage.
 type SQLite struct {
@@ -41,6 +47,10 @@ type SQLite struct {
 	db  *sql.DB
 	bob bob.DB
 	wg  sync.WaitGroup
+	// batchWg tracks the handlers of PutMany batches, which keep running
+	// after PutMany returned. They must not use wg, as Shutdown may already
+	// wait on it.
+	batchWg sync.WaitGroup
 
 	ctx       context.Context
 	cancelCtx context.CancelFunc
@@ -151,13 +161,15 @@ func (db *SQLite) GetMeta(key string) (*record.Meta, error) {
 
 // Put stores a record in the database.
 func (db *SQLite) Put(r record.Record) (record.Record, error) {
-	return db.putRecord(r, nil)
-}
-
-func (db *SQLite) putRecord(r record.Record, tx *bob.Tx) (record.Record, error) {
 	db.wg.Add(1)
 	defer db.wg.Done()
 
+	return db.putRecord(r, nil)
+}
+
+// putRecord writes the record. It does not register as a database operation
+// that Shutdown waits for, as it is also used by the batch handlers.
+func (db *SQLite) putRecord(r record.Record, tx *bob.Tx) (record.Record, error) {
 	// Lock record if in a transaction.
 	if tx != nil {
 		r.Lock()
@@ -229,12 +241,19 @@ func (db *SQLite) putRecord(r record.Record, tx *bob.Tx) (record.Record, error) 
 
 // PutMany stores many records in the database.
 func (db *SQLite) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error) {
+	return db.PutManyAbortable(context.Background(), shadowDelete)
+}
+
+// PutManyAbortable stores many records in the database like PutMany, unless
+// abort is done before the batch channel is closed: the transaction of the
+// batch is then rolled back and the result wraps storage.ErrBatchAborted.
+func (db *SQLite) PutManyAbortable(abort context.Context, shadowDelete bool) (chan<- record.Record, <-chan error) {
 	db.wg.Add(1)
 	defer db.wg.Done()
 
 	// Check if we should use prepared statement optimized inserting.
 	if UsePreparedStatements {
-		return db.putManyWithPreparedStmts(shadowDelete)
+		return db.putManyWithPreparedStmts(abort)
 	}
 
 	batch := make(chan record.Record, 100)
@@ -247,7 +266,11 @@ func (db *SQLite) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error
 	}
 
 	// start handler
+	db.batchWg.Add(1)
 	go func() {
+		defer db.batchWg.Done()
+		var err error
+
 		// Read all put records.
 	writeBatch:
 		for {
@@ -255,24 +278,37 @@ func (db *SQLite) PutMany(shadowDelete bool) (chan<- record.Record, <-chan error
 			case r := <-batch:
 				if r != nil {
 					// Write record.
-					_, err := db.putRecord(r, &tx)
+					_, err = db.putRecord(r, &tx)
 					if err != nil {
-						errs <- err
 						break writeBatch
 					}
 				} else {
+					// Also check for an abort when the batch channel was
+					// closed, as it is closed right after the abort.
+					if abort.Err() != nil {
+						err = batchAbortedErr(abort)
+						break writeBatch
+					}
+
 					// Finalize transcation.
 					errs <- tx.Commit(db.ctx)
 					return
 				}
 
+			case <-abort.Done():
+				err = batchAbortedErr(abort)
+				break writeBatch
+
 			case <-db.ctx.Done():
+				err = db.shuttingDownErr()
 				break writeBatch
 			}
 		}
 
-		// Rollback transaction.
-		errs <- tx.Rollback(db.ctx)
+		// Rollback transaction and report why the batch was aborted.
+		// Exactly one value must be sent on errs.
+		db.rollbackBatch(tx)
+		errs <- err
 	}()
 
 	return batch, errs
@@ -307,84 +343,46 @@ func (db *SQLite) queryExecutor(queryIter *iterator.Iterator, q *query.Query, lo
 	db.wg.Add(1)
 	defer db.wg.Done()
 
-	// Build query.
-	var recordQuery *sqlite.ViewQuery[*models.Record, models.RecordSlice]
-	if q.DatabaseKeyPrefix() != "" {
-		recordQuery = models.Records.View.Query(
-			models.SelectWhere.Records.Key.Like(q.DatabaseKeyPrefix() + "%"),
-		)
-	} else {
-		recordQuery = models.Records.View.Query()
-	}
+	var (
+		err       error
+		lastKey   string
+		firstPage = true
+		page      models.RecordSlice
+	)
 
-	// Get cursor to go over all records in the query.
-	cursor, err := models.RecordsQuery.Cursor(recordQuery, db.ctx, db.bob)
-	if err != nil {
-		queryIter.Finish(err)
-		return
-	}
-	defer func() {
-		_ = cursor.Close()
-	}()
-
-recordsLoop:
-	for cursor.Next() {
-		// Get next record
-		r, cErr := cursor.Get()
-		if cErr != nil {
-			err = fmt.Errorf("cursor error: %w", cErr)
-			break recordsLoop
+	// Load the records page by page (keyset pagination over the primary key).
+	// Each page is fully loaded before it is handed to the consumer, so that
+	// the single database connection is not held while waiting for the
+	// consumer. Otherwise, all other database operations - including any the
+	// consumer itself does while iterating - would block until the query ends.
+pagesLoop:
+	for {
+		mods := []bob.Mod[*dialect.SelectQuery]{
+			sm.OrderBy(models.Records.Columns.Key).Asc(),
+			sm.Limit(queryPageSize),
 		}
-
-		// Check if key matches.
-		if !q.MatchesKey(r.Key) {
-			continue recordsLoop
+		if q.DatabaseKeyPrefix() != "" {
+			mods = append(mods, models.SelectWhere.Records.Key.Like(q.DatabaseKeyPrefix()+"%"))
 		}
-
-		// Check Meta.
-		m := getMeta(r)
-		if !m.CheckValidity() ||
-			!m.CheckPermission(local, internal) {
-			continue recordsLoop
+		if !firstPage {
+			mods = append(mods, models.SelectWhere.Records.Key.GT(lastKey))
 		}
-
-		// Check Data.
-		if q.HasWhereCondition() {
-			if r.Format.IsNull() || r.Value.IsNull() {
-				continue recordsLoop
-			}
-
-			jsonData := string(r.Value.GetOrZero())
-			jsonAccess := accessor.NewJSONAccessor(&jsonData)
-			if !q.MatchesAccessor(jsonAccess) {
-				continue recordsLoop
-			}
+		firstPage = false
+		page, err = models.Records.View.Query(mods...).All(db.ctx, db.bob)
+		if err != nil {
+			err = fmt.Errorf("failed to load records: %w", err)
+			break pagesLoop
 		}
-
-		// Build database record.
-		matched, _ := record.NewWrapperFromDatabase(
-			db.name,
-			r.Key,
-			m,
-			uint8(r.Format.GetOrZero()), //nolint:gosec // Values are within uint8.
-			r.Value.GetOrZero(),
-		)
-
-		select {
-		case <-queryIter.Done:
-			break recordsLoop
-		case queryIter.Next <- matched:
-		default:
-			select {
-			case <-queryIter.Done:
-				break recordsLoop
-			case queryIter.Next <- matched:
-			case <-time.After(1 * time.Second):
-				err = ErrQueryTimeout
-				break recordsLoop
-			}
+		if len(page) == 0 {
+			break pagesLoop
 		}
+		lastKey = page[len(page)-1].Key
 
+		var done bool
+		done, err = db.feedQueryPage(queryIter, q, page, local, internal)
+		if done || err != nil || len(page) < queryPageSize {
+			break pagesLoop
+		}
 	}
 
 	queryIter.Finish(err)
@@ -581,8 +579,88 @@ func (db *SQLite) MaintainThorough(ctx context.Context) error {
 func (db *SQLite) Shutdown() error {
 	db.wg.Wait()
 	db.cancelCtx()
+	// Wait for the batch handlers, which abort their batch when the context
+	// is canceled, before closing the database they use.
+	db.batchWg.Wait()
 
 	return db.bob.Close()
+}
+
+// shuttingDownErr returns the error for a batch that was aborted because the
+// database is shutting down.
+func (db *SQLite) shuttingDownErr() error {
+	return fmt.Errorf("%w: %w", errShuttingDown, db.ctx.Err())
+}
+
+// batchAbortedErr returns the error for a batch that was aborted by its
+// caller.
+func batchAbortedErr(abort context.Context) error {
+	return fmt.Errorf("%w: %w", storage.ErrBatchAborted, context.Cause(abort))
+}
+
+// rollbackBatch rolls back the transaction of an aborted batch.
+func (db *SQLite) rollbackBatch(tx bob.Tx) {
+	// The transaction is already rolled back when the context was canceled.
+	err := tx.Rollback(db.ctx)
+	if err != nil && !errors.Is(err, sql.ErrTxDone) {
+		log.Warningf("database/sqlite: failed to roll back aborted batch of %s database: %s", db.name, err)
+	}
+}
+
+// feedQueryPage sends the matching records of the given page to the query
+// iterator. It returns whether the consumer is done or an error.
+func (db *SQLite) feedQueryPage(queryIter *iterator.Iterator, q *query.Query, page models.RecordSlice, local, internal bool) (done bool, err error) {
+	for _, r := range page {
+		// Check if key matches.
+		if !q.MatchesKey(r.Key) {
+			continue
+		}
+
+		// Check Meta.
+		m := getMeta(r)
+		if !m.CheckValidity() ||
+			!m.CheckPermission(local, internal) {
+			continue
+		}
+
+		// Check Data.
+		if q.HasWhereCondition() {
+			if r.Format.IsNull() || r.Value.IsNull() {
+				continue
+			}
+
+			jsonData := string(r.Value.GetOrZero())
+			jsonAccess := accessor.NewJSONAccessor(&jsonData)
+			if !q.MatchesAccessor(jsonAccess) {
+				continue
+			}
+		}
+
+		// Build database record.
+		matched, _ := record.NewWrapperFromDatabase(
+			db.name,
+			r.Key,
+			m,
+			uint8(r.Format.GetOrZero()), //nolint:gosec // Values are within uint8.
+			r.Value.GetOrZero(),
+		)
+
+		select {
+		case <-queryIter.Done:
+			return true, nil
+		case queryIter.Next <- matched:
+		default:
+			select {
+			case <-queryIter.Done:
+				return true, nil
+			case queryIter.Next <- matched:
+			case <-time.After(1 * time.Second):
+				return true, ErrQueryTimeout
+			}
+		}
+	}
+
+	return false, nil
 }
 
 type statementLogger struct{}

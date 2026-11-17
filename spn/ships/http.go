@@ -2,6 +2,7 @@ package ships
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -13,6 +14,9 @@ import (
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/hub"
 )
+
+// httpHandshakeTimeout bounds the HTTP upgrade handshake after connecting.
+const httpHandshakeTimeout = 30 * time.Second
 
 // HTTPShip is a ship that uses HTTP.
 type HTTPShip struct {
@@ -86,6 +90,31 @@ func launchHTTPShip(ctx context.Context, transport *hub.Transport, ip net.IP) (S
 		return nil, fmt.Errorf("failed to connect: %w", err)
 	}
 
+	// Close the connection if the handshake fails.
+	var success bool
+	defer func() {
+		if !success {
+			_ = conn.Close()
+		}
+	}()
+
+	// Writing the request and reading the response do not respect ctx, and
+	// keep-alive is disabled. A peer that accepts the connection but never
+	// answers would block us forever, so bound the handshake with a deadline
+	// and abort it when ctx is done.
+	deadline := time.Now().Add(httpHandshakeTimeout)
+	if ctxDeadline, ok := ctx.Deadline(); ok && ctxDeadline.Before(deadline) {
+		deadline = ctxDeadline
+	}
+	err = conn.SetDeadline(deadline)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set handshake deadline: %w", err)
+	}
+	stopAbortOnDone := context.AfterFunc(ctx, func() {
+		_ = conn.Close()
+	})
+	defer stopAbortOnDone()
+
 	// Send HTTP request.
 	err = request.Write(conn)
 	if err != nil {
@@ -93,7 +122,8 @@ func launchHTTPShip(ctx context.Context, transport *hub.Transport, ip net.IP) (S
 	}
 
 	// Receive HTTP response.
-	response, err := http.ReadResponse(bufio.NewReader(conn), request)
+	reader := bufio.NewReader(conn)
+	response, err := http.ReadResponse(reader, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read HTTP response: %w", err)
 	}
@@ -114,10 +144,21 @@ func launchHTTPShip(ctx context.Context, transport *hub.Transport, ip net.IP) (S
 		return nil, fmt.Errorf("internal error: unsupported http transport variant: %d", variant)
 	}
 
+	// Handshake is complete: stop aborting on ctx and lift the deadline, as the
+	// connection is now used by the ship.
+	if !stopAbortOnDone() {
+		return nil, fmt.Errorf("handshake aborted: %w", ctx.Err())
+	}
+	err = conn.SetDeadline(time.Time{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to clear handshake deadline: %w", err)
+	}
+
 	// Create ship.
+	// The reader may already hold data the peer sent after the response.
 	ship := &HTTPShip{
 		ShipBase: ShipBase{
-			conn:      conn,
+			conn:      withBufferedData(conn, reader),
 			transport: transport,
 			mine:      true,
 			secure:    false,
@@ -127,6 +168,7 @@ func launchHTTPShip(ctx context.Context, transport *hub.Transport, ip net.IP) (S
 	// Init and return.
 	ship.calculateLoadSize(ip, nil, TCPHeaderMTUSize)
 	ship.initBase()
+	success = true
 	return ship, nil
 }
 
@@ -155,11 +197,15 @@ func (pier *HTTPPier) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusSwitchingProtocols)
 
 			// Get connection.
-			conn, _, err = hijacker.Hijack()
+			var bufrw *bufio.ReadWriter
+			conn, bufrw, err = hijacker.Hijack()
 			if err != nil {
 				log.Warningf("ships: failed to hijack http connection from %s: %s", r.RemoteAddr, err)
 				return
 			}
+			// The HTTP server may already have read data the client sent
+			// right after the request.
+			conn = withBufferedData(conn, bufrw.Reader)
 		} else {
 			http.Error(w, "", http.StatusInternalServerError)
 			log.Warningf("ships: connection from %s cannot be hijacked", r.RemoteAddr)
@@ -227,4 +273,35 @@ func (pier *HTTPPier) Abolish() {
 	// Do not close the listener, as it is shared.
 	// Instead, remove the HTTP handler and the shared server will shutdown itself when needed.
 	_ = removeHTTPHandler(pier.transport.Port, pier.transport.Path)
+}
+
+// bufferedConn is a connection whose first bytes were already read into a
+// buffer, such as during an HTTP handshake.
+type bufferedConn struct {
+	net.Conn
+
+	reader io.Reader
+}
+
+// Read reads the buffered data first and then from the connection.
+func (c *bufferedConn) Read(b []byte) (int, error) {
+	return c.reader.Read(b)
+}
+
+// withBufferedData returns conn, or a wrapper that first returns the data
+// held in reader, if it holds any. reader must read from conn.
+func withBufferedData(conn net.Conn, reader *bufio.Reader) net.Conn {
+	if reader == nil || reader.Buffered() == 0 {
+		return conn
+	}
+	return &bufferedConn{
+		Conn:   conn,
+		reader: io.MultiReader(bytes.NewReader(copyBuffered(reader)), conn),
+	}
+}
+
+// copyBuffered returns a copy of the data buffered in reader.
+func copyBuffered(reader *bufio.Reader) []byte {
+	data, _ := reader.Peek(reader.Buffered()) // Cannot fail for buffered data.
+	return bytes.Clone(data)
 }

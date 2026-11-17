@@ -86,14 +86,6 @@ func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 	timingQueryExecute.Stop()
 
-	// send the HTTP status code
-	resp.WriteHeader(http.StatusOK)
-
-	// prepare the result encoder.
-	enc := json.NewEncoder(resp)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-
 	// prepare the result body that, in dev mode, contains
 	// some diagnostics data about the query
 	var resultBody map[string]interface{}
@@ -111,16 +103,7 @@ func (qh *QueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 	resultBody["results"] = result
 
-	// and finally stream the response
-	if err := enc.Encode(resultBody); err != nil {
-		// we failed to encode the JSON body to resp so we likely either already sent a
-		// few bytes or the pipe was already closed. In either case, trying to send the
-		// error using http.Error() is non-sense. We just log it out here and that's all
-		// we can do.
-		log.Errorf("failed to encode JSON response: %s", err)
-
-		return
-	}
+	writeJSONResponse(resp, http.StatusOK, resultBody)
 }
 
 func (batch *BatchQueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
@@ -195,24 +178,7 @@ func (batch *BatchQueryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Re
 		response[b.ID] = *b.Result
 	}
 
-	// send the HTTP status code
-	resp.WriteHeader(status)
-
-	// prepare the result encoder.
-	enc := json.NewEncoder(resp)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-
-	// and finally stream the response
-	if err := enc.Encode(response); err != nil {
-		// we failed to encode the JSON body to resp so we likely either already sent a
-		// few bytes or the pipe was already closed. In either case, trying to send the
-		// error using http.Error() is non-sense. We just log it out here and that's all
-		// we can do.
-		log.Errorf("failed to encode JSON response: %s", err)
-
-		return
-	}
+	writeJSONResponse(resp, status, response)
 }
 
 func parseQueryRequestPayload[T any](req *http.Request) (*T, error) { //nolint:dupl
@@ -249,3 +215,26 @@ func parseQueryRequestPayload[T any](req *http.Request) (*T, error) { //nolint:d
 
 // Compile time check.
 var _ http.Handler = new(QueryHandler)
+
+// writeJSONResponse encodes body as JSON and sends it with the given status.
+// The body is encoded before the status is sent, so that an encoding error
+// can still be reported as a server error instead of an empty response.
+func writeJSONResponse(resp http.ResponseWriter, status int, body any) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	err := enc.Encode(body)
+	if err != nil {
+		log.Errorf("failed to encode JSON response: %s", err)
+		http.Error(resp, "failed to encode response: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp.WriteHeader(status)
+	_, err = resp.Write(buf.Bytes())
+	if err != nil {
+		// The client is likely gone, nothing else to do.
+		log.Debugf("failed to write JSON response: %s", err)
+	}
+}

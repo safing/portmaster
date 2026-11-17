@@ -202,6 +202,17 @@ func New(instance instance, name string, cfg Config) (*Updater, error) {
 	module.updateCheckWorkerMgr = m.NewWorkerMgr("update checker", module.updateCheckWorker, nil)
 	module.upgradeWorkerMgr = m.NewWorkerMgr("upgrader", module.upgradeWorker, nil)
 
+	// Restore the installed version, if an upgrade was not committed. Its
+	// index is loaded below.
+	if module.hasUpgradeMarker() {
+		err := module.recoverFromFailedUpgrade(nil)
+		if err != nil {
+			log.Errorf("updates/%s: failed to restore files of a failed upgrade from %s: %s", cfg.Name, cfg.PurgeDirectory, err)
+		} else {
+			log.Warningf("updates/%s: restored files of a failed upgrade from %s", cfg.Name, cfg.PurgeDirectory)
+		}
+	}
+
 	// Load index.
 	index, err := LoadIndex(filepath.Join(cfg.Directory, cfg.IndexFile), cfg.Platform, cfg.Verify)
 	if err == nil {
@@ -495,16 +506,6 @@ func (u *Updater) ForceUpdate() error {
 	return u.m.Do("update and upgrade", func(w *mgr.WorkerCtx) error {
 		return u.updateAndUpgrade(w, u.getIndexURLsWithLock(), true, true)
 	})
-}
-
-// UpdateFromURL installs an update from the provided url.
-func (u *Updater) UpdateFromURL(url string) error {
-	u.m.Go("custom update from url", func(w *mgr.WorkerCtx) error {
-		_ = u.updateAndUpgrade(w, []string{url}, true, true)
-		return nil
-	})
-
-	return nil
 }
 
 // Configure makes slight configuration changes to the updater.

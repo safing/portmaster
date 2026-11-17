@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,14 +14,17 @@ import (
 )
 
 var (
-	testPort  uint16 = 65000
-	testData         = []byte("The quick brown fox jumps over the lazy dog")
-	localhost        = net.IPv4(127, 0, 0, 1)
+	testPort  atomic.Uint32
+	testData  = []byte("The quick brown fox jumps over the lazy dog")
+	localhost = net.IPv4(127, 0, 0, 1)
 )
 
+func init() {
+	testPort.Store(65000)
+}
+
 func getTestPort() uint16 {
-	testPort++
-	return testPort
+	return uint16(testPort.Add(1)) //nolint:gosec // Test ports stay well below the uint16 limit.
 }
 
 func getTestBuf() []byte {

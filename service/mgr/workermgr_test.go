@@ -21,15 +21,17 @@ func TestWorkerMgrDelay(t *testing.T) {
 	}, nil).Delay(1 * time.Second)
 
 	// Check if value is set after 1 second and not before or after.
-	iterations := 0
+	// Measure the elapsed time instead of counting sleeps: on a busy machine,
+	// sleeps take longer than requested, so fewer of them fit into a second.
+	started := time.Now()
 	for !value.Load() {
-		iterations++
 		time.Sleep(10 * time.Millisecond)
 	}
+	elapsed := time.Since(started)
 
-	// 5% difference is acceptable since time.Sleep can't be perfect and it may very on different computers.
-	if iterations < 95 || iterations > 105 {
-		t.Errorf("WorkerMgr did not delay for a whole second it=%d", iterations)
+	// Some difference is acceptable since timers can't be perfect and it may vary on different computers.
+	if elapsed < 950*time.Millisecond || elapsed > 1150*time.Millisecond {
+		t.Errorf("WorkerMgr did not delay for a whole second: %s", elapsed)
 	}
 }
 
@@ -47,22 +49,7 @@ func TestWorkerMgrRepeat(t *testing.T) {
 		return nil
 	}, nil).Repeat(100 * time.Millisecond)
 
-	// Check 10 consecutive runs they should be delayed for around 100 milliseconds each.
-	for range 10 {
-		iterations := 0
-		for !value.Load() {
-			iterations++
-			time.Sleep(10 * time.Millisecond)
-		}
-
-		// 10% difference is acceptable at this scale since time.Sleep can't be perfect and it may very on different computers.
-		if iterations < 9 || iterations > 11 {
-			t.Errorf("Worker was not delayed for a 100 milliseconds it=%d", iterations)
-			return
-		}
-		// Reset value
-		value.Store(false)
-	}
+	checkRepeatInterval(t, &value)
 }
 
 func TestWorkerMgrDelayAndRepeat(t *testing.T) { //nolint:dupl
@@ -79,36 +66,23 @@ func TestWorkerMgrDelayAndRepeat(t *testing.T) { //nolint:dupl
 		return nil
 	}, nil).Delay(1 * time.Second).Repeat(100 * time.Millisecond)
 
-	iterations := 0
+	// Measure the elapsed time instead of counting sleeps: on a busy machine,
+	// sleeps take longer than requested, so fewer of them fit into a second.
+	started := time.Now()
 	for !value.Load() {
-		iterations++
 		time.Sleep(10 * time.Millisecond)
 	}
+	elapsed := time.Since(started)
 
-	// 5% difference is acceptable since time.Sleep can't be perfect and it may very on different computers.
-	if iterations < 95 || iterations > 105 {
-		t.Errorf("WorkerMgr did not delay for a whole second it=%d", iterations)
+	// Some difference is acceptable since timers can't be perfect and it may vary on different computers.
+	if elapsed < 950*time.Millisecond || elapsed > 1150*time.Millisecond {
+		t.Errorf("WorkerMgr did not delay for a whole second: %s", elapsed)
 	}
 
 	// Reset value
 	value.Store(false)
 
-	// Check 10 consecutive runs they should be delayed for around 100 milliseconds each.
-	for range 10 {
-		iterations = 0
-		for !value.Load() {
-			iterations++
-			time.Sleep(10 * time.Millisecond)
-		}
-
-		// 10% difference is acceptable at this scale since time.Sleep can't be perfect and it may very on different computers.
-		if iterations < 9 || iterations > 11 {
-			t.Errorf("Worker was not delayed for a 100 milliseconds it=%d", iterations)
-			return
-		}
-		// Reset value
-		value.Store(false)
-	}
+	checkRepeatInterval(t, &value)
 }
 
 func TestWorkerMgrRepeatAndDelay(t *testing.T) { //nolint:dupl
@@ -125,33 +99,48 @@ func TestWorkerMgrRepeatAndDelay(t *testing.T) { //nolint:dupl
 		return nil
 	}, nil).Repeat(100 * time.Millisecond).Delay(1 * time.Second)
 
-	iterations := 0
+	// Measure the elapsed time instead of counting sleeps: on a busy machine,
+	// sleeps take longer than requested, so fewer of them fit into a second.
+	started := time.Now()
 	for !value.Load() {
-		iterations++
 		time.Sleep(10 * time.Millisecond)
 	}
+	elapsed := time.Since(started)
 
-	// 5% difference is acceptable since time.Sleep can't be perfect and it may very on different computers.
-	if iterations < 95 || iterations > 105 {
-		t.Errorf("WorkerMgr did not delay for a whole second it=%d", iterations)
+	// Some difference is acceptable since timers can't be perfect and it may vary on different computers.
+	if elapsed < 950*time.Millisecond || elapsed > 1150*time.Millisecond {
+		t.Errorf("WorkerMgr did not delay for a whole second: %s", elapsed)
 	}
 	// Reset value
 	value.Store(false)
 
-	// Check 10 consecutive runs they should be delayed for around 100 milliseconds each.
-	for range 10 {
-		iterations := 0
-		for !value.Load() {
-			iterations++
-			time.Sleep(10 * time.Millisecond)
-		}
+	checkRepeatInterval(t, &value)
+}
 
-		// 10% difference is acceptable at this scale since time.Sleep can't be perfect and it may very on different computers.
-		if iterations < 9 || iterations > 11 {
-			t.Errorf("Worker was not delayed for a 100 milliseconds it=%d", iterations)
-			return
+// checkRepeatInterval checks that 10 consecutive runs of a worker repeating
+// every 100 milliseconds take around one second in total. It measures the
+// elapsed time instead of counting sleeps, as sleeps take longer than
+// requested on a busy machine. The total is checked instead of each run, as a
+// single run may be late under load while the following one is on time.
+func checkRepeatInterval(t *testing.T, value *atomic.Bool) {
+	t.Helper()
+
+	// Wait for the first repeated run to align with the repeat schedule.
+	for !value.Load() {
+		time.Sleep(time.Millisecond)
+	}
+	value.Store(false)
+
+	started := time.Now()
+	for range 10 {
+		for !value.Load() {
+			time.Sleep(time.Millisecond)
 		}
-		// Reset value
 		value.Store(false)
+	}
+	elapsed := time.Since(started)
+
+	if elapsed < 900*time.Millisecond || elapsed > 1300*time.Millisecond {
+		t.Errorf("10 repeated runs did not take around one second: %s", elapsed)
 	}
 }

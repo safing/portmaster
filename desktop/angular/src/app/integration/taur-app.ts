@@ -1,4 +1,4 @@
-import { AppInfo, IntegrationService, ProcessInfo } from "./integration";
+import { AppInfo, IntegrationService, PortmasterDir, ProcessInfo } from "./integration";
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { open } from '@tauri-apps/plugin-shell';
 import { listen, once } from '@tauri-apps/api/event';
@@ -73,8 +73,10 @@ export class TauriIntegrationService implements IntegrationService {
     return open(pathOrUrl);
   }
 
-  getInstallDir(): Promise<string> {
-    return Promise.reject("not yet supported in tauri")
+  openDir(kind: PortmasterDir): Promise<void> {
+    // The directory is resolved and opened on the Rust side (it is
+    // requested from the core), so no path crosses the webview boundary.
+    return invoke<void>('open_dir', { kind });
   }
 
   getAppInfo(info: ProcessInfo): Promise<AppInfo> {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/database/storage"
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 )
@@ -34,6 +35,10 @@ func (i *Interface) DelayedCacheWriter(wc *mgr.WorkerCtx) error {
 		select {
 		case <-wc.Done():
 			// The caller is shutting down, flush the cache to storage and exit.
+			// An aborted flush keeps its records in the write cache, so retry
+			// it once, as they would be lost otherwise. This is a no-op if the
+			// first flush emptied the write cache.
+			i.flushWriteCache(0)
 			i.flushWriteCache(0)
 			return nil
 
@@ -74,7 +79,7 @@ func (i *Interface) ClearCache() {
 // FlushCache writes (and thus clears) the write cache.
 func (i *Interface) FlushCache() {
 	// Check if write cache is in use.
-	if i.options.DelayCachedWrites != "" {
+	if i.options.DelayCachedWrites == "" {
 		return
 	}
 
@@ -96,23 +101,42 @@ func (i *Interface) flushWriteCache(percentThreshold int) {
 	}
 
 	// Write the full cache in a batch operation.
+	// A batch that was aborted (storage.ErrBatchAborted) was not stored and a
+	// batch that timed out (errPutManyTimeout) was not stored completely. Keep
+	// the write cache then, so that the next flush retries all of its records.
+	// Writing a record again is idempotent. Other errors are logged and the
+	// write cache is cleared as before, as they may be caused by the records
+	// themselves and would then fail every following flush, too.
+	var retry bool
 	batchPut := i.PutMany(i.options.DelayCachedWrites)
 	for _, r := range i.writeCache {
 		err := batchPut(r)
 		if err != nil {
+			retry = retry || isRetryableBatchError(err)
 			log.Warningf("database: failed to write write-cached entry to %q database: %s", i.options.DelayCachedWrites, err)
 		}
 	}
 	// Finish batch.
 	err := batchPut(nil)
 	if err != nil {
+		retry = retry || isRetryableBatchError(err)
 		log.Warningf("database: failed to finish flushing write cache to %q database: %s", i.options.DelayCachedWrites, err)
+	}
+	if retry {
+		log.Warningf("database: keeping %d write-cached entries of %q database to retry writing them with the next flush", len(i.writeCache), i.options.DelayCachedWrites)
+		return
 	}
 
 	// Optimized map clearing following the Go1.11 recommendation.
 	for key := range i.writeCache {
 		delete(i.writeCache, key)
 	}
+}
+
+// isRetryableBatchError reports whether err says that a PutMany batch was
+// aborted or timed out, so that some or all of its records were not stored.
+func isRetryableBatchError(err error) bool {
+	return errors.Is(err, storage.ErrBatchAborted) || errors.Is(err, errPutManyTimeout)
 }
 
 // cacheEvictHandler is run by the cache for every entry that gets evicted
@@ -192,6 +216,15 @@ func (i *Interface) updateCache(r record.Record, write bool, remove bool, ttl in
 
 	// Check if record should be deleted
 	if remove {
+		// Drop a pending delayed write of the same key: the removal wins over
+		// it and is written through to the database storage by the caller.
+		// Otherwise the evict handler would first write the stale pending
+		// record to storage.
+		if write && r.DatabaseName() == i.options.DelayCachedWrites {
+			i.writeCacheLock.Lock()
+			delete(i.writeCache, r.Key())
+			i.writeCacheLock.Unlock()
+		}
 		// Remove entry from cache.
 		i.cache.Remove(r.Key())
 		// Let write through to database storage.

@@ -18,7 +18,7 @@ import (
 )
 
 // ProfileExport holds an export of a profile.
-type ProfileExport struct { //nolint:maligned
+type ProfileExport struct {
 	Type Type `json:"type" yaml:"type"`
 
 	// Identification
@@ -274,10 +274,10 @@ func ExportProfile(scopedID string) (*ProfileExport, error) {
 
 	// Remove presentation path if both Name and Icon are set.
 	if export.Name != "" && export.IconData != "" {
-		p.UsePresentationPath = false
+		export.UsePresentationPath = false
 	}
-	if !p.UsePresentationPath {
-		p.PresentationPath = ""
+	if !export.UsePresentationPath {
+		export.PresentationPath = ""
 	}
 
 	return export, nil
@@ -294,6 +294,9 @@ func ImportProfile(r *ProfileImportRequest, requiredProfileSource profile.Profil
 	if r.Export.Source != "" && r.Export.Source != requiredProfileSource {
 		return nil, ErrMismatch
 	}
+	// The profile is always imported to the required source, so use it for all
+	// checks below, even if the export does not specify a source.
+	r.Export.Source = requiredProfileSource
 	// Convert fingerprints to internal representation.
 	fingerprints := convertFingerprintsToInternal(r.Export.Fingerprints)
 	if len(fingerprints) == 0 {

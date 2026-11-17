@@ -7,7 +7,6 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"github.com/safing/jess/lhash"
 	"github.com/safing/portmaster/service/profile/endpoints"
 )
 
@@ -45,7 +44,7 @@ type Intel struct {
 }
 
 // HubIntel holds Hub-related data.
-type HubIntel struct { //nolint:golint
+type HubIntel struct {
 	// Trusted specifies if the Hub is specially designated for more sensitive tasks, such as handling unencrypted traffic.
 	Trusted bool
 
@@ -172,7 +171,8 @@ func ParseBootstrapHub(bootstrapTransport string) (t *Transport, hubID string, h
 	if t.Option == "" {
 		return nil, "", nil, errors.New("missing hub ID in URL fragment")
 	}
-	if _, err := lhash.FromBase58(t.Option); err != nil {
+	_, err = labeledHashFromBase58(t.Option)
+	if err != nil {
 		return nil, "", nil, fmt.Errorf("hub ID is invalid: %w", err)
 	}
 

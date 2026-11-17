@@ -3,6 +3,7 @@ package terminal
 import (
 	"errors"
 	"flag"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 )
 
 // TerminalModule is the command multiplexing module.
-type TerminalModule struct { //nolint:golint
+type TerminalModule struct {
 	mgr      *mgr.Manager
 	instance instance
 }
@@ -34,9 +35,15 @@ func (s *TerminalModule) Stop() error {
 }
 
 var (
-	rngFeeder *rng.Feeder = nil
+	// rngFeeder holds the current entropy feeder. It is replaced on every
+	// module start, while it may be used concurrently, so always use
+	// getRngFeeder() to access it.
+	rngFeeder atomic.Pointer[rng.Feeder]
 
-	scheduler *unit.Scheduler
+	// scheduler holds the current unit scheduler. It is replaced on every
+	// module start, while it may be used concurrently, so always use
+	// getScheduler() to access it.
+	scheduler atomic.Pointer[unit.Scheduler]
 
 	debugUnitScheduling bool
 )
@@ -46,14 +53,15 @@ func init() {
 }
 
 func start() error {
-	rngFeeder = rng.NewFeeder()
+	rngFeeder.Store(rng.NewFeeder())
 
-	scheduler = unit.NewScheduler(getSchedulerConfig())
+	newScheduler := unit.NewScheduler(getSchedulerConfig())
 	if debugUnitScheduling {
 		// Debug unit leaks.
-		scheduler.StartDebugLog()
+		newScheduler.StartDebugLog()
 	}
-	module.mgr.Go("msg unit scheduler", scheduler.SlotScheduler)
+	scheduler.Store(newScheduler)
+	module.mgr.Go("msg unit scheduler", newScheduler.SlotScheduler)
 
 	lockOpRegistry()
 
@@ -70,11 +78,46 @@ func TimedOut(timeout time.Duration) <-chan time.Time {
 	return time.After(timeout)
 }
 
+// timerPool holds stopped timers for reuse.
+var timerPool = sync.Pool{
+	New: func() any {
+		timer := time.NewTimer(time.Hour)
+		timer.Stop()
+		return timer
+	},
+}
+
+// getPooledTimer returns a running timer with the given duration from the pool.
+// It must be returned with putPooledTimer when it is not used anymore.
+func getPooledTimer(d time.Duration) *time.Timer {
+	timer := timerPool.Get().(*time.Timer) //nolint:forcetypeassert // Pool only holds timers.
+	timer.Reset(d)
+	return timer
+}
+
+// putPooledTimer stops the given timer and returns it to the pool.
+// Since Go 1.23, a stopped timer never delivers a stale value on its channel,
+// so it can be safely reused.
+func putPooledTimer(timer *time.Timer) {
+	timer.Stop()
+	timerPool.Put(timer)
+}
+
 // StopScheduler stops the unit scheduler.
 func StopScheduler() {
-	if scheduler != nil {
-		scheduler.Stop()
+	if s := getScheduler(); s != nil {
+		s.Stop()
 	}
+}
+
+// getRngFeeder returns the current entropy feeder.
+func getRngFeeder() *rng.Feeder {
+	return rngFeeder.Load()
+}
+
+// getScheduler returns the current unit scheduler.
+func getScheduler() *unit.Scheduler {
+	return scheduler.Load()
 }
 
 func getSchedulerConfig() *unit.SchedulerConfig {

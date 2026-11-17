@@ -14,10 +14,18 @@ import (
 	"github.com/safing/portmaster/base/database/iterator"
 	"github.com/safing/portmaster/base/database/query"
 	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/base/database/storage"
 )
 
 const (
 	getDBFromKey = ""
+)
+
+// PutMany batch errors.
+var (
+	errPutManyTimeout        = errors.New("timeout: putmany unused for too long")
+	errBatchClosed           = errors.New("batch is closed")
+	errBatchStoppedByStorage = errors.New("storage stopped processing the batch")
 )
 
 // Interface provides a method to access the database with attached options.
@@ -351,6 +359,18 @@ func (i *Interface) PutNew(r record.Record) (err error) {
 // - Subscriptions
 // - Caching
 // Use with care.
+//
+// Calling put with nil finishes the batch and returns its result. If put is
+// not called for one second, the batch is aborted and fails with an error
+// that says whether the records submitted before (put returned nil) were
+// stored:
+//   - Storages that implement storage.AbortableBatcher (sqlite, bbolt) discard
+//     the batch: none of its records are stored. With these storages a batch
+//     is thus stored completely if put(nil) returns nil, and not at all
+//     otherwise.
+//   - Other storages cannot abort a batch: the records submitted before are
+//     still handed to the storage, which stores them. A timed out batch is
+//     then not rolled back.
 func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 	interfaceBatch := make(chan record.Record, 100)
 
@@ -377,55 +397,149 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 	}
 
 	// start database access
-	dbBatch, errs := db.PutMany()
+	// Cancelling abortBatch before closing dbBatch aborts the batch, if the
+	// storage supports it (abortable).
+	abortBatch, cancelBatch := context.WithCancelCause(context.Background())
+	dbBatch, errs, abortable := db.putMany(abortBatch)
 	finished := abool.New()
-	var internalErr error
+	// The proxy is the only reader of errs. It sets result to the final error
+	// of the batch and then closes done when it exits.
+	done := make(chan struct{})
+	var result error
+	// On the idle timeout, the proxy closes stopping and then sets stopped,
+	// after which no more records are accepted. All records accepted before
+	// are still passed on to the storage.
+	stopping := make(chan struct{})
+	var (
+		acceptLock sync.Mutex
+		stopped    bool
+	)
 
 	// interface options proxy
 	go func() {
-		defer close(dbBatch) // signify that we are finished
+		defer close(done)
+		// Release the abort context. All paths have closed dbBatch and
+		// received the result of the storage by now, so this aborts nothing.
+		defer cancelBatch(nil)
+		var forwarded int
+		// forward passes r on to the storage. If the storage stopped processing
+		// the batch, it sets result and returns false.
+		forward := func(r record.Record) bool {
+			// apply options
+			i.options.Apply(r)
+			// pass along, unless the storage stopped processing the batch
+			select {
+			case dbBatch <- r:
+				forwarded++
+				return true
+			case err := <-errs:
+				close(dbBatch)
+				result = storageStoppedError(err)
+				return false
+			}
+		}
+
 		for {
 			select {
 			case r := <-interfaceBatch:
 				// finished?
 				if r == nil {
+					close(dbBatch) // signify that we are finished
+					result = <-errs
 					return
 				}
-				// apply options
-				i.options.Apply(r)
-				// pass along
-				dbBatch <- r
+				if !forward(r) {
+					return
+				}
+			case err := <-errs:
+				// The storage stopped processing the batch.
+				close(dbBatch)
+				result = storageStoppedError(err)
+				return
 			case <-time.After(1 * time.Second):
-				// bail out
-				internalErr = errors.New("timeout: putmany unused for too long")
-				finished.Set()
+				// Bail out. Stop accepting records, then pass on the ones that
+				// were already accepted, as the caller was told so.
+				close(stopping)
+				acceptLock.Lock()
+				stopped = true
+				acceptLock.Unlock()
+				finishing := false
+			drain:
+				for {
+					select {
+					case r := <-interfaceBatch:
+						if r == nil {
+							finishing = true
+						} else if !forward(r) {
+							return
+						}
+					default:
+						break drain
+					}
+				}
+
+				// The batch is incomplete, unless the caller finished it just
+				// now. Abort it before closing the batch channel, so that the
+				// storage discards it. A storage that cannot abort a batch
+				// commits the records passed on so far when the batch channel
+				// is closed. Wait for the outcome in both cases, so that the
+				// caller learns whether they were stored.
+				if abortable && !finishing {
+					cancelBatch(errPutManyTimeout)
+				}
+				close(dbBatch)
+				result = putManyTimeoutError(<-errs, forwarded, finishing)
 				return
 			}
 		}
 	}()
 
-	return func(r record.Record) error {
-		// finished?
-		if finished.IsSet() {
-			// check for internal error
-			if internalErr != nil {
-				return internalErr
-			}
-			// check for previous error
-			select {
-			case err := <-errs:
-				return err
-			default:
-				return errors.New("batch is closed")
-			}
+	// submit passes r (nil finishes the batch) to the proxy and reports
+	// whether it was accepted. Accepted records are passed on to the storage
+	// unless the storage stops processing the batch.
+	submit := func(r record.Record) bool {
+		acceptLock.Lock()
+		defer acceptLock.Unlock()
+		if stopped {
+			return false
 		}
+		select {
+		case interfaceBatch <- r:
+			return true
+		case <-stopping:
+			return false
+		case <-done:
+			return false
+		}
+	}
 
+	// batchClosedErr may only be called after done was closed.
+	batchClosedErr := func() error {
+		if result != nil {
+			return result
+		}
+		return errBatchClosed
+	}
+
+	return func(r record.Record) error {
 		// finish?
 		if r == nil {
-			finished.Set()
-			interfaceBatch <- nil // signify that we are finished
+			if finished.SetToIf(false, true) {
+				submit(nil) // signify that we are finished
+			}
 			// do not close, as this fn could be called again with nil.
-			return <-errs
+			<-done
+			return result
+		}
+
+		// finished?
+		select {
+		case <-done:
+			return batchClosedErr()
+		default:
+		}
+		if finished.IsSet() {
+			return errBatchClosed
 		}
 
 		// check record scope
@@ -434,13 +548,45 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 		}
 
 		// submit
-		select {
-		case interfaceBatch <- r:
+		if submit(r) {
 			return nil
-		case err := <-errs:
-			return err
 		}
+		<-done
+		return batchClosedErr()
 	}
+}
+
+// putManyTimeoutError returns the result of a batch that was closed because of
+// the idle timeout. storageErr is the result of the storage for the forwarded
+// records passed on before, which is storage.ErrBatchAborted if the storage
+// discarded them. If the caller had finished the batch already
+// (finishing), the storage result is returned as is.
+func putManyTimeoutError(storageErr error, forwarded int, finishing bool) error {
+	switch {
+	case finishing:
+		return storageErr
+	case errors.Is(storageErr, storage.ErrBatchAborted):
+		// The storage discarded the batch.
+		if forwarded == 0 {
+			return errPutManyTimeout
+		}
+		return fmt.Errorf("%w; the %d records submitted before were not stored: %w", errPutManyTimeout, forwarded, storage.ErrBatchAborted)
+	case storageErr != nil:
+		return fmt.Errorf("%w; storing the %d records submitted before failed: %w", errPutManyTimeout, forwarded, storageErr)
+	case forwarded == 0:
+		return errPutManyTimeout
+	default:
+		return fmt.Errorf("%w; the %d records submitted before were stored", errPutManyTimeout, forwarded)
+	}
+}
+
+// storageStoppedError returns the error for a storage that stopped processing
+// a batch before it was finished.
+func storageStoppedError(err error) error {
+	if err != nil {
+		return err
+	}
+	return errBatchStoppedByStorage
 }
 
 // SetAbsoluteExpiry sets an absolute record expiry.
@@ -515,8 +661,18 @@ func (i *Interface) Delete(key string) error {
 		return ErrReadOnly
 	}
 
+	r.Lock()
 	i.options.Apply(r)
 	r.Meta().Delete()
+	r.Unlock()
+
+	// Remove the record from the read cache and drop any pending delayed write
+	// of it, so that neither serves nor writes back the deleted record.
+	// The record may not be locked when updating the cache.
+	i.updateCache(r, true, true, 0)
+
+	r.Lock()
+	defer r.Unlock()
 	return db.Put(r)
 }
 

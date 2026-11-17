@@ -30,6 +30,9 @@ const currentPlatform = runtime.GOOS + "_" + runtime.GOARCH
 
 var zeroVersion = semver.Must(semver.NewVersion("0.0.0"))
 
+// errReservedArtifactFilename is returned for an artifact filename that the updater uses itself.
+var errReservedArtifactFilename = errors.New("reserved name")
+
 // Artifact represents a single file with metadata.
 type Artifact struct {
 	Filename string   `json:"Filename"`
@@ -205,6 +208,11 @@ func validateArtifactFilename(name string) error {
 	// Reject Windows drive-relative paths (C:file) and NTFS alternate data streams (file:stream).
 	if strings.ContainsRune(n, ':') {
 		return fmt.Errorf("invalid artifact filename %q: contains ':'", name)
+	}
+
+	// Reject the name of the upgrade marker, which is not an artifact.
+	if isUpgradeMarker(n) {
+		return fmt.Errorf("invalid artifact filename %q: %w", name, errReservedArtifactFilename)
 	}
 
 	return nil
@@ -446,12 +454,14 @@ func copyAndCheckSHA256Sum(src, dst, sha256sum string, filePermission utils.FSPe
 	tmpDst := dst + ".copy"
 	err = os.WriteFile(tmpDst, fileData, filePermission.AsUnixPermission())
 	if err != nil {
+		_ = os.Remove(tmpDst)
 		return fmt.Errorf("write temp dst file: %w", err)
 	}
 
 	// Rename/Move to actual location.
 	err = os.Rename(tmpDst, dst)
 	if err != nil {
+		_ = os.Remove(tmpDst)
 		return fmt.Errorf("rename dst file after write: %w", err)
 	}
 	utils.SetFilePermission(dst, filePermission)

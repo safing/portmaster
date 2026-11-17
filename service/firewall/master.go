@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/agext/levenshtein"
-	"golang.org/x/net/publicsuffix"
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/detection/dga"
@@ -483,8 +482,8 @@ func checkDomainHeuristics(ctx context.Context, conn *network.Connection, p *pro
 	}
 
 	trimmedDomain := strings.TrimRight(conn.Entity.Domain, ".")
-	etld1, err := publicsuffix.EffectiveTLDPlusOne(trimmedDomain)
-	if err != nil {
+	etld1, ok := conn.Entity.EffectiveTLDPlusOne()
+	if !ok {
 		// Don't run the check if the domain is a TLD.
 		return false
 	}

@@ -146,7 +146,7 @@ func RemoveHubAndMsgs(mapName string, hubID string) (err error) {
 }
 
 // HubMsg stores raw Hub messages.
-type HubMsg struct { //nolint:golint
+type HubMsg struct {
 	record.Base
 	sync.Mutex
 

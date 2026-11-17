@@ -58,7 +58,7 @@ func GetProcessesWithProfile(ctx context.Context, profileSource profile.ProfileS
 	// Get all processes that match the given profile.
 	procs := make([]*Process, 0, 8)
 	for _, p := range All() {
-		lp := p.profile.LocalProfile()
+		lp := p.Profile().LocalProfile()
 		if lp != nil && lp.Source == profileSource && lp.ID == profileID {
 			if preferProcessGroupLeader && p.Leader() != nil {
 				procs = append(procs, p.Leader())
@@ -147,14 +147,14 @@ func CleanProcessStorage(activePIDs map[int]struct{}) {
 		// Check if this is a special process.
 		switch p.Pid {
 		case UnidentifiedProcessID, UnsolicitedProcessID, SystemProcessID:
-			p.profile.MarkStillActive()
+			p.Profile().MarkStillActive()
 			continue
 		}
 
 		// Check if process is active.
 		_, active := activePIDs[p.Pid]
 		if active {
-			p.profile.MarkStillActive()
+			p.Profile().MarkStillActive()
 			continue
 		}
 

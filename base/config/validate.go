@@ -81,6 +81,12 @@ func migrateValue(option *Option, value any) any {
 // validateValue ensures that value matches the expected type of option.
 // It does not create a copy of the value!
 func validateValue(option *Option, value interface{}) (*valueCache, *ValidationError) { //nolint:gocyclo
+	// Reject nil (e.g. JSON null) before isAllowedPossibleValue, which cannot
+	// handle it via reflection.
+	if value == nil {
+		return nil, invalid(option, "invalid option value type: %T", value)
+	}
+
 	if option.OptType != OptTypeStringArray {
 		if err := isAllowedPossibleValue(option, value); err != nil {
 			return nil, &ValidationError{
@@ -156,6 +162,9 @@ func validateValue(option *Option, value interface{}) (*valueCache, *ValidationE
 		case int64:
 			validated = &valueCache{intVal: v}
 		case uint:
+			if uint64(v) > math.MaxInt64 {
+				return nil, invalid(option, "value out of int64 range")
+			}
 			validated = &valueCache{intVal: int64(v)}
 		case uint8:
 			validated = &valueCache{intVal: int64(v)}
@@ -164,15 +173,15 @@ func validateValue(option *Option, value interface{}) (*valueCache, *ValidationE
 		case uint32:
 			validated = &valueCache{intVal: int64(v)}
 		case float32:
-			// convert if float has no decimals
-			if math.Remainder(float64(v), 1) == 0 {
+			// convert if float has no decimals and fits into an int64
+			if floatFitsInt64(float64(v)) {
 				validated = &valueCache{intVal: int64(v)}
 			} else {
 				return nil, invalid(option, "failed to convert float32 to int64")
 			}
 		case float64:
-			// convert if float has no decimals
-			if math.Remainder(v, 1) == 0 {
+			// convert if float has no decimals and fits into an int64
+			if floatFitsInt64(v) {
 				validated = &valueCache{intVal: int64(v)}
 			} else {
 				return nil, invalid(option, "failed to convert float64 to int64")
@@ -213,6 +222,14 @@ func validateValue(option *Option, value interface{}) (*valueCache, *ValidationE
 	}
 
 	return validated, nil
+}
+
+// floatFitsInt64 returns whether f has no decimals and is within the int64
+// range, so that converting it to int64 is exact. Converting an out of range
+// float to int64 is implementation-defined in Go (MinInt64 on amd64).
+func floatFitsInt64(f float64) bool {
+	// -2^63 and 2^63 are exactly representable as float64.
+	return f >= -(1<<63) && f < (1<<63) && math.Remainder(f, 1) == 0
 }
 
 // ValidationError error holds details about a config option value validation error.

@@ -25,7 +25,7 @@ const (
 )
 
 // Terminal represents a terminal.
-type Terminal interface { //nolint:golint // Being explicit is helpful here.
+type Terminal interface {
 	// ID returns the terminal ID.
 	ID() uint32
 	// Ctx returns the terminal context.
@@ -69,7 +69,7 @@ type Terminal interface { //nolint:golint // Being explicit is helpful here.
 }
 
 // TerminalBase contains the basic functions of a terminal.
-type TerminalBase struct { //nolint:golint,maligned // Being explicit is helpful here.
+type TerminalBase struct {
 	// TODO: Fix maligned.
 	Terminal // Interface check.
 
@@ -254,7 +254,7 @@ func (t *TerminalBase) Handler(_ *mgr.WorkerCtx) error {
 	defer t.Abandon(ErrInternalError.With("handler died"))
 
 	var msg *Msg
-	defer msg.Finish()
+	defer func() { msg.Finish() }()
 
 	for {
 		select {
@@ -348,7 +348,7 @@ func (t *TerminalBase) Sender(_ *mgr.WorkerCtx) error {
 	var flushFinished func()
 
 	// Finish any current unit when returning.
-	defer msgBufferMsg.Finish()
+	defer func() { msgBufferMsg.Finish() }()
 
 	// Only receive message when not sending the current msg buffer.
 	sendQueueOpMsgs := func() <-chan *Msg {
@@ -574,7 +574,7 @@ func (t *TerminalBase) decrypt(c *container.Container) (*container.Container, *E
 	t.jessionLock.Lock()
 	defer t.jessionLock.Unlock()
 
-	letter, err := jess.LetterFromWire(c)
+	letter, err := LetterFromWire(c)
 	if err != nil {
 		return nil, ErrMalformedData.With("failed to parse letter: %w", err)
 	}
@@ -739,7 +739,7 @@ func (t *TerminalBase) handleOpMsg(data *container.Container) *Error {
 func (t *TerminalBase) handlePaddingMsg(c *container.Container) {
 	padding := c.GetAll()
 	if len(padding) > 0 {
-		rngFeeder.SupplyEntropyIfNeeded(padding, len(padding))
+		getRngFeeder().SupplyEntropyIfNeeded(padding, len(padding))
 	}
 }
 

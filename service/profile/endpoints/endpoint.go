@@ -17,7 +17,7 @@ type Endpoint interface {
 }
 
 // EndpointBase provides general functions for implementing an Endpoint to reduce boilerplate.
-type EndpointBase struct { //nolint:maligned // TODO
+type EndpointBase struct {
 	Protocol  uint8
 	StartPort uint16
 	EndPort   uint16
@@ -64,7 +64,7 @@ func (ep *EndpointBase) makeReason(s fmt.Stringer, value, desc string, keyval ..
 
 	r.Extra = make(map[string]interface{})
 
-	for idx := 0; idx < len(keyval)/2; idx += 2 {
+	for idx := 0; idx+1 < len(keyval); idx += 2 {
 		key := keyval[idx]
 		val := keyval[idx+1]
 
@@ -162,7 +162,12 @@ func (ep *EndpointBase) parsePPP(typedEp Endpoint, fields []string) (Endpoint, e
 			case "", "*":
 				return nil, invalidDefinitionError(fields, "omit port if should match any")
 			default:
-				portSplitted := strings.Split(splitted[1], "-")
+				// Some port names contain a hyphen (eg. "FTP-DATA"), check
+				// for a full name match before splitting a port range.
+				portSplitted := []string{splitted[1]}
+				if _, isName := reference.GetPortNumber(splitted[1]); !isName {
+					portSplitted = strings.Split(splitted[1], "-")
+				}
 				if len(portSplitted) > 2 {
 					return nil, invalidDefinitionError(fields, "ports must be in format from-to")
 				}
@@ -235,6 +240,10 @@ func parseEndpoint(value string) (endpoint Endpoint, err error) {
 			fields = fields[:i]
 			break
 		}
+	}
+	// All parsers access the first two fields.
+	if len(fields) < 2 {
+		return nil, invalidDefinitionError(fields, "missing permission prefix or entity")
 	}
 
 	// any

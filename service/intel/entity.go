@@ -3,7 +3,7 @@ package intel
 import (
 	"context"
 	"net"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,7 +21,7 @@ import (
 // functions performs locking. The caller MUST ENSURE
 // proper locking and synchronization when accessing
 // any properties of Entity.
-type Entity struct { //nolint:maligned
+type Entity struct {
 	sync.Mutex
 
 	// lists exist for most entity information and
@@ -33,6 +33,7 @@ type Entity struct { //nolint:maligned
 	reverseResolveEnabled bool
 	resolveSubDomainLists bool
 	checkCNAMEs           bool
+	publicSuffixICANN     bool // See publicSuffix.
 
 	// IP is the IP address of the connection. If domain is
 	// set, IP has been resolved by following all CNAMEs.
@@ -95,6 +96,13 @@ type Entity struct { //nolint:maligned
 
 	// ListsError holds an error message if fetching the lists failed.
 	ListsError string
+
+	// publicSuffix and publicSuffixICANN hold the result of
+	// publicsuffix.PublicSuffix(publicSuffixOf), if publicSuffix is set. The
+	// public suffix of the domain is needed for the lists and the domain
+	// heuristics. The domain may change, see getPublicSuffix.
+	publicSuffixOf string
+	publicSuffix   string
 
 	// we only load each data above at most once
 	fetchLocationOnce   sync.Once
@@ -236,6 +244,28 @@ func (e *Entity) GetDomain(ctx context.Context, mayUseReverseDomain bool) (strin
 	return e.Domain, true
 }
 
+// EffectiveTLDPlusOne returns publicsuffix.EffectiveTLDPlusOne of the domain
+// of the entity without the trailing dots, and whether it is valid. The public
+// suffix of the domain is looked up only once for the lists and this.
+func (e *Entity) EffectiveTLDPlusOne() (string, bool) {
+	// Same as publicsuffix.EffectiveTLDPlusOne, which returns an error instead
+	// of false.
+	domain := strings.TrimRight(e.Domain, ".")
+	if strings.HasPrefix(domain, ".") || strings.HasSuffix(domain, ".") || strings.Contains(domain, "..") {
+		return "", false
+	}
+
+	suffix, _ := e.getPublicSuffix(domain)
+	if len(domain) <= len(suffix) {
+		return "", false
+	}
+	i := len(domain) - len(suffix) - 1
+	if domain[i] != '.' {
+		return "", false
+	}
+	return domain[1+strings.LastIndexByte(domain[:i], '.'):], true
+}
+
 // GetIP returns the IP and whether it is set.
 func (e *Entity) GetIP() (net.IP, bool) {
 	if e.IP == nil {
@@ -314,11 +344,14 @@ func (e *Entity) GetCountry(ctx context.Context) (string, bool) {
 	return e.Country, true
 }
 
-// GetCountryInfo returns the two letter ISO country code and whether it is set.
+// GetCountryInfo returns the country information of the entity's location.
+// It returns nil if the location could not be determined, ie. if there was a
+// location lookup error or if no location is available, eg. for non-global IPs.
 func (e *Entity) GetCountryInfo(ctx context.Context) *geoip.CountryInfo {
 	e.getLocation(ctx)
 
-	if e.LocationError != "" {
+	// The location is also unset without an error, eg. for non-global IPs.
+	if e.LocationError != "" || e.location == nil {
 		return nil
 	}
 	return &e.location.Country
@@ -366,24 +399,14 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 	}
 
 	e.loadDomainListOnce.Do(func() {
-		domainsToInspect := []string{domain}
-
 		if e.checkCNAMEs && len(e.CNAME) > 0 {
 			log.Tracer(ctx).Tracef("intel: CNAME filtering enabled, checking %v too", e.CNAME)
-			domainsToInspect = append(domainsToInspect, e.CNAME...)
 		}
 
-		var domains []string
-		if e.resolveSubDomainLists {
-			for _, domain := range domainsToInspect {
-				subdomains := splitDomain(domain)
-				domains = append(domains, subdomains...)
-			}
-		} else {
-			domains = domainsToInspect
-		}
-
-		domains = makeDistinct(domains)
+		// Collect the domains to look up in a buffer on the stack: A domain
+		// and its CNAMEs usually have only a few parent domains.
+		var domainsBuf [16]string
+		domains := makeDistinct(e.appendListDomains(domainsBuf[:0], domain))
 
 		for _, d := range domains {
 			list, err := filterlists.LookupDomain(d)
@@ -402,14 +425,75 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 	})
 }
 
+// splitDomain returns the domain and all its parent domains up to, but
+// excluding, the public suffix. A public suffix that is not an ICANN TLD is
+// included.
 func splitDomain(domain string) []string {
+	return appendSplitDomain(nil, domain)
+}
+
+// appendSplitDomain appends the result of splitDomain to dst.
+func appendSplitDomain(dst []string, domain string) []string {
 	// Get suffix.
 	d := strings.TrimSuffix(domain, ".")
 	suffix, icann := publicsuffix.PublicSuffix(d)
+	return appendSplitDomainWithSuffix(dst, domain, d, suffix, icann)
+}
+
+// splitDomainWithSuffix is splitDomain with the domain without the trailing
+// dot d and the result of publicsuffix.PublicSuffix(d).
+func splitDomainWithSuffix(domain, d, suffix string, icann bool) []string {
+	return appendSplitDomainWithSuffix(nil, domain, d, suffix, icann)
+}
+
+// appendSplitDomainWithSuffix appends the result of splitDomainWithSuffix to
+// dst.
+func appendSplitDomainWithSuffix(dst []string, domain, d, suffix string, icann bool) []string {
 	if suffix == d {
-		return []string{domain}
+		return append(dst, domain)
 	}
 
+	// All domains to return are a suffix of the fully qualified domain, if
+	// the labels before the public suffix are well-formed: Slice them from
+	// the domain instead of joining the labels again.
+	// This is called for every domain and CNAME of every new connection.
+	subdomains := d[:len(d)-len(suffix)]
+	if !strings.HasSuffix(d, suffix) ||
+		!strings.HasSuffix(subdomains, ".") ||
+		strings.HasPrefix(subdomains, ".") ||
+		strings.Contains(subdomains, "..") {
+		irregular := splitIrregularDomain(d, suffix, icann)
+		if dst == nil {
+			return irregular
+		}
+		return append(dst, irregular...)
+	}
+	fqdn := domain
+	if len(fqdn) == len(d) {
+		fqdn += "."
+	}
+
+	dst = slices.Grow(dst, strings.Count(subdomains, ".")+1)
+	start := 0
+	for i := range len(subdomains) {
+		if subdomains[i] == '.' {
+			dst = append(dst, fqdn[start:])
+			start = i + 1
+		}
+	}
+
+	// If the suffix is not a real TLD, but a public suffix, add it to the list.
+	if !icann {
+		dst = append(dst, fqdn[len(subdomains):])
+	}
+
+	return dst
+}
+
+// splitIrregularDomain is the general implementation of splitDomain, which
+// also handles domains with empty labels. d is the domain without the
+// trailing dot.
+func splitIrregularDomain(d, suffix string, icann bool) []string {
 	// Split all subdomain into labels.
 	labels := strings.FieldsFunc(d[:len(d)-len(suffix)], func(r rune) bool {
 		return r == '.'
@@ -536,10 +620,10 @@ func (e *Entity) MatchLists(lists []string) bool {
 	e.BlockedByLists = nil
 	e.BlockedEntities = nil
 
-	lm := makeMap(lists)
+	// There are only a few filter lists: Scan them instead of building a map.
 	for key, keyLists := range e.ListOccurences {
 		for _, keyListID := range keyLists {
-			if _, ok := lm[keyListID]; ok {
+			if slices.Contains(lists, keyListID) {
 				e.BlockedByLists = append(e.BlockedByLists, keyListID)
 				e.BlockedEntities = append(e.BlockedEntities, key)
 			}
@@ -556,15 +640,13 @@ func (e *Entity) MatchLists(lists []string) bool {
 func (e *Entity) ListBlockReason() ListBlockReason {
 	blockedBy := make([]ListMatch, len(e.BlockedEntities))
 
-	lm := makeMap(e.BlockedByLists)
-
 	for idx, blockedEntity := range e.BlockedEntities {
 		if entityLists, ok := e.ListOccurences[blockedEntity]; ok {
 			var activeLists []string
 			var inactiveLists []string
 
 			for _, l := range entityLists {
-				if _, ok := lm[l]; ok {
+				if slices.Contains(e.BlockedByLists, l) {
 					activeLists = append(activeLists, l)
 				} else {
 					inactiveLists = append(inactiveLists, l)
@@ -582,24 +664,78 @@ func (e *Entity) ListBlockReason() ListBlockReason {
 	return blockedBy
 }
 
-func mergeStringList(a, b []string) []string {
-	listMap := make(map[string]struct{})
-	for _, s := range a {
-		listMap[s] = struct{}{}
-	}
-	for _, s := range b {
-		listMap[s] = struct{}{}
+// appendListDomains appends the domains to look up in the filter lists for
+// the given domain of the entity to dst: the domain and its CNAMEs, if
+// enabled, and their parent domains, if enabled. The result may contain
+// duplicates.
+func (e *Entity) appendListDomains(dst []string, domain string) []string {
+	checkCNAMEs := e.checkCNAMEs && len(e.CNAME) > 0
+
+	if !e.resolveSubDomainLists {
+		dst = append(dst, domain)
+		if checkCNAMEs {
+			dst = append(dst, e.CNAME...)
+		}
+		return dst
 	}
 
-	res := make([]string, 0, len(listMap))
-	for s := range listMap {
-		res = append(res, s)
+	// Use the public suffix of the domain from the entity.
+	d := strings.TrimSuffix(domain, ".")
+	suffix, icann := e.getPublicSuffix(d)
+	dst = appendSplitDomainWithSuffix(dst, domain, d, suffix, icann)
+	if checkCNAMEs {
+		for _, cname := range e.CNAME {
+			dst = appendSplitDomain(dst, cname)
+		}
 	}
-	sort.Strings(res)
-	return res
+	return dst
 }
 
+// getPublicSuffix returns publicsuffix.PublicSuffix(d). The result is kept
+// for the last d, which is the domain of the entity.
+func (e *Entity) getPublicSuffix(d string) (suffix string, icann bool) {
+	if e.publicSuffixOf != d || e.publicSuffix == "" {
+		e.publicSuffix, e.publicSuffixICANN = publicsuffix.PublicSuffix(d)
+		e.publicSuffixOf = d
+	}
+	return e.publicSuffix, e.publicSuffixICANN
+}
+
+// mergeStringList returns the sorted, distinct values of a and b in a new
+// slice. The result is not nil.
+func mergeStringList(a, b []string) []string {
+	res := make([]string, 0, len(a)+len(b))
+	res = append(res, a...)
+	res = append(res, b...)
+	slices.Sort(res)
+	return slices.Compact(res)
+}
+
+// makeDistinctMaxScan is the length up to which makeDistinct scans the
+// distinct values instead of using a map. The values are the domains of an
+// entity, or its list matches, which are usually only a few.
+const makeDistinctMaxScan = 64
+
+// makeDistinct returns the distinct values of slice in the order of their first
+// occurrence. The result is not nil. It may use the array of slice.
 func makeDistinct(slice []string) []string {
+	switch {
+	case slice == nil:
+		return []string{}
+	case len(slice) > makeDistinctMaxScan:
+		return makeDistinctWithMap(slice)
+	}
+
+	result := slice[:0]
+	for _, v := range slice {
+		if !slices.Contains(result, v) {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+func makeDistinctWithMap(slice []string) []string {
 	m := make(map[string]struct{}, len(slice))
 	result := make([]string, 0, len(slice))
 
@@ -613,12 +749,4 @@ func makeDistinct(slice []string) []string {
 	}
 
 	return result
-}
-
-func makeMap(slice []string) map[string]struct{} {
-	lm := make(map[string]struct{})
-	for _, v := range slice {
-		lm[v] = struct{}{}
-	}
-	return lm
 }

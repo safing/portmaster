@@ -135,7 +135,7 @@ func (m *Map) RemoveHub(id string) {
 	}
 
 	// Push update to subscriptions.
-	export := pin.Export()
+	export := pin.exportLocked()
 	export.Meta().Delete()
 	mapDBController.PushUpdate(export)
 	// Push lane changes.
@@ -172,6 +172,7 @@ func (m *Map) updateHub(h *hub.Hub, lockMap, lockHub bool) {
 			ConnectedTo:       make(map[string]*Lane),
 			stateIntelApplied: abool.New(),
 			pushChanges:       abool.New(),
+			owner:             m,
 		}
 		m.all[h.ID] = pin
 	}
@@ -415,7 +416,7 @@ func (m *Map) ResetFailingStates() {
 	defer m.Unlock()
 
 	for _, pin := range m.all {
-		pin.ResetFailingState()
+		pin.resetFailingState()
 	}
 
 	m.PushPinChanges()
@@ -426,7 +427,7 @@ func (m *Map) updateFailingStates(ctx *mgr.WorkerCtx) error {
 	defer m.Unlock()
 
 	for _, pin := range m.all {
-		if pin.State.Has(StateFailing) && !pin.IsFailing() {
+		if pin.State.Has(StateFailing) && !pin.isFailing() {
 			pin.removeStates(StateFailing)
 		}
 	}

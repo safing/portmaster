@@ -37,7 +37,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build tauri project
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +tauri-ci
+      run: earthly --ci ${{ github.repository_owner == 'safing' && '--remote-cache=ghcr.io/safing/build-cache --push' || '' }} +tauri-ci
 
   lint:
     name: Linter
@@ -56,4 +56,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build tauri project
-      run: earthly --ci --remote-cache=ghcr.io/safing/build-cache --push +tauri-lint
+      run: earthly --ci ${{ github.repository_owner == 'safing' && '--remote-cache=ghcr.io/safing/build-cache --push' || '' }} +tauri-lint

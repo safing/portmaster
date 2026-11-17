@@ -50,7 +50,7 @@ func init() {
 }
 
 // Info holds the programs meta information.
-type Info struct { //nolint:maligned
+type Info struct {
 	Name          string
 	Version       string
 	VersionNumber string

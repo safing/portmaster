@@ -164,6 +164,11 @@ func ServerFailure(msgs ...string) ResponderFunc {
 // MakeMessageRecord creates an informational resource record that can be added
 // to the extra section of a reply.
 func MakeMessageRecord(level log.Severity, msg string) (dns.RR, error) { //nolint:interfacer
+	// Build the record directly if parsing it would not change the message.
+	if rr := makePlainMessageRecord(level, msg); rr != nil {
+		return rr, nil
+	}
+
 	rr, err := dns.NewRR(fmt.Sprintf(
 		`%s.portmaster. 0 IN TXT "%s"`,
 		strings.ToLower(level.String()),
@@ -176,6 +181,49 @@ func MakeMessageRecord(level log.Severity, msg string) (dns.RR, error) { //nolin
 		return nil, ErrNilRR
 	}
 	return rr, nil
+}
+
+// maxTXTStringLength is the maximum length of a single TXT character string.
+const maxTXTStringLength = 255
+
+// makePlainMessageRecord creates the same record as parsing the zone file
+// line in MakeMessageRecord would, without the cost of the zone parser. It
+// only handles messages of printable ASCII characters without quotes and
+// backslashes, which the parser takes over unchanged, and level names of
+// lower case letters only. For any other input it returns nil.
+func makePlainMessageRecord(level log.Severity, msg string) *dns.TXT {
+	levelName := strings.ToLower(level.String())
+	if levelName == "" {
+		return nil
+	}
+	for i := range len(levelName) {
+		if levelName[i] < 'a' || levelName[i] > 'z' {
+			return nil
+		}
+	}
+	for i := range len(msg) {
+		if msg[i] < ' ' || msg[i] > '~' || msg[i] == '"' || msg[i] == '\\' {
+			return nil
+		}
+	}
+
+	// Like the parser, split the message into strings of at most 255 bytes.
+	txt := make([]string, 0, len(msg)/maxTXTStringLength+1)
+	for len(msg) > maxTXTStringLength {
+		txt = append(txt, msg[:maxTXTStringLength])
+		msg = msg[maxTXTStringLength:]
+	}
+	txt = append(txt, msg)
+
+	return &dns.TXT{
+		Hdr: dns.RR_Header{
+			Name:   levelName + ".portmaster.",
+			Rrtype: dns.TypeTXT,
+			Class:  dns.ClassINET,
+			Ttl:    0,
+		},
+		Txt: txt,
+	}
 }
 
 // AddMessagesToReply creates information resource records using

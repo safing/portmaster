@@ -68,7 +68,7 @@ func (f *Firewall) Stop() error {
 }
 
 func prep() error {
-	network.SetDefaultFirewallHandler(defaultFirewallHandler)
+	network.SetDefaultFirewallHandler(defaultFirewallHandler, defaultLockFreeFirewallHandler)
 
 	// Reset connections every time configuration changes
 	// this will be triggered on spn enable/disable

@@ -64,6 +64,15 @@ func resetSingleConnectionVerdict(connID string) {
 		}
 	}
 
+	// Skip incomplete connections, as they have no process, entity and profile
+	// to re-evaluate yet. Only complete connections are re-attributed, but the
+	// ID may refer to a new connection by now. Its firewall handler decides on
+	// it with the current profile once its data is complete.
+	if !conn.DataIsComplete() {
+		tracer.Debugf("filter: skipping re-evaluation of incomplete connection %s", connID)
+		return
+	}
+
 	resetConnectionVerdict(ctx, conn)
 }
 
@@ -80,9 +89,9 @@ func resetProfileConnectionVerdict(profileSource, profileID string) {
 	var changedVerdicts int
 	for _, conn := range network.GetAllConnections() {
 		// Check if connection is complete and attributed to the deleted profile.
-		if conn.DataIsComplete() &&
-			conn.ProcessContext.Profile == profileID &&
-			conn.ProcessContext.Source == profileSource {
+		// The attribution may only be read while holding the connection lock,
+		// as connections are re-attributed concurrently.
+		if conn.IsAttributedToProfile(profileSource, profileID) {
 			if resetConnectionVerdict(ctx, conn) {
 				changedVerdicts++
 			}
@@ -159,10 +168,6 @@ func resetConnectionVerdict(ctx context.Context, conn *network.Connection) (verd
 
 	// Save if verdict changed.
 	if conn.Verdict != previousVerdict {
-		err := interception.UpdateVerdictOfConnection(conn)
-		if err != nil {
-			log.Debugf("filter: failed to update connection verdict: %s", err)
-		}
 		conn.Save()
 		tracer.Infof("filter: verdict of connection %s changed from %s to %s", conn, previousVerdict.Verb(), conn.VerdictVerb())
 
@@ -201,11 +206,27 @@ func SetExternalVerdictHandler(fn ExtVerdictHandlerFunc) error {
 }
 
 func handlePacket(pkt packet.Packet) {
+	// A packet that already received a verdict - e.g. the default-drop after
+	// the verdict timeout while it waited in the queue - cannot be influenced
+	// anymore. Do not allocate a connection and a handler worker for it, so
+	// that a backlog drains instead of growing.
+	if pkt.VerdictSet() {
+		return
+	}
+
 	// First, check for an existing connection.
 	conn, ok := network.GetConnection(pkt.GetConnectionID())
 	if ok {
 		// Add packet to connection handler queue or apply verdict directly.
 		conn.HandlePacket(pkt)
+		return
+	}
+
+	// Info-only packets do not represent an actual packet and can never complete
+	// a connection. Only keep the reported process attribution, so that the first
+	// real packet - if there ever is one - can skip the state table lookup.
+	if pkt.InfoOnly() {
+		network.SavePIDHint(pkt)
 		return
 	}
 
@@ -368,7 +389,11 @@ func fastTrackedPermit(conn *network.Connection, pkt packet.Packet) (verdict net
 			// Add to DNS request connections to attribute DNS request if outgoing.
 			if pkt.IsOutbound() {
 				// Assign PID from packet directly, as processing stops after fast-track.
-				conn.PID = pkt.Info().PID
+				// Keep a PID that is already known (e.g. adopted from a PID hint) if
+				// the packet does not carry one, as nfqueue packets never do.
+				if pkt.Info().PID != process.UndefinedProcessID {
+					conn.PID = pkt.Info().PID
+				}
 				network.SaveDNSRequestConnection(conn, pkt)
 			}
 
@@ -613,7 +638,9 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 	}
 }
 
-// defaultFirewallHandler is used when no other firewall handler is set on a connection.
+// defaultFirewallHandler is used when no other firewall handler is set on a
+// connection. Like all firewall handlers, it is called with the connection
+// locked.
 func defaultFirewallHandler(conn *network.Connection, pkt packet.Packet) {
 	switch conn.IPProtocol { //nolint:exhaustive
 	case packet.ICMP, packet.ICMPv6:
@@ -622,6 +649,27 @@ func defaultFirewallHandler(conn *network.Connection, pkt packet.Packet) {
 
 	default:
 		verdictHandler(conn, pkt)
+	}
+}
+
+// defaultLockFreeFirewallHandler is used when no other firewall handler is
+// set on a connection and the packet is handled directly on the packet
+// dispatching goroutine. The connection is not locked and the handler must
+// never wait for the connection lock. It may only access the immutable
+// attributes of the connection and its lock-free verdict state.
+func defaultLockFreeFirewallHandler(conn *network.Connection, pkt packet.Packet) {
+	switch conn.IPProtocol { //nolint:exhaustive
+	case packet.ICMP, packet.ICMPv6:
+		// Always use the ICMP handler for ICMP connections.
+		icmpLockFreeHandler(conn, pkt)
+
+	default:
+		// Ignore info-only packets in this handler.
+		if pkt.InfoOnly() {
+			return
+		}
+
+		issueVerdictLockFree(conn, pkt, 0, true)
 	}
 }
 
@@ -745,19 +793,55 @@ func inspectDNSPacket(conn *network.Connection, pkt packet.Packet) {
 }
 
 func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {
+	// Handle packets that do not need to be evaluated.
+	if verdict, handled := icmpPreFilter(pkt); handled {
+		issueVerdict(conn, pkt, verdict, false)
+		return
+	}
+
+	icmpEvaluate(conn, pkt)
+
+	issueVerdict(conn, pkt, 0, false)
+}
+
+// icmpLockFreeHandler handles ICMP packets like icmpFilterHandler, but is
+// called without the connection being locked and never waits for the lock.
+func icmpLockFreeHandler(conn *network.Connection, pkt packet.Packet) {
+	// Handle packets that do not need to be evaluated.
+	if verdict, handled := icmpPreFilter(pkt); handled {
+		issueVerdictLockFree(conn, pkt, verdict, false)
+		return
+	}
+
+	// Evaluating the connection changes it and requires the lock. If the
+	// connection is locked right now, apply the current verdict instead and
+	// leave the evaluation to a later packet.
+	state := conn.VerdictState()
+	needsEvaluation := state.Verdict == network.VerdictUndecided ||
+		state.Verdict == network.VerdictUndeterminable ||
+		(state.Inbound && pkt.IsOutbound())
+	if needsEvaluation && conn.TryLock() {
+		icmpEvaluate(conn, pkt)
+		conn.Unlock()
+	}
+
+	issueVerdictLockFree(conn, pkt, 0, false)
+}
+
+// icmpPreFilter handles the ICMP packets that are not subject to the verdict
+// of their connection. It does not access the connection.
+func icmpPreFilter(pkt packet.Packet) (verdict network.Verdict, handled bool) {
 	// Load packet data.
 	err := pkt.LoadPacketData()
 	if err != nil {
 		log.Tracer(pkt.Ctx()).Debugf("filter: failed to load ICMP packet data: %s", err)
-		issueVerdict(conn, pkt, network.VerdictDrop, false)
-		return
+		return network.VerdictDrop, true
 	}
 
 	// Submit to ICMP listener.
 	submitted := netenv.SubmitPacketToICMPListener(pkt)
 	if submitted {
-		issueVerdict(conn, pkt, network.VerdictDrop, false)
-		return
+		return network.VerdictDrop, true
 	}
 
 	// Handle echo request and replies regularly.
@@ -770,8 +854,7 @@ func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {
 			layers.ICMPv4TypeEchoReply:
 			// Continue
 		default:
-			issueVerdict(conn, pkt, network.VerdictAccept, false)
-			return
+			return network.VerdictAccept, true
 		}
 
 	case *layers.ICMPv6:
@@ -781,11 +864,16 @@ func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {
 			// Continue
 
 		default:
-			issueVerdict(conn, pkt, network.VerdictAccept, false)
-			return
+			return network.VerdictAccept, true
 		}
 	}
 
+	return network.VerdictUndecided, false
+}
+
+// icmpEvaluate decides on ICMP echo connections.
+// The caller must hold the lock of the connection.
+func icmpEvaluate(conn *network.Connection, pkt packet.Packet) {
 	// Check if we already have a verdict.
 	switch conn.Verdict { //nolint:exhaustive
 	case network.VerdictUndecided, network.VerdictUndeterminable:
@@ -807,15 +895,11 @@ func icmpFilterHandler(conn *network.Connection, pkt packet.Packet) {
 		// Save and propagate changes.
 		conn.SaveWhenFinished()
 	}
-
-	issueVerdict(conn, pkt, 0, false)
 }
 
+// issueVerdict applies the verdict of the connection to the packet.
+// The caller must hold the lock of the connection.
 func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.Verdict, allowPermanent bool) {
-	type permanentAcceptFinaler interface {
-		PermanentAcceptFinal() error
-	}
-
 	// Check if packed was already fast-tracked by the OS integration.
 	if pkt.FastTrackedByIntegration() {
 		return
@@ -827,19 +911,51 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 		conn.SaveWhenFinished()
 	}
 
+	applyVerdict(pkt, verdict, network.VerdictState{
+		Verdict:          conn.Verdict,
+		VerdictPermanent: conn.VerdictPermanent,
+		Inbound:          conn.Inbound,
+		PID:              conn.PID,
+	})
+}
+
+// issueVerdictLockFree applies the verdict of the connection to the packet
+// without requiring or waiting for the lock of the connection.
+func issueVerdictLockFree(conn *network.Connection, pkt packet.Packet, verdict network.Verdict, allowPermanent bool) {
+	// Check if packed was already fast-tracked by the OS integration.
+	if pkt.FastTrackedByIntegration() {
+		return
+	}
+
+	// Enable permanent verdict.
+	state := conn.VerdictState()
+	if allowPermanent && !state.VerdictPermanent && permanentVerdicts() {
+		state = conn.MakeVerdictPermanentLockFree()
+	}
+
+	applyVerdict(pkt, verdict, state)
+}
+
+// applyVerdict applies the given verdict to the packet, but at least the
+// verdict of the given connection verdict state.
+func applyVerdict(pkt packet.Packet, verdict network.Verdict, state network.VerdictState) {
+	type permanentAcceptFinaler interface {
+		PermanentAcceptFinal() error
+	}
+
 	// do not allow to circumvent decision: e.g. to ACCEPT packets from a DROP-ed connection
-	if verdict < conn.Verdict {
-		verdict = conn.Verdict
+	if verdict < state.Verdict {
+		verdict = state.Verdict
 	}
 
 	var err error
 	switch verdict {
 	case network.VerdictAccept:
 		atomic.AddUint64(packetsAccepted, 1)
-		if conn.VerdictPermanent {
+		if state.VerdictPermanent {
 			// Portmaster-owned outbound connections should be finalized to avoid
 			// later third-party OUTPUT rules from overriding the allow decision.
-			if !conn.Inbound && conn.PID == ownPID {
+			if !state.Inbound && state.PID == ownPID {
 				if finaler, ok := pkt.(permanentAcceptFinaler); ok {
 					err = finaler.PermanentAcceptFinal()
 				} else {
@@ -853,14 +969,14 @@ func issueVerdict(conn *network.Connection, pkt packet.Packet, verdict network.V
 		}
 	case network.VerdictBlock:
 		atomic.AddUint64(packetsBlocked, 1)
-		if conn.VerdictPermanent {
+		if state.VerdictPermanent {
 			err = pkt.PermanentBlock()
 		} else {
 			err = pkt.Block()
 		}
 	case network.VerdictDrop:
 		atomic.AddUint64(packetsDropped, 1)
-		if conn.VerdictPermanent {
+		if state.VerdictPermanent {
 			err = pkt.PermanentDrop()
 		} else {
 			err = pkt.Drop()
@@ -916,6 +1032,7 @@ func packetHandler(w *mgr.WorkerCtx) error {
 }
 
 func bandwidthUpdateHandler(w *mgr.WorkerCtx) error {
+	pending := newPendingBandwidth()
 	for {
 		select {
 		case <-w.Done():
@@ -924,7 +1041,7 @@ func bandwidthUpdateHandler(w *mgr.WorkerCtx) error {
 			if bwUpdate != nil {
 				// DEBUG:
 				// log.Debugf("filter: bandwidth update: %s", bwUpdate)
-				updateBandwidth(w.Ctx(), bwUpdate)
+				updateBandwidth(w.Ctx(), pending, bwUpdate, time.Now())
 			} else {
 				return errors.New("received nil bandwidth update from interception")
 			}
@@ -932,45 +1049,27 @@ func bandwidthUpdateHandler(w *mgr.WorkerCtx) error {
 	}
 }
 
-func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
+func updateBandwidth(ctx context.Context, pending *pendingBandwidth, bwUpdate *packet.BandwidthUpdate, now time.Time) {
 	// Check if update makes sense.
 	if bwUpdate.BytesReceived == 0 && bwUpdate.BytesSent == 0 {
 		return
 	}
 
 	// Get connection.
+	// Additive updates of unknown connections are held for a short time and
+	// added to the next update of the connection, as their bytes would be
+	// lost otherwise.
 	conn, ok := network.GetConnection(bwUpdate.ConnID)
+	bwUpdate = pending.resolve(bwUpdate, ok, now)
 	if !ok {
 		return
 	}
 
-	// Do not wait for connections that are locked.
-	// TODO: Use atomic operations for updating bandwidth stats.
-	if !conn.TryLock() {
-		// DEBUG:
-		// log.Warningf("filter: failed to lock connection for bandwidth update: %s", conn)
+	bytesIn, bytesOut, ok := applyBandwidthUpdate(conn, bwUpdate)
+	if !ok {
 		return
 	}
 	defer conn.Unlock()
-
-	bytesIn := bwUpdate.BytesReceived
-	bytesOut := bwUpdate.BytesSent
-
-	// Update stats according to method.
-	switch bwUpdate.Method {
-	case packet.Absolute:
-		bytesIn = bwUpdate.BytesReceived - conn.BytesReceived
-		bytesOut = bwUpdate.BytesSent - conn.BytesSent
-
-		conn.BytesReceived = bwUpdate.BytesReceived
-		conn.BytesSent = bwUpdate.BytesSent
-	case packet.Additive:
-		conn.BytesReceived += bwUpdate.BytesReceived
-		conn.BytesSent += bwUpdate.BytesSent
-	default:
-		log.Warningf("filter: unsupported bandwidth update method: %d", bwUpdate.Method)
-		return
-	}
 
 	// Update bandwidth in the netquery module.
 	if module.instance.NetQuery() != nil && conn.BandwidthEnabled {
@@ -986,6 +1085,62 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 			log.Errorf("filter: failed to persist bandwidth data: %s", err)
 		}
 	}
+}
+
+// applyBandwidthUpdate applies the bandwidth update to the connection and
+// returns the bytes that were transferred since the last applied update.
+// If ok is true, the connection is locked and must be unlocked by the caller.
+//
+// It does not wait for connections that are locked. Additive updates are then
+// kept on the connection and applied with the next update, as their bytes
+// would be missing otherwise. Absolute updates are skipped, as the next
+// update includes their bytes.
+func applyBandwidthUpdate(conn *network.Connection, bwUpdate *packet.BandwidthUpdate) (bytesIn, bytesOut uint64, ok bool) {
+	switch bwUpdate.Method {
+	case packet.Absolute, packet.Additive:
+	default:
+		log.Warningf("filter: unsupported bandwidth update method: %d", bwUpdate.Method)
+		return 0, 0, false
+	}
+
+	if !conn.TryLock() {
+		if bwUpdate.Method == packet.Additive {
+			conn.DeferBandwidthUpdate(bwUpdate.BytesReceived, bwUpdate.BytesSent)
+		}
+		return 0, 0, false
+	}
+
+	// Update stats according to method.
+	switch bwUpdate.Method {
+	case packet.Absolute:
+		bytesIn = absoluteBandwidthDelta(conn.BytesReceived, bwUpdate.BytesReceived)
+		bytesOut = absoluteBandwidthDelta(conn.BytesSent, bwUpdate.BytesSent)
+
+		conn.BytesReceived = bwUpdate.BytesReceived
+		conn.BytesSent = bwUpdate.BytesSent
+	case packet.Additive:
+		// Include the updates that could not be applied before.
+		deferredIn, deferredOut := conn.TakeDeferredBandwidthUpdate()
+		bytesIn = bwUpdate.BytesReceived + deferredIn
+		bytesOut = bwUpdate.BytesSent + deferredOut
+
+		conn.BytesReceived += bytesIn
+		conn.BytesSent += bytesOut
+	}
+
+	return bytesIn, bytesOut, true
+}
+
+// absoluteBandwidthDelta returns the bytes transferred between the previous
+// and the current value of an absolute byte counter. A counter that went
+// backwards was reset, eg. because the OS integration started counting a new
+// socket with the same connection ID. It then counted the current value since
+// the reset, which becomes the new baseline.
+func absoluteBandwidthDelta(previous, current uint64) uint64 {
+	if current < previous {
+		return current
+	}
+	return current - previous
 }
 
 func statLogger(w *mgr.WorkerCtx) error {

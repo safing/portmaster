@@ -18,8 +18,7 @@ import (
 
 const defaultTestQueueSize = 200
 
-func TestExpansion(t *testing.T) {
-	t.Parallel()
+func TestExpansion(t *testing.T) { //nolint:paralleltest // Modifies the global optimalMinLoadSize.
 
 	// Test without and with encryption.
 	for _, encrypt := range []bool{false, true} {

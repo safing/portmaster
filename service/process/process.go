@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	processInfo "github.com/shirou/gopsutil/process"
@@ -65,9 +66,18 @@ type Process struct {
 	MatchingPath string
 
 	// PrimaryProfileID holds the scoped ID of the primary profile.
+	// It is reassigned by RefetchProfile while the process is in use: only
+	// access it while holding the process lock (as serialization does), and
+	// use GetPrimaryProfileID for lock-free reads.
 	PrimaryProfileID string
+	// primaryProfileID mirrors PrimaryProfileID for lock-free reads via
+	// GetPrimaryProfileID. Both are only written by setProfile.
+	primaryProfileID atomic.Pointer[string]
 	// profile holds the layered profile based on the primary profile.
-	profile *profile.LayeredProfile
+	// It is reassigned by RefetchProfile while the process is in use, so it is
+	// atomic to allow lock-free reads via Profile(). Writers still hold the
+	// process lock to update it together with PrimaryProfileID.
+	profile atomic.Pointer[profile.LayeredProfile]
 
 	// Mutable attributes.
 
@@ -94,7 +104,7 @@ func (p *Process) Profile() *profile.LayeredProfile {
 		return nil
 	}
 
-	return p.profile
+	return p.profile.Load()
 }
 
 // Leader returns the process group leader that is attached to the process.
@@ -154,7 +164,21 @@ func (p *Process) IsSystemResolver() bool {
 	}
 
 	// Check ID.
-	return p.PrimaryProfileID == systemResolverScopedID
+	return p.GetPrimaryProfileID() == systemResolverScopedID
+}
+
+// GetPrimaryProfileID returns the scoped ID of the primary profile, or an
+// empty string if no profile is assigned yet. Unlike the PrimaryProfileID
+// field, it is safe to call without holding the process lock.
+func (p *Process) GetPrimaryProfileID() string {
+	if p == nil {
+		return ""
+	}
+
+	if id := p.primaryProfileID.Load(); id != nil {
+		return *id
+	}
+	return ""
 }
 
 // GetLastSeen returns the unix timestamp when the process was last seen.
@@ -194,6 +218,17 @@ func GetOrFindProcess(ctx context.Context, pid int) (*Process, error) {
 		return GetUnsolicitedProcess(ctx), nil
 	case SystemProcessID:
 		return GetSystemProcess(ctx), nil
+	}
+
+	// Return a known process without the more expensive lookup of all process
+	// data by gopsutil. The creation time is the same, so the process key is,
+	// too. If the fast path fails, for example because the process exited, the
+	// lookup below handles it as before.
+	pid32 := int32(pid) //nolint:gosec // PIDs fit into int32, as for gopsutil below.
+	if createdAt, ok := fastCreateTime(ctx, pid32); ok {
+		if p, ok := GetProcessFromStorage(getProcessKey(pid32, createdAt)); ok {
+			return p, nil
+		}
 	}
 
 	// Get pid and creation time for identification.

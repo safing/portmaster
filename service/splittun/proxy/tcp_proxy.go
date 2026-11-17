@@ -302,6 +302,12 @@ func (p *TCPProxy) pipe(dst, src net.Conn, connCtx *ConnContext) int64 {
 		}
 		if readErr != nil {
 			if errors.Is(readErr, os.ErrDeadlineExceeded) {
+				// The deadline only covers this direction. If the opposite
+				// direction transferred data recently, the session is not
+				// idle (e.g. a long one-way upload or download).
+				if time.Since(connCtx.LastSeen()) < p.cfg.ReadTimeout {
+					continue
+				}
 				p.log.Debug(p.logPrefix+"session read timeout", "session", connCtx.id, "dest_ip", connCtx.destIP, "dest_port", connCtx.destPort, "timeout", p.cfg.ReadTimeout)
 			} else if !isClosedConnErr(readErr) {
 				p.log.Debug(p.logPrefix+"session read error", "session", connCtx.id, "dest_ip", connCtx.destIP, "dest_port", connCtx.destPort, "err", readErr)

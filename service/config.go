@@ -84,9 +84,10 @@ func (sc *ServiceConfig) Init() error {
 		sc.IntelIndexURLs = configure.DefaultIntelIndexURLs
 	}
 
-	// Check log level.
+	// Check log level. An invalid level is not worth a failed start: warn and use the default level instead.
 	if sc.LogLevel != "" && log.ParseLevel(sc.LogLevel) == 0 {
-		return fmt.Errorf("invalid log level %q", sc.LogLevel)
+		log.Warningf("service: invalid log level %q, using the default level instead", sc.LogLevel)
+		sc.LogLevel = ""
 	}
 
 	return nil

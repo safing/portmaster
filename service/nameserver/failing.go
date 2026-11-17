@@ -72,7 +72,10 @@ func checkIfQueryIsFailing(q *resolver.Query) (failingUntil *time.Time, failingE
 	}
 
 	// Return failing error and until when it's valid.
-	return &failing.Until, failing.Err
+	// Copy the time while holding the lock: returning a pointer into the shared
+	// struct would let callers read it after unlock, racing with addFailingQuery.
+	until := failing.Until
+	return &until, failing.Err
 }
 
 func addFailingQuery(q *resolver.Query, err error) {

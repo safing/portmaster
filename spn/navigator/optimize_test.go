@@ -109,13 +109,13 @@ func (m *Map) optimizeTestMap(t *testing.T) {
 	m.home = originalHome
 }
 
-func TestOptimize(t *testing.T) {
-	t.Parallel()
-
+func TestOptimize(t *testing.T) { //nolint:paralleltest // Modifies the shared test map.
 	m := getOptimizedDefaultTestMap(t)
 	matcher := m.defaultOptions().Destination.Matcher(m.intel)
 	originalHome := m.home
 
+	// Lock the map, as pin changes are pushed (and exported) concurrently.
+	m.Lock()
 	for _, pin := range m.all {
 		// Set Home to this Pin for this iteration.
 		m.home = pin
@@ -137,10 +137,11 @@ func TestOptimize(t *testing.T) {
 		}
 	}
 
+	m.home = originalHome
+	m.Unlock()
+
 	// Print stats
 	t.Logf("optimized map:\n%s\n", m.Stats())
-
-	m.home = originalHome
 }
 
 func updateMeasurements(m *Map, mcf *measurementCachedFactory) {

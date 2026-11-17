@@ -165,11 +165,13 @@ func (pinState PinState) HasNoneOf(states PinState) bool {
 }
 
 // addStates adds the given states on the Pin.
+// The owning Map must be locked by the caller.
 func (pin *Pin) addStates(states PinState) {
 	pin.State = pin.State.Add(states)
 }
 
 // removeStates removes the given states on the Pin.
+// The owning Map must be locked by the caller.
 func (pin *Pin) removeStates(states PinState) {
 	pin.State = pin.State.Remove(states)
 }

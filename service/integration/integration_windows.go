@@ -60,10 +60,15 @@ func (i *OSIntegration) loadDLL() error {
 	}
 
 	// Enumerate all needed dll functions.
-	i.os.etwFunctions, err = initializeETW(i.os.dll)
+	// Only publish the functions if all of them were found: on error,
+	// initializeETW returns a partially filled struct with nil procs, which
+	// would make GetETWInterface return a non-nil interface that panics when
+	// a missing function is called.
+	etwFunctions, err := initializeETW(i.os.dll)
 	if err != nil {
 		return err
 	}
+	i.os.etwFunctions = etwFunctions
 
 	// Notify listeners
 	i.OnInitializedEvent.Submit(struct{}{})

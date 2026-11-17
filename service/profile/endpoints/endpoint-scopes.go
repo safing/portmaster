@@ -94,11 +94,11 @@ func parseTypeScope(fields []string) (Endpoint, error) {
 	for _, val := range strings.Split(strings.ToLower(fields[1]), ",") {
 		switch val {
 		case scopeLocalhostMatcher:
-			ep.scopes ^= scopeLocalhost
+			ep.scopes |= scopeLocalhost
 		case scopeLANMatcher:
-			ep.scopes ^= scopeLAN
+			ep.scopes |= scopeLAN
 		case scopeInternetMatcher:
-			ep.scopes ^= scopeInternet
+			ep.scopes |= scopeInternet
 		default:
 			return nil, nil
 		}

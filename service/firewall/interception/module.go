@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"sync/atomic"
+	"time"
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
@@ -106,6 +107,26 @@ func stop() error {
 		log.Errorf("failed to stop interception module: %s", err)
 	}
 	return nil
+}
+
+// EmergencyStop stops the interception if it is still running. It is meant
+// for an exit without a completed shutdown: otherwise the OS integration may
+// keep holding new connections for a verdict that never comes. It returns
+// after at most the given duration.
+func EmergencyStop(timeout time.Duration) {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = stop() // Logs its own errors.
+	}()
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case <-done:
+	case <-timer.C:
+		log.Errorf("interception: emergency stop did not finish within %s", timeout)
+	}
 }
 
 var (

@@ -9,6 +9,7 @@ import (
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
+	"github.com/safing/portmaster/spn/peerdsd"
 	"github.com/safing/portmaster/spn/terminal"
 	"github.com/safing/structures/container"
 	"github.com/safing/structures/dsd"
@@ -37,7 +38,7 @@ var (
 )
 
 // CapacityTestOp is used for capacity test operations.
-type CapacityTestOp struct { //nolint:maligned
+type CapacityTestOp struct {
 	terminal.OperationBase
 
 	opts *CapacityTestOptions
@@ -55,6 +56,9 @@ type CapacityTestOp struct { //nolint:maligned
 
 	testResult int
 	result     chan *terminal.Error
+
+	// stopping is closed when the operation is stopped, from any side.
+	stopping chan struct{}
 }
 
 // CapacityTestOptions holds options for the capacity test.
@@ -99,6 +103,7 @@ func NewCapacityTestOp(t terminal.Terminal, opts *CapacityTestOptions) (*Capacit
 		dataSent:        new(int64),
 		dataSentWasAckd: abool.New(),
 		result:          make(chan *terminal.Error, 1),
+		stopping:        make(chan struct{}),
 	}
 
 	// Make capacity test request.
@@ -129,7 +134,7 @@ func startCapacityTestOp(t terminal.Terminal, opID uint32, data *container.Conta
 
 	// Parse options.
 	opts := &CapacityTestOptions{}
-	_, err := dsd.Load(data.CompileData(), opts)
+	_, err := peerdsd.Load(data.CompileData(), opts)
 	if err != nil {
 		capacityTestRunning.UnSet()
 		return nil, terminal.ErrMalformedData.With("failed to parse options: %w", err)
@@ -152,6 +157,7 @@ func startCapacityTestOp(t terminal.Terminal, opID uint32, data *container.Conta
 		dataSent:        new(int64),
 		dataSentWasAckd: abool.New(),
 		result:          make(chan *terminal.Error, 1),
+		stopping:        make(chan struct{}),
 	}
 	op.InitOperationBase(t, opID)
 
@@ -177,7 +183,7 @@ func (op *CapacityTestOp) handler(ctx *mgr.WorkerCtx) error {
 
 	// Setup unit handling
 	var msg *terminal.Msg
-	defer msg.Finish()
+	defer func() { msg.Finish() }()
 
 	// Handle receives.
 	for {
@@ -186,6 +192,10 @@ func (op *CapacityTestOp) handler(ctx *mgr.WorkerCtx) error {
 		select {
 		case <-ctx.Done():
 			returnErr = terminal.ErrCanceled
+			return nil
+
+		case <-op.stopping:
+			// The operation was stopped, eg. by the remote side.
 			return nil
 
 		case <-opTimeout:
@@ -323,6 +333,9 @@ func (op *CapacityTestOp) Deliver(msg *terminal.Msg) *terminal.Error {
 // The returned error is the error to send to the other side.
 // Should never be called directly. Call Stop() instead.
 func (op *CapacityTestOp) HandleStop(tErr *terminal.Error) (errorToSend *terminal.Error) {
+	// Signal the handler to end. HandleStop is only called once.
+	close(op.stopping)
+
 	// Return result to waiting routine.
 	select {
 	case op.result <- tErr:

@@ -77,7 +77,7 @@ const (
 
 // Connection describes a distinct physical network connection
 // identified by the IP/Port pair.
-type Connection struct { //nolint:maligned // TODO: fix alignment
+type Connection struct {
 	record.Base
 	sync.Mutex
 
@@ -132,7 +132,7 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	Resolver *resolver.ResolverInfo
 	// Verdict holds the decisions that are made for a connection
 	// The verdict may change so any access to it must be guarded by the
-	// connection lock.
+	// connection lock. Use VerdictState to access it without the lock.
 	Verdict Verdict
 	// Whether or not the connection has been established at least once.
 	ConnectionEstablished bool
@@ -196,10 +196,21 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// BytesSent holds the observed sent bytes of the connection.
 	BytesSent uint64
 
+	// verdictState mirrors the Verdict, VerdictPermanent, Inbound and PID
+	// fields for packets that are handled without locking the connection.
+	// See VerdictState.
+	verdictState atomic.Uint64
+
 	// lastSeen holds the timestamp when the connection was last seen.
 	// If permanent verdicts are enabled and bandwidth reporting is not active,
 	// this value will likely not be correct.
 	lastSeen atomic.Int64
+
+	// deferredBytesReceived and deferredBytesSent hold additive bandwidth
+	// updates that could not be applied yet, because the connection was
+	// locked. They are applied with the next bandwidth update.
+	deferredBytesReceived atomic.Uint64
+	deferredBytesSent     atomic.Uint64
 
 	// prompt holds the active prompt for this connection, if there is one.
 	prompt *notifications.Notification
@@ -318,17 +329,24 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	switch {
 	case !ok:
 		// No dns request connection found.
-	case dnsRequestConn.PID < 0:
-		// Process is not identified or is special.
-	case dnsRequestConn.Ended > 0 && dnsRequestConn.Ended < time.Now().Unix()-3:
-		// Connection has already ended (too long ago).
-		log.Tracer(ctx).Debugf("network: found ended dns request connection %s for dns request for %s", dnsRequestConn, fqdn)
 	default:
-		log.Tracer(ctx).Debugf("network: found matching dns request connection %s", dnsRequestConn.String())
-		// Inherit PID.
-		pi.PID = dnsRequestConn.PID
-		// Inherit process struct itself, as the PID may already be re-used.
-		proc = dnsRequestConn.process
+		// The dns request connection is still handled by its packet handler
+		// worker and checked by the connection cleaner, so it may only be read
+		// while holding its lock.
+		reqPID, reqProc, reqEnded, reqDesc := dnsRequestConn.dnsRequestAttribution()
+		switch {
+		case reqPID < 0:
+			// Process is not identified or is special.
+		case reqEnded > 0 && reqEnded < time.Now().Unix()-3:
+			// Connection has already ended (too long ago).
+			log.Tracer(ctx).Debugf("network: found ended dns request connection %s for dns request for %s", reqDesc, fqdn)
+		default:
+			log.Tracer(ctx).Debugf("network: found matching dns request connection %s", reqDesc)
+			// Inherit PID.
+			pi.PID = reqPID
+			// Inherit process struct itself, as the PID may already be re-used.
+			proc = reqProc
+		}
 	}
 
 	// Find process by remote IP/Port.
@@ -377,6 +395,7 @@ func NewConnectionFromDNSRequest(ctx context.Context, fqdn string, cnames []stri
 	// saved if they are not "used" by a connection.
 
 	dnsConn.UpdateMeta()
+	dnsConn.publishVerdictState()
 	return dnsConn
 }
 
@@ -421,6 +440,7 @@ func NewConnectionFromExternalDNSRequest(ctx context.Context, fqdn string, cname
 	// saved if they are not "used" by a connection.
 
 	dnsConn.UpdateMeta()
+	dnsConn.publishVerdictState()
 	return dnsConn, nil
 }
 
@@ -429,16 +449,25 @@ var tooOldTimestamp = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
 // NewIncompleteConnection creates a new incomplete connection with only minimal information.
 func NewIncompleteConnection(pkt packet.Packet) *Connection {
 	info := pkt.Info()
+	connID := pkt.GetConnectionID()
+
+	// Adopt the process attribution that an info-only packet reported earlier.
+	pid := info.PID
+	if pid == process.UndefinedProcessID {
+		if hintedPID, ok := takePIDHint(connID); ok {
+			pid = hintedPID
+		}
+	}
 
 	// Create new connection object.
 	// We do not yet know the direction of the connection for sure, so we can only set minimal information.
 	conn := &Connection{
-		ID:           pkt.GetConnectionID(),
+		ID:           connID,
 		Type:         IPConnection,
 		IPVersion:    info.Version,
 		IPProtocol:   info.Protocol,
 		Started:      info.SeenAt.Unix(),
-		PID:          info.PID,
+		PID:          pid,
 		Inbound:      info.Inbound,
 		dataComplete: abool.NewBool(false),
 	}
@@ -453,6 +482,7 @@ func NewIncompleteConnection(pkt packet.Packet) *Connection {
 	// Save connection to internal state in order to mitigate creation of
 	// duplicates. Do not propagate yet, as data is not yet complete.
 	conn.UpdateMeta()
+	conn.publishVerdictState()
 	conns.add(conn)
 
 	return conn
@@ -793,6 +823,37 @@ func (conn *Connection) DataIsComplete() bool {
 	return conn.dataComplete.IsSet()
 }
 
+// IsAttributedToProfile reports whether the data of the connection is
+// complete and the connection is attributed to the given profile.
+// It locks the connection.
+func (conn *Connection) IsAttributedToProfile(profileSource, profileID string) bool {
+	// Check the atomic flag first in order to not wait for the lock of
+	// connections that cannot match.
+	if !conn.DataIsComplete() {
+		return false
+	}
+
+	conn.Lock()
+	defer conn.Unlock()
+
+	return conn.ProcessContext.Profile == profileID &&
+		conn.ProcessContext.Source == profileSource
+}
+
+// DeferBandwidthUpdate records an additive bandwidth update that cannot be
+// applied right now, because the connection is locked. It does not require
+// the connection lock.
+func (conn *Connection) DeferBandwidthUpdate(bytesReceived, bytesSent uint64) {
+	conn.deferredBytesReceived.Add(bytesReceived)
+	conn.deferredBytesSent.Add(bytesSent)
+}
+
+// TakeDeferredBandwidthUpdate returns and resets the bandwidth recorded with
+// DeferBandwidthUpdate.
+func (conn *Connection) TakeDeferredBandwidthUpdate() (bytesReceived, bytesSent uint64) {
+	return conn.deferredBytesReceived.Swap(0), conn.deferredBytesSent.Swap(0)
+}
+
 // Process returns the connection's process.
 func (conn *Connection) Process() *process.Process {
 	return conn.process
@@ -917,6 +978,16 @@ func (conn *Connection) String() string {
 	default:
 		return fmt.Sprintf("%s -> %s", conn.process, conn.Entity.IP)
 	}
+}
+
+// dnsRequestAttribution returns the data of a saved dns request connection
+// that is needed to attribute a dns request to its process.
+// It locks the connection.
+func (conn *Connection) dnsRequestAttribution() (pid int, proc *process.Process, ended int64, description string) {
+	conn.Lock()
+	defer conn.Unlock()
+
+	return conn.PID, conn.process, conn.Ended, conn.String()
 }
 
 func (conn *Connection) shouldWaitForDomain() bool {

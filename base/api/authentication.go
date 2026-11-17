@@ -335,8 +335,13 @@ func checkAPIKey(r *http.Request) *AuthToken {
 	// Check if the provided API key exists.
 	token, ok := apiKeys[key]
 	if !ok {
+		// The key is client-controlled and may be shorter than the logged prefix.
+		keyPrefix := key
+		if len(keyPrefix) > 4 {
+			keyPrefix = keyPrefix[:4]
+		}
 		log.Tracer(r.Context()).Tracef(
-			"api: provided api key %s... is unknown", key[:4],
+			"api: provided api key %s... is unknown", keyPrefix,
 		)
 		return nil
 	}

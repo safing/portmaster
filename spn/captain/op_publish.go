@@ -69,6 +69,20 @@ func NewPublishOp(controller *docks.CraneControllerTerminal, identity *cabin.Ide
 	return op, nil
 }
 
+// parsePublishOpData parses the announcement and status from the publish op
+// init data.
+func parsePublishOpData(data *container.Container) (announcementData, statusData []byte, tErr *terminal.Error) {
+	announcementData, err := terminal.GetNextBlock(data)
+	if err != nil {
+		return nil, nil, terminal.ErrMalformedData.With("failed to get announcement: %w", err)
+	}
+	statusData, err = terminal.GetNextBlock(data)
+	if err != nil {
+		return nil, nil, terminal.ErrMalformedData.With("failed to get status: %w", err)
+	}
+	return announcementData, statusData, nil
+}
+
 func runPublishOp(t terminal.Terminal, opID uint32, data *container.Container) (terminal.Operation, *terminal.Error) {
 	// Check if we are run by a controller.
 	controller, ok := t.(*docks.CraneControllerTerminal)
@@ -77,13 +91,9 @@ func runPublishOp(t terminal.Terminal, opID uint32, data *container.Container) (
 	}
 
 	// Parse and import Announcement and Status.
-	announcementData, err := data.GetNextBlock()
-	if err != nil {
-		return nil, terminal.ErrMalformedData.With("failed to get announcement: %w", err)
-	}
-	statusData, err := data.GetNextBlock()
-	if err != nil {
-		return nil, terminal.ErrMalformedData.With("failed to get status: %w", err)
+	announcementData, statusData, tErr := parsePublishOpData(data)
+	if tErr != nil {
+		return nil, tErr
 	}
 	h, forward, tErr := docks.ImportAndVerifyHubInfo(module.mgr.Ctx(), "", announcementData, statusData, conf.MainMapName, conf.MainMapScope)
 	if tErr != nil {

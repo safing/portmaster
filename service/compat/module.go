@@ -53,8 +53,9 @@ var (
 	selfCheckIsFailing = abool.New()
 
 	// selfcheckFails counts how often the self check failed successively.
-	// selfcheckFails is not locked as it is only accessed by the self-check task.
-	selfcheckFails int
+	// selfcheckFails is atomic, as it is written by the self-check task and
+	// reset by stop().
+	selfcheckFails atomic.Int32
 
 	// selfcheckNetworkChangedFlag is used to track changed to the network for
 	// the self-check.
@@ -129,12 +130,11 @@ func selfcheckTaskFunc(wc *mgr.WorkerCtx) error {
 		// The self-check failed.
 
 		// Set state and increase counter.
-		selfCheckIsFailing.Set()
-		selfcheckFails++
+		failCount := recordSelfcheckFailure()
 
 		// Log and notify.
 		tracer.Errorf("compat: %s", err)
-		if selfcheckFails >= selfcheckFailThreshold {
+		if failCount >= selfcheckFailThreshold {
 			issue.notify(err)
 		}
 
@@ -150,10 +150,17 @@ func selfcheckTaskFunc(wc *mgr.WorkerCtx) error {
 	return nil
 }
 
+// recordSelfcheckFailure marks the self-check as failing and returns the
+// number of successive failures.
+func recordSelfcheckFailure() int32 {
+	selfCheckIsFailing.Set()
+	return selfcheckFails.Add(1)
+}
+
 func resetSelfCheckState() {
 	selfcheckNetworkChangedFlag.Refresh()
 	selfCheckIsFailing.UnSet()
-	selfcheckFails = 0
+	selfcheckFails.Store(0)
 	resetSystemIssue()
 }
 

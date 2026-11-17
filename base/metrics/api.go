@@ -3,6 +3,7 @@ package metrics
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -97,6 +98,16 @@ func WriteMetrics(w io.Writer, permission api.Permission, expertiseLevel config.
 	}
 }
 
+// maxPushErrorBodySize is the maximum amount of bytes read from an error
+// response when pushing metrics.
+const maxPushErrorBodySize = 4096
+
+// pushTimeout bounds a single metrics push request.
+// It is a variable so that tests can shorten it.
+var pushTimeout = 30 * time.Second
+
+var errPushTimeout = errors.New("push timed out")
+
 func writeMetricsTo(ctx context.Context, url string) error {
 	// First, collect metrics into buffer.
 	buf := &bytes.Buffer{}
@@ -109,7 +120,9 @@ func writeMetricsTo(ctx context.Context, url string) error {
 	}
 
 	// Create request
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, buf)
+	reqCtx, cancel := context.WithTimeout(ctx, pushTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, url, buf)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -117,6 +130,13 @@ func writeMetricsTo(ctx context.Context, url string) error {
 	// Send.
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		// A per-request timeout must not look like a deadline/cancel of the
+		// worker itself, as the worker manager would treat that as a clean
+		// stop and never restart the pusher. Only pass through errors that
+		// stem from the worker context ending.
+		if ctx.Err() == nil && errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("%w after %s while writing metrics to %s", errPushTimeout, pushTimeout, url)
+		}
 		return err
 	}
 	defer func() {
@@ -129,7 +149,8 @@ func writeMetricsTo(ctx context.Context, url string) error {
 	}
 
 	// Get and return error.
-	body, _ := io.ReadAll(resp.Body)
+	// Limit the read, as the body is only used for the error message.
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxPushErrorBodySize))
 	return fmt.Errorf(
 		"got %s while writing metrics to %s: %s",
 		resp.Status,

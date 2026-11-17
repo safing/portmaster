@@ -28,6 +28,7 @@ type Network struct {
 
 	dnsRequestTicker        *mgr.SleepyTicker
 	connectionCleanerTicker *mgr.SleepyTicker
+	pidHintTicker           *mgr.SleepyTicker
 
 	EventConnectionReattributed *mgr.EventMgr[string]
 }
@@ -51,14 +52,33 @@ func (n *Network) SetSleep(enabled bool) {
 	if n.connectionCleanerTicker != nil {
 		n.connectionCleanerTicker.SetSleep(enabled)
 	}
+	if n.pidHintTicker != nil {
+		n.pidHintTicker.SetSleep(enabled)
+	}
 }
 
-var defaultFirewallHandler FirewallHandler
+var (
+	// defaultFirewallHandler handles packets of connections without a firewall
+	// handler. It is called with the connection locked.
+	defaultFirewallHandler FirewallHandler
+	// defaultLockFreeFirewallHandler handles packets of connections without
+	// a firewall handler directly on the packet dispatching goroutine. It is
+	// called without the connection being locked.
+	defaultLockFreeFirewallHandler FirewallHandler
+)
 
-// SetDefaultFirewallHandler sets the default firewall handler.
-func SetDefaultFirewallHandler(handler FirewallHandler) {
+// SetDefaultFirewallHandler sets the default firewall handlers, which are
+// used for connections that have no firewall handler (anymore).
+//
+// The handler is called with the connection locked, like any other firewall
+// handler. The lockFreeHandler is called without the connection being locked
+// and must not wait for the connection lock. It may only use the immutable
+// attributes of the connection and its lock-free accessors, such as
+// VerdictState.
+func SetDefaultFirewallHandler(handler, lockFreeHandler FirewallHandler) {
 	if defaultFirewallHandler == nil {
 		defaultFirewallHandler = handler
+		defaultLockFreeFirewallHandler = lockFreeHandler
 	}
 }
 
@@ -83,6 +103,7 @@ func start() error {
 
 	module.mgr.Go("clean connections", connectionCleaner)
 	module.mgr.Go("write open dns requests", openDNSRequestWriter)
+	module.mgr.Go("rotate pid hints", pidHintRotator)
 	module.instance.Profile().EventDelete.AddCallback("re-attribute connections from deleted profile", reAttributeConnections)
 
 	return nil
@@ -115,7 +136,7 @@ func reAttributeConnections(_ *mgr.WorkerCtx, profileID string) (bool, error) {
 	for _, conn := range conns.clone() {
 		if reAttributeConnection(ctx, conn, profileID, profileSource) {
 			reAttributed++
-			tracer.Debugf("filter: re-attributed %s to %s", conn, conn.process.PrimaryProfileID)
+			tracer.Debugf("filter: re-attributed %s to %s", conn, conn.process.GetPrimaryProfileID())
 		}
 	}
 
@@ -123,7 +144,7 @@ func reAttributeConnections(_ *mgr.WorkerCtx, profileID string) (bool, error) {
 	for _, conn := range dnsConns.clone() {
 		if reAttributeConnection(ctx, conn, profileID, profileSource) {
 			reAttributed++
-			tracer.Debugf("filter: re-attributed %s to %s", conn, conn.process.PrimaryProfileID)
+			tracer.Debugf("filter: re-attributed %s to %s", conn, conn.process.GetPrimaryProfileID())
 		}
 	}
 
@@ -160,7 +181,7 @@ func reAttributeConnection(ctx context.Context, conn *Connection, profileID, pro
 	// Trigger event for re-attribution.
 	module.EventConnectionReattributed.Submit(conn.ID)
 
-	log.Tracer(ctx).Debugf("filter: re-attributed %s to %s", conn, conn.process.PrimaryProfileID)
+	log.Tracer(ctx).Debugf("filter: re-attributed %s to %s", conn, conn.process.GetPrimaryProfileID())
 	return true
 }
 

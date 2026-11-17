@@ -140,7 +140,7 @@ func (m *Map) pushPinChangesWorker(ctx *mgr.WorkerCtx) error {
 
 	for _, pin := range m.all {
 		if pin.pushChanges.SetToIf(true, false) {
-			mapDBController.PushUpdate(pin.Export())
+			mapDBController.PushUpdate(pin.exportLocked())
 		}
 	}
 

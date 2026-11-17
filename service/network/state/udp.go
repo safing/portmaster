@@ -21,8 +21,14 @@ type udpTable struct {
 	binds []*socket.BindInfo
 	lock  sync.RWMutex
 
-	// lastUpdateAt stores the time when the tables where last updated as unix nanoseconds.
+	// lastUpdateAt stores the time when the tables were last updated as unix nanoseconds.
 	lastUpdateAt atomic.Int64
+	// lastFetchAttemptAt stores the time of the last attempt to update the
+	// tables as unix nanoseconds, regardless of whether it succeeded.
+	// Exists() uses it, so that a failing fetch is not retried for every
+	// connection check. Lookups always fetch after their first try, so that
+	// they still retry.
+	lastFetchAttemptAt atomic.Int64
 
 	fetchLimiter *utils.CallLimiter2
 	fetchTable   func() (binds []*socket.BindInfo, err error)
@@ -83,6 +89,8 @@ func (table *udpTable) updateTables() (binds []*socket.BindInfo) {
 	table.fetchLimiter.Do(func() {
 		// Fetch new tables from system.
 		binds, err := table.fetchTable()
+		fetchedAt := time.Now().UnixNano()
+		defer table.lastFetchAttemptAt.Store(fetchedAt)
 		if err != nil {
 			log.Warningf("state: failed to get UDP%d socket table: %s", table.version, err)
 			return
@@ -97,7 +105,7 @@ func (table *udpTable) updateTables() (binds []*socket.BindInfo) {
 		table.lock.Lock()
 		defer table.lock.Unlock()
 		table.binds = binds
-		table.lastUpdateAt.Store(time.Now().UnixNano())
+		table.lastUpdateAt.Store(fetchedAt)
 	})
 
 	return table.getCurrentTables()
@@ -107,6 +115,11 @@ func (table *udpTable) updateTables() (binds []*socket.BindInfo) {
 func CleanUDPStates(_ context.Context) {
 	now := time.Now().UTC()
 
+	// Update the dual-stack table before cleaning the UDP4 table, as the UDP4
+	// table also holds the states of dual-stack sockets.
+	if udp4Table.dualStack != nil {
+		udp4Table.dualStack.updateTables()
+	}
 	udp4Table.updateTables()
 	udp4Table.cleanStates(now)
 
@@ -116,20 +129,29 @@ func CleanUDPStates(_ context.Context) {
 	}
 }
 
+// getConnState returns a copy of the connection state, so that it can be
+// used without holding the states lock.
 func (table *udpTable) getConnState(
 	socketInfo *socket.BindInfo,
 	remoteAddress socket.Address,
-) (udpConnState *udpState, ok bool) {
+) (udpConnState udpState, ok bool) {
+	// Build the keys in stack buffers, so that the lookup does not allocate.
+	var localKeyBuf, remoteKeyBuf [udpStateKeyBufSize]byte
+	localKey := appendUDPStateKey(localKeyBuf[:0], socketInfo.Local)
+	remoteKey := appendUDPStateKey(remoteKeyBuf[:0], remoteAddress)
+
 	table.statesLock.Lock()
 	defer table.statesLock.Unlock()
 
-	bindMap, ok := table.states[makeUDPStateKey(socketInfo.Local)]
-	if ok {
-		udpConnState, ok = bindMap[makeUDPStateKey(remoteAddress)]
-		return
+	bindMap, ok := table.states[string(localKey)]
+	if !ok {
+		return udpState{}, false
 	}
-
-	return nil, false
+	state, ok := bindMap[string(remoteKey)]
+	if !ok {
+		return udpState{}, false
+	}
+	return *state, true
 }
 
 func (table *udpTable) getDirection(
@@ -139,21 +161,24 @@ func (table *udpTable) getDirection(
 	table.statesLock.Lock()
 	defer table.statesLock.Unlock()
 
-	localKey := makeUDPStateKey(socketInfo.Local)
+	// Build the keys in stack buffers, so that looking up existing state does
+	// not allocate. Strings are only allocated when new state is stored.
+	var localKeyBuf, remoteKeyBuf [udpStateKeyBufSize]byte
+	localKey := appendUDPStateKey(localKeyBuf[:0], socketInfo.Local)
 
-	bindMap, ok := table.states[localKey]
+	bindMap, ok := table.states[string(localKey)]
 	if !ok {
 		bindMap = make(map[string]*udpState)
-		table.states[localKey] = bindMap
+		table.states[string(localKey)] = bindMap
 	}
 
-	remoteKey := makeUDPStateKey(socket.Address{
+	remoteKey := appendUDPStateKey(remoteKeyBuf[:0], socket.Address{
 		IP:   pktInfo.RemoteIP(),
 		Port: pktInfo.RemotePort(),
 	})
-	udpConnState, ok := bindMap[remoteKey]
+	udpConnState, ok := bindMap[string(remoteKey)]
 	if !ok {
-		bindMap[remoteKey] = &udpState{
+		bindMap[string(remoteKey)] = &udpState{
 			inbound:  pktInfo.Inbound,
 			lastSeen: time.Now().UTC(),
 		}
@@ -167,7 +192,7 @@ func (table *udpTable) getDirection(
 func (table *udpTable) cleanStates(now time.Time) {
 	// compute thresholds
 	threshold := now.Add(-UDPConnStateTTL)
-	shortThreshhold := now.Add(-UDPConnStateShortenedTTL)
+	shortThreshold := now.Add(-UDPConnStateShortenedTTL)
 
 	// make lookup map of all active keys
 	bindKeys := make(map[string]struct{})
@@ -176,6 +201,13 @@ func (table *udpTable) cleanStates(now time.Time) {
 		bindKeys[makeUDPStateKey(socketInfo.Local)] = struct{}{}
 	}
 	table.lock.RUnlock()
+	// Lookups store the states of dual-stack sockets in this table, so the
+	// sockets of the dual-stack table are active too.
+	if table.dualStack != nil {
+		for _, socketInfo := range table.dualStack.getCurrentTables() {
+			bindKeys[makeUDPStateKey(socketInfo.Local)] = struct{}{}
+		}
+	}
 
 	table.statesLock.Lock()
 	defer table.statesLock.Unlock()
@@ -192,7 +224,7 @@ func (table *udpTable) cleanStates(now time.Time) {
 			// if there are too many clean more aggressively
 			if len(bindMap) > AggressiveCleaningThreshold {
 				for remoteKey, udpConnState := range bindMap {
-					if udpConnState.lastSeen.Before(shortThreshhold) {
+					if udpConnState.lastSeen.Before(shortThreshold) {
 						delete(bindMap, remoteKey)
 					}
 				}
@@ -204,7 +236,17 @@ func (table *udpTable) cleanStates(now time.Time) {
 	}
 }
 
+// udpStateKeyBufSize fits a 16 byte IP and a 5 digit port.
+const udpStateKeyBufSize = 21
+
 func makeUDPStateKey(address socket.Address) string {
+	var buf [udpStateKeyBufSize]byte
+	return string(appendUDPStateKey(buf[:0], address))
+}
+
+// appendUDPStateKey appends the state key of the given address to buf.
+func appendUDPStateKey(buf []byte, address socket.Address) []byte {
 	// This could potentially go wrong, but as all IPs are created by the same source, everything should be fine.
-	return string(address.IP) + strconv.Itoa(int(address.Port))
+	buf = append(buf, address.IP...)
+	return strconv.AppendUint(buf, uint64(address.Port), 10)
 }

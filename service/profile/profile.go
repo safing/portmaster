@@ -21,7 +21,7 @@ import (
 )
 
 // ProfileSource is the source of the profile.
-type ProfileSource string //nolint:golint
+type ProfileSource string
 
 // Profile Sources.
 const (
@@ -38,7 +38,7 @@ const (
 )
 
 // Profile is used to predefine a security profile for applications.
-type Profile struct { //nolint:maligned // not worth the effort
+type Profile struct {
 	record.Base
 	sync.RWMutex
 

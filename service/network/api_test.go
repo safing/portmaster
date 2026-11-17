@@ -8,16 +8,14 @@ import (
 	"github.com/safing/portmaster/service/intel"
 )
 
-func TestDebugInfoLineFormatting(t *testing.T) {
-	t.Parallel()
+func TestDebugInfoLineFormatting(t *testing.T) { //nolint:paralleltest // Shares connectionTestData, which is sorted by other tests.
 
 	for _, conn := range connectionTestData {
 		fmt.Println(conn.debugInfoLine())
 	}
 }
 
-func TestDebugInfoFormatting(t *testing.T) {
-	t.Parallel()
+func TestDebugInfoFormatting(t *testing.T) { //nolint:paralleltest // Sorts the shared connectionTestData.
 
 	fmt.Println(buildNetworkDebugInfoData(connectionTestData))
 }

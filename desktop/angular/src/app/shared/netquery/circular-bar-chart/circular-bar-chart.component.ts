@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Input, OnInit, inject } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, EventEmitter, Input, NgZone, OnInit, Output, inject } from '@angular/core';
 import { QueryResult } from '@safing/portmaster-api';
 import * as d3 from 'd3';
 
@@ -38,7 +38,7 @@ export interface CircularBarChartConfig<T> {
 
 
 export function splitQueryResult<T extends QueryResult, K extends keyof T>(results: T[], series: K[]): (QueryResult & { series: string, value: number })[] {
-  let mapped: (QueryResult & { series: string, value: number })[] = [];
+  const mapped: (QueryResult & { series: string, value: number })[] = [];
 
   results.forEach(row => {
     series.forEach(seriesKey => {
@@ -61,6 +61,7 @@ export function splitQueryResult<T extends QueryResult, K extends keyof T>(resul
 export class CircularBarChartComponent<T> implements OnInit, AfterViewInit {
   private readonly elementRef = inject(ElementRef) as ElementRef<HTMLElement>;
   private readonly destroyRef = inject(DestroyRef);
+  private readonly ngZone = inject(NgZone);
 
   // D3 related members
   private svg?: d3.Selection<SVGGElement, any, any, any>;
@@ -74,6 +75,10 @@ export class CircularBarChartComponent<T> implements OnInit, AfterViewInit {
 
   @Input()
   innerRadius?: number;
+
+  /** Emits the stack key when the user clicks the label of a stack. */
+  @Output()
+  stackClick = new EventEmitter<string>();
 
   @Input()
   set data(d: T[] | null) {
@@ -104,7 +109,7 @@ export class CircularBarChartComponent<T> implements OnInit, AfterViewInit {
   }
 
   private prepareChart() {
-    if (!!this.svg) {
+    if (this.svg) {
       const parent = this.svg.node()?.parentElement
       parent?.remove()
     }
@@ -288,6 +293,12 @@ export class CircularBarChartComponent<T> implements OnInit, AfterViewInit {
       .attr("alignment-baseline", "middle")
       .attr("fill", "currentColor")
       .attr("class", "text-primary cursor-pointer")
+      // The chart is re-rendered from the ResizeObserver callback, which runs
+      // outside the Angular zone (zone.js does not patch ResizeObserver by
+      // default), and so do the listeners registered there. Emit inside the
+      // zone, otherwise a navigation triggered by the click is not picked up
+      // by change detection.
+      .on("click", (_event, stack) => this.ngZone.run(() => this.stackClick.emit(stack)))
       .on("mouseenter", function (data) {
         d3.select(this)
           .classed("underline", true)
@@ -348,7 +359,7 @@ export class CircularBarChartComponent<T> implements OnInit, AfterViewInit {
         .attr("font-size", "0.6rem")
         .attr("fill", "#fff")
         .text(d => {
-          if (!!this.config?.seriesLabel) {
+          if (this.config?.seriesLabel) {
             return this.config.seriesLabel(d)
           }
 
