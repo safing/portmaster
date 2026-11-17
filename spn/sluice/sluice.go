@@ -1,6 +1,7 @@
 package sluice
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strconv"
@@ -188,12 +189,18 @@ func (s *Sluice) handleConnection(conn net.Conn) {
 	success = true
 }
 
-func (s *Sluice) listenHandler(_ *mgr.WorkerCtx) error {
+func (s *Sluice) listenHandler(wc *mgr.WorkerCtx) error {
 	defer s.abandon()
 	err := s.init()
 	if err != nil {
 		return err
 	}
+
+	// Also abandon (and thus close the listener) when the worker is canceled.
+	// The module's stop function only abandons registered sluices, so a sluice
+	// that registers after stop ran would otherwise block in Accept forever.
+	stopAbandonOnCancel := context.AfterFunc(wc.Ctx(), s.abandon)
+	defer stopAbandonOnCancel()
 
 	// Handle new connections.
 	log.Infof("spn/sluice: started listening for %s requests on %s", s.network, s.listener.Addr())
