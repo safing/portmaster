@@ -84,6 +84,14 @@ func runTest(m *testing.M) error {
 	if err != nil {
 		return fmt.Errorf("failed to create module: %w", err)
 	}
+	// Do not resolve the DNS test query in the online status check. The check
+	// runs in the background whenever netenv triggers it and resolves through
+	// the global resolvers, which read the package-level local address and
+	// port hooks that tests replace without synchronization. The check then
+	// skips the DNS query and reports the remaining checks only. This must
+	// happen before netenv starts its online status worker.
+	netenv.DNSTestQueryFunc = nil
+
 	err = stub.db.Start()
 	if err != nil {
 		return fmt.Errorf("Failed to start database: %w", err)
