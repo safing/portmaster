@@ -1527,8 +1527,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "axum",
  "futures-util",
  "hex",
+ "http",
  "nix 0.31.3",
  "pm-api",
  "pm-apprise",
@@ -1850,6 +1852,7 @@ dependencies = [
  "tokio-util",
  "tracing",
  "ureq",
+ "url",
 ]
 
 [[package]]

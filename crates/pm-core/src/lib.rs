@@ -20,6 +20,8 @@ pub mod apprise;
 
 pub mod control;
 
+pub mod ui;
+
 pub mod broadcasts;
 pub mod interop;
 pub mod win_integration;

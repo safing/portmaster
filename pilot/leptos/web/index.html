@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Portmaster · Leptos WASM pilot</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0f14;
+        --panel: #131a22;
+        --panel-2: #1b2430;
+        --border: #2a3644;
+        --text: #e6edf3;
+        --muted: #96a4b3;
+        --accent: #5ad1b3;
+        --danger: #ff6b6b;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+      }
+
+      body {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: clamp(1rem, 4vw, 3rem);
+        background: radial-gradient(1200px 600px at 50% -10%, #16202b 0%, var(--bg) 60%);
+        color: var(--text);
+        line-height: 1.5;
+      }
+
+      .shell {
+        width: 100%;
+        max-width: 760px;
+      }
+
+      .masthead {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .masthead h1 {
+        margin: 0;
+        font-size: 1.15rem;
+        letter-spacing: 0.02em;
+      }
+
+      .masthead h1 span {
+        color: var(--accent);
+      }
+
+      .badge {
+        font-size: 0.75rem;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0.15rem 0.6rem;
+      }
+
+      /* The Leptos app mounts its UI into #root. */
+      #root {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: clamp(1rem, 3vw, 1.75rem);
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+        min-height: 220px;
+      }
+
+      /* Light touch of polish for elements the pilot may render. */
+      #root button {
+        font: inherit;
+        color: var(--text);
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.45rem 0.8rem;
+        cursor: pointer;
+      }
+
+      #root button:hover {
+        border-color: var(--accent);
+      }
+
+      #root input {
+        font: inherit;
+        color: var(--text);
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.4rem 0.6rem;
+      }
+
+      .error {
+        color: var(--danger);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.85rem;
+        white-space: pre-wrap;
+      }
+
+      footer {
+        margin-top: 0.85rem;
+        font-size: 0.75rem;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      @media (max-width: 480px) {
+        .masthead {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <h1>Portmaster <span>/</span> Leptos pilot</h1>
+        <span class="badge">wasm32 · --target web</span>
+      </header>
+
+      <div id="root"></div>
+
+      <footer>Standalone UI experiment — not the production Portmaster interface.</footer>
+    </main>
+
+    <!-- wasm-bindgen --target web output; loads pm_leptos_pilot_bg.wasm next to it. -->
+    <script type="module" src="./pm_leptos_pilot.js"></script>
+    <!-- The generated module exports an init() function that must be called to boot the WASM. -->
+    <script type="module">
+      import init from "./pm_leptos_pilot.js";
+      init().catch((err) => {
+        console.error("Failed to start Leptos pilot:", err);
+        const root = document.getElementById("root");
+        if (root) {
+          const pre = document.createElement("pre");
+          pre.className = "error";
+          pre.textContent = `Failed to start the WASM pilot.\n\n${err}\n\nDid you run build.sh and serve over HTTP (not file://)?`;
+          root.replaceChildren(pre);
+        }
+      });
+    </script>
+  </body>
+</html>

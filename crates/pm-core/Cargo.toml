@@ -10,6 +10,8 @@ name = "portmaster-core-rs"
 path = "src/main.rs"
 
 [dependencies]
+axum.workspace = true
+http.workspace = true
 pm-apprise = { path = "../pm-apprise" }
 pm-broadcasts = { path = "../pm-broadcasts" }
 pm-compat = { path = "../pm-compat" }

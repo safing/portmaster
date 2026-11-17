@@ -805,7 +805,7 @@ impl Service {
             .take()
             .ok_or_else(|| anyhow::anyhow!("service is already running"))?;
 
-        let server = pm_api::serve(api, listener);
+        let server = crate::ui::serve(api, listener, self.data_dir());
 
         // Keep the parsed global rules and the custom filter list in sync with
         // config changes.
