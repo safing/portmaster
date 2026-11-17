@@ -9,6 +9,7 @@ license.workspace = true
 base64.workspace = true
 bytes = "1.12.1"
 h2 = "0.4.20"
+hex.workspace = true
 http.workspace = true
 pm-api = { path = "../pm-api" }
 pm-config = { path = "../pm-config" }
@@ -17,6 +18,7 @@ pm-geoip = { path = "../pm-geoip" }
 pm-record = { path = "../pm-record" }
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true

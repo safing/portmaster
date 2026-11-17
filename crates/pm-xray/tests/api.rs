@@ -297,3 +297,17 @@ fn new_subscription_is_enabled_by_default() {
         serde_json::from_str(r#"{"url":"https://example.com/sub"}"#).unwrap();
     assert!(req.enabled);
 }
+
+#[test]
+fn manual_nodes_endpoint_adds_direct_link() {
+    let (api, xray) = env();
+    let body = br#"{"url":"vless://00010203-0405-0607-0809-0a0b0c0d0e0f@manual.example.com:443#DE-Manual","name":"Custom DE"}"#;
+    let response = api.handle(request("POST", "/api/v1/xray/nodes/manual", "", body.to_vec()));
+    assert_eq!(response.status, 200, "{}", response.body_string());
+
+    let nodes = xray.store.list_nodes().unwrap();
+    assert_eq!(nodes.len(), 1);
+    assert_eq!(nodes[0].country_code, "DE");
+    assert_eq!(nodes[0].address, "manual.example.com");
+}
+

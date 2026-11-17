@@ -151,6 +151,69 @@ pub fn register_api(xray: &Arc<Xray>, api: &Api) -> pm_api::Result<()> {
         }),
     )?;
 
+    // Endpoint for adding manual/direct proxy links without an HTTP subscription URL
+    let manual_nodes = Arc::clone(xray);
+    api.register_endpoint(
+        Endpoint::new(
+            "xray/nodes/manual",
+            "Add Manual Xray Nodes",
+            "Adds direct VLESS, Trojan, Hysteria2, Shadowsocks or JSON links without an HTTP subscription.",
+        )
+        .with_write(PERMIT_ADMIN)
+        .with_struct(move |request| {
+            let payload: serde_json::Value = request.body_json()?;
+            let content = payload
+                .get("links")
+                .or_else(|| payload.get("link"))
+                .or_else(|| payload.get("url"))
+                .or_else(|| payload.get("content"))
+                .and_then(|v| v.as_str())
+                .unwrap_or_default();
+
+            if content.trim().is_empty() {
+                return Err(pm_api::ApiError::WithStatus {
+                    status: 400,
+                    message: "links or url is required".into(),
+                });
+            }
+
+            let name = payload
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Manual Nodes");
+
+            let sub_req = AddSubscriptionRequest {
+                name: name.to_string(),
+                url: content.trim().to_string(),
+                enabled: true,
+            };
+            let subscription = manual_nodes.store.add(&sub_req).map_err(crate::Error::api)?;
+            manual_nodes.refresh(&subscription.id, None);
+            let created_nodes = manual_nodes
+                .store
+                .list_nodes_for_subscription(&subscription.id)
+                .map_err(crate::Error::api)?;
+
+            let safe_nodes = created_nodes
+                .iter()
+                .filter_map(|n| {
+                    let mut val = serde_json::to_value(n).ok()?;
+                    if let Some(obj) = val.as_object_mut() {
+                        obj.remove("raw_config");
+                    }
+                    Some(val)
+                })
+                .collect::<Vec<_>>();
+
+            serde_json::to_value(json!({
+                "subscriptionId": subscription.id,
+                "nodeCount": safe_nodes.len(),
+                "nodes": safe_nodes
+            }))
+            .map_err(pm_api::ApiError::Json)
+        }),
+    )?;
+
     let connect = Arc::clone(xray);
     api.register_endpoint(
         Endpoint::new(

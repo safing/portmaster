@@ -95,3 +95,84 @@ fn replaces_nodes_and_removes_stale_ones() {
     assert_eq!(nodes.len(), 1);
     assert_eq!(nodes[0].protocol, pm_xray::Protocol::Shadowsocks);
 }
+
+#[test]
+fn direct_links_refresh_without_fetcher() {
+    let store = store();
+    let link = "vless://00010203-0405-0607-0809-0a0b0c0d0e0f@example.com:443?type=ws&security=tls#NL-Direct";
+    let created = store
+        .add(&AddSubscriptionRequest {
+            name: "Direct NL".into(),
+            url: link.into(),
+            enabled: true,
+        })
+        .unwrap();
+
+    // Passing a failing fetcher should NOT prevent direct link refresh
+    struct FailingFetcher;
+    impl SubscriptionFetcher for FailingFetcher {
+        fn fetch(&self, _url: &str) -> std::result::Result<String, String> {
+            Err("should not call network fetcher for direct links".into())
+        }
+    }
+
+    let count = store.refresh(&created.id, &FailingFetcher, None).unwrap();
+    assert_eq!(count, 1);
+    let nodes = store.list_nodes().unwrap();
+    assert_eq!(nodes.len(), 1);
+    assert_eq!(nodes[0].address, "example.com");
+    assert_eq!(nodes[0].country_code, "NL");
+}
+
+#[test]
+fn sing_box_and_xray_json_subscription_payloads() {
+    use pm_xray::subscription::decode_payload;
+
+    let singbox_json = r#"{
+      "outbounds": [
+        {
+          "type": "vless",
+          "tag": "US-SingBox",
+          "server": "sb.example.com",
+          "server_port": 443,
+          "uuid": "00010203-0405-0607-0809-0a0b0c0d0e0f",
+          "tls": { "enabled": true, "server_name": "sb.example.com" }
+        },
+        {
+          "type": "hysteria2",
+          "tag": "DE-Hy2",
+          "server": "hy2.example.com",
+          "server_port": 8443,
+          "password": "secret_hy2_password"
+        }
+      ]
+    }"#;
+
+    let decoded = decode_payload(singbox_json).unwrap();
+    assert_eq!(decoded.len(), 2);
+    assert!(decoded[0].starts_with("vless://"));
+    assert!(decoded[1].starts_with("hysteria2://"));
+
+    let xray_json = r#"{
+      "outbounds": [
+        {
+          "protocol": "trojan",
+          "tag": "JP-Xray",
+          "settings": {
+            "servers": [
+              {
+                "address": "xray.example.com",
+                "port": 443,
+                "password": "xray_password"
+              }
+            ]
+          }
+        }
+      ]
+    }"#;
+
+    let decoded_xray = decode_payload(xray_json).unwrap();
+    assert_eq!(decoded_xray.len(), 1);
+    assert!(decoded_xray[0].starts_with("trojan://"));
+}
+
