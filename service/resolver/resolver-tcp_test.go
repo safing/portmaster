@@ -21,25 +21,46 @@ import (
 // that cannot be bound is released as unusable and the dial is retried with
 // the next port.
 func TestTCPResolverDialRetriesOnBindError(t *testing.T) { //nolint:paralleltest // Replaces the package-level hooks.
-	bt := newTCPBindTest(t)
-	freePort := freeTCPPort(t)
-	bt.usePorts(bt.heldPort, freePort)
+	// The second port is only free at the time it is picked: another process
+	// may take it before the dial binds it. This is detected by the second
+	// port being released as unusable, and the test is repeated with a new
+	// port, so it only asserts the retry when the port could actually be used.
+	const maxTries = 20
+	for try := 1; try <= maxTries; try++ {
+		bt := newTCPBindTest(t)
+		freePort := freeTCPPort(t)
+		bt.usePorts(bt.heldPort, freePort)
 
-	conn, err := bt.resolver.dial(t.Context())
-	if err != nil {
-		t.Fatalf("dial failed: %s", err)
-	}
-	_ = conn.Close()
+		conn, err := bt.resolver.dial(t.Context())
+		got := bt.releasedPorts()
 
-	// The occupied port is released as unusable, the connected port is
-	// released as usable after the dial.
-	expected := []releasedPort{
-		{port: bt.heldPort, unusable: true},
-		{port: freePort, unusable: false},
+		// Stolen port: the first release is still the held port, but the
+		// second port was not bindable.
+		if len(got) >= 2 && got[1].port == freePort && got[1].unusable {
+			t.Logf("port %d was taken by another process (try %d of %d), retrying", freePort, try, maxTries)
+			if err == nil {
+				_ = conn.Close()
+			}
+			continue
+		}
+
+		if err != nil {
+			t.Fatalf("dial failed: %s", err)
+		}
+		_ = conn.Close()
+
+		// The occupied port is released as unusable, the connected port is
+		// released as usable after the dial.
+		expected := []releasedPort{
+			{port: bt.heldPort, unusable: true},
+			{port: freePort, unusable: false},
+		}
+		if !slices.Equal(got, expected) {
+			t.Errorf("expected releases %v, got %v", expected, got)
+		}
+		return
 	}
-	if got := bt.releasedPorts(); !slices.Equal(got, expected) {
-		t.Errorf("expected releases %v, got %v", expected, got)
-	}
+	t.Fatalf("no usable free port found in %d tries", maxTries)
 }
 
 // TestTCPResolverDialGivesUpOnBindErrors checks that the dial fails with
