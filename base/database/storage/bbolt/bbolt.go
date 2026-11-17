@@ -252,6 +252,7 @@ func (b *BBolt) Purge(ctx context.Context, q *query.Query, local, internal, shad
 
 	var cnt int
 	var done bool
+	var cancelErr error
 	for !done {
 		err := b.db.Update(func(tx *bbolt.Tx) error {
 			// Create a cursor for iteration.
@@ -261,7 +262,10 @@ func (b *BBolt) Purge(ctx context.Context, q *query.Query, local, internal, shad
 				// Check if context has been cancelled.
 				select {
 				case <-ctx.Done():
+					// Commit what was purged so far, but report that the
+					// purge is incomplete.
 					done = true
+					cancelErr = ctx.Err()
 					return nil
 				default:
 				}
@@ -335,7 +339,7 @@ func (b *BBolt) Purge(ctx context.Context, q *query.Query, local, internal, shad
 		}
 	}
 
-	return cnt, nil
+	return cnt, cancelErr
 }
 
 // Shutdown shuts down the database.
