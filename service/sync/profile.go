@@ -274,10 +274,10 @@ func ExportProfile(scopedID string) (*ProfileExport, error) {
 
 	// Remove presentation path if both Name and Icon are set.
 	if export.Name != "" && export.IconData != "" {
-		p.UsePresentationPath = false
+		export.UsePresentationPath = false
 	}
-	if !p.UsePresentationPath {
-		p.PresentationPath = ""
+	if !export.UsePresentationPath {
+		export.PresentationPath = ""
 	}
 
 	return export, nil

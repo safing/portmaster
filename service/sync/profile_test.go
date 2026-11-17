@@ -99,3 +99,39 @@ func TestImportProfileWithoutSourceDetectsExisting(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "existing", p.Name, "existing profile must not be replaced")
 }
+
+// TestExportProfileOmitsUnusedPresentationPath checks that the export does not
+// contain the presentation path if it is not used, and that exporting does not
+// modify the stored profile.
+//
+//nolint:paralleltest // Uses the global database.
+func TestExportProfileOmitsUnusedPresentationPath(t *testing.T) {
+	fingerprints := []profile.Fingerprint{{
+		Type:      profile.FingerprintTypePathID,
+		Operation: profile.FingerprintOperationEqualsID,
+		Value:     "/usr/bin/export-app",
+	}}
+	p := &profile.Profile{
+		ID:                  profile.DeriveProfileID(fingerprints),
+		Source:              profile.SourceLocal,
+		Name:                "export-app",
+		PresentationPath:    "/home/someone/private/export-app",
+		UsePresentationPath: false,
+		Fingerprints:        fingerprints,
+		Config:              map[string]any{},
+	}
+	p.SetKey(profile.MakeProfileKey(p.Source, p.ID))
+	require.NoError(t, p.Save())
+
+	export, err := ExportProfile(p.ScopedID())
+	require.NoError(t, err)
+	assert.Empty(t, export.PresentationPath, "unused presentation path must not be exported")
+	assert.False(t, export.UsePresentationPath)
+
+	// The stored profile must be unchanged.
+	r, err := db.Get(profile.MakeProfileKey(p.Source, p.ID))
+	require.NoError(t, err)
+	stored, err := profile.EnsureProfile(r)
+	require.NoError(t, err)
+	assert.Equal(t, "/home/someone/private/export-app", stored.PresentationPath, "export must not modify the profile")
+}
