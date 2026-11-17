@@ -513,6 +513,17 @@ func TestEndpointMatching(t *testing.T) { //nolint:maintidx // TODO
 	entity = (&intel.Entity{IP: net.IPv4(151, 101, 1, 164)}).Init(0) // nytimes.com
 	testEndpointMatch(t, ep, entity, NoMatch)
 
+	// A scope listed twice must still be included.
+	ep, err = parseEndpoint("+ Localhost,LAN,LAN")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ep.String() != "+ Localhost,LAN" {
+		t.Errorf(`unexpected rendering of duplicate scopes: "%s"`, ep.String())
+	}
+	entity = (&intel.Entity{IP: net.IPv4(192, 168, 0, 1)}).Init(0)
+	testEndpointMatch(t, ep, entity, Permitted)
+
 	// Port with protocol wildcard
 
 	ep, err = parseEndpoint("+ * */443")
