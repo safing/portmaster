@@ -1,6 +1,8 @@
 package captain
 
 import (
+	"encoding/binary"
+	"errors"
 	"time"
 
 	"github.com/safing/portmaster/spn/cabin"
@@ -9,6 +11,7 @@ import (
 	"github.com/safing/portmaster/spn/hub"
 	"github.com/safing/portmaster/spn/terminal"
 	"github.com/safing/structures/container"
+	"github.com/safing/structures/varint"
 )
 
 // PublishOpType is the type ID of the publish operation.
@@ -69,6 +72,37 @@ func NewPublishOp(controller *docks.CraneControllerTerminal, identity *cabin.Ide
 	return op, nil
 }
 
+// parsePublishOpData parses the announcement and status from the publish op
+// init data.
+func parsePublishOpData(data *container.Container) (announcementData, statusData []byte, tErr *terminal.Error) {
+	announcementData, err := getNextBlock(data)
+	if err != nil {
+		return nil, nil, terminal.ErrMalformedData.With("failed to get announcement: %w", err)
+	}
+	statusData, err = getNextBlock(data)
+	if err != nil {
+		return nil, nil, terminal.ErrMalformedData.With("failed to get status: %w", err)
+	}
+	return announcementData, statusData, nil
+}
+
+var errBlockTooBig = errors.New("block size exceeds available data")
+
+// getNextBlock is like container.GetNextBlock, but checks the block size
+// before reading the block. container.GetNextBlock allocates the received
+// block size before checking it, so a crafted size can make it allocate
+// terabytes and crash the process.
+func getNextBlock(c *container.Container) ([]byte, error) {
+	blockSize, n, err := varint.Unpack64(c.Peek(binary.MaxVarintLen64))
+	if err != nil {
+		return nil, err
+	}
+	if available := c.Length() - n; available < 0 || blockSize > uint64(available) {
+		return nil, errBlockTooBig
+	}
+	return c.GetNextBlock()
+}
+
 func runPublishOp(t terminal.Terminal, opID uint32, data *container.Container) (terminal.Operation, *terminal.Error) {
 	// Check if we are run by a controller.
 	controller, ok := t.(*docks.CraneControllerTerminal)
@@ -77,13 +111,9 @@ func runPublishOp(t terminal.Terminal, opID uint32, data *container.Container) (
 	}
 
 	// Parse and import Announcement and Status.
-	announcementData, err := data.GetNextBlock()
-	if err != nil {
-		return nil, terminal.ErrMalformedData.With("failed to get announcement: %w", err)
-	}
-	statusData, err := data.GetNextBlock()
-	if err != nil {
-		return nil, terminal.ErrMalformedData.With("failed to get status: %w", err)
+	announcementData, statusData, tErr := parsePublishOpData(data)
+	if tErr != nil {
+		return nil, tErr
 	}
 	h, forward, tErr := docks.ImportAndVerifyHubInfo(module.mgr.Ctx(), "", announcementData, statusData, conf.MainMapName, conf.MainMapScope)
 	if tErr != nil {
