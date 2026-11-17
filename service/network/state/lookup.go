@@ -28,6 +28,19 @@ var (
 	ErrPIDNotFound        = errors.New("could not find pid for socket inode")
 )
 
+// The first try of a lookup always uses the current tables, whatever their age:
+//   - If they were fetched before the packet was seen, they usually still hold
+//     the socket (listeners, UDP sockets and connections that were looked up
+//     before), which saves fetching the tables for most packets. If they do
+//     not, the next try fetches them.
+//   - If they were fetched after the packet was seen (by the lookup of another
+//     packet while this one was waiting), they are as good as newly fetched
+//     ones. Fetching them again anyway made every packet of a burst of new
+//     connections wait for the pause between table updates.
+//
+// Note that the first case trusts tables of any age: a socket that was closed
+// since, and whose local port (UDP, listeners) or address pair (TCP) is in use
+// by another process now, is found first. Exists() does not use old tables.
 const (
 	lookupTries     = 5
 	fastLookupTries = 2 // 1. current table, 2. get table with max 10ms, could be 0ms, 3. 10ms wait
@@ -78,8 +91,8 @@ func (table *tcpTable) lookup(pktInfo *packet.Info, fast bool) (
 
 	// Search for the socket until found.
 	for i := 1; i <= lookupTries; i++ {
-		// Use existing tables for first check if packet was seen after last table update.
-		if i == 1 && pktInfo.SeenAt.UnixNano() >= table.lastUpdateAt.Load() {
+		// Use the existing tables for the first check, see lookupTries.
+		if i == 1 {
 			connections, listeners = table.getCurrentTables()
 		} else {
 			connections, listeners = table.updateTables()
@@ -100,8 +113,8 @@ func (table *tcpTable) lookup(pktInfo *packet.Info, fast bool) (
 			continue
 		}
 
-		// Use existing tables for first check if packet was seen after last table update.
-		if i == 1 && pktInfo.SeenAt.UnixNano() >= table.dualStack.lastUpdateAt.Load() {
+		// Use the existing tables for the first check, see lookupTries.
+		if i == 1 {
 			dualStackConnections, dualStackListeners = table.dualStack.getCurrentTables()
 		} else {
 			dualStackConnections, dualStackListeners = table.dualStack.updateTables()
@@ -178,8 +191,8 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 
 	// Search for the socket until found.
 	for i := 1; i <= lookupTries; i++ {
-		// Get or update tables.
-		if i == 1 && pktInfo.SeenAt.UnixNano() >= table.lastUpdateAt.Load() {
+		// Use the existing tables for the first check, see lookupTries.
+		if i == 1 {
 			binds = table.getCurrentTables()
 		} else {
 			binds = table.updateTables()
@@ -211,8 +224,8 @@ func (table *udpTable) lookup(pktInfo *packet.Info, fast bool) (
 			continue
 		}
 
-		// Get or update tables.
-		if i == 1 && pktInfo.SeenAt.UnixNano() >= table.dualStack.lastUpdateAt.Load() {
+		// Use the existing tables for the first check, see lookupTries.
+		if i == 1 {
 			dualStackBinds = table.dualStack.getCurrentTables()
 		} else {
 			dualStackBinds = table.dualStack.updateTables()

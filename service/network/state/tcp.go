@@ -27,7 +27,8 @@ type tcpTable struct {
 	// lastFetchAttemptAt stores the time of the last attempt to update the
 	// tables as unix nanoseconds, regardless of whether it succeeded.
 	// Exists() uses it, so that a failing fetch is not retried for every
-	// connection check. Lookups use lastUpdateAt, so that they still retry.
+	// connection check. Lookups always fetch after their first try, so that
+	// they still retry.
 	lastFetchAttemptAt atomic.Int64
 
 	fetchLimiter *utils.CallLimiter2
