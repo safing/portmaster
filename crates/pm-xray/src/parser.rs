@@ -170,6 +170,32 @@ fn query_params(query: &str) -> BTreeMap<String, String> {
     params
 }
 
+/// Validates that a proxy server host is a real address and not a placeholder/advertising entry.
+pub fn is_valid_proxy_host(host: &str) -> bool {
+    let host = host.trim().trim_start_matches('[').trim_end_matches(']');
+    if host.is_empty() {
+        return false;
+    }
+    // Reject dummy/placeholder hosts commonly used for ads (e.g. host "1", "0.0.0.0", "127.0.0.1")
+    if host == "1" || host == "0.0.0.0" || host == "127.0.0.1" || host.eq_ignore_ascii_case("localhost") {
+        return false;
+    }
+    if let Ok(ip) = host.parse::<IpAddr>() {
+        return match ip {
+            IpAddr::V4(v4) => !v4.is_unspecified() && !v4.is_loopback() && !v4.is_broadcast(),
+            IpAddr::V6(v6) => !v6.is_unspecified() && !v6.is_loopback(),
+        };
+    }
+    // Reject pure numbers without dots (like "1", "123")
+    if host.chars().all(|c| c.is_ascii_digit()) {
+        return false;
+    }
+    if host.contains(' ') || host.contains('/') || host.contains('\\') || host.contains('?') || host.contains('#') {
+        return false;
+    }
+    host.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_')
+}
+
 /// Splits `host:port`, understanding bracketed IPv6 addresses.
 fn split_endpoint(authority: &str, default_port: u16) -> Result<(String, u16), ParseError> {
     let authority = authority.trim_end_matches('/');
@@ -186,6 +212,9 @@ fn split_endpoint(authority: &str, default_port: u16) -> Result<(String, u16), P
     };
     if host.is_empty() {
         return Err(ParseError::Syntax("missing server address".into()));
+    }
+    if !is_valid_proxy_host(host) {
+        return Err(ParseError::Syntax(format!("invalid or dummy proxy host: {host}")));
     }
     let port = if port_text.is_empty() {
         default_port
@@ -830,6 +859,9 @@ fn flag_letter(ch: char) -> Option<char> {
 }
 
 fn code_info(code: &str) -> Option<(String, String)> {
+    if code == "EU" {
+        return Some(("EU".to_string(), "European Union".to_string()));
+    }
     let info = country_info(code)?;
     Some((code.to_string(), info.name.clone()))
 }
@@ -872,9 +904,20 @@ pub fn country_from_name(name: &str) -> Option<(String, String)> {
     None
 }
 
-/// Looks up the country of a node by its IP address using the GeoIP database.
+fn resolve_ip(address: &str) -> Option<IpAddr> {
+    if let Ok(ip) = address.parse::<IpAddr>() {
+        return Some(ip);
+    }
+    use std::net::ToSocketAddrs;
+    if let Ok(mut addrs) = (address, 0).to_socket_addrs() {
+        return addrs.next().map(|s| s.ip());
+    }
+    None
+}
+
+/// Looks up the country of a node by its IP address or hostname using the GeoIP database.
 pub fn country_from_address(address: &str, geoip: &GeoIp) -> Option<(String, String)> {
-    let ip: IpAddr = address.parse().ok()?;
+    let ip = resolve_ip(address)?;
     let location = geoip.get_location(ip).ok()?;
     if location.country.code.is_empty() {
         return None;
@@ -894,22 +937,55 @@ pub fn node_id(subscription_id: &str, raw: &str) -> String {
 }
 
 /// Parses one profile into a UI-ready node. The country is taken from the
-/// profile name first, then (for literal IP addresses) from `pm_geoip`.
+/// profile name first, then from `pm_geoip` (resolving DNS if necessary).
+/// Coordinates (latitude/longitude) are populated so nodes render accurately on the world map.
 pub fn parse_profile(
     raw: &str,
     subscription_id: &str,
     geoip: Option<&GeoIp>,
 ) -> Result<XrayNode, ParseError> {
     let parsed = parse_link(raw)?;
-    let (country_code, country_name) = country_from_name(&parsed.name)
-        .or_else(|| geoip.and_then(|geoip| country_from_address(&parsed.address, geoip)))
-        .unwrap_or_default();
+    let (mut country_code, mut country_name) = country_from_name(&parsed.name).unwrap_or_default();
+    let mut latitude = None;
+    let mut longitude = None;
+
+    if let Some(geoip) = geoip {
+        if let Some(ip) = resolve_ip(&parsed.address) {
+            if let Ok(location) = geoip.get_location(ip) {
+                if country_code.is_empty() && !location.country.code.is_empty() {
+                    country_code = location.country.code.clone();
+                    country_name = country_info(&location.country.code)
+                        .map(|info| info.name.clone())
+                        .unwrap_or_else(|| location.country.name.clone());
+                }
+                if location.coordinates.latitude != 0.0 || location.coordinates.longitude != 0.0 {
+                    latitude = Some(location.coordinates.latitude);
+                    longitude = Some(location.coordinates.longitude);
+                }
+            }
+        }
+    }
+
+    if latitude.is_none() && !country_code.is_empty() {
+        if country_code == "EU" {
+            latitude = Some(50.85);
+            longitude = Some(4.35);
+        } else if let Some(info) = country_info(&country_code) {
+            if info.center.latitude != 0.0 || info.center.longitude != 0.0 {
+                latitude = Some(info.center.latitude);
+                longitude = Some(info.center.longitude);
+            }
+        }
+    }
+
     Ok(XrayNode {
         id: node_id(subscription_id, raw),
         subscription_id: subscription_id.to_string(),
         name: parsed.name,
         country_code,
         country_name,
+        latitude,
+        longitude,
         protocol: parsed.protocol,
         address: parsed.address,
         port: parsed.port,

@@ -240,6 +240,17 @@ pub fn register_api(xray: &Arc<Xray>, api: &Api) -> pm_api::Result<()> {
                 .store
                 .set_active(&node.subscription_id, &node.id)
                 .map_err(crate::Error::api)?;
+            let inbound_port = payload.inbound_port.unwrap_or(connect.inbound_port);
+            let _ = connect.config.set_config_option("spn/enable", serde_json::Value::Bool(true));
+            let _ = connect.config.set_config_option(
+                "splittun/proxy",
+                serde_json::Value::String(format!("socks5://127.0.0.1:{inbound_port}")),
+            );
+            let probe_xray = Arc::clone(&connect);
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                probe_xray.manager.probe_exit_ip(Some(&probe_xray.geoip));
+            });
             serde_json::to_value(connect.manager.status()).map_err(pm_api::ApiError::Json)
         }),
     )?;
@@ -255,6 +266,8 @@ pub fn register_api(xray: &Arc<Xray>, api: &Api) -> pm_api::Result<()> {
         .with_struct(move |_| {
             disconnect.manager.disconnect().map_err(crate::Error::api)?;
             disconnect.store.clear_active();
+            let _ = disconnect.config.set_config_option("spn/enable", serde_json::Value::Bool(false));
+            let _ = disconnect.config.set_config_option("splittun/proxy", serde_json::Value::String(String::new()));
             serde_json::to_value(disconnect.manager.status()).map_err(pm_api::ApiError::Json)
         }),
     )?;

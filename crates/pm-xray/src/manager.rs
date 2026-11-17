@@ -110,6 +110,10 @@ struct ManagerState {
     inbound_port: u16,
     inbound: InboundProtocol,
     inbound_address: Option<String>,
+    exit_ip: Option<String>,
+    exit_country: Option<String>,
+    exit_latitude: Option<f64>,
+    exit_longitude: Option<f64>,
 }
 
 impl ManagerState {
@@ -156,6 +160,10 @@ impl XrayManager {
                 inbound_port: 1080,
                 inbound: InboundProtocol::Socks,
                 inbound_address: None,
+                exit_ip: None,
+                exit_country: None,
+                exit_latitude: None,
+                exit_longitude: None,
             }),
             adapter,
         }
@@ -204,6 +212,10 @@ impl XrayManager {
         state.inbound_port = inbound_port;
         state.inbound = inbound;
         state.inbound_address = None;
+        state.exit_ip = None;
+        state.exit_country = None;
+        state.exit_latitude = None;
+        state.exit_longitude = None;
 
         match self.adapter.spawn(&self.binary, &config) {
             Ok(child) => {
@@ -229,6 +241,10 @@ impl XrayManager {
         state.node = None;
         state.error = None;
         state.inbound_address = None;
+        state.exit_ip = None;
+        state.exit_country = None;
+        state.exit_latitude = None;
+        state.exit_longitude = None;
         Ok(())
     }
 
@@ -282,7 +298,63 @@ impl XrayManager {
             country,
             since: None,
             traffic: None,
+            exit_ip: state.exit_ip.clone(),
+            exit_country: state.exit_country.clone(),
+            exit_latitude: state.exit_latitude,
+            exit_longitude: state.exit_longitude,
         }
+    }
+
+    /// Probes the real external exit IP through Xray's local inbound proxy.
+    /// Useful for cascading VPNs, Reality SNI masking, and CDN frontends where entry IP != exit IP.
+    pub fn probe_exit_ip(&self, geoip: Option<&pm_geoip::GeoIp>) -> Option<String> {
+        let (inbound_port, inbound_proto) = {
+            let state = self.inner.lock().expect("lock poisoned");
+            if state.state != ProcessState::Running {
+                return None;
+            }
+            (state.inbound_port, state.inbound)
+        };
+        if inbound_proto != InboundProtocol::Socks {
+            return None;
+        }
+
+        let exit_ip = probe_ip_via_socks5(inbound_port)?;
+        let mut exit_country = None;
+        let mut exit_latitude = None;
+        let mut exit_longitude = None;
+
+        if let Some(geoip) = geoip {
+            if let Ok(ip) = exit_ip.parse::<std::net::IpAddr>() {
+                if let Ok(location) = geoip.get_location(ip) {
+                    if !location.country.code.is_empty() {
+                        exit_country = Some(location.country.code.clone());
+                    }
+                    if location.coordinates.latitude != 0.0 || location.coordinates.longitude != 0.0 {
+                        exit_latitude = Some(location.coordinates.latitude);
+                        exit_longitude = Some(location.coordinates.longitude);
+                    }
+                }
+            }
+        }
+
+        if exit_latitude.is_none() {
+            if let Some(ref code) = exit_country {
+                if let Some(info) = pm_geoip::country_info(code) {
+                    if info.center.latitude != 0.0 || info.center.longitude != 0.0 {
+                        exit_latitude = Some(info.center.latitude);
+                        exit_longitude = Some(info.center.longitude);
+                    }
+                }
+            }
+        }
+
+        let mut state = self.inner.lock().expect("lock poisoned");
+        state.exit_ip = Some(exit_ip.clone());
+        state.exit_country = exit_country;
+        state.exit_latitude = exit_latitude;
+        state.exit_longitude = exit_longitude;
+        Some(exit_ip)
     }
 
     /// Idempotent shutdown helper used by the core.
@@ -290,6 +362,71 @@ impl XrayManager {
         if let Err(error) = self.disconnect() {
             tracing::warn!(%error, "xray: failed to stop process");
         }
+    }
+}
+
+fn probe_ip_via_socks5(inbound_port: u16) -> Option<String> {
+    use std::io::{Read, Write};
+    use std::net::{IpAddr, SocketAddr, TcpStream};
+    use std::time::Duration;
+
+    let addr = SocketAddr::from(([127, 0, 0, 1], inbound_port));
+    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_millis(1500)).ok()?;
+    stream.set_read_timeout(Some(Duration::from_millis(2500))).ok()?;
+    stream.set_write_timeout(Some(Duration::from_millis(1500))).ok()?;
+
+    // 1. SOCKS5 greeting: [VER=5, NMETHODS=1, METHOD=0 (NO AUTH)]
+    stream.write_all(&[0x05, 0x01, 0x00]).ok()?;
+    let mut resp = [0u8; 2];
+    stream.read_exact(&mut resp).ok()?;
+    if resp != [0x05, 0x00] {
+        return None;
+    }
+
+    // 2. SOCKS5 connect to "api.ipify.org:80"
+    let domain = b"api.ipify.org";
+    let mut req = Vec::with_capacity(7 + domain.len());
+    req.extend_from_slice(&[0x05, 0x01, 0x00, 0x03, domain.len() as u8]);
+    req.extend_from_slice(domain);
+    req.extend_from_slice(&80u16.to_be_bytes());
+    stream.write_all(&req).ok()?;
+
+    let mut reply_hdr = [0u8; 4];
+    stream.read_exact(&mut reply_hdr).ok()?;
+    if reply_hdr[1] != 0x00 {
+        return None;
+    }
+    match reply_hdr[3] {
+        0x01 => {
+            let mut skip = [0u8; 4 + 2];
+            stream.read_exact(&mut skip).ok()?;
+        }
+        0x03 => {
+            let mut len = [0u8; 1];
+            stream.read_exact(&mut len).ok()?;
+            let mut skip = vec![0u8; len[0] as usize + 2];
+            stream.read_exact(&mut skip).ok()?;
+        }
+        0x04 => {
+            let mut skip = [0u8; 16 + 2];
+            stream.read_exact(&mut skip).ok()?;
+        }
+        _ => return None,
+    }
+
+    // 3. HTTP GET to api.ipify.org
+    let http_req = b"GET / HTTP/1.1\r\nHost: api.ipify.org\r\nUser-Agent: curl/8.0\r\nConnection: close\r\n\r\n";
+    stream.write_all(http_req).ok()?;
+
+    let mut buf = Vec::new();
+    let _ = stream.read_to_end(&mut buf);
+    let text = String::from_utf8_lossy(&buf);
+    let body = text.split("\r\n\r\n").nth(1)?;
+    let ip_str = body.trim();
+    if ip_str.parse::<IpAddr>().is_ok() {
+        Some(ip_str.to_string())
+    } else {
+        None
     }
 }
 
@@ -351,6 +488,8 @@ mod tests {
             name: format!("Node {id}"),
             country_code: String::new(),
             country_name: String::new(),
+            latitude: None,
+            longitude: None,
             protocol: crate::model::Protocol::Vless,
             address: "example.com".into(),
             port: 443,

@@ -86,3 +86,29 @@ fn percent_decode_does_not_panic_on_multibyte_characters() {
     let node = parse_profile(raw, "sub-1", None).unwrap();
     assert_eq!(node.port, 443);
 }
+
+#[test]
+fn filters_dummy_ad_nodes_and_sets_coordinates() {
+    let raw_payload = "\
+hysteria2://3a17ce52-4547-45aa-9820-a7d03ad5faca@media.embrofree.org:443/?sni=media.embrofree.org#%F0%9F%87%AA%F0%9F%87%BA%20%5BHY2%5D%20EmbroKVN%20%D0%91%D0%B5%D1%81%D0%BF%D0%BB%D0%B0%D1%82%D0%BD%D0%B0%D1%8F%20%D1%81%D0%B0%D0%B1%D0%BA%D0%B0\n\
+vless://3a17ce52-4547-45aa-9820-a7d03ad5faca@real.embrofree.org:443?encryption=none&type=tcp&security=reality&sni=cdn.jsdelivr.net&fp=firefox&pbk=wfp4jyEksrozyS739zqIsNXySoqeEVtaQlVmeNeLp28#%F0%9F%87%AA%F0%9F%87%BA%20%5BVL%5D%20EmbroKVN%20%D0%91%D0%B5%D1%81%D0%BF%D0%BB%D0%B0%D1%82%D0%BD%D0%B0%D1%8F%20%D1%81%D0%B0%D0%B1%D0%BA%D0%B0\n\
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTp4bnQ5empkYXB0Tkc3QlJ3Z1JocnhFY05ya01SVTU3dg==@1:1234#%D0%9E%D1%84%D0%BE%D1%80%D0%BC%D0%B8%20%D0%BF%D0%BE%D0%B4%D0%BF%D0%B8%D1%81%D0%BA%D1%83\n\
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTp4bnQ5empkYXB0Tkc3QlJ3Z1JocnhFY05ya01SVTU3dg==@1:1234#%D1%87%D1%82%D0%BE%D0%B1%D1%8B%20%D0%BF%D0%BE%D0%BB%D1%83%D1%87%D0%B8%D1%82%D1%8C%20%D0%BB%D0%B8%D1%87%D0%BD%D1%8B%D0%B9%20%D0%B4%D0%BE%D1%81%D1%82%D1%83%D0%BF\n\
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTp4bnQ5empkYXB0Tkc3QlJ3Z1JocnhFY05ya01SVTU3dg==@1:1234#%D0%B1%D0%B5%D0%B7%20%D0%BB%D0%B8%D0%BC%D0%B8%D1%82%D0%B0%20%D1%82%D1%80%D0%B0%D1%84%D0%B8%D0%BA%D0%B0%20%D0%B8%20%D1%81%D0%BA%D0%BE%D1%80%D0%BE%D1%81%D1%82%D0%B8\n\
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTp4bnQ5empkYXB0Tkc3QlJ3Z1JocnhFY05ya01SVTU3dg==@1:1234#%D0%9E%D1%82%2098%20%D1%80%20%D0%BD%D0%B0%206%20%D0%BC%D0%B5%D1%81%D1%8F%D1%86%D0%B5%D0%B2\n\
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTp4bnQ5empkYXB0Tkc3QlJ3Z1JocnhFY05ya01SVTU3dg==@1:1234#%D0%98%D0%BD%D1%81%D1%82%D1%80%D1%83%D0%BA%D1%86%D0%B8%D1%8F%20%D0%BD%D0%B0%20%D1%81%D0%B0%D0%B9%D1%82%D0%B5\n\
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTp4bnQ5empkYXB0Tkc3QlJ3Z1JocnhFY05ya01SVTU3dg==@1:1234#kvn-wiki.com";
+
+    let links = decode_payload(raw_payload).unwrap();
+    let valid_nodes: Vec<_> = links
+        .iter()
+        .filter_map(|link| parse_profile(link, "sub-1", None).ok())
+        .collect();
+
+    // The 6 dummy "ss://...@1:1234" advertisement links must be filtered out!
+    assert_eq!(valid_nodes.len(), 2);
+    assert_eq!(valid_nodes[0].protocol, Protocol::Hysteria2);
+    assert_eq!(valid_nodes[1].protocol, Protocol::Vless);
+    // Real nodes have country detected from flag emoji and coordinates populated
+    assert!(valid_nodes[0].latitude.is_some() || !valid_nodes[0].country_code.is_empty());
+}

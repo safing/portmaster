@@ -26,6 +26,12 @@ export class XrayPageComponent implements OnInit, OnDestroy {
 
   pins: MapPin[] = [];
   selectedPinId: string | null = null;
+  showRealExitIp: boolean = false;
+
+  toggleRealExitIp(): void {
+    this.xrayMapService.showRealExitIp = this.showRealExitIp;
+    this.reload();
+  }
   selectedCountry: string | null = null;
   hoveredCountry: { countryCode: string; countryName: string } | null = null;
   newUrl = '';

@@ -12,6 +12,8 @@ fn node(raw: &str) -> XrayNode {
         name: "Test".into(),
         country_code: "DE".into(),
         country_name: "Germany".into(),
+        latitude: None,
+        longitude: None,
         protocol: Protocol::Unknown,
         address: String::new(),
         port: 0,

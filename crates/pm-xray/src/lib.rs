@@ -172,7 +172,23 @@ pub fn register_options(config: &Config) -> pm_config::Result<()> {
         )
         .with_expertise_level(pm_config::EXPERTISE_LEVEL_DEVELOPER)
         .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("Development")),
-    )
+    )?;
+
+    if config.option("spn/enable").is_err() {
+        let _ = config.register(
+            ConfigOption::new(
+                "Enable SPN / Xray Routing",
+                "spn/enable",
+                "Whether SPN / Xray routing is enabled globally.",
+                pm_config::OPT_TYPE_BOOL,
+                Value::Bool(false),
+            )
+            .with_expertise_level(pm_config::EXPERTISE_LEVEL_USER)
+            .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("General")),
+        );
+    }
+
+    Ok(())
 }
 
 fn exists_in_path(name: &str) -> bool {
@@ -199,6 +215,9 @@ fn resolve_binary(configured: &str, bin_dir: &Path) -> Option<String> {
         "/opt/v2rayn-bin/bin/xray/xray",
         "/usr/bin/xray",
         "/usr/local/bin/xray",
+        "/opt/xray-rust/xray-rust",
+        "/usr/bin/xray-rust",
+        "/usr/local/bin/xray-rust",
     ];
     for &known in KNOWN_PATHS {
         if Path::new(known).is_file() {
@@ -209,10 +228,37 @@ fn resolve_binary(configured: &str, bin_dir: &Path) -> Option<String> {
     if candidate.is_file() {
         return Some(candidate.to_string_lossy().into_owned());
     }
+    let candidate_xray = bin_dir.join("xray");
+    if candidate_xray.is_file() {
+        return Some(candidate_xray.to_string_lossy().into_owned());
+    }
+    #[cfg(windows)]
+    {
+        let candidate_exe = bin_dir.join(format!("{XRAY_BINARY_NAME}.exe"));
+        if candidate_exe.is_file() {
+            return Some(candidate_exe.to_string_lossy().into_owned());
+        }
+        let candidate_xray_exe = bin_dir.join("xray.exe");
+        if candidate_xray_exe.is_file() {
+            return Some(candidate_xray_exe.to_string_lossy().into_owned());
+        }
+    }
     if exists_in_path("xray") {
         return Some("xray".to_string());
     }
-    exists_in_path(XRAY_BINARY_NAME).then(|| XRAY_BINARY_NAME.to_string())
+    if exists_in_path(XRAY_BINARY_NAME) {
+        return Some(XRAY_BINARY_NAME.to_string());
+    }
+    #[cfg(windows)]
+    {
+        if exists_in_path("xray.exe") {
+            return Some("xray.exe".to_string());
+        }
+        if exists_in_path(&format!("{XRAY_BINARY_NAME}.exe")) {
+            return Some(format!("{XRAY_BINARY_NAME}.exe"));
+        }
+    }
+    None
 }
 
 /// Current time as Unix seconds.

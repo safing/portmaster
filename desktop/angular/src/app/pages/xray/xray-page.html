@@ -3,14 +3,22 @@
     <div>
       <h1 class="text-lg font-medium">{{ 'xray.title' | t: undefined : ('' | i18nVersion) }}</h1>
       <p class="text-xs text-secondary">{{ 'xray.subtitle' | t: undefined : ('' | i18nVersion) }}</p>
-      <p class="mt-1 text-xs" *ngIf="status$ | async as st">
+      <p class="mt-1 text-xs flex flex-row items-center gap-3" *ngIf="status$ | async as st">
         <span [class.text-green-300]="st.connected" [class.text-secondary]="!st.connected">
           {{ (st.connected ? 'xray.statusConnected' : 'xray.statusDisconnected') | t: undefined : ('' | i18nVersion) }}
         </span>
         <span *ngIf="st.connected && st.node_name">
           — {{ 'xray.connectedTo' | t: { node: st.node_name }: ('' | i18nVersion) }}
         </span>
+        <span *ngIf="st.connected && st.exitIp" class="text-secondary">
+          · {{ 'xray.exitIp' | t: undefined : ('' | i18nVersion) }}: <b class="text-primary">{{ st.exitIp }}</b>
+          <span *ngIf="st.exitCountry"> ({{ st.exitCountry }})</span>
+        </span>
       </p>
+      <label class="inline-flex flex-row items-center gap-1.5 mt-1 text-xs text-secondary cursor-pointer" *ngIf="(status$ | async)?.connected">
+        <input type="checkbox" [(ngModel)]="showRealExitIp" (change)="toggleRealExitIp()" class="cursor-pointer">
+        <span>{{ 'xray.showRealExitIp' | t: undefined : ('' | i18nVersion) }}</span>
+      </label>
     </div>
 
     <button type="button" (click)="reload()" [title]="'xray.reloadHint' | t: undefined : ('' | i18nVersion)"

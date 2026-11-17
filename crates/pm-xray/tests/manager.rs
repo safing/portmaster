@@ -63,6 +63,8 @@ fn node(id: &str) -> XrayNode {
         name: format!("Node {id}"),
         country_code: String::new(),
         country_name: String::new(),
+        latitude: None,
+        longitude: None,
         protocol: pm_xray::Protocol::Vless,
         address: "example.com".into(),
         port: 443,

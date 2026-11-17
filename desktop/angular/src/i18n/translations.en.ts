@@ -132,6 +132,8 @@ export const en: Record<string, string> = {
   'xray.selectNode': 'Click a pin on the map or choose a node below.',
   'xray.selectedNode': 'Selected node',
   'xray.details': 'Details',
+  'xray.exitIp': 'Exit IP',
+  'xray.showRealExitIp': 'Real Server IP (Exit Node)',
 
 
   // --- additional UI strings (en) ---

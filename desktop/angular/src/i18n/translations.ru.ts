@@ -132,6 +132,8 @@ export const ru: Record<string, string> = {
   'xray.selectNode': 'Нажмите на маркер на карте или выберите узел в списке.',
   'xray.selectedNode': 'Выбранный узел',
   'xray.details': 'Подробнее',
+  'xray.exitIp': 'Выходной IP',
+  'xray.showRealExitIp': 'Реальный IP сервера (выходной узел)',
 
 
   // --- additional UI strings (ru) ---

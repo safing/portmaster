@@ -34,6 +34,10 @@ export interface XrayStatus {
   country?: string | null;
   since?: string | null;
   state?: string;
+  exitIp?: string | null;
+  exitCountry?: string | null;
+  exitLatitude?: number | null;
+  exitLongitude?: number | null;
 }
 
 /** Contract alias for consumers that prefer the short name. */

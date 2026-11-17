@@ -20,6 +20,7 @@ import { countryCenter } from './country-centers';
 @Injectable()
 export class XrayMapService {
   readonly _pins$ = new BehaviorSubject<MapPin[]>([]);
+  showRealExitIp: boolean = false;
 
   get pins$(): Observable<MapPin[]> {
     return this._pins$.asObservable();
@@ -44,22 +45,33 @@ export class XrayMapService {
 
   /** Convert one backend node into the MapPin shape used by the SPN map. */
   toMapPin(node: XrayNode, status: XrayStatus | null): MapPin {
+    const isExit = !!status && status.connected && status.nodeId === node.id;
     const centered = countryCenter(node.country);
-    const location: GeoCoordinates =
+    let location: GeoCoordinates =
       typeof node.latitude === 'number' && typeof node.longitude === 'number'
         ? { AccuracyRadius: 0, Latitude: node.latitude, Longitude: node.longitude }
         : centered
           ? { AccuracyRadius: 0, Latitude: centered[0], Longitude: centered[1] }
           : UnknownLocation;
 
+    if (isExit && this.showRealExitIp && typeof status?.exitLatitude === 'number' && typeof status?.exitLongitude === 'number') {
+      location = { AccuracyRadius: 0, Latitude: status.exitLatitude, Longitude: status.exitLongitude };
+    }
+
+    const pinIp = isExit && this.showRealExitIp && status?.exitIp ? status.exitIp : node.address;
+    const pinCountry = isExit && this.showRealExitIp && status?.exitCountry ? status.exitCountry : (node.country || '');
+    const pinName = isExit && this.showRealExitIp && status?.exitIp
+      ? `${node.name || node.address} (${status.exitIp})`
+      : (node.name || node.address);
+
     const entity: IntelEntity = {
       Protocol: IPProtocol.TCP,
       Port: node.port,
       Domain: node.address,
       CNAME: null,
-      IP: node.address,
+      IP: pinIp,
       IPScope: IPScope.Global,
-      Country: node.country || '',
+      Country: pinCountry,
       ASN: 0,
       ASOrg: '',
       Coordinates: location,
@@ -70,7 +82,7 @@ export class XrayMapService {
 
     const pin: Pin = {
       ID: node.id,
-      Name: node.name || node.address,
+      Name: pinName,
       FirstSeen: '',
       EntityV4: entity,
       EntityV6: null,
@@ -81,8 +93,6 @@ export class XrayMapService {
       Route: null,
       VerifiedOwner: node.protocol || '',
     };
-
-    const isExit = !!status && status.connected && status.nodeId === node.id;
 
     return {
       pin,

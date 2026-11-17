@@ -69,7 +69,7 @@ impl std::fmt::Display for Protocol {
 }
 
 /// One VPN endpoint extracted from a subscription.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct XrayNode {
     /// Stable identifier: a short hash of the subscription and share link.
     pub id: String,
@@ -85,6 +85,10 @@ pub struct XrayNode {
     /// Human-readable country name, when known.
     #[serde(default)]
     pub country_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub latitude: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub longitude: Option<f64>,
     pub protocol: Protocol,
     pub address: String,
     pub port: u16,
@@ -205,6 +209,15 @@ pub struct XrayStatus {
     /// Live traffic counters, when a StatsService API is configured.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub traffic: Option<TrafficStatus>,
+    /// Real detected exit node IP (for cascading proxies or CDN frontends).
+    #[serde(rename = "exitIp", alias = "exit_ip", skip_serializing_if = "Option::is_none")]
+    pub exit_ip: Option<String>,
+    #[serde(rename = "exitCountry", alias = "exit_country", skip_serializing_if = "Option::is_none")]
+    pub exit_country: Option<String>,
+    #[serde(rename = "exitLatitude", alias = "exit_latitude", skip_serializing_if = "Option::is_none")]
+    pub exit_latitude: Option<f64>,
+    #[serde(rename = "exitLongitude", alias = "exit_longitude", skip_serializing_if = "Option::is_none")]
+    pub exit_longitude: Option<f64>,
 }
 
 /// Response of `GET xray/nodes`.
