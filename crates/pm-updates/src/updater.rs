@@ -78,6 +78,23 @@ pub enum UpdateError {
 /// Result type of the updater.
 pub type Result<T> = std::result::Result<T, UpdateError>;
 
+/// Outcome of [`Updater::configure_with_check`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConfigureResult {
+    /// Whether any configuration field actually changed.
+    pub changed: bool,
+    /// The new automatic-check setting.
+    pub auto_check: bool,
+    /// Whether an immediate update check should be triggered now.
+    ///
+    /// This is `true` when something changed and automatic checking is now
+    /// enabled. Go re-arms its repeating check worker whenever `Configure`
+    /// changes the config while the module is running; Rust leaves scheduling
+    /// to the caller, who should run [`Updater::update_check`] when this is
+    /// `true` (off the async runtime, as the periodic workers do).
+    pub should_check: bool,
+}
+
 /// The update module.
 pub struct Updater {
     config: Mutex<UpdaterConfig>,
@@ -208,7 +225,35 @@ impl Updater {
     }
 
     /// Applies slight configuration changes and returns whether they changed.
+    ///
+    /// Kept for callers that only need the "did anything change" signal; use
+    /// [`Updater::configure_with_check`] to also learn whether an immediate
+    /// update check should be triggered.
     pub fn configure(&self, auto_check: bool, index_urls: Vec<String>) -> bool {
+        self.apply_config(auto_check, index_urls)
+    }
+
+    /// Applies slight configuration changes and reports whether an immediate
+    /// update check should be triggered, like Go `Configure`.
+    ///
+    /// The caller owns the update-check scheduling (the periodic workers live
+    /// in pm-core), so this method does not start a task itself. When
+    /// [`ConfigureResult::should_check`] is `true`, the caller should run
+    /// [`Updater::update_check`] once, e.g. via `spawn_blocking`.
+    pub fn configure_with_check(
+        &self,
+        auto_check: bool,
+        index_urls: Vec<String>,
+    ) -> ConfigureResult {
+        let changed = self.apply_config(auto_check, index_urls);
+        ConfigureResult {
+            changed,
+            auto_check,
+            should_check: changed && auto_check,
+        }
+    }
+
+    fn apply_config(&self, auto_check: bool, index_urls: Vec<String>) -> bool {
         let mut config = self
             .config
             .lock()
@@ -337,7 +382,12 @@ impl Updater {
 
         let mut downloader = crate::Downloader::new(index_urls.to_vec());
         let downloaded = if index_urls.is_empty() {
-            load_index(&config).map_err(|error| {
+            // Go `updateAndUpgrade` loads the staged index from the download
+            // directory when no index URLs are configured, so that
+            // `ShouldUpgradeTo` compares the installed index against the
+            // staged one. Loading from the main directory here would compare
+            // the index against itself and never see the staged update.
+            load_downloaded_index(&config).map_err(|error| {
                 UpdateError::LoadIndex(error.to_string())
             })?
         } else {
@@ -556,7 +606,7 @@ impl Drop for RunningGuard<'_> {
     }
 }
 
-/// Loads the index from the main directory.
+/// Loads the installed index from the main directory, like Go `New`.
 fn load_index(config: &UpdaterConfig) -> std::result::Result<Index, UpdatesError> {
     let verifier = config
         .verify
@@ -564,6 +614,20 @@ fn load_index(config: &UpdaterConfig) -> std::result::Result<Index, UpdatesError
         .map(pm_jess::index_verifier);
     Index::load(
         Path::new(&config.directory).join(&config.index_file),
+        &config.platform,
+        verifier.as_ref().map(|verifier| verifier as IndexVerifier<'_>),
+    )
+}
+
+/// Loads the staged index from the download directory, like the offline
+/// branch of Go `updateAndUpgrade`.
+fn load_downloaded_index(config: &UpdaterConfig) -> std::result::Result<Index, UpdatesError> {
+    let verifier = config
+        .verify
+        .as_ref()
+        .map(pm_jess::index_verifier);
+    Index::load(
+        Path::new(&config.download_directory).join(&config.index_file),
         &config.platform,
         verifier.as_ref().map(|verifier| verifier as IndexVerifier<'_>),
     )

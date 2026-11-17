@@ -44,13 +44,14 @@ pub use index_scan::{
 };
 pub use upgrade::{UpgradeError, Upgrader};
 pub use updater::{
-    index_file_path, Result as UpdateResult, UpdateError, Updater, CORRUPT_INSTALLATION_NOTIFICATION_ID,
-    NO_NEW_UPDATE_NOTIFICATION_ID, RESOURCE_UPDATE_EVENT, RESTART_REQUIRED_NOTIFICATION_ID,
-    UPDATE_AVAILABLE_NOTIFICATION_ID, UPDATE_FAILED_NOTIFICATION_ID, UPDATE_TASK_REPEAT_DURATION,
+    index_file_path, ConfigureResult, Result as UpdateResult, UpdateError, Updater,
+    CORRUPT_INSTALLATION_NOTIFICATION_ID, NO_NEW_UPDATE_NOTIFICATION_ID, RESOURCE_UPDATE_EVENT,
+    RESTART_REQUIRED_NOTIFICATION_ID, UPDATE_AVAILABLE_NOTIFICATION_ID,
+    UPDATE_FAILED_NOTIFICATION_ID, UPDATE_TASK_REPEAT_DURATION,
 };
 pub use downloader::{
-    copy_and_check_sha256_sum, decompress, default_user_agent, Downloader, HttpClient,
-    HttpsClient,
+    check_sha256_sum_file_unpacked, copy_and_check_sha256_sum, decompress, default_user_agent,
+    Downloader, HttpClient, HttpsClient,
 };
 pub use index::{
     check_sha256_sum, check_sha256_sum_file, go_platform, validate_artifact_filename, Artifact,
