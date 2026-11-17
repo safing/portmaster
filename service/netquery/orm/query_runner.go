@@ -139,10 +139,16 @@ func RunQuery(ctx context.Context, conn *sqlite.Conn, sql string, modifiers ...Q
 		valType := sliceVal.Type()
 		valElemType = valType.Elem()
 
+		var names *columnNameStmt
 		opts.ResultFunc = func(stmt *sqlite.Stmt) error {
 			currentField := reflect.New(valElemType)
 
-			if err := DecodeStmt(ctx, &args.Schema, stmt, currentField.Interface(), args.DecodeConfig); err != nil {
+			if names == nil || names.Stmt != stmt {
+				names = newColumnNameStmt(stmt)
+			}
+
+			err := DecodeStmt(ctx, &args.Schema, names, currentField.Interface(), args.DecodeConfig)
+			if err != nil {
 				resultDump := make(map[string]any)
 
 				for colIdx := range stmt.ColumnCount() {
@@ -183,4 +189,35 @@ func RunQuery(ctx context.Context, conn *sqlite.Conn, sql string, modifiers ...Q
 	}
 
 	return nil
+}
+
+// columnNameStmt caches the column names of a statement.
+// sqlite.Stmt.ColumnName searches a map of all columns on every call, which
+// makes decoding a row quadratic in the number of columns. The names do not
+// change while the rows of a statement are stepped through.
+type columnNameStmt struct {
+	*sqlite.Stmt
+
+	names []string
+}
+
+func newColumnNameStmt(stmt *sqlite.Stmt) *columnNameStmt {
+	names := make([]string, stmt.ColumnCount())
+	for i := range names {
+		names[i] = stmt.ColumnName(i)
+	}
+
+	return &columnNameStmt{
+		Stmt:  stmt,
+		names: names,
+	}
+}
+
+// ColumnName returns the name of the column at index col.
+func (s *columnNameStmt) ColumnName(col int) string {
+	if col >= 0 && col < len(s.names) {
+		return s.names[col]
+	}
+
+	return s.Stmt.ColumnName(col)
 }
