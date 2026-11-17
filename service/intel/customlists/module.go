@@ -184,14 +184,48 @@ func LookupCountry(countryCode string) bool {
 	return ok
 }
 
+// splitDomain returns the domain and all its parent domains up to, but
+// excluding, the public suffix. Every result is fully qualified (ends with a dot).
 func splitDomain(domain string) []string {
-	domain = strings.Trim(domain, ".")
-	suffix, _ := publicsuffix.PublicSuffix(domain)
-	if suffix == domain {
-		return []string{domain}
+	d := strings.Trim(domain, ".")
+	suffix, _ := publicsuffix.PublicSuffix(d)
+	if suffix == d {
+		return []string{d}
 	}
 
-	domainWithoutSuffix := domain[:len(domain)-len(suffix)]
+	// All domains to return are a suffix of the fully qualified domain, if
+	// the labels before the public suffix are well-formed: Slice them from
+	// the domain instead of joining the labels again.
+	// This is called for every domain and CNAME of every new connection.
+	subdomains := d[:len(d)-len(suffix)]
+	if !strings.HasSuffix(d, suffix) ||
+		!strings.HasSuffix(subdomains, ".") ||
+		strings.HasPrefix(subdomains, ".") ||
+		strings.Contains(subdomains, "..") {
+		return splitIrregularDomain(d, suffix)
+	}
+
+	fqdn := domain
+	if len(fqdn) != len(d)+1 || !strings.HasPrefix(fqdn, d) || fqdn[len(d)] != '.' {
+		fqdn = d + "."
+	}
+
+	domains := make([]string, 0, strings.Count(subdomains, "."))
+	start := 0
+	for i := range len(subdomains) {
+		if subdomains[i] == '.' {
+			domains = append(domains, fqdn[start:])
+			start = i + 1
+		}
+	}
+	return domains
+}
+
+// splitIrregularDomain is the general implementation of splitDomain, which
+// also handles domains with empty labels. d is the domain without leading and
+// trailing dots.
+func splitIrregularDomain(d, suffix string) []string {
+	domainWithoutSuffix := d[:len(d)-len(suffix)]
 	domainWithoutSuffix = strings.Trim(domainWithoutSuffix, ".")
 
 	splitted := strings.FieldsFunc(domainWithoutSuffix, func(r rune) bool {
@@ -200,7 +234,6 @@ func splitDomain(domain string) []string {
 
 	domains := make([]string, 0, len(splitted))
 	for idx := range splitted {
-
 		d := strings.Join(splitted[idx:], ".") + "." + suffix
 		if d[len(d)-1] != '.' {
 			d += "."
