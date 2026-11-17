@@ -1,5 +1,6 @@
 //! Behavior tests of the state lookups, using a fake proc tree.
 
+#[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
@@ -21,6 +22,18 @@ fn temp_dir(tag: &str) -> PathBuf {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
     path
+}
+
+fn current_uid() -> u32 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        std::fs::metadata(".").map(|m| m.uid()).unwrap_or(1000)
+    }
+    #[cfg(not(unix))]
+    {
+        1000
+    }
 }
 
 const HEADER: &str = "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode";
@@ -65,14 +78,13 @@ fn packet(
 #[test]
 fn looks_up_tcp_connections_and_listeners() {
     let root = temp_dir("tcp");
+    let uid = current_uid();
     write_table(
         &root,
         Stack::Tcp4,
         &[
-            // 10.0.0.1:50000 -> 10.0.0.2:443, established.
-            "   0: 0100000A:C350 0200000A:01BB 01 00000000:00000000 00:00000000 00000000  1000 0 1111 1 0000000000000000 20 4 30 10 -1",
-            // 0.0.0.0:8080, listening.
-            "   1: 00000000:1F90 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000 0 2222 1 0000000000000000 100 0 0 10 0",
+            &format!("   0: 0100000A:C350 0200000A:01BB 01 00000000:00000000 00:00000000 00000000  {uid} 0 1111 1 0000000000000000 20 4 30 10 -1"),
+            &format!("   1: 00000000:1F90 00000000:0000 0A 00000000:00000000 00:00000000 00000000  {uid} 0 2222 1 0000000000000000 100 0 0 10 0"),
         ],
     );
     add_socket_owner(&root, 4242, 1111);
@@ -110,12 +122,12 @@ fn looks_up_tcp_connections_and_listeners() {
 #[test]
 fn udp_direction_and_exists() {
     let root = temp_dir("udp");
+    let uid = current_uid();
     write_table(
         &root,
         Stack::Udp4,
         &[
-            // 0.0.0.0:5353
-            "   0: 00000000:14E9 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000 0 3333 2 0000000000000000 0",
+            &format!("   0: 00000000:14E9 00000000:0000 07 00000000:00000000 00:00000000 00000000  {uid} 0 3333 2 0000000000000000 0"),
         ],
     );
     add_socket_owner(&root, 4444, 3333);
@@ -170,13 +182,13 @@ fn udp_direction_and_exists() {
 #[test]
 fn dual_stack_lookups() {
     let root = temp_dir("dual");
+    let uid = current_uid();
     write_table(&root, Stack::Tcp4, &[]);
     write_table(
         &root,
         Stack::Tcp6,
         &[
-            // [::]:8081, listening.
-            "   0: 00000000000000000000000000000000:1F91 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000  1000 0 5555 1 0000000000000000 100 0 0 10 0",
+            &format!("   0: 00000000000000000000000000000000:1F91 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000  {uid} 0 5555 1 0000000000000000 100 0 0 10 0"),
         ],
     );
     write_table(&root, Stack::Udp4, &[]);
@@ -184,8 +196,7 @@ fn dual_stack_lookups() {
         &root,
         Stack::Udp6,
         &[
-            // [::]:5353
-            "   0: 00000000000000000000000000000000:14E9 00000000000000000000000000000000:0000 07 00000000:00000000 00:00000000 00000000  1000 0 6666 2 0000000000000000 0",
+            &format!("   0: 00000000000000000000000000000000:14E9 00000000000000000000000000000000:0000 07 00000000:00000000 00:00000000 00000000  {uid} 0 6666 2 0000000000000000 0"),
         ],
     );
     add_socket_owner(&root, 4545, 5555);

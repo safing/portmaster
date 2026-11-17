@@ -1,107 +1,155 @@
-# Get Peace of Mind <br> with [Easy Privacy](https://safing.io/)
+# Portmaster (Rust Core & Unlocked Edition)
 
-Portmaster is a free and open-source application firewall that does the heavy lifting for you.
-Restore privacy and take back control over all your computer's network activity.
+[![CI](https://github.com/VLOD-ZDOV/portmaster/actions/workflows/ci.yml/badge.svg)](https://github.com/VLOD-ZDOV/portmaster/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/VLOD-ZDOV/portmaster?include_prereleases)](https://github.com/VLOD-ZDOV/portmaster/releases/latest)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
-With great defaults your privacy improves without any effort. And if you want to configure and control everything down to the last detail - Portmaster has you covered too. Developed in the EU 🇪🇺, Austria.
+An advanced, privacy-first application firewall and traffic controller for Linux and Windows.
 
-__[Download for Free](https://safing.io/download/)__
+This fork modernizes Portmaster by introducing a high-performance **Rust Core** (`pm-core`), unlocking all features locally with zero external account dependencies, and integrating the **Xray proxy engine** for application-level split tunneling and circumvention.
 
-__[About Us](https://safing.io/about/)__
+---
 
-![Portmaster User Interface](https://safing.io/assets/img/page-specific/landing/portmaster-thumbnail.png?)
+## Key Features & Highlights
 
-_seen on:_  
+- **Pure Rust Core (`portmaster-core-rs`)**:
+  Rewritten from the ground up in Rust (`crates/pm-*`) for minimal memory footprint, blazing speed, and memory safety. Both the new Rust core and the legacy Go core are supported.
+- **Integrated Xray Proxy Engine (`pm-xray` & `pm-splittun`)**:
+  Route individual applications, domains, or traffic scopes through your own VLESS (Reality/Vision), Shadowsocks, Trojan, or SOCKS5 proxies without needing external TUN adapters.
+- **100% Unlocked & Local**:
+  No Safing account, sign-in, or subscription required. Network history recording, per-app bandwidth accounting, and advanced filter rules operate completely offline.
+- **Cross-Platform Interception**:
+  - **Linux**: Intercepts packets via `NFQUEUE` / `iptables` / `nftables` with kernel process resolution via `/proc`.
+  - **Windows**: Deep packet inspection and connection verdict handling via the Windows Filtering Platform (WFP) kernel driver (`PortmasterKext.sys`) and IP Helper API.
+- **Encrypted DNS**:
+  Built-in DNS proxy supporting DNS-over-TLS (DoT) and DNS-over-HTTPS (DoH) with split-horizon routing and blocklist enforcement.
+- **Modern UI Options**:
+  - Full-featured Angular desktop UI with unlocked settings and proxy routing controls.
+  - Experimental ultra-lightweight Leptos/WASM web dashboard (`pilot/leptos/web`).
 
-[<img src="https://safing.io/assets/img/external/heise_online.svg" height="35">](https://www.heise.de/tests/Datenschutz-Firewall-Portmaster-im-Test-9611687.html)
-&nbsp;&nbsp;&nbsp;
-[![ghacks.net](https://safing.io/assets/img/external/ghacks.png)](https://www.ghacks.net/2022/11/08/portmaster-1-0-released-open-source-application-firewall/)
-&nbsp;&nbsp;&nbsp;
-[![Techlore](https://safing.io/assets/img/external/techlore.png)](https://www.youtube.com/watch?v=E8cTRhGtmcM)
-&nbsp;&nbsp;&nbsp;
-[![Lifehacker](https://safing.io/assets/img/external/logos/lifehacker.webp)](https://lifehacker.com/the-lesser-known-apps-everyone-should-install-on-a-new-1850223434)
+---
 
-## [Features](https://safing.io/features/)
+## Quick Installation & Patcher
 
-1. Monitor All Network Activity
-2. Full Control: Block Anything
-3. Automatically Block Trackers & Malware
-4. Set Global & Per‑App Settings
-5. Secure DNS (Doh/DoT)
-6. Record and Search Network Activity ([$](https://safing.io/pricing/))
-7. Per-App Bandwidth Usage ([$](https://safing.io/pricing/))
-8. [SPN, our Next-Gen Privacy Network](https://safing.io/spn/) ([$$](https://safing.io/pricing/))
+If you already have Portmaster installed or want to switch your installation to the Rust Core and modern UI, run the one-liner for your platform:
 
-# Technical Introduction
+### Linux (One-Liner)
 
-Portmaster is a privacy suite for your Windows and Linux desktop.
+```bash
+curl -fsSL https://raw.githubusercontent.com/VLOD-ZDOV/portmaster/development/scripts/patch-portmaster.sh | sudo bash
+```
 
-### Base Technology
+*Options:*
+- Switch to Go core: `sudo ./scripts/patch-portmaster.sh --core go`
+- Restore previous installation: `sudo ./scripts/patch-portmaster.sh --restore`
 
-- Portmaster integrates into network stack using nfqueue on Linux and a kernel driver (WFP) on Windows.
-- Packets are intercepted at the raw packet level - every packet is seen and can be stopped.
-- Ownership of connections is found using eBPF and `/proc` on Linux and a kernel driver and the IP Helper API (`iphlpapi.dll`) on Windows.
-- Most settings can be defined per app, which can be matched in different ways.
-- Support for special processes with weird or concealed paths/actors:
-  - Snap, AppImage and Script support on Linux
-  - Windows Store apps and svchost.exe system services support on Windows
-- Everything is 100% local on your device. (except the SPN, naturally)
-  - Updates are fully signed and downloaded automatically.
-  - Intelligence data (block lists, geoip) is downloaded and applied automatically.
-- The Portmaster Core Service runs as a system service, the UI elements (App, Notifier) run in user context.
-- The main UI still uses electron as a wrapper :/ - but this will change in the future. You can also open the UI in the browser
+### Windows (PowerShell Administrator)
 
-### Feature: Secure DNS
+```powershell
+irm https://raw.githubusercontent.com/VLOD-ZDOV/portmaster/development/scripts/patch-portmaster.ps1 | iex
+```
 
-- Portmaster intercepts "astray" DNS queries and reroutes them to itself for seamless integration.
-- DNS queries are resolved by the default or configured DoT/DoH resolvers.
-- Full support for split horizon and horizon validation to defend against rebinding attacks.
+*Options:*
+- Switch to Go core: `.\scripts\patch-portmaster.ps1 -Core go`
+- Restore previous installation: `.\scripts\patch-portmaster.ps1 -Restore`
 
-### Feature: Privacy Filter
+---
 
-- Define allowed network scopes: Localhost, LAN, Internet, P2P, Inbound.
-- Easy rules based on Internet entities: Domain, IP, Country and more.
-- Filter Lists block common malware, ad, tracker domains etc.
+## Architecture Overview
 
-### Feature: Network History ($)
+```
+                      ┌──────────────────────────────────────┐
+                      │          Portmaster UI               │
+                      │  (Angular / Tauri / Leptos Pilot)    │
+                      └──────────────────┬───────────────────┘
+                                         │ REST / WebSocket API
+                                         ▼
+                      ┌──────────────────────────────────────┐
+                      │    Portmaster Core (Rust / Go)       │
+                      │ ┌──────────────┐    ┌──────────────┐ │
+                      │ │  pm-firewall │    │  pm-resolver │ │
+                      │ └──────┬───────┘    └──────────────┘ │
+                      │        │                             │
+                      │ ┌──────▼───────┐    ┌──────────────┐ │
+                      │ │ pm-splittun  │───►│   pm-xray    │ │
+                      │ └──────────────┘    └──────┬───────┘ │
+                      └─────────┬──────────────────┼─────────┘
+                                │                  │
+         ┌──────────────────────┴────────┐         │ Upstream Proxy
+         ▼                               ▼         ▼ (VLESS / SS / Trojan)
+ ┌──────────────┐                 ┌──────────────┐
+ │ Linux Filter │                 │ Windows WFP  │
+ │ (NFQUEUE)    │                 │ (KEXT Driver)│
+ └──────────────┘                 └──────────────┘
+```
 
-- Record connections and their details in a local database and search all of it later
-- Auto-delete old history or delete on demand
+### Workspace Crates
 
-### Feature: Bandwidth Visibility ($)
+| Crate | Description |
+|---|---|
+| `pm-core` | Application entry point, service manager, and lifecycle orchestration |
+| `pm-firewall` | Connection tracking, verdict pipeline, and rule evaluation engine |
+| `pm-splittun` | Split tunneling controller directing traffic between local filter and proxy |
+| `pm-xray` | Embedded Xray proxy client runtime and configuration manager |
+| `pm-resolver` | Secure DNS engine supporting DoH, DoT, blocklists, and caching |
+| `pm-winkext` | Windows Filtering Platform (WFP) kernel extension driver interface |
+| `pm-network` | Process detection, connection state table, and socket mapper |
+| `pm-database` | Local SQLite database storage for connections, history, and metrics |
 
-- Monitor bandwidth usage per connection and app
+---
 
-### Feature: SPN - Safing Privacy Network ($$)
+## Building from Source
 
-- A Privacy Network aimed at use cases "between" VPN and Tor.
-- Uses onion encryption over multiple hops just like Tor.
-- Routes are chosen to cover most distance within the network to increase privacy.
-- Exits are chosen near the destination server. This automatically geo-unblocks in many cases.
-- Exclude apps and domains/entities from using SPN.
-- Change routing algorithm and focus per app.
-- Nodes are hosted by Safing (company behind Portmaster) and the community.
-- Speeds are pretty decent (>100MBit/s).
-- Further Reading: [SPN Whitepaper](https://safing.io/files/whitepaper/Gate17.pdf)
+### Prerequisites
 
-## Documentation
+- **Rust**: 1.80+ (`rustup default stable`)
+- **Go**: 1.22+ (if building the legacy Go core)
+- **Node.js**: 18+ & `npm` (for the Angular desktop UI)
 
-All details and guides in the dedicated [wiki](https://wiki.safing.io/)
+### Build Rust Core
 
-- [Getting Started](https://wiki.safing.io/en/Portmaster/App)
-- Install
-  - [on Windows](https://wiki.safing.io/en/Portmaster/Install/Windows)
-  - [on Linux](https://wiki.safing.io/en/Portmaster/Install/Linux)
-- [Contribute](https://wiki.safing.io/en/Contribute)
-- [VPN Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility#vpn-compatibly)
-- [Software Compatibility](https://wiki.safing.io/en/Portmaster/App/Compatibility)
-- [Architecture](https://wiki.safing.io/en/Portmaster/Architecture)
-- [Settings Handbook](https://docs.safing.io/portmaster/settings)
-- [Portmaster Developer API](https://docs.safing.io/portmaster/api)
+```bash
+# Build native release binary
+cargo build --release -p pm-core --bin portmaster-core-rs
 
-# Build Portmaster Yourself (WIP)
+# Result binary:
+# Linux:   target/release/portmaster-core-rs
+# Windows: target/release/portmaster-core-rs.exe
+```
 
-1. [Install Earthly CLI](https://earthly.dev/get-earthly)
-2. [Install Docker Engine](https://docs.docker.com/engine/install/)
-3. Run `earthly +release`
-4. Find artifacts in `./dist`
+### Build UI Bundle
+
+```bash
+cd desktop/angular
+npm ci --legacy-peer-deps
+npm run build-libs
+npx ng build --configuration production --base-href /ui/modules/portmaster/ portmaster
+
+# Pack bundle
+cd dist && zip -r ../../../portmaster.zip .
+```
+
+---
+
+## Switching Between Cores on Linux
+
+The system service can be toggled at any time using the bundled switcher:
+
+```bash
+# Check active core
+sudo ./packaging/linux/portmaster-core-switch.sh status
+
+# Switch to Rust core
+sudo ./packaging/linux/portmaster-core-switch.sh rust
+
+# Switch to Go core
+sudo ./packaging/linux/portmaster-core-switch.sh go
+```
+
+---
+
+## License
+
+This project is licensed under the [AGPL-3.0 License](LICENSE).
+Portions derived from the upstream project are Copyright (c) Safing ICS Technologies GmbH.
+All modifications and Rust core implementation are released under the same open-source terms.

@@ -30,6 +30,7 @@ on:
 jobs:
   lint:
     name: Linter
+    if: github.repository == 'safing/portmaster'
     runs-on: ubuntu-latest
     steps:
     - name: Check out code

@@ -150,6 +150,9 @@ jobs:
     needs: [rust-core-linux, rust-core-windows, go-core, angular-ui]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -166,6 +169,8 @@ jobs:
           chmod +x dist/portmaster-core-go
           cp release-artifacts/portmaster-core-go-windows-amd64.exe dist/portmaster-core-go.exe
           cp release-artifacts/portmaster.zip dist/portmaster.zip
+          cp scripts/patch-portmaster.sh dist/patch-portmaster.sh
+          cp scripts/patch-portmaster.ps1 dist/patch-portmaster.ps1
           cd dist
           sum="shasum -a 256"; command -v sha256sum >/dev/null && sum=sha256sum
           for f in *; do
@@ -177,6 +182,9 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          name: "Portmaster ${{ github.ref_name }}"
           files: dist/*
           draft: false
           prerelease: false
+          generate_release_notes: true
+          make_latest: true

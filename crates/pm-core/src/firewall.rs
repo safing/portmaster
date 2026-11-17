@@ -854,7 +854,7 @@ pub struct Firewall {
     metrics_enabled: bool,
     /// Windows kernel-extension backend (kept alive between start/stop).
     #[cfg(windows)]
-    winkext: Mutex<Option<pm_winkext::Kext>>,
+    winkext: Mutex<Option<Arc<pm_winkext::Kext>>>,
     /// Location of the prebuilt driver `.sys` file. The Rust build never
     /// compiles the driver itself.
     #[cfg(windows)]
@@ -1239,16 +1239,8 @@ impl Firewall {
         Ok(())
     }
 
-    /// Starts interception through the Windows kernel extension.
-    ///
-    /// The driver binary is expected to already be present in the data
-    /// directory; this crate only installs the service and talks to the
-    /// device. `pm-winkext` selects the v1 (ioctl) or v2 (command stream)
-    /// protocol from the version reported by the driver.
-    ///
-    /// TODO: feed received verdict requests/infos into [`Self::handler`] via a
-    /// Windows `QueuedPacket` adapter; only the driver lifecycle is wired up
-    /// here so far.
+    /// Starts interception through the Windows kernel extension and spawns the
+    /// background verdict loop to handle intercepted packets.
     #[cfg(windows)]
     pub fn start(&self) -> anyhow::Result<()> {
         if !self.env.filter_enabled() {
@@ -1273,32 +1265,65 @@ impl Firewall {
                 self.started.store(false, Ordering::SeqCst);
                 return Err(anyhow::anyhow!("start windows kext: {error}"));
             }
+        };
+
+        let kext = Arc::new(kext);
+        {
+            let mut guard = self
+                .winkext
+                .lock()
+                .unwrap_or_else(|error| error.into_inner());
+            *guard = Some(Arc::clone(&kext));
         }
 
-        let mut guard = self
-            .winkext
+        let handler = Arc::clone(&self.handler);
+        let cancel = self.cancel.clone();
+        let kext_worker = Arc::clone(&kext);
+        let metrics = Arc::clone(&self.metrics);
+        let recorder = self.metrics_enabled.then(|| metrics.recorder());
+
+        let loop_handle = tokio::task::spawn_blocking(move || {
+            windows_verdict_loop(kext_worker, handler, cancel, recorder);
+        });
+
+        self.tasks
             .lock()
-            .unwrap_or_else(|error| error.into_inner());
-        *guard = Some(kext);
+            .unwrap_or_else(|error| error.into_inner())
+            .push(loop_handle);
+
         Ok(())
     }
 
-    /// Stops interception and removes the Windows driver service.
+    /// Stops interception, shuts down the verdict loop, and removes the Windows driver service.
     #[cfg(windows)]
     pub async fn stop(&self) -> anyhow::Result<()> {
         if !self.started.swap(false, Ordering::SeqCst) {
             return Ok(());
         }
-        let mut guard = self
-            .winkext
-            .lock()
-            .unwrap_or_else(|error| error.into_inner());
-        if let Some(kext) = guard.as_mut() {
-            if let Err(error) = kext.stop() {
-                tracing::warn!(%error, "filter: failed to stop windows kext cleanly");
+        self.cancel.cancel();
+        let tasks: Vec<_> = std::mem::take(
+            &mut *self.tasks.lock().unwrap_or_else(|error| error.into_inner()),
+        );
+        for task in tasks {
+            task.abort();
+        }
+
+        let kext = {
+            let mut guard = self
+                .winkext
+                .lock()
+                .unwrap_or_else(|error| error.into_inner());
+            guard.take()
+        };
+
+        if let Some(kext) = kext {
+            let _ = kext.shutdown();
+            if let Ok(mut kext) = Arc::try_unwrap(kext) {
+                if let Err(error) = kext.stop() {
+                    tracing::warn!(%error, "filter: failed to stop windows kext cleanly");
+                }
             }
         }
-        *guard = None;
         Ok(())
     }
 
@@ -1343,4 +1368,268 @@ fn ensure_jump_rules_at_top(ipv6: bool) {
             "filter: reinserted displaced iptables jump rules at top of chains"
         );
     }
+}
+
+#[cfg(windows)]
+struct WinPacket {
+    info: pm_network::PacketInfo,
+    raw: Vec<u8>,
+    cached_icmp: pm_firewall::packet::IcmpType,
+    id: u64,
+    kext: Arc<pm_winkext::Kext>,
+    verdict_set: AtomicBool,
+    started: std::time::Instant,
+    started_unix_nanos: i64,
+    metrics: Option<pm_firewall::packet::VerdictRecorder>,
+}
+
+#[cfg(windows)]
+impl pm_firewall::packet::QueuedPacket for WinPacket {
+    fn info(&self) -> &pm_network::PacketInfo {
+        &self.info
+    }
+
+    fn verdict_set(&self) -> bool {
+        self.verdict_set.load(Ordering::Acquire)
+    }
+
+    fn payload(&self) -> Option<&[u8]> {
+        if self.raw.is_empty() {
+            None
+        } else {
+            Some(&self.raw)
+        }
+    }
+
+    fn raw(&self) -> &[u8] {
+        &self.raw
+    }
+
+    fn icmp_type(&self) -> pm_firewall::packet::IcmpType {
+        self.cached_icmp
+    }
+
+    fn set_verdict(&self, verdict: pm_interception::Verdict) -> Result<(), pm_firewall::packet::VerdictError> {
+        if self.verdict_set.swap(true, Ordering::AcqRel) {
+            return Err(pm_firewall::packet::VerdictError::AlreadySet);
+        }
+
+        let kext_verdict = match verdict {
+            pm_interception::Verdict::Accept => pm_winkext::KextVerdict::Accept,
+            pm_interception::Verdict::PermanentAccept | pm_interception::Verdict::PermanentAcceptFinal => {
+                pm_winkext::KextVerdict::PermanentAccept
+            }
+            pm_interception::Verdict::Block => pm_winkext::KextVerdict::Block,
+            pm_interception::Verdict::PermanentBlock => pm_winkext::KextVerdict::PermanentBlock,
+            pm_interception::Verdict::Drop => pm_winkext::KextVerdict::Drop,
+            pm_interception::Verdict::PermanentDrop => pm_winkext::KextVerdict::PermanentDrop,
+            pm_interception::Verdict::RerouteToNameserver => pm_winkext::KextVerdict::RerouteToNameserver,
+            pm_interception::Verdict::RerouteToTunnel => pm_winkext::KextVerdict::RerouteToTunnel,
+            pm_interception::Verdict::RerouteToSplitTun => pm_winkext::KextVerdict::RerouteToSplitTun,
+        };
+
+        if let Err(error) = self.kext.set_verdict(self.id, kext_verdict) {
+            tracing::warn!(id = self.id, ?kext_verdict, %error, "kext: failed to apply verdict");
+        }
+
+        if let Some(recorder) = &self.metrics {
+            recorder(
+                self.started_unix_nanos,
+                self.started.elapsed(),
+                &format!("{verdict:?}"),
+            );
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(windows)]
+fn windows_verdict_loop(
+    kext: Arc<pm_winkext::Kext>,
+    handler: Arc<PacketHandler>,
+    cancel: CancellationToken,
+    recorder: Option<pm_firewall::packet::VerdictRecorder>,
+) {
+    tracing::info!("filter: starting windows verdict processing loop");
+    let is_v2 = matches!(kext.backend(), Some(pm_winkext::Backend::V2));
+
+    while !cancel.is_cancelled() {
+        if is_v2 {
+            match kext.recv_info() {
+                Ok(Some(pm_winkext::Info::ConnectionV4(conn))) => {
+                    let inbound = conn.direction > 0;
+                    let (src, dst) = if inbound {
+                        (IpAddr::V4(conn.remote_ip.into()), IpAddr::V4(conn.local_ip.into()))
+                    } else {
+                        (IpAddr::V4(conn.local_ip.into()), IpAddr::V4(conn.remote_ip.into()))
+                    };
+                    let (src_port, dst_port) = if inbound {
+                        (conn.remote_port, conn.local_port)
+                    } else {
+                        (conn.local_port, conn.remote_port)
+                    };
+                    let pid = if conn.process_id == 0 {
+                        pm_netstate::UNDEFINED_PROCESS_ID
+                    } else {
+                        conn.process_id as i32
+                    };
+                    let mut info = pm_network::PacketInfo::new(conn.protocol, src, src_port, dst, dst_port, inbound);
+                    info.pid = pid;
+
+                    let cached_icmp = pm_interception::packet::icmp_type(&conn.payload)
+                        .map_or(pm_firewall::packet::IcmpType::NoLayer, pm_firewall::packet::IcmpType::Type);
+
+                    let packet = WinPacket {
+                        info,
+                        raw: conn.payload,
+                        cached_icmp,
+                        id: conn.id,
+                        kext: Arc::clone(&kext),
+                        verdict_set: AtomicBool::new(false),
+                        started: std::time::Instant::now(),
+                        started_unix_nanos: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map_or(0, |e| e.as_nanos().min(i64::MAX as u128) as i64),
+                        metrics: recorder.clone(),
+                    };
+
+                    handler.dispatch(Box::new(packet));
+                }
+                Ok(Some(pm_winkext::Info::ConnectionV6(conn))) => {
+                    let inbound = conn.direction > 0;
+                    let (src, dst) = if inbound {
+                        (IpAddr::V6(conn.remote_ip.into()), IpAddr::V6(conn.local_ip.into()))
+                    } else {
+                        (IpAddr::V6(conn.local_ip.into()), IpAddr::V6(conn.remote_ip.into()))
+                    };
+                    let (src_port, dst_port) = if inbound {
+                        (conn.remote_port, conn.local_port)
+                    } else {
+                        (conn.local_port, conn.remote_port)
+                    };
+                    let pid = if conn.process_id == 0 {
+                        pm_netstate::UNDEFINED_PROCESS_ID
+                    } else {
+                        conn.process_id as i32
+                    };
+                    let mut info = pm_network::PacketInfo::new(conn.protocol, src, src_port, dst, dst_port, inbound);
+                    info.pid = pid;
+
+                    let cached_icmp = pm_interception::packet::icmp_type(&conn.payload)
+                        .map_or(pm_firewall::packet::IcmpType::NoLayer, pm_firewall::packet::IcmpType::Type);
+
+                    let packet = WinPacket {
+                        info,
+                        raw: conn.payload,
+                        cached_icmp,
+                        id: conn.id,
+                        kext: Arc::clone(&kext),
+                        verdict_set: AtomicBool::new(false),
+                        started: std::time::Instant::now(),
+                        started_unix_nanos: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map_or(0, |e| e.as_nanos().min(i64::MAX as u128) as i64),
+                        metrics: recorder.clone(),
+                    };
+
+                    handler.dispatch(Box::new(packet));
+                }
+                Ok(Some(pm_winkext::Info::LogLine(line))) => {
+                    tracing::debug!(line = %line.line, "kext");
+                }
+                Ok(Some(pm_winkext::Info::ConnectionEndV4(_)) | Some(pm_winkext::Info::ConnectionEndV6(_))) => {}
+                Ok(Some(pm_winkext::Info::BandwidthStats(_))) => {}
+                Ok(None) => {
+                    tracing::info!("filter: windows kext connection closed");
+                    break;
+                }
+                Err(error) => {
+                    if cancel.is_cancelled() {
+                        break;
+                    }
+                    tracing::warn!(%error, "filter: windows kext read error");
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+            }
+        } else {
+            // v1 ioctl backend
+            match kext.recv_verdict_request() {
+                Ok(Some(req)) => {
+                    let inbound = req.direction > 0;
+                    let (src, dst) = if req.ip_v6 == 1 {
+                        let mut l = [0u8; 16];
+                        for (i, part) in req.local_ip.iter().enumerate() {
+                            l[i * 4..(i + 1) * 4].copy_from_slice(&part.to_ne_bytes());
+                        }
+                        let mut r = [0u8; 16];
+                        for (i, part) in req.remote_ip.iter().enumerate() {
+                            r[i * 4..(i + 1) * 4].copy_from_slice(&part.to_ne_bytes());
+                        }
+                        if inbound {
+                            (IpAddr::V6(r.into()), IpAddr::V6(l.into()))
+                        } else {
+                            (IpAddr::V6(l.into()), IpAddr::V6(r.into()))
+                        }
+                    } else {
+                        let l = req.local_ip[0].to_ne_bytes();
+                        let r = req.remote_ip[0].to_ne_bytes();
+                        if inbound {
+                            (IpAddr::V4(r.into()), IpAddr::V4(l.into()))
+                        } else {
+                            (IpAddr::V4(l.into()), IpAddr::V4(r.into()))
+                        }
+                    };
+                    let (src_port, dst_port) = if inbound {
+                        (req.remote_port, req.local_port)
+                    } else {
+                        (req.local_port, req.remote_port)
+                    };
+                    let pid = if req.pid == 0 {
+                        pm_netstate::UNDEFINED_PROCESS_ID
+                    } else {
+                        req.pid as i32
+                    };
+                    let mut info = pm_network::PacketInfo::new(req.protocol, src, src_port, dst, dst_port, inbound);
+                    info.pid = pid;
+
+                    let raw = if req.packet_size > 0 && !req.info_only() {
+                        kext.get_payload(req.id, req.packet_size).unwrap_or_default()
+                    } else {
+                        Vec::new()
+                    };
+
+                    let cached_icmp = pm_interception::packet::icmp_type(&raw)
+                        .map_or(pm_firewall::packet::IcmpType::NoLayer, pm_firewall::packet::IcmpType::Type);
+
+                    let packet = WinPacket {
+                        info,
+                        raw,
+                        cached_icmp,
+                        id: req.id as u64,
+                        kext: Arc::clone(&kext),
+                        verdict_set: AtomicBool::new(false),
+                        started: std::time::Instant::now(),
+                        started_unix_nanos: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map_or(0, |e| e.as_nanos().min(i64::MAX as u128) as i64),
+                        metrics: recorder.clone(),
+                    };
+
+                    handler.dispatch(Box::new(packet));
+                }
+                Ok(None) => {
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                Err(error) => {
+                    if cancel.is_cancelled() {
+                        break;
+                    }
+                    tracing::warn!(%error, "filter: windows kext v1 read error");
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+            }
+        }
+    }
+    tracing::info!("filter: windows verdict processing loop stopped");
 }

@@ -24,13 +24,17 @@ mod windows_impl {
     /// Default read buffer size used by Go's `service.OpenFile(1024)`.
     pub(crate) const DEFAULT_READ_BUFFER: usize = 1024;
 
+    #[derive(Debug)]
+    struct ReadBuffer {
+        buffer: Vec<u8>,
+        pending: Vec<u8>,
+    }
+
     /// Buffered, overlapped handle to the kernel driver device file.
     #[derive(Debug)]
     pub struct KextFile {
         handle: Handle,
-        buffer: Vec<u8>,
-        /// Bytes left over from the last driver read.
-        pending: Vec<u8>,
+        reader: std::sync::Mutex<ReadBuffer>,
     }
 
     impl KextFile {
@@ -38,8 +42,10 @@ mod windows_impl {
         pub(crate) fn new(handle: Handle, read_buffer_size: usize) -> Self {
             Self {
                 handle,
-                buffer: vec![0_u8; read_buffer_size.max(1)],
-                pending: Vec::new(),
+                reader: std::sync::Mutex::new(ReadBuffer {
+                    buffer: vec![0_u8; read_buffer_size.max(1)],
+                    pending: Vec::new(),
+                }),
             }
         }
 
@@ -66,35 +72,36 @@ mod windows_impl {
 
         /// Reads exactly `out.len()` bytes, refilling from the driver as
         /// needed. Returns `Ok(false)` at a clean end of stream.
-        fn read_exact(&mut self, out: &mut [u8]) -> Result<bool> {
+        fn read_exact(&self, out: &mut [u8]) -> Result<bool> {
+            let mut state = self.reader.lock().unwrap_or_else(|e| e.into_inner());
             let mut filled = 0;
             while filled < out.len() {
-                if self.pending.is_empty() && !self.refill()? {
+                if state.pending.is_empty() && !self.refill(&mut state)? {
                     if filled == 0 {
                         return Ok(false);
                     }
                     return Err(Error::UnexpectedRead("truncated info frame".into()));
                 }
-                let available = self.pending.len().min(out.len() - filled);
-                out[filled..filled + available].copy_from_slice(&self.pending[..available]);
-                self.pending.drain(..available);
+                let available = state.pending.len().min(out.len() - filled);
+                out[filled..filled + available].copy_from_slice(&state.pending[..available]);
+                state.pending.drain(..available);
                 filled += available;
             }
             Ok(true)
         }
 
         /// Reads the next chunk from the driver into `pending`.
-        fn refill(&mut self) -> Result<bool> {
+        fn refill(&self, state: &mut ReadBuffer) -> Result<bool> {
             let mut overlapped = Overlapped::default();
             let mut count = 0_u32;
-            let buffer_len = self.buffer.len() as u32;
+            let buffer_len = state.buffer.len() as u32;
             // SAFETY: the buffer is owned by self and stays alive for the
             // (possibly overlapped) read; the count and overlapped structs are
             // stack locals that outlive the call/wait.
             let result = unsafe {
                 sys::ReadFile(
                     self.handle,
-                    self.buffer.as_mut_ptr().cast::<c_void>(),
+                    state.buffer.as_mut_ptr().cast::<c_void>(),
                     buffer_len,
                     &mut count,
                     &mut overlapped,
@@ -115,8 +122,9 @@ mod windows_impl {
             if count == 0 {
                 return Ok(false);
             }
-            self.pending
-                .extend_from_slice(&self.buffer[..count as usize]);
+            state
+                .pending
+                .extend_from_slice(&state.buffer[..count as usize]);
             Ok(true)
         }
 
@@ -239,7 +247,7 @@ mod windows_impl {
     }
 
     /// Receives the next info frame (Go `RecvInfo`).
-    pub fn recv_info(file: &mut KextFile) -> Result<Option<Info>> {
+    pub fn recv_info(file: &KextFile) -> Result<Option<Info>> {
         let mut header = [0_u8; 5];
         if !file.read_exact(&mut header)? {
             return Ok(None);

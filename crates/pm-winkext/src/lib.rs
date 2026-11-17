@@ -410,11 +410,11 @@ impl Kext {
 
     /// Receives the next v2 info frame. `Ok(None)` means the driver closed the
     /// connection.
-    pub fn recv_info(&mut self) -> Result<Option<Info>> {
+    pub fn recv_info(&self) -> Result<Option<Info>> {
         #[cfg(windows)]
         {
             self.require_v2()?;
-            let file = self.file.as_mut().ok_or(Error::KextNotReady)?;
+            let file = self.file.as_ref().ok_or(Error::KextNotReady)?;
             v2::recv_info(file)
         }
         #[cfg(not(windows))]

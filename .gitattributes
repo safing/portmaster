@@ -4,3 +4,11 @@
 
 *.go -text diff=golang
 
+# GitHub Linguist language overrides
+crates/** linguist-detectable=true
+crates/** linguist-vendored=false
+crates/fixtures/** linguist-vendored=true
+desktop/angular/dist/** linguist-vendored=true
+pilot/leptos/web/** linguist-vendored=true
+
+
