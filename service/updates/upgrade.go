@@ -86,11 +86,22 @@ func (u *Updater) upgradeMoveFiles(downloader *Downloader) (installedFiles []str
 			return nil, fmt.Errorf("create current directory: %w", err)
 		}
 	} else {
+		// Names the new version installs into the main directory.
+		newFiles := make(map[string]struct{}, len(downloader.index.Artifacts)+1)
+		newFiles[u.cfg.IndexFile] = struct{}{}
+		for _, artifact := range downloader.index.Artifacts {
+			newFiles[artifact.Filename] = struct{}{}
+		}
+
 		// Move files.
 		for _, file := range files {
 			// Check if file is ignored.
+			// An ignored file that a new file replaces is moved to the purge dir
+			// too, so that a rollback can restore it.
 			if slices.Contains(u.cfg.Ignore, file.Name()) {
-				continue
+				if _, replaced := newFiles[file.Name()]; !replaced || file.IsDir() {
+					continue
+				}
 			}
 			// ignore PurgeDirectory itself
 			if strings.EqualFold(u.cfg.PurgeDirectory, filepath.Join(u.cfg.Directory, file.Name())) {

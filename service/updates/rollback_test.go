@@ -12,6 +12,9 @@ import (
 const (
 	rollbackTestName  = "Test"
 	rollbackTestIndex = "index.json"
+
+	// rollbackTestIgnored is a file of both versions that tests add to Config.Ignore.
+	rollbackTestIgnored = "portmaster"
 )
 
 // snapshotDir returns all files below dir (relative path -> content, directories as empty).
@@ -131,6 +134,61 @@ func TestRollbackRemovesNewOnlyFiles(t *testing.T) {
 		t.Fatal("expected upgrade to fail")
 	}
 	compareSnapshots(t, before, snapshotDir(t, installedDir))
+}
+
+func TestRollbackRestoresIgnoredFileReplacedByArtifact(t *testing.T) {
+	t.Parallel()
+
+	// "portmaster" is ignored by the upgrade, but the new version has an artifact of that name.
+	updater, downloader, installedDir := newRollbackTestUpdater(t, []string{rollbackTestIgnored})
+	err := os.WriteFile(filepath.Join(installedDir, rollbackTestIgnored), []byte("ignored:portmaster"), 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := snapshotDir(t, installedDir)
+
+	// Make the upgrade fail after "portmaster" was installed: the last artifact is missing.
+	last := downloader.index.Artifacts[len(downloader.index.Artifacts)-1].Filename
+	if last == rollbackTestIgnored {
+		t.Fatal("unexpected test index: portmaster must not be the last artifact")
+	}
+	err = os.Remove(filepath.Join(updater.cfg.DownloadDirectory, last))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = updater.upgrade(downloader, true)
+	if err == nil {
+		t.Fatal("expected upgrade to fail")
+	}
+	compareSnapshots(t, before, snapshotDir(t, installedDir))
+}
+
+func TestUpgradeIgnoredFiles(t *testing.T) {
+	t.Parallel()
+
+	// "portmaster" is ignored, but replaced by an artifact; "keep" is ignored and stays.
+	updater, downloader, installedDir := newRollbackTestUpdater(t, []string{rollbackTestIgnored, "keep"})
+	err := os.WriteFile(filepath.Join(installedDir, rollbackTestIgnored), []byte("ignored:portmaster"), 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.WriteFile(filepath.Join(installedDir, "keep"), []byte("ignored:keep"), 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = updater.upgrade(downloader, true)
+	if err != nil {
+		t.Fatalf("upgrade failed: %s", err)
+	}
+	installed := snapshotDir(t, installedDir)
+	if installed[rollbackTestIgnored] != "mock:portmaster" {
+		t.Errorf("artifact portmaster not installed, got %q", installed[rollbackTestIgnored])
+	}
+	if installed["keep"] != "ignored:keep" {
+		t.Errorf("ignored file keep changed, got %q", installed["keep"])
+	}
 }
 
 func TestRollbackLeavesNoCopyFiles(t *testing.T) {
