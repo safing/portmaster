@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -217,6 +218,51 @@ func TestRollbackLeavesNoCopyFiles(t *testing.T) {
 	err = updater.upgrade(downloader, true)
 	if err == nil {
 		t.Fatal("expected upgrade to fail")
+	}
+	compareSnapshots(t, before, snapshotDir(t, installedDir))
+}
+
+func TestRollbackRestoresDirectoryReplacedByArtifact(t *testing.T) {
+	t.Parallel()
+
+	// The old version has a directory where the new version has the artifact "portmaster".
+	const name = "portmaster"
+	updater, downloader, installedDir := newRollbackTestUpdater(t, nil)
+	oldDir := filepath.Join(installedDir, name)
+	err := os.Remove(oldDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.MkdirAll(oldDir, 0o750)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = os.WriteFile(filepath.Join(oldDir, "keep"), []byte("old:keep"), 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := snapshotDir(t, installedDir)
+
+	// Make the upgrade fail after "portmaster" was installed: the last artifact is missing.
+	last := downloader.index.Artifacts[len(downloader.index.Artifacts)-1].Filename
+	if last == name {
+		t.Fatal("unexpected test index: portmaster must not be the last artifact")
+	}
+	err = os.Remove(filepath.Join(updater.cfg.DownloadDirectory, last))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = updater.upgrade(downloader, true)
+	if err == nil {
+		t.Fatal("expected upgrade to fail")
+	}
+	if strings.Contains(err.Error(), "including recovery") {
+		t.Errorf("expected recovery to succeed, got: %s", err)
+	}
+	info, err := os.Stat(oldDir)
+	if err != nil || !info.IsDir() || info.Mode().Perm() != 0o750 {
+		t.Fatalf("directory not restored with its permissions: %v, %v", info, err)
 	}
 	compareSnapshots(t, before, snapshotDir(t, installedDir))
 }

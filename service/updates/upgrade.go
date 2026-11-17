@@ -171,7 +171,12 @@ func (u *Updater) moveFile(currentPath, newPath string, sha256sum string, filePe
 	err := renameFile(currentPath, newPath)
 	if err == nil {
 		// Moving was successful, return.
-		utils.SetFilePermission(newPath, filePermission)
+		// A moved directory (of the old version) keeps its permissions: file
+		// permissions would make its contents inaccessible.
+		info, statErr := os.Lstat(newPath)
+		if statErr != nil || !info.IsDir() {
+			_ = utils.SetFilePermission(newPath, filePermission)
+		}
 		return nil
 	}
 	log.Tracef("updates/%s: failed to move to %q, falling back to copy+delete: %s", u.cfg.Name, newPath, err)
@@ -214,6 +219,18 @@ func (u *Updater) recoverFromFailedUpgrade(installedFiles []string) error {
 	for _, file := range files {
 		purgedFile := filepath.Join(u.cfg.PurgeDirectory, file.Name())
 		activeFile := filepath.Join(u.cfg.Directory, file.Name())
+		if file.IsDir() {
+			// A directory cannot be moved onto a file. The old version had this
+			// directory in the main directory, so a file in its place was
+			// installed by the upgrade: remove it.
+			info, err := os.Lstat(activeFile)
+			if err == nil && !info.IsDir() {
+				err = os.Remove(activeFile)
+				if err != nil {
+					log.Warningf("updates/%s: failed to remove new file %s while rolling back: %s", u.cfg.Name, file.Name(), err)
+				}
+			}
+		}
 		err := u.moveFile(purgedFile, activeFile, "", utils.PublicReadPermission)
 		if err != nil {
 			// Continue to recover as many files as possible, but report the
