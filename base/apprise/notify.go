@@ -79,6 +79,9 @@ const (
 	FormatHTML     MsgFormat = "html"
 )
 
+// maxErrorBodySize is the maximum amount of bytes read from an error response.
+const maxErrorBodySize = 64 * 1024
+
 type errorResponse struct {
 	Error string `json:"error"`
 }
@@ -122,7 +125,9 @@ func (n *Notifier) Send(ctx context.Context, m *Message) error {
 		return nil
 	default:
 		// Try to tease body contents.
-		if body, err := io.ReadAll(resp.Body); err == nil && len(body) > 0 {
+		// Limit the read, as the body is only used for the error message.
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodySize))
+		if err == nil && len(body) > 0 {
 			// Try to parse json response.
 			errorResponse := &errorResponse{}
 			if err := json.Unmarshal(body, errorResponse); err == nil && errorResponse.Error != "" {
