@@ -31,6 +31,12 @@ pub struct PortAPI {
     dispatch: Sender<Command>,
 }
 
+/// Upper bound for connecting to PortAPI (name resolution, TCP connect and WebSocket
+/// handshake). The API is served on localhost, where this normally takes milliseconds;
+/// callers retry on error (every 2s in portmaster::websocket), and the same 5s limit is
+/// used to declare an established connection dead (pong timeout).
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+
 /// The map type used to store message subscribers.
 type SubscriberMap = RwLock<HashMap<usize, Sender<Response>>>;
 
@@ -47,7 +53,16 @@ pub async fn connect(uri: &str) -> Result<PortAPI, Error> {
         }
     };
 
-    let (mut client, _) = ClientBuilder::from_uri(parsed).connect().await?;
+    // Without a timeout a server that accepts the TCP connection but never answers the
+    // WebSocket handshake would block the caller's reconnect loop forever.
+    let builder = ClientBuilder::from_uri(parsed);
+    let (mut client, _) = match tokio::time::timeout(CONNECT_TIMEOUT, builder.connect()).await {
+        Ok(result) => result?,
+        Err(_elapsed) => {
+            let msg = format!("connecting timed out after {:?}", CONNECT_TIMEOUT);
+            return Err(Error::Io(std::io::Error::new(std::io::ErrorKind::TimedOut, msg)));
+        }
+    };
     let (tx, mut dispatch) = channel::<Command>(64);
 
     tauri::async_runtime::spawn(async move {
