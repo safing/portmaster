@@ -137,18 +137,16 @@ func start() error {
 	return nil
 }
 
-var localAddrFactory func(network string) net.Addr
+var localAddrFactory atomic.Pointer[func(network string) net.Addr]
 
 // SetLocalAddrFactory supplies the intel package with a function to get permitted local addresses for connections.
 func SetLocalAddrFactory(laf func(network string) net.Addr) {
-	if localAddrFactory == nil {
-		localAddrFactory = laf
-	}
+	localAddrFactory.CompareAndSwap(nil, &laf)
 }
 
 func getLocalAddr(network string) net.Addr {
-	if localAddrFactory != nil {
-		return localAddrFactory(network)
+	if laf := localAddrFactory.Load(); laf != nil && *laf != nil {
+		return (*laf)(network)
 	}
 	return nil
 }
@@ -170,24 +168,25 @@ type LocalPortHooks struct {
 	Release func(network string, port uint16, unusable bool)
 }
 
-var localPortHooks LocalPortHooks
+var localPortHooks atomic.Pointer[LocalPortHooks]
 
 // SetLocalPortHooks supplies the resolver with hooks to pre-authenticate local ports.
 func SetLocalPortHooks(hooks LocalPortHooks) {
-	if localPortHooks.Authorize == nil && localPortHooks.Release == nil {
-		localPortHooks = hooks
+	current := localPortHooks.Load()
+	if current == nil || (current.Authorize == nil && current.Release == nil) {
+		localPortHooks.CompareAndSwap(current, &hooks)
 	}
 }
 
 func authorizeLocalPort(network string, port uint16) {
-	if localPortHooks.Authorize != nil {
-		localPortHooks.Authorize(network, port)
+	if hooks := localPortHooks.Load(); hooks != nil && hooks.Authorize != nil {
+		hooks.Authorize(network, port)
 	}
 }
 
 func releaseLocalPort(network string, port uint16, unusable bool) {
-	if localPortHooks.Release != nil {
-		localPortHooks.Release(network, port, unusable)
+	if hooks := localPortHooks.Load(); hooks != nil && hooks.Release != nil {
+		hooks.Release(network, port, unusable)
 	}
 }
 

@@ -27,8 +27,8 @@ func TestPlainResolverPreAuthenticatesBoundPort(t *testing.T) { //nolint:paralle
 		authorized = make(map[uint16]string) // port -> network
 		released   = make(map[uint16]bool)   // port -> marked unusable
 	)
-	previousHooks := localPortHooks
-	localPortHooks = LocalPortHooks{
+	previousHooks := localPortHooks.Load()
+	localPortHooks.Store(&LocalPortHooks{
 		Authorize: func(network string, port uint16) {
 			hooksLock.Lock()
 			defer hooksLock.Unlock()
@@ -39,8 +39,8 @@ func TestPlainResolverPreAuthenticatesBoundPort(t *testing.T) { //nolint:paralle
 			defer hooksLock.Unlock()
 			released[port] = unusable
 		},
-	}
-	t.Cleanup(func() { localPortHooks = previousHooks })
+	})
+	t.Cleanup(func() { localPortHooks.Store(previousHooks) })
 
 	// Query the local server through the plain resolver.
 	pr := NewPlainResolver(&Resolver{

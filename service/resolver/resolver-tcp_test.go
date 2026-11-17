@@ -177,9 +177,9 @@ func newTCPBindTest(t *testing.T) *tcpBindTest {
 
 	// Record the released tcp ports. The started module may run UDP queries
 	// concurrently that use the same hooks, so other networks are ignored.
-	previousHooks := localPortHooks
-	previousFactory := localAddrFactory
-	localPortHooks = LocalPortHooks{
+	previousHooks := localPortHooks.Load()
+	previousFactory := localAddrFactory.Load()
+	localPortHooks.Store(&LocalPortHooks{
 		Authorize: func(network string, port uint16) {
 			if network == networkTCP {
 				t.Errorf("the tcp resolver must not authorize ports itself, got port %d", port)
@@ -193,10 +193,10 @@ func newTCPBindTest(t *testing.T) *tcpBindTest {
 			defer bt.lock.Unlock()
 			bt.released = append(bt.released, releasedPort{port: port, unusable: unusable})
 		},
-	}
+	})
 	t.Cleanup(func() {
-		localPortHooks = previousHooks
-		localAddrFactory = previousFactory
+		localPortHooks.Store(previousHooks)
+		localAddrFactory.Store(previousFactory)
 	})
 
 	return bt
@@ -206,7 +206,7 @@ func newTCPBindTest(t *testing.T) *tcpBindTest {
 // the last one, in place of the ports the firewall hands out.
 func (bt *tcpBindTest) usePorts(ports ...uint16) {
 	var next int
-	localAddrFactory = func(network string) net.Addr {
+	factory := func(network string) net.Addr {
 		if network != networkTCP {
 			bt.t.Errorf("expected network tcp, got %q", network)
 		}
@@ -216,6 +216,7 @@ func (bt *tcpBindTest) usePorts(ports ...uint16) {
 		next++
 		return &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: int(port)}
 	}
+	localAddrFactory.Store(&factory)
 }
 
 // releasedPorts returns the ports released so far, in order.
