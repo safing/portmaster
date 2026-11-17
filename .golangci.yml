@@ -14,6 +14,7 @@ linters:
     - gocognit
     - gocyclo
     - gomoddirectives
+    - gomodguard
     - interfacebloat
     - ireturn
     - lll
