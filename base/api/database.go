@@ -637,6 +637,10 @@ func (api *DatabaseAPI) handleInsert(opID []byte, key string, data []byte) {
 		return
 	}
 
+	// The database may return a record instance that is shared with other
+	// users, so it may only be modified while holding its lock.
+	// It must be unlocked again before saving, as Put locks it itself.
+	r.Lock()
 	acc := r.GetAccessor(r)
 
 	result := gjson.ParseBytes(data)
@@ -659,6 +663,7 @@ func (api *DatabaseAPI) handleInsert(opID []byte, key string, data []byte) {
 		insertError = acc.Set(key.String(), value.Value())
 		return insertError == nil
 	})
+	r.Unlock()
 
 	if insertError != nil {
 		api.send(opID, dbMsgTypeError, insertError.Error(), nil)
