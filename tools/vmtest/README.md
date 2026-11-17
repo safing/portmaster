@@ -51,6 +51,46 @@ The Windows smoke test downloads the signed release binaries (including the
 kernel extension) from Safing's update server with `portmaster-core update`
 and runs the locally built `portmaster-core.exe` with them.
 
+## Run on Proxmox VE
+
+The same VMs can run on a Proxmox VE host instead of local QEMU. Set
+`VMTEST_BACKEND=proxmox` for every command:
+
+```bash
+VMTEST_BACKEND=proxmox tools/vmtest/test-linux.sh
+VMTEST_BACKEND=proxmox tools/vmtest/test-windows.sh all
+VMTEST_BACKEND=proxmox tools/vmtest/linux/vm.sh status
+```
+
+Tests are still compiled on this machine; only the VMs move. The suite
+reaches the host with `ssh proxmox` (root, key login; override with
+`VMTEST_PVE_HOST`) and starts, stops and resets the VMs with `qm`. The VMs are
+on the host's LAN bridge `vmbr0` with DHCP. The suite finds their address
+from the MAC address on the host and connects through the host (ProxyJump),
+so they need not be routable from here. The Linux smoke test reads the serial
+console from the host's socket instead of a local file.
+
+| VM | VMID | Hardware |
+|----|------|----------|
+| `pm-vmtest-linux` | 900 (`VMTEST_LINUX_VMID`) | SeaBIOS, virtio disk and NIC, serial socket, snapshot `clean` |
+| `pm-vmtest-windows` | 901 (`VMTEST_WINDOWS_VMID`) | OVMF with Secure Boot (MS keys), TPM 2.0, SATA disk, e1000e NIC |
+
+The Proxmox VMs were imported from the local ones rather than installed anew:
+
+```bash
+# local: Linux from its clean snapshot, both flattened and compressed
+qemu-img convert -O qcow2 -c -o compression_type=zstd -l snapshot.name=clean linux/disk.qcow2 linux.qcow2
+qemu-img convert -O qcow2 -c -o compression_type=zstd windows/disk.qcow2 windows.qcow2
+# host: create the VMs (see `qm config 900` / `qm config 901`), then
+qm disk import 900 linux.qcow2 ssd-thin   && qm set 900 --virtio0 ssd-thin:vm-900-disk-0 --boot order=virtio0
+qm disk import 901 windows.qcow2 ssd-thin && qm set 901 --sata0 ssd-thin:vm-901-disk-2 --boot order=sata0
+qm snapshot 900 clean
+```
+
+`vm.sh create` is not available on Proxmox. The Windows test account's
+password stays in `~/vms/portmaster-test/windows/credentials`; the Windows
+screen is in the Proxmox web UI (console of VM 901).
+
 ## Manage the VMs
 
 ```bash

@@ -3,12 +3,12 @@
 #
 #   test-windows.sh [unit|smoke|all]   (default: unit)
 #
-# Results are written to $VMTEST_DIR/results/windows-*.
+# Results are written to $VMTEST_WORK/results/windows-*.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 what="${1:-unit}"
-bundle="$VMTEST_DIR/bundle-windows"
-results="$VMTEST_DIR/results/windows-$(date +%Y%m%d-%H%M%S)"
+bundle="$VMTEST_WORK/bundle-windows"
+results="$VMTEST_WORK/results/windows-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$results"
 SSH=(vm_ssh "$WINDOWS_SSH_PORT" "$WINDOWS_USER")
 VM="$VMTEST_REPO/tools/vmtest/windows/vm.sh"
@@ -24,9 +24,9 @@ rc=0
 if [[ "$what" == unit || "$what" == all ]]; then
 	"$VMTEST_REPO/tools/vmtest/build-tests.sh" windows "$bundle"
 	log "copying test bundle"
-	tar -C "$bundle" -czf "$VMTEST_DIR/bundle-windows.tgz" .
+	tar -C "$bundle" -czf "$VMTEST_WORK/bundle-windows.tgz" .
 	"${SSH[@]}" 'Remove-Item -Recurse -Force C:\vmtest\bundle -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force C:\vmtest\bundle | Out-Null'
-	vm_scp "$WINDOWS_SSH_PORT" "$WINDOWS_USER" "$VMTEST_DIR/bundle-windows.tgz" 'C:/vmtest/bundle.tgz'
+	vm_scp "$WINDOWS_SSH_PORT" "$WINDOWS_USER" "$VMTEST_WORK/bundle-windows.tgz" 'C:/vmtest/bundle.tgz'
 	"${SSH[@]}" 'tar -xzf C:\vmtest\bundle.tgz -C C:\vmtest\bundle; Remove-Item C:\vmtest\bundle.tgz'
 	log "running unit tests as administrator"
 	"${SSH[@]}" 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\vmtest\bundle\run-tests.ps1; exit $LASTEXITCODE' | tee "$results/unit.txt" || rc=1

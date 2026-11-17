@@ -38,14 +38,61 @@ ensure_ssh_key() {
 	fi
 }
 
-# vm_ssh PORT USER [COMMAND...] runs a command in a test VM.
+VMTEST_BACKEND="${VMTEST_BACKEND:-local}"
+case "$VMTEST_BACKEND" in
+local) ;;
+proxmox) source "$(dirname "${BASH_SOURCE[0]}")/proxmox.sh" ;;
+*) die "unknown VMTEST_BACKEND $VMTEST_BACKEND (local or proxmox)" ;;
+esac
+
+# Test bundles and results; separate per backend so that local and Proxmox
+# runs can happen at the same time.
+VMTEST_WORK="$VMTEST_DIR"
+[[ "$VMTEST_BACKEND" == local ]] || VMTEST_WORK="$VMTEST_DIR/$VMTEST_BACKEND"
+
+# vm_endpoint PORT sets VM_HOST, VM_PORT and VM_SSH_OPTS for the VM named by
+# PORT: 127.0.0.1 with QEMU's port forward locally, the VM's LAN address
+# through the host on Proxmox.
+vm_endpoint() {
+	VM_SSH_OPTS=(-i "$VMTEST_SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+		-o LogLevel=ERROR -o ConnectTimeout=5 -o BatchMode=yes)
+	if [[ "$VMTEST_BACKEND" == proxmox ]]; then
+		VM_HOST="$(pve_ssh_target "$1")" || return 255
+		VM_PORT=22
+		VM_SSH_OPTS+=(-o "ProxyCommand=$(pve_proxy_command)")
+	else
+		VM_HOST=127.0.0.1
+		VM_PORT="$1"
+	fi
+}
+
+# vm_ssh PORT USER [COMMAND...] runs a command in a test VM. On Proxmox, a
+# failed connection looks up the VM's address again, as DHCP may change it.
 vm_ssh() {
-	local port="$1" user="$2"
+	local port="$1" user="$2" rc
 	shift 2
-	ssh -i "$VMTEST_SSH_KEY" -p "$port" \
-		-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-		-o LogLevel=ERROR -o ConnectTimeout=5 -o BatchMode=yes \
-		"$user@127.0.0.1" "$@"
+	vm_endpoint "$port" || return 255
+	ssh "${VM_SSH_OPTS[@]}" -p "$VM_PORT" "$user@$VM_HOST" "$@"
+	rc=$?
+	if ((rc == 255)) && [[ "$VMTEST_BACKEND" == proxmox ]]; then
+		PVE_IP_REFRESH=1 vm_endpoint "$port" || return 255
+		ssh "${VM_SSH_OPTS[@]}" -p "$VM_PORT" "$user@$VM_HOST" "$@"
+		rc=$?
+	fi
+	return $rc
+}
+
+# vm_rsh PORT prints an rsync -e command for the VM named by PORT, and
+# vm_dest PORT USER PATH the matching rsync destination.
+vm_rsh() {
+	vm_endpoint "$1" || return 1
+	# rsync splits -e on spaces and honours quotes, not backslashes.
+	local a
+	for a in ssh "${VM_SSH_OPTS[@]}" -p "$VM_PORT"; do printf "'%s' " "$a"; done
+}
+vm_dest() {
+	vm_endpoint "$1" || return 1
+	echo "$2@$VM_HOST:$3"
 }
 
 # vm_scp PORT USER SRC... DST copies files into a test VM (DST is remote).
@@ -55,18 +102,14 @@ vm_scp() {
 	local args=("$@")
 	local dst="${args[-1]}"
 	unset 'args[-1]'
-	scp -q -i "$VMTEST_SSH_KEY" -P "$port" \
-		-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-		-o LogLevel=ERROR -o BatchMode=yes \
-		"${args[@]}" "$user@127.0.0.1:$dst"
+	vm_endpoint "$port" || return 1
+	scp -q "${VM_SSH_OPTS[@]}" -P "$VM_PORT" "${args[@]}" "$user@$VM_HOST:$dst"
 }
 
 # vm_fetch PORT USER REMOTE_SRC LOCAL_DST copies a file out of a test VM.
 vm_fetch() {
-	scp -q -i "$VMTEST_SSH_KEY" -P "$1" \
-		-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-		-o LogLevel=ERROR -o BatchMode=yes \
-		"$2@127.0.0.1:$3" "$4"
+	vm_endpoint "$1" || return 1
+	scp -q "${VM_SSH_OPTS[@]}" -P "$VM_PORT" "$2@$VM_HOST:$3" "$4"
 }
 
 # wait_for_ssh PORT USER TIMEOUT_SECONDS waits until SSH login works.
