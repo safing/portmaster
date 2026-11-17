@@ -11,7 +11,7 @@ import (
 var publicSuffixTestDomains = []string{
 	"", ".", "..", "...",
 	"com.", "COM", "localhost", "localhost.", "notatld", "a.notatld.",
-	"example.com", "www.example.com.", "a.b.c.d.example.com.",
+	"example.com", testDomain, "a.b.c.d.example.com.",
 	"WWW.Example.COM.", "Example.Com",
 	"example.com..", "www.example.com...", ".example.com", ".example.com.",
 	"www..example.com.", "a...b.example.com", "..example.com.",
@@ -25,7 +25,7 @@ var publicSuffixTestDomains = []string{
 	"xn--fiqs8s", "www.xn--fiqs8s.", "www.example.xn--fiqs8s.", "\u4f8b\u5b50.\u4e2d\u56fd.",
 	"1.2.3.4", "1.2.3.4.", "::1", "2001:db8::1", "[::1]",
 	"*.example.com.", "-.example.com", "a b.example.com", "a/b.com.",
-	"e1.example.net.", "edge-12.eu-west-1.cdn.example.co.uk.",
+	testCNAME, "edge-12.eu-west-1.cdn.example.co.uk.",
 	strings.Repeat("a.", 60) + "example.com.",
 }
 

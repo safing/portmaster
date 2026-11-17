@@ -3,6 +3,7 @@ package intel
 import (
 	"context"
 	"net"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -623,10 +624,10 @@ func (e *Entity) MatchLists(lists []string) bool {
 	e.BlockedByLists = nil
 	e.BlockedEntities = nil
 
-	lm := makeMap(lists)
+	// There are only a few filter lists: Scan them instead of building a map.
 	for key, keyLists := range e.ListOccurences {
 		for _, keyListID := range keyLists {
-			if _, ok := lm[keyListID]; ok {
+			if slices.Contains(lists, keyListID) {
 				e.BlockedByLists = append(e.BlockedByLists, keyListID)
 				e.BlockedEntities = append(e.BlockedEntities, key)
 			}
@@ -643,15 +644,13 @@ func (e *Entity) MatchLists(lists []string) bool {
 func (e *Entity) ListBlockReason() ListBlockReason {
 	blockedBy := make([]ListMatch, len(e.BlockedEntities))
 
-	lm := makeMap(e.BlockedByLists)
-
 	for idx, blockedEntity := range e.BlockedEntities {
 		if entityLists, ok := e.ListOccurences[blockedEntity]; ok {
 			var activeLists []string
 			var inactiveLists []string
 
 			for _, l := range entityLists {
-				if _, ok := lm[l]; ok {
+				if slices.Contains(e.BlockedByLists, l) {
 					activeLists = append(activeLists, l)
 				} else {
 					inactiveLists = append(inactiveLists, l)
@@ -696,7 +695,31 @@ func mergeStringList(a, b []string) []string {
 	return res
 }
 
+// makeDistinctMaxScan is the length up to which makeDistinct scans the
+// distinct values instead of using a map. The values are the domains of an
+// entity, or its list matches, which are usually only a few.
+const makeDistinctMaxScan = 64
+
+// makeDistinct returns the distinct values of slice in the order of their first
+// occurrence. The result is not nil. It may use the array of slice.
 func makeDistinct(slice []string) []string {
+	switch {
+	case slice == nil:
+		return []string{}
+	case len(slice) > makeDistinctMaxScan:
+		return makeDistinctWithMap(slice)
+	}
+
+	result := slice[:0]
+	for _, v := range slice {
+		if !slices.Contains(result, v) {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+func makeDistinctWithMap(slice []string) []string {
 	m := make(map[string]struct{}, len(slice))
 	result := make([]string, 0, len(slice))
 
@@ -710,12 +733,4 @@ func makeDistinct(slice []string) []string {
 	}
 
 	return result
-}
-
-func makeMap(slice []string) map[string]struct{} {
-	lm := make(map[string]struct{})
-	for _, v := range slice {
-		lm[v] = struct{}{}
-	}
-	return lm
 }
