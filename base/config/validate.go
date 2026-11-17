@@ -81,6 +81,12 @@ func migrateValue(option *Option, value any) any {
 // validateValue ensures that value matches the expected type of option.
 // It does not create a copy of the value!
 func validateValue(option *Option, value interface{}) (*valueCache, *ValidationError) { //nolint:gocyclo
+	// Reject nil (e.g. JSON null) before isAllowedPossibleValue, which cannot
+	// handle it via reflection.
+	if value == nil {
+		return nil, invalid(option, "invalid option value type: %T", value)
+	}
+
 	if option.OptType != OptTypeStringArray {
 		if err := isAllowedPossibleValue(option, value); err != nil {
 			return nil, &ValidationError{
