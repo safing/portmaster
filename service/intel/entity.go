@@ -399,32 +399,14 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 	}
 
 	e.loadDomainListOnce.Do(func() {
-		domainsToInspect := []string{domain}
-
 		if e.checkCNAMEs && len(e.CNAME) > 0 {
 			log.Tracer(ctx).Tracef("intel: CNAME filtering enabled, checking %v too", e.CNAME)
-			domainsToInspect = append(domainsToInspect, e.CNAME...)
 		}
 
-		var domains []string
-		if e.resolveSubDomainLists {
-			for i, domain := range domainsToInspect {
-				var subdomains []string
-				if i == 0 {
-					// Use the public suffix of the domain from the entity.
-					d := strings.TrimSuffix(domain, ".")
-					suffix, icann := e.getPublicSuffix(d)
-					subdomains = splitDomainWithSuffix(domain, d, suffix, icann)
-				} else {
-					subdomains = splitDomain(domain)
-				}
-				domains = append(domains, subdomains...)
-			}
-		} else {
-			domains = domainsToInspect
-		}
-
-		domains = makeDistinct(domains)
+		// Collect the domains to look up in a buffer on the stack: A domain
+		// and its CNAMEs usually have only a few parent domains.
+		var domainsBuf [16]string
+		domains := makeDistinct(e.appendListDomains(domainsBuf[:0], domain))
 
 		for _, d := range domains {
 			list, err := filterlists.LookupDomain(d)
@@ -447,17 +429,28 @@ func (e *Entity) getDomainLists(ctx context.Context) {
 // excluding, the public suffix. A public suffix that is not an ICANN TLD is
 // included.
 func splitDomain(domain string) []string {
+	return appendSplitDomain(nil, domain)
+}
+
+// appendSplitDomain appends the result of splitDomain to dst.
+func appendSplitDomain(dst []string, domain string) []string {
 	// Get suffix.
 	d := strings.TrimSuffix(domain, ".")
 	suffix, icann := publicsuffix.PublicSuffix(d)
-	return splitDomainWithSuffix(domain, d, suffix, icann)
+	return appendSplitDomainWithSuffix(dst, domain, d, suffix, icann)
 }
 
 // splitDomainWithSuffix is splitDomain with the domain without the trailing
 // dot d and the result of publicsuffix.PublicSuffix(d).
 func splitDomainWithSuffix(domain, d, suffix string, icann bool) []string {
+	return appendSplitDomainWithSuffix(nil, domain, d, suffix, icann)
+}
+
+// appendSplitDomainWithSuffix appends the result of splitDomainWithSuffix to
+// dst.
+func appendSplitDomainWithSuffix(dst []string, domain, d, suffix string, icann bool) []string {
 	if suffix == d {
-		return []string{domain}
+		return append(dst, domain)
 	}
 
 	// All domains to return are a suffix of the fully qualified domain, if
@@ -469,28 +462,32 @@ func splitDomainWithSuffix(domain, d, suffix string, icann bool) []string {
 		!strings.HasSuffix(subdomains, ".") ||
 		strings.HasPrefix(subdomains, ".") ||
 		strings.Contains(subdomains, "..") {
-		return splitIrregularDomain(d, suffix, icann)
+		irregular := splitIrregularDomain(d, suffix, icann)
+		if dst == nil {
+			return irregular
+		}
+		return append(dst, irregular...)
 	}
 	fqdn := domain
 	if len(fqdn) == len(d) {
 		fqdn += "."
 	}
 
-	domains := make([]string, 0, strings.Count(subdomains, ".")+1)
+	dst = slices.Grow(dst, strings.Count(subdomains, ".")+1)
 	start := 0
 	for i := range len(subdomains) {
 		if subdomains[i] == '.' {
-			domains = append(domains, fqdn[start:])
+			dst = append(dst, fqdn[start:])
 			start = i + 1
 		}
 	}
 
 	// If the suffix is not a real TLD, but a public suffix, add it to the list.
 	if !icann {
-		domains = append(domains, fqdn[len(subdomains):])
+		dst = append(dst, fqdn[len(subdomains):])
 	}
 
-	return domains
+	return dst
 }
 
 // splitIrregularDomain is the general implementation of splitDomain, which
@@ -665,6 +662,33 @@ func (e *Entity) ListBlockReason() ListBlockReason {
 	}
 
 	return blockedBy
+}
+
+// appendListDomains appends the domains to look up in the filter lists for
+// the given domain of the entity to dst: the domain and its CNAMEs, if
+// enabled, and their parent domains, if enabled. The result may contain
+// duplicates.
+func (e *Entity) appendListDomains(dst []string, domain string) []string {
+	checkCNAMEs := e.checkCNAMEs && len(e.CNAME) > 0
+
+	if !e.resolveSubDomainLists {
+		dst = append(dst, domain)
+		if checkCNAMEs {
+			dst = append(dst, e.CNAME...)
+		}
+		return dst
+	}
+
+	// Use the public suffix of the domain from the entity.
+	d := strings.TrimSuffix(domain, ".")
+	suffix, icann := e.getPublicSuffix(d)
+	dst = appendSplitDomainWithSuffix(dst, domain, d, suffix, icann)
+	if checkCNAMEs {
+		for _, cname := range e.CNAME {
+			dst = appendSplitDomain(dst, cname)
+		}
+	}
+	return dst
 }
 
 // getPublicSuffix returns publicsuffix.PublicSuffix(d). The result is kept
