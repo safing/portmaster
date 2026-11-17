@@ -253,12 +253,16 @@ func (b *BBolt) Purge(ctx context.Context, q *query.Query, local, internal, shad
 	var cnt int
 	var done bool
 	var cancelErr error
+	// Each chunk continues after the last record handled by the previous one,
+	// instead of rescanning the records already handled, which stay in the
+	// bucket when shadow deleting or skipped.
+	startKey := prefix
 	for !done {
 		err := b.db.Update(func(tx *bbolt.Tx) error {
 			// Create a cursor for iteration.
 			bucket := tx.Bucket(bucketName)
 			c := bucket.Cursor()
-			for key, value := c.Seek(prefix); key != nil; key, value = c.Next() {
+			for key, value := c.Seek(startKey); key != nil; key, value = c.Next() {
 				// Check if context has been cancelled.
 				select {
 				case <-ctx.Done():
@@ -326,8 +330,11 @@ func (b *BBolt) Purge(ctx context.Context, q *query.Query, local, internal, shad
 				}
 
 				// Work in batches of 1000 changes in order to enable other operations in between.
+				// The next chunk starts at the smallest key after the current one.
 				cnt++
 				if cnt%1000 == 0 {
+					startKey = make([]byte, len(key)+1)
+					copy(startKey, key)
 					return nil
 				}
 			}
