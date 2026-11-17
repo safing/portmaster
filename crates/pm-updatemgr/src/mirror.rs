@@ -185,7 +185,14 @@ pub fn check_mirror(index: &Index, target_dir: &std::path::Path) -> Result<(), S
             ));
         }
         let destination = target_dir.join(location);
-        match check_sha256_sum_file(&destination, &artifact.sha256) {
+        // Index checksums describe the unpacked bytes, just like the normal
+        // download path; mirrored files stay compressed, so verify the
+        // decompressed stream instead of the raw file.
+        match pm_updates::check_sha256_sum_file_unpacked(
+            &destination,
+            &artifact.unpack,
+            &artifact.sha256,
+        ) {
             Ok(()) => println!("verified: {location}"),
             Err(error) => println!("failed to verify {location}: {error}"),
         }

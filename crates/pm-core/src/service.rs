@@ -686,7 +686,7 @@ impl Service {
             .map_err(|error| anyhow::anyhow!("register account api: {error}"))?;
 
         crate::core_api::register_api(
-            &api,
+            Arc::clone(&api),
             Arc::clone(&config),
             Arc::clone(&notifications),
             Arc::clone(&firewall.netquery_db),
@@ -802,6 +802,9 @@ impl Service {
         let firewall_profiles = Arc::clone(&self.firewall.profiles);
         let compat_refresh = Arc::clone(&self.compat);
         let resolver_for_compat = self.dns.resolver().clone();
+        let update_module = Arc::clone(&self.filter_lists_module);
+        let update_lists = Arc::clone(&self.filter_lists);
+        let update_geoip = Arc::clone(&self.geoip);
         let mut changes = self
             .profile_changes
             .lock()
@@ -829,11 +832,32 @@ impl Service {
                 let release_channel = config.get_as_string(CFG_RELEASE_CHANNEL, "stable")();
                 let auto_software = config.get_as_bool(CFG_AUTOMATIC_UPDATES, true)();
                 let auto_intel = config.get_as_bool(CFG_AUTOMATIC_INTEL_UPDATES, true)();
-                binary_updater.configure(
+                let binary_result = binary_updater.configure_with_check(
                     auto_software,
                     pm_updates::binary_update_url_list(&release_channel),
                 );
-                intel_updater.configure(auto_intel, pm_updates::intel_update_urls());
+                if binary_result.should_check {
+                    let updater = Arc::clone(&binary_updater);
+                    tokio::task::spawn_blocking(move || {
+                        if let Err(error) = updater.update_check() {
+                            tracing::warn!(%error, "updates/binaries: update check failed");
+                        }
+                    });
+                }
+                let intel_result = intel_updater
+                    .configure_with_check(auto_intel, pm_updates::intel_update_urls());
+                if intel_result.should_check {
+                    let updater = Arc::clone(&intel_updater);
+                    let module = Arc::clone(&update_module);
+                    let lists = Arc::clone(&update_lists);
+                    let geoip = Arc::clone(&update_geoip);
+                    tokio::task::spawn_blocking(move || {
+                        let _ = module.handle_resources_updated(|| {
+                            updater.update_check().map_err(|error| error.to_string())?;
+                            apply_intel_update(&updater, &lists, &geoip)
+                        });
+                    });
+                }
                 compat_refresh.refresh_options(
                     config.get_as_bool("filter/dnsQueryInterception", true)(),
                     resolver_for_compat.is_disabled(),
