@@ -299,17 +299,27 @@ func requireOnline(t *testing.T) {
 	netenv.ConnectedToDNS.Set()
 	t.Cleanup(func() { netenv.ConnectedToDNS.SetTo(wasConnected) })
 
-	// A check that is already running returns its own, older result first.
-	// Check again until the result reflects the connected DNS.
+	// Trigger a new check and wait for its result. A check that is already
+	// running may report its own, older result first, and the trigger is queued
+	// for the next check then. Trigger again until the result reflects the
+	// connected DNS.
+	//
+	// Do not use netenv.CheckAndGetOnlineStatus here: it waits on a
+	// sync.WaitGroup that the online status worker adds to again right after a
+	// check when another trigger is queued. Waiting while it is reused is a
+	// data race and panics with "WaitGroup is reused before previous Wait has
+	// returned", seen with -race -count=50.
 	deadline := time.Now().Add(30 * time.Second)
 	for {
-		status := netenv.CheckAndGetOnlineStatus()
+		netenv.TriggerOnlineStatusInvestigation()
+		status := netenv.GetOnlineStatus()
 		if status == netenv.StatusOnline {
 			return
 		}
 		if time.Now().After(deadline) {
 			t.Fatalf("expected online status %s, got %s", netenv.StatusOnline, status)
 		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
