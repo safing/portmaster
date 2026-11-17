@@ -1,6 +1,6 @@
 <header class="flex flex-row items-center justify-between mb-2">
   <h1 class="text-sm font-light m-0">
-    {{ 'app.mergeTitle' | t }}
+    {{ 'app.mergeTitle' | t: undefined : ('' | i18nVersion) }}
   </h1>
 
   <svg role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" class="w-3 h-3 text-secondary hover:text-primary cursor-pointer" (click)="dialogRef.close()">
@@ -9,11 +9,11 @@
 </header>
 
 <span class="py-2 text-secondary text-xxs">
-  {{ 'app.mergeDesc' | t }}
+  {{ 'app.mergeDesc' | t: undefined : ('' | i18nVersion) }}
 </span>
 
 <div class="flex flex-row gap-2 justify-between border-b border-gray-500 p-2 items-center">
-  <label class="text-primary text-xxs relative">{{ 'app.primaryProfile' | t }}</label>
+  <label class="text-primary text-xxs relative">{{ 'app.primaryProfile' | t: undefined : ('' | i18nVersion) }}</label>
   <sfng-select [(ngModel)]="primary" (ngModelChange)="newName = newName || primary?.Name || ''" class="border border-gray-500">
     <ng-container *ngFor="let p of profiles; trackBy: trackProfile">
       <sfng-select-item *sfngSelectValue="p; label:p.Name" class="flex flex-row items-center gap-2">
@@ -25,11 +25,11 @@
 </div>
 
 <div class="flex flex-row gap-2 justify-between items-center p-2">
-  <label class="text-primary text-xxs relative">{{ 'app.newProfileName' | t }}</label>
-  <input type="text" [(ngModel)]="newName" [placeholder]="'app.newProfileNamePlaceholder' | t" class="!border !border-gray-500 flex-grow">
+  <label class="text-primary text-xxs relative">{{ 'app.newProfileName' | t: undefined : ('' | i18nVersion) }}</label>
+  <input type="text" [(ngModel)]="newName" [placeholder]="'app.newProfileNamePlaceholder' | t: undefined : ('' | i18nVersion)" class="!border !border-gray-500 flex-grow">
 </div>
 
 <div class="flex flex-row justify-end gap-2">
-  <button (click)="dialogRef.close()">{{ 'common.cancel2' | t }}</button>
-  <button class="bg-blue text-white" (click)="mergeProfiles()" [disabled]="!primary || !newName">{{ 'app.merge' | t }}</button>
+  <button (click)="dialogRef.close()">{{ 'common.cancel2' | t: undefined : ('' | i18nVersion) }}</button>
+  <button class="bg-blue text-white" (click)="mergeProfiles()" [disabled]="!primary || !newName">{{ 'app.merge' | t: undefined : ('' | i18nVersion) }}</button>
 </div>

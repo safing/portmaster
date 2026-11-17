@@ -1,16 +1,16 @@
 <div class="content-wrapper">
-  <caption>{{ 'exit.tip' | t }}</caption>
+  <caption>{{ 'exit.tip' | t: undefined : ('' | i18nVersion) }}</caption>
   <fa-icon class="close-icon" icon="times" (click)="cancel()"></fa-icon>
 
-  <h1>{{ 'exit.title' | t }}</h1>
+  <h1>{{ 'exit.title' | t: undefined : ('' | i18nVersion) }}</h1>
 
-  <span class="message">{{ 'exit.desc' | t }}</span>
+  <span class="message">{{ 'exit.desc' | t: undefined : ('' | i18nVersion) }}</span>
 
   <div class="actions">
     <span>
-      <input name="neveragain" id="neveragain" [(ngModel)]="neveragain" type="checkbox"> <label for="neveragain">{{ 'exit.never' | t }}</label>
+      <input name="neveragain" id="neveragain" [(ngModel)]="neveragain" type="checkbox"> <label for="neveragain">{{ 'exit.never' | t: undefined : ('' | i18nVersion) }}</label>
     </span>
 
-    <button (click)="closeUI()" type="button">{{ 'exit.closeUI' | t }}</button>
+    <button (click)="closeUI()" type="button">{{ 'exit.closeUI' | t: undefined : ('' | i18nVersion) }}</button>
   </div>
 </div>

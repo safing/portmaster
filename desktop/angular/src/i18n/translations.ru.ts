@@ -74,6 +74,33 @@ export const ru: Record<string, string> = {
   'pause.spn': 'SPN приостановлен',
   'pause.autoResume': 'Автовозобновление в {{time}}',
 
+  // Сообщения индикатора действий
+  'nav.reloadingUI': 'Перезагрузка интерфейса ...',
+  'nav.reloadUIFailed': 'Не удалось перезагрузить интерфейс',
+  'nav.spnReinitialized': 'SPN переинициализирован',
+  'nav.spnReinitFailed': 'Не удалось переинициализировать SPN',
+  'nav.dnsCacheCleared': 'DNS-кэш очищен',
+  'nav.dnsCacheClearFailed': 'Не удалось очистить DNS-кэш.',
+  'nav.historyCleaned': 'История сетевых подключений очищена',
+  'nav.historyCleanFailed': 'Не удалось очистить историю сетевых подключений.',
+  'nav.updatesDownloading': 'Загрузка обновлений ...',
+  'nav.updatesCheckFailed': 'Не удалось проверить обновления',
+  'nav.restarting': 'Перезапуск ...',
+  'nav.restartFailed': 'Не удалось перезапустить',
+  'nav.pausing': 'Приостановка ...',
+  'nav.pauseFailed': 'Не удалось приостановить',
+  'nav.pausingSPN': 'Приостановка SPN...',
+  'nav.pauseSPNFailed': 'Не удалось приостановить SPN',
+  'nav.resuming': 'Возобновление ...',
+  'nav.resumingBoth': 'Возобновление Portmaster и SPN ...',
+  'nav.resumingPM': 'Возобновление Portmaster ...',
+  'nav.resumingSPN': 'Возобновление SPN ...',
+  'nav.resumeFailed': 'Не удалось возобновить',
+  'nav.dataDirFailed': 'Не удалось открыть каталог данных',
+  'nav.notificationsCleared': 'Состояние уведомлений сброшено',
+  'nav.notificationsClearFailed': 'Не удалось сбросить состояние уведомлений.',
+  'nav.debugLoadFailed': 'Не удалось загрузить отладочные данные',
+
   // Страница настроек
   'settings.title': 'Глобальные настройки',
   'settings.search': 'Поиск',
@@ -639,6 +666,15 @@ export const ru: Record<string, string> = {
   "app.deleteYes": "Да, удалить",
   "app.profileDeleted": "Профиль удалён",
   "app.profileDeletedMsg": "Профиль {{name}} успешно удалён",
+
+  // Удаление профилей на странице обзора
+  "app.deleteProfilesConfirm": "Подтверждение удаления профилей",
+  "app.deleteProfilesConfirmMsg": "Вы действительно хотите удалить все выбранные профили ({{count}})?",
+  "app.attention": "Внимание",
+  "app.profilesDeleted": "Выбранные профили удалены",
+  "app.profilesDeletedMsg": "Все выбранные профили удалены",
+  "app.deleteProfilesFailed": "Не удалось удалить профили",
+  "app.deleteProfilesFailedMsg": "При удалении некоторых профилей произошла ошибка: {{error}}",
 
   // --- подписи графика, пересобираемые при смене языка ---
   "chart.ago": "назад",

@@ -5,57 +5,57 @@
     class="w-8 h-8 rounded-full border border-gray-400"
   />
 
-  {{ isEditMode ? ('app.editProfile' | t) : ('ep.create' | t) }}
+  {{ isEditMode ? ('app.editProfile' | t: undefined : ('' | i18nVersion)) : ('ep.create' | t: undefined : ('' | i18nVersion)) }}
 </h1>
 
 <form #profileForm="ngForm">
   <sfng-tab-group customHeader="false" linkRouter="false">
-    <sfng-tab [title]="'common.general' | t">
+    <sfng-tab [title]="'common.general' | t: undefined : ('' | i18nVersion)">
       <div *sfngTabContent class="tab-content">
-        <span class="py-2 text-secondary">{{ 'ep.generalDesc' | t }}</span>
+        <span class="py-2 text-secondary">{{ 'ep.generalDesc' | t: undefined : ('' | i18nVersion) }}</span>
 
         <div class="input" *appExpertiseLevel="'developer'">
-          <label>{{ 'spn.pd.id' | t }}</label>
+          <label>{{ 'spn.pd.id' | t: undefined : ('' | i18nVersion) }}</label>
           <input
             type="text"
             name="id"
             pattern="[a-zA-Z0-9\-\._]*"
             [(ngModel)]="profile.ID"
-            [placeholder]="'ep.idPlaceholder' | t"
+            [placeholder]="'ep.idPlaceholder' | t: undefined : ('' | i18nVersion)"
           />
         </div>
 
         <div class="input">
-          <label>{{ 'ep.nameRequired' | t }}</label>
+          <label>{{ 'ep.nameRequired' | t: undefined : ('' | i18nVersion) }}</label>
           <input
             type="text"
             required
             name="name"
             [(ngModel)]="profile.Name"
-            [placeholder]="'ep.namePlaceholder' | t"
+            [placeholder]="'ep.namePlaceholder' | t: undefined : ('' | i18nVersion)"
           />
         </div>
 
         <div class="input">
-          <label>{{ 'ep.description' | t }}</label>
+          <label>{{ 'ep.description' | t: undefined : ('' | i18nVersion) }}</label>
           <input
             type="text"
             name="description"
             [(ngModel)]="profile.Description"
-            [placeholder]="'ep.descriptionPlaceholder' | t"
+            [placeholder]="'ep.descriptionPlaceholder' | t: undefined : ('' | i18nVersion)"
           />
         </div>
 
         <div class="flex flex-row justify-between">
           <div class="input">
-            <label>{{ 'ep.icon' | t }}</label>
+            <label>{{ 'ep.icon' | t: undefined : ('' | i18nVersion) }}</label>
             <div class="flex flex-col gap-2 justify-start">
               <div class="flex flex-row gap-3">
                 <label
                   for="icon-upload"
                   class="inline-block p-1 px-4 font-medium whitespace-nowrap bg-opacity-80 rounded-sm cursor-pointer outline-none bg-blue hover:bg-blue text-xxs w-fit"
                 >
-                  {{ 'ep.chooseIcon' | t }}
+                  {{ 'ep.chooseIcon' | t: undefined : ('' | i18nVersion) }}
                 </label>
                 <button
                   type="button"
@@ -63,11 +63,11 @@
                   (click)="resetIcon()"
                   class="bg-red-300"
                 >
-                  {{ 'ep.resetIcon' | t }}
+                  {{ 'ep.resetIcon' | t: undefined : ('' | i18nVersion) }}
                 </button>
               </div>
               <span class="pl-2 break-normal text-tertiary"
-                >{{ 'ep.iconHint' | t }}</span
+                >{{ 'ep.iconHint' | t: undefined : ('' | i18nVersion) }}</span
               >
             </div>
             <input
@@ -90,13 +90,13 @@
       </div>
     </sfng-tab>
 
-    <sfng-tab [title]="'ep.processMatching' | t">
+    <sfng-tab [title]="'ep.processMatching' | t: undefined : ('' | i18nVersion)">
       <div *sfngTabContent class="flex flex-col tab-content text-xxs">
-        <span class="text-xs text-secondary">{{ 'app.fpIntro' | t }}</span
+        <span class="text-xs text-secondary">{{ 'app.fpIntro' | t: undefined : ('' | i18nVersion) }}</span
         >
 
         <div *ngIf="!profile.Fingerprints?.length">
-          {{ 'ep.noFingerprints' | t }}
+          {{ 'ep.noFingerprints' | t: undefined : ('' | i18nVersion) }}
         </div>
         <div class="flex overflow-auto flex-col flex-grow gap-2 px-1">
           <div
@@ -122,36 +122,36 @@
               [ngModelOptions]="{standalone: true}"
             >
               <sfng-select-item
-                *sfngSelectValue="fingerPrintTypes.Tag; label: 'ep.tag' | t"
+                *sfngSelectValue="fingerPrintTypes.Tag; label: 'ep.tag' | t: undefined : ('' | i18nVersion)"
               >
-                {{ 'ep.tag' | t }}
+                {{ 'ep.tag' | t: undefined : ('' | i18nVersion) }}
                 <sfng-tipup key="process-tags"></sfng-tipup>
               </sfng-select-item>
               <sfng-select-item
-                *sfngSelectValue="fingerPrintTypes.Cmdline; label: 'ep.cmdline' | t"
-                >{{ 'ep.cmdline' | t }} 
+                *sfngSelectValue="fingerPrintTypes.Cmdline; label: 'ep.cmdline' | t: undefined : ('' | i18nVersion)"
+                >{{ 'ep.cmdline' | t: undefined : ('' | i18nVersion) }}
               </sfng-select-item>
               <sfng-select-item
-                *sfngSelectValue="fingerPrintTypes.Env; label: 'ep.env' | t"
-                >{{ 'ep.env' | t }}
+                *sfngSelectValue="fingerPrintTypes.Env; label: 'ep.env' | t: undefined : ('' | i18nVersion)"
+                >{{ 'ep.env' | t: undefined : ('' | i18nVersion) }}
               </sfng-select-item>
               <sfng-select-item
-                *sfngSelectValue="fingerPrintTypes.Path; label: 'ep.path' | t"
-                >{{ 'ep.path' | t }}</sfng-select-item
+                *sfngSelectValue="fingerPrintTypes.Path; label: 'ep.path' | t: undefined : ('' | i18nVersion)"
+                >{{ 'ep.path' | t: undefined : ('' | i18nVersion) }}</sfng-select-item
               >
             </sfng-select>
 
             <input
               type="text"
               [(ngModel)]="fp.Key"
-              [placeholder]="'common.key' | t"
+              [placeholder]="'common.key' | t: undefined : ('' | i18nVersion)"
               [ngModelOptions]="{standalone: true}"
               *ngIf="fp.Type === 'env'"
             />
 
             <sfng-select
               [(ngModel)]="fp.Key"
-              [placeholder]="'common.key' | t"
+              [placeholder]="'common.key' | t: undefined : ('' | i18nVersion)"
               [ngModelOptions]="{standalone: true}"
               *ngIf="fp.Type === 'tag'"
             >
@@ -167,20 +167,20 @@
               [ngModelOptions]="{standalone: true}"
             >
               <sfng-select-item *sfngSelectValue="fingerPrintOperations.Equal"
-                >{{ 'ep.equals' | t }}</sfng-select-item
+                >{{ 'ep.equals' | t: undefined : ('' | i18nVersion) }}</sfng-select-item
               >
               <sfng-select-item *sfngSelectValue="fingerPrintOperations.Prefix"
-                >{{ 'ep.prefix' | t }}</sfng-select-item
+                >{{ 'ep.prefix' | t: undefined : ('' | i18nVersion) }}</sfng-select-item
               >
               <sfng-select-item *sfngSelectValue="fingerPrintOperations.Regex"
-                >{{ 'ep.regex' | t }}</sfng-select-item
+                >{{ 'ep.regex' | t: undefined : ('' | i18nVersion) }}</sfng-select-item
               >
             </sfng-select>
 
             <input
               type="text"
               [(ngModel)]="fp.Value"
-              [placeholder]="'common.value' | t"
+              [placeholder]="'common.value' | t: undefined : ('' | i18nVersion)"
               [ngModelOptions]="{standalone: true}"
             />
 
@@ -207,15 +207,15 @@
           </div>
         </div>
 
-        <button type="button" (click)="addFingerprint()">{{ 'common.addNew' | t }}</button>
+        <button type="button" (click)="addFingerprint()">{{ 'common.addNew' | t: undefined : ('' | i18nVersion) }}</button>
       </div>
     </sfng-tab>
 
-    <sfng-tab [title]="'ep.copySettings' | t">
+    <sfng-tab [title]="'ep.copySettings' | t: undefined : ('' | i18nVersion)">
       <div *sfngTabContent class="flex flex-col gap-2 tab-content">
         <div class="flex flex-row gap-2 items-center p-2 bg-gray-200">
           <span class="text-secondary"
-            >{{ 'ep.selectProfile' | t }}</span
+            >{{ 'ep.selectProfile' | t: undefined : ('' | i18nVersion) }}</span
           >
           <div class="flex-grow"></div>
           <sfng-select
@@ -223,7 +223,7 @@
             [ngModelOptions]="{standalone: true}"
             class="flex-grow"
             [allowSearch]="true"
-            [searchPlaceholder]="'ep.searchProfiles' | t"
+            [searchPlaceholder]="'ep.searchProfiles' | t: undefined : ('' | i18nVersion)"
           >
             <ng-container *ngFor="let p of allProfiles">
               <sfng-select-item
@@ -240,7 +240,7 @@
             [disabled]="selectedCopyFrom === null"
             (click)="addCopyFrom()"
           >
-            {{ 'common.add' | t }}
+            {{ 'common.add' | t: undefined : ('' | i18nVersion) }}
           </button>
         </div>
 
@@ -295,7 +295,7 @@
           </div>
         </div>
         <span class="block text-center break-normal text-secondary text-xxs">
-          {{ 'ep.copyHint' | t }} <br />
+          {{ 'ep.copyHint' | t: undefined : ('' | i18nVersion) }} <br />
         </span>
       </div>
     </sfng-tab>
@@ -304,15 +304,15 @@
 
 <div class="flex flex-row gap-2 justify-end items-center">
   <button *ngIf="isEditMode" (click)="deleteProfile()" class="bg-red">
-    {{ 'ep.delete' | t }}
+    {{ 'ep.delete' | t: undefined : ('' | i18nVersion) }}
   </button>
   <div class="flex-grow"></div>
-  <button (click)="abort()" class="">{{ 'common.cancel2' | t }}</button>
+  <button (click)="abort()" class="">{{ 'common.cancel2' | t: undefined : ('' | i18nVersion) }}</button>
   <button
     (click)="save()"
     [disabled]="!profileForm.valid"
     class="bg-opacity-80 bg-blue hover:bg-blue"
   >
-    {{ 'common.save' | t }}
+    {{ 'common.save' | t: undefined : ('' | i18nVersion) }}
   </button>
 </div>

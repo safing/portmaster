@@ -9,9 +9,9 @@
     <sfng-tab>
       <section *sfngTabContent>
         <div>
-          <h1>{{ 'spn.carousel.t1' | t }}</h1>
+          <h1>{{ 'spn.carousel.t1' | t: undefined : ('' | i18nVersion) }}</h1>
           <span>
-            {{ 'spn.carousel.d1' | t }}
+            {{ 'spn.carousel.d1' | t: undefined : ('' | i18nVersion) }}
           </span>
         </div>
         <img src="/assets/img/spn-feature-carousel/multiple-identities-for-each-app.png">
@@ -35,9 +35,9 @@
     <sfng-tab>
       <section *sfngTabContent>
         <div>
-          <h1>{{ 'spn.carousel.t2a' | t }} <span class="text-blue">{{ 'spn.carousel.t2b' | t }}</span></h1>
+          <h1>{{ 'spn.carousel.t2a' | t: undefined : ('' | i18nVersion) }} <span class="text-blue">{{ 'spn.carousel.t2b' | t: undefined : ('' | i18nVersion) }}</span></h1>
           <span>
-            {{ 'spn.carousel.d2' | t }}
+            {{ 'spn.carousel.d2' | t: undefined : ('' | i18nVersion) }}
           </span>
         </div>
         <img src="/assets/img/spn-feature-carousel/easily-control-your-privacy.png">
@@ -47,9 +47,9 @@
     <sfng-tab>
       <section *sfngTabContent class="reverse">
         <div>
-          <h1>{{ 'spn.carousel.t3a' | t }} <span class="text-blue">{{ 'spn.carousel.t3b' | t }}</span></h1>
+          <h1>{{ 'spn.carousel.t3a' | t: undefined : ('' | i18nVersion) }} <span class="text-blue">{{ 'spn.carousel.t3b' | t: undefined : ('' | i18nVersion) }}</span></h1>
           <span>
-            {{ 'spn.carousel.d3' | t }}
+            {{ 'spn.carousel.d3' | t: undefined : ('' | i18nVersion) }}
           </span>
         </div>
         <img class="-top-16" src="/assets/img/spn-feature-carousel/built-from-the-ground-up.png">
@@ -59,9 +59,9 @@
     <sfng-tab>
       <section *sfngTabContent>
         <div>
-          <h1>{{ 'spn.carousel.t4' | t }}</h1>
+          <h1>{{ 'spn.carousel.t4' | t: undefined : ('' | i18nVersion) }}</h1>
           <span>
-            {{ 'spn.carousel.d4' | t }}
+            {{ 'spn.carousel.d4' | t: undefined : ('' | i18nVersion) }}
           </span>
         </div>
         <img src="/assets/img/spn-feature-carousel/bye-bye-vpns.png">
@@ -140,9 +140,9 @@
               <th></th>
               <th>
                 <a href="https://safing.io/blog/2022/09/06/spn-vs-vpns/?source=Portmaster">
-                  {{ 'spn.carousel.mostVPNs' | t }}
+                  {{ 'spn.carousel.mostVPNs' | t: undefined : ('' | i18nVersion) }}
                   <br>
-                  <span class="text-xs underline text-blue">{{ 'spn.carousel.readComparison' | t }}</span>
+                  <span class="text-xs underline text-blue">{{ 'spn.carousel.readComparison' | t: undefined : ('' | i18nVersion) }}</span>
                 </a>
               </th>
               <th>SPN</th>
@@ -151,7 +151,7 @@
           </thead>
           <tbody>
             <tr>
-              <td>{{ 'spn.carousel.multipleIdentities' | t }}</td>
+              <td>{{ 'spn.carousel.multipleIdentities' | t: undefined : ('' | i18nVersion) }}</td>
               <td>
                 <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
               </td>
@@ -175,7 +175,7 @@
               </td>
             </tr> -->
             <tr>
-              <td>{{ 'spn.carousel.individualApps' | t }}</td>
+              <td>{{ 'spn.carousel.individualApps' | t: undefined : ('' | i18nVersion) }}</td>
               <td>
                 <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
               </td>
@@ -187,17 +187,17 @@
               </td>
             </tr>
             <tr>
-              <td>{{ 'spn.carousel.easySetup' | t }}</td>
+              <td>{{ 'spn.carousel.easySetup' | t: undefined : ('' | i18nVersion) }}</td>
               <td>
                 <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
               </td>
               <td>
                 <ng-container *ngTemplateOutlet="tmplYes"></ng-container>
               </td>
-              <td><strong>{{ 'spn.carousel.browserOnly' | t }}</strong></td>
+              <td><strong>{{ 'spn.carousel.browserOnly' | t: undefined : ('' | i18nVersion) }}</strong></td>
             </tr>
             <tr>
-              <td>{{ 'spn.carousel.availability' | t }}</td>
+              <td>{{ 'spn.carousel.availability' | t: undefined : ('' | i18nVersion) }}</td>
               <td>
                 <div class="flex flex-row items-center justify-center gap-2">
                   <ng-container *ngTemplateOutlet="windows"></ng-container>
@@ -222,7 +222,7 @@
               </td>
             </tr>
             <tr>
-              <td>{{ 'spn.carousel.openSource' | t }}</td>
+              <td>{{ 'spn.carousel.openSource' | t: undefined : ('' | i18nVersion) }}</td>
               <td>
                 <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
               </td>
@@ -234,7 +234,7 @@
               </td>
             </tr>
             <tr>
-              <td>{{ 'spn.carousel.builtForPrivacy' | t }}</td>
+              <td>{{ 'spn.carousel.builtForPrivacy' | t: undefined : ('' | i18nVersion) }}</td>
               <td>
                 <ng-container *ngTemplateOutlet="tmplNo"></ng-container>
               </td>

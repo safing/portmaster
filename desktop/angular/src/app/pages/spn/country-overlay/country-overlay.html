@@ -8,18 +8,18 @@
   <span class="country-stats">
     <span class="country-stats--safing">
       <spn-node-icon bySafing="true" isActive="true"></spn-node-icon>
-      <span>{{ 'spn.country.safingNodes' | t }}</span>
+      <span>{{ 'spn.country.safingNodes' | t: undefined : ('' | i18nVersion) }}</span>
       <span class="count">{{ safingNodes.length }}</span>
     </span>
 
     <span class="country-stats--community">
       <spn-node-icon bySafing="false" isActive="true"></spn-node-icon>
-      <span>{{ 'spn.country.communityNodes' | t }}</span>
+      <span>{{ 'spn.country.communityNodes' | t: undefined : ('' | i18nVersion) }}</span>
       <span class="count">{{ communityNodes.length }}</span>
     </span>
   </span>
 
   <span class="pb-2 text-xxs text-tertiary">
-    {{ 'spn.country.clickDetails' | t }}
+    {{ 'spn.country.clickDetails' | t: undefined : ('' | i18nVersion) }}
   </span>
 </span>

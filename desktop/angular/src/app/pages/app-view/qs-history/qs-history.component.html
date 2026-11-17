@@ -1,10 +1,10 @@
 <div class="relative flex flex-wrap items-center justify-center w-full h-full gap-2 px-3 py-2 bg-gray-300 border border-gray-300 rounded shadow">
   <span class="text-primary">
-    {{ 'app.keepHistory' | t }}
+    {{ 'app.keepHistory' | t: undefined : ('' | i18nVersion) }}
   </span>
 
   <span *ngIf="!canUse" routerLink="/dashboard" class="cursor-pointer text-tertiary hover:underline">
-    {{ 'app.getPlus' | t }}
+    {{ 'app.getPlus' | t: undefined : ('' | i18nVersion) }}
   </span>
 
   <sfng-toggle *ngIf="canUse" [ngModel]="currentValue" (ngModelChange)="updateHistoryEnabled($event)"

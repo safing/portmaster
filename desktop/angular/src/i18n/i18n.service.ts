@@ -52,8 +52,9 @@ export class I18nService {
       console.warn('[i18n] failed to persist language', err);
     }
 
-    // Impure pipes re-evaluate on every check; schedule a safe global tick so
-    // OnPush views (like the navigation) pick up the new strings as well.
+    // The translation pipes are pure and are invalidated by the i18nVersion
+    // value they receive. Trigger one extra change-detection pass so views
+    // that do not subscribe to language$ themselves also pick up the change.
     setTimeout(() => {
       try {
         this.appRef.tick();

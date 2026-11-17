@@ -11,19 +11,19 @@
 
 <sfng-tab-group linkRouter="false" class="h-full">
   <!-- Tab that displays all nodes in that country -->
-  <sfng-tab id="pins" [title]="'spn.cd.nodes' | t">
+  <sfng-tab id="pins" [title]="'spn.cd.nodes' | t: undefined : ('' | i18nVersion)">
     <spn-pin-list *sfngTabContent [pins]="pins" (pinHover)="pinHover.next($event)" (pinClick)="openPinDetails($event)"
       allowClick="true">
     </spn-pin-list>
   </sfng-tab>
 
   <!-- Tab that displays generale statistics about the country -->
-  <sfng-tab id="Statistics" [title]="'spn.cd.statistics' | t">
+  <sfng-tab id="Statistics" [title]="'spn.cd.statistics' | t: undefined : ('' | i18nVersion)">
     <div *sfngTabContent class="flex flex-col gap-3">
       <table>
         <tr>
           <th>
-            <span class="text-primary">{{ 'spn.cd.totalNodes' | t }}</span>
+            <span class="text-primary">{{ 'spn.cd.totalNodes' | t: undefined : ('' | i18nVersion) }}</span>
           </th>
           <td>{{ totalAliveCount }}</td>
         </tr>
@@ -31,7 +31,7 @@
           <th>
             <span class="inline-block pl-4">
               <spn-node-icon bySafing="true" isActive="true"></spn-node-icon>
-              {{ 'spn.cd.bySafing' | t }}
+              {{ 'spn.cd.bySafing' | t: undefined : ('' | i18nVersion) }}
             </span>
           </th>
           <td>{{ safingNodeCount }}</td>
@@ -40,14 +40,14 @@
           <th>
             <span class="inline-block pl-4">
               <spn-node-icon bySafing="false" isActive="true"></spn-node-icon>
-              {{ 'spn.cd.byCommunity' | t }}
+              {{ 'spn.cd.byCommunity' | t: undefined : ('' | i18nVersion) }}
             </span>
           </th>
           <td>{{ communityNodeCount }}</td>
         </tr>
         <tr>
           <th>
-            <span class="text-primary">{{ 'spn.cd.exitNodes' | t }}</span>
+            <span class="text-primary">{{ 'spn.cd.exitNodes' | t: undefined : ('' | i18nVersion) }}</span>
           </th>
           <td>{{ exitNodeCount }}</td>
         </tr>
@@ -55,7 +55,7 @@
           <th>
             <span class="inline-block pl-4">
               <spn-node-icon bySafing="true" isExit="true"></spn-node-icon>
-              {{ 'spn.cd.bySafing' | t }}
+              {{ 'spn.cd.bySafing' | t: undefined : ('' | i18nVersion) }}
             </span>
           </th>
           <td>{{ safingExitNodeCount }}</td>
@@ -64,14 +64,14 @@
           <th>
             <span class="inline-block pl-4">
               <spn-node-icon bySafing="false" isExit="true"></spn-node-icon>
-              {{ 'spn.cd.byCommunity' | t }}
+              {{ 'spn.cd.byCommunity' | t: undefined : ('' | i18nVersion) }}
             </span>
           </th>
           <td>{{ communityExitNodeCount }}</td>
         </tr>
         <tr>
           <th>
-            <span class="text-primary">{{ 'spn.cd.nodesInUse' | t }}</span>
+            <span class="text-primary">{{ 'spn.cd.nodesInUse' | t: undefined : ('' | i18nVersion) }}</span>
           </th>
           <td>{{ activeNodeCount }}</td>
         </tr>
@@ -79,7 +79,7 @@
           <th>
             <span class="inline-block pl-4">
               <spn-node-icon bySafing="true" isActive="true"></spn-node-icon>
-              {{ 'spn.cd.bySafing' | t }}
+              {{ 'spn.cd.bySafing' | t: undefined : ('' | i18nVersion) }}
             </span>
           </th>
           <td>{{ activeSafingNodeCount }}</td>
@@ -88,7 +88,7 @@
           <th>
             <span class="inline-block pl-4">
               <spn-node-icon bySafing="false" isActive="true"></spn-node-icon>
-              {{ 'spn.cd.byCommunity' | t }}
+              {{ 'spn.cd.byCommunity' | t: undefined : ('' | i18nVersion) }}
             </span>
           </th>
           <td>{{ activeCommunityNodeCount }}</td>
@@ -99,9 +99,9 @@
 
 
   <!-- Tab that displays all apps that exit in this country -->
-  <sfng-tab id="profiles" [title]="'spn.cd.apps' | t">
+  <sfng-tab id="profiles" [title]="'spn.cd.apps' | t: undefined : ('' | i18nVersion)">
     <div *sfngTabContent>
-      <span class="inline-block p-2 mb-2 text-tertiary">{{ 'spn.cd.appsIntro' | t: {country: countryName, code: countryCode} }}</span>
+      <span class="inline-block p-2 mb-2 text-tertiary">{{ 'spn.cd.appsIntro' | t: {country: countryName, code: countryCode}: ('' | i18nVersion) }}</span>
       <table class="w-full custom ">
         <tbody>
           <tr *ngFor="let app of profiles; trackBy: trackProfile"
@@ -111,7 +111,7 @@
               {{ app.profile.Name }}
             </td>
             <td class="p-2">
-              {{ app.count }} <span class="text-tertiary">{{ 'spn.cd.connections' | t }}</span>
+              {{ app.count }} <span class="text-tertiary">{{ 'spn.cd.connections' | t: undefined : ('' | i18nVersion) }}</span>
             </td>
             <td class="w-10 p-2">
               <div class="flex flex-row items-center gap-2 ">

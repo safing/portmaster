@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Pipe, PipeTransform, Injectable, inject } from '@angular/core';
 import { GeoCoordinates, SPNService } from '@safing/portmaster-api';
-import { LocalizedValueService } from 'src/i18n';
+import { Language, LocalizedValueService } from 'src/i18n';
 import { environment } from 'src/environments/environment';
 import { ActionIndicatorService } from '../../action-indicator';
 import { objKeys } from '../../utils';
@@ -52,13 +52,13 @@ export class CountryNameService {
 
 @Pipe({
   name: 'countryName',
-  // Impure so that changing the UI language refreshes already rendered rows.
-  pure: false,
 })
 export class CountryNamePipe implements PipeTransform {
   private countryService = inject(CountryNameService);
 
-  transform(countryCode: string) {
+  // `version` comes from the i18nVersion pipe and makes this pure pipe
+  // re-resolve the name when the UI language changes.
+  transform(countryCode: string, _version?: Language) {
     return this.countryService.resolveName(countryCode);
   }
 }

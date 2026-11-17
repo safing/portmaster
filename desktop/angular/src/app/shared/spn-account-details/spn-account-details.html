@@ -1,5 +1,5 @@
 <ng-container *ngIf="!!currentUser && currentUser.state !== '' && currentUser.state !== 'loggedout'">
-  <h1 class="mb-4 text-xl">{{ 'acc.details' | t }}</h1>
+  <h1 class="mb-4 text-xl">{{ 'acc.details' | t: undefined : ('' | i18nVersion) }}</h1>
 
   <!-- TODO: update to fit style -->
   <div *ngIf="currentUser.view?.Message" class="flex bg-yellow-100 rounded-lg p-4 mb-4 text-sm text-yellow-700 font-medium" role="alert">
@@ -13,62 +13,62 @@
     <ng-container *ngIf="currentUser.subscription">
       <ng-container *ngIf="currentUser.subscription.state === 'manual'; else: subscription">
         <tr>
-          <th>{{ 'acc.yourPackage' | t }}</th>
+          <th>{{ 'acc.yourPackage' | t: undefined : ('' | i18nVersion) }}</th>
           <td>{{ currentUser.current_plan?.name }}</td>
         </tr>
         <tr *ngIf="currentUser.subscription.ends_at">
-          <th>{{ 'acc.accessUntil' | t }}</th>
+          <th>{{ 'acc.accessUntil' | t: undefined : ('' | i18nVersion) }}</th>
           <td>{{ currentUser.subscription.ends_at | date:'medium' }}</td>
         </tr>
       </ng-container>
       <ng-template #subscription>
         <tr>
-          <th>{{ 'acc.yourSubscription' | t }}</th>
+          <th>{{ 'acc.yourSubscription' | t: undefined : ('' | i18nVersion) }}</th>
           <td>{{ currentUser.current_plan?.name }}</td>
         </tr>
         <tr>
-          <th>{{ 'common.status' | t }}</th>
+          <th>{{ 'common.status' | t: undefined : ('' | i18nVersion) }}</th>
           <td class="capitalize">{{ currentUser.subscription.state }}</td>
         </tr>
         <tr *ngIf="currentUser.subscription.state === 'active'">
-          <th>{{ 'acc.nextPayment' | t }}</th>
+          <th>{{ 'acc.nextPayment' | t: undefined : ('' | i18nVersion) }}</th>
           <td>
             {{ currentUser.subscription.next_billing_date | date:'medium' }}
-            {{ 'acc.via' | t }}
+            {{ 'acc.via' | t: undefined : ('' | i18nVersion) }}
             {{ currentUser.subscription.payment_provider }}
           </td>
         </tr>
         <tr *ngIf="currentUser.subscription.state === 'cancelled'">
-          <th>{{ 'acc.accessPaidUntil' | t }}</th>
+          <th>{{ 'acc.accessPaidUntil' | t: undefined : ('' | i18nVersion) }}</th>
           <td>{{ currentUser.subscription.ends_at | date:'medium' }}</td>
         </tr>
       </ng-template>
     </ng-container>
 
     <tr class="table-section-start">
-      <th>{{ 'acc.username' | t }}</th>
+      <th>{{ 'acc.username' | t: undefined : ('' | i18nVersion) }}</th>
       <td>{{ currentUser.username }} </td>
     </tr>
     <tr>
-      <th>{{ 'acc.deviceName' | t }}</th>
+      <th>{{ 'acc.deviceName' | t: undefined : ('' | i18nVersion) }}</th>
       <td>{{ currentUser.device?.name }}</td>
     </tr>
 
     <ng-container *appExpertiseLevel="'developer'">
       <tr class="table-section-start">
-        <th>{{ 'acc.accountState' | t }}</th>
+        <th>{{ 'acc.accountState' | t: undefined : ('' | i18nVersion) }}</th>
         <td>{{ currentUser.state }} </td>
       </tr>
       <tr>
-        <th>{{ 'acc.features' | t }}</th>
-        <td>{{ currentUser.current_plan?.feature_ids | localizedValue:'feature' }} </td>
+        <th>{{ 'acc.features' | t: undefined : ('' | i18nVersion) }}</th>
+        <td>{{ currentUser.current_plan?.feature_ids | localizedValue:'feature': undefined : ('' | i18nVersion) }} </td>
       </tr>
       <tr>
-        <th>{{ 'acc.deviceID' | t }}</th>
+        <th>{{ 'acc.deviceID' | t: undefined : ('' | i18nVersion) }}</th>
         <td>{{currentUser.device?.id}}</td>
       </tr>
       <tr>
-        <th>{{ 'acc.loggedInSince' | t }}</th>
+        <th>{{ 'acc.loggedInSince' | t: undefined : ('' | i18nVersion) }}</th>
         <td>{{ currentUser.LoggedInAt | date:'medium' }} </td>
       </tr>
     </ng-container>
@@ -76,18 +76,18 @@
 
   <div class="flex items-end justify-end w-full space-x-2">
     <!-- Always show all buttons, no matter what the view says here. -->
-    <button *ngIf="dialogRef" (click)="dialogRef.close()" class="">{{ 'common.close' | t }}</button>
+    <button *ngIf="dialogRef" (click)="dialogRef.close()" class="">{{ 'common.close' | t: undefined : ('' | i18nVersion) }}</button>
     <div class="flex-grow"></div>
 
     <a href="https://account.safing.io/?source=Portmaster"
       class="flex flex-row items-center self-stretch justify-center gap-1 px-2 bg-gray-300 rounded hover:bg-gray-200 text-blue whitespace-nowrap">
-      {{ 'acc.openAccountPage' | t }}
+      {{ 'acc.openAccountPage' | t: undefined : ('' | i18nVersion) }}
     </a>
 
-    <button (click)="logout()" class="bg-info-red">{{ 'common.logout' | t }}</button>
+    <button (click)="logout()" class="bg-info-red">{{ 'common.logout' | t: undefined : ('' | i18nVersion) }}</button>
     <button (click)="refreshAccount()" style="width: 70px">
       <ng-container *ngIf="!refreshing; else: loading">
-        {{ 'acc.refresh' | t }}
+        {{ 'acc.refresh' | t: undefined : ('' | i18nVersion) }}
       </ng-container>
       <ng-template #loading>
         <fa-icon icon="spinner" [spin]="true"></fa-icon>

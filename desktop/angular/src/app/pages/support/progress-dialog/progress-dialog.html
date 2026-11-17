@@ -1,7 +1,7 @@
 <!-- Progress Indicator -->
 <div *ngIf="state !== 'error' && state !== 'done'">
 
-  <caption class="text-xxs text-secondary">{{ 'sup.status' | t }}</caption>
+  <caption class="text-xxs text-secondary">{{ 'sup.status' | t: undefined : ('' | i18nVersion) }}</caption>
 
   <div class="flex flex-row gap-2">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
@@ -13,17 +13,17 @@
     <div [ngSwitch]="state">
       <!-- Uploading debug data -->
       <ng-template ngSwitchCase="debug-info">
-        <span>{{ 'sup.uploadingDebug' | t }}</span>
+        <span>{{ 'sup.uploadingDebug' | t: undefined : ('' | i18nVersion) }}</span>
       </ng-template>
 
       <!-- Github Issue -->
       <ng-template ngSwitchCase="create-issue">
-        <span>{{ 'sup.creatingIssue' | t }}</span>
+        <span>{{ 'sup.creatingIssue' | t: undefined : ('' | i18nVersion) }}</span>
       </ng-template>
 
       <!-- Private ticket -->
       <ng-template ngSwitchCase="create-ticket">
-        <span>{{ 'sup.creatingTicket' | t }}</span>
+        <span>{{ 'sup.creatingTicket' | t: undefined : ('' | i18nVersion) }}</span>
       </ng-template>
     </div>
   </div>
@@ -41,29 +41,29 @@
 
     <span class="text-base text-primary">
       <ng-template [ngIf]="dialogRef.data.type === 'github' && dialogRef.data.generateUrl">
-        {{ 'sup.prepared' | t }}
+        {{ 'sup.prepared' | t: undefined : ('' | i18nVersion) }}
       </ng-template>
 
       <ng-template [ngIf]="dialogRef.data.type !== 'github' || !dialogRef.data.generateUrl">
-        {{ 'sup.created' | t }}
+        {{ 'sup.created' | t: undefined : ('' | i18nVersion) }}
       </ng-template>
     </span>
   </span>
 
   <div *ngIf="dialogRef.data.type === 'github' && dialogRef.data.generateUrl">
-    <span>{{ 'sup.useButton' | t }}</span>
+    <span>{{ 'sup.useButton' | t: undefined : ('' | i18nVersion) }}</span>
 
     <br />
 
     <div class="flex flex-row items-center justify-center p-4">
-      <button class="bg-blue" (click)="integration.openExternal(url)">{{ 'sup.createIssue' | t }}</button>
+      <button class="bg-blue" (click)="integration.openExternal(url)">{{ 'sup.createIssue' | t: undefined : ('' | i18nVersion) }}</button>
     </div>
   </div>
 
   <div *ngIf="dialogRef.data.type === 'github' && !dialogRef.data.generateUrl" class="flex flex-col">
     <span>
-      {{ 'sup.successGithub' | t }} <br />
-      {{ 'sup.checkUpdates' | t }}
+      {{ 'sup.successGithub' | t: undefined : ('' | i18nVersion) }} <br />
+      {{ 'sup.checkUpdates' | t: undefined : ('' | i18nVersion) }}
     </span>
 
     <span class="inline-block w-full text-center mt-4 underline text-secondary"
@@ -71,7 +71,7 @@
   </div>
 
   <span *ngIf="dialogRef.data.type === 'private' && dialogRef.data.email">
-    {{ 'sup.contactSoon' | t }}
+    {{ 'sup.contactSoon' | t: undefined : ('' | i18nVersion) }}
   </span>
 </ng-template>
 
@@ -86,17 +86,17 @@
     </svg>
 
     <span class="text-base text-primary">
-      {{ 'sup.failed' | t }}
+      {{ 'sup.failed' | t: undefined : ('' | i18nVersion) }}
     </span>
   </span>
 
 
   <span>
-    {{ 'sup.errorOccurred' | t }}
+    {{ 'sup.errorOccurred' | t: undefined : ('' | i18nVersion) }}
   </span>
 
   <span class="text-red block w-full text-center">
-    {{ error || ('common.unknownError' | t) }}
+    {{ error || ('common.unknownError' | t: undefined : ('' | i18nVersion)) }}
   </span>
 </div>
 
@@ -104,10 +104,10 @@
 <div class="flex flex-row justify-center items-center gap-2">
 
   <button *ngIf="state === 'done' && !!url && dialogRef.data.type === 'github' && !dialogRef.data.generateUrl "
-    class="bg-blue" (click)="integration.openExternal(url)">{{ 'sup.openIssue' | t }}</button>
+    class="bg-blue" (click)="integration.openExternal(url)">{{ 'sup.openIssue' | t: undefined : ('' | i18nVersion) }}</button>
 
   <button *ngIf="state === 'done' && !!url && dialogRef.data.type === 'github' && !dialogRef.data.generateUrl "
-    (click)="copyUrl()">{{ 'sup.copyURL' | t }}</button>
+    (click)="copyUrl()">{{ 'sup.copyURL' | t: undefined : ('' | i18nVersion) }}</button>
 
-  <button (click)="dialogRef.close()" class="btn">{{ 'common.close' | t }}</button>
+  <button (click)="dialogRef.close()" class="btn">{{ 'common.close' | t: undefined : ('' | i18nVersion) }}</button>
 </div>

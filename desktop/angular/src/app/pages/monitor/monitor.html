@@ -1,6 +1,6 @@
 <div class="header">
   <div class="breadcrumbs">
-    <span routerLink="/monitor">{{ 'mon.title' | t }}</span>
+    <span routerLink="/monitor">{{ 'mon.title' | t: undefined : ('' | i18nVersion) }}</span>
   </div>
   <app-expertise></app-expertise>
 </div>
@@ -8,7 +8,7 @@
 
   <div class="flex flex-col items-start justify-center py-6">
     <h1 class="flex flex-row items-center gap-2 text-xl font-semibold text-primary">
-      {{ 'mon.title' | t }}
+      {{ 'mon.title' | t: undefined : ('' | i18nVersion) }}
       <sfng-tipup key="networkMonitor-App-Focus-connection-history"></sfng-tipup>
     </h1>
 
@@ -16,26 +16,26 @@
       <ng-container *ngIf="(history | async) as data; else: noHistory">
         <ng-container *ngIf="!!data">
           <span>
-            {{ 'mon.historySince' | t: {date: (data.first | date), count: data.count} }}
+            {{ 'mon.historySince' | t: {date: (data.first | date), count: data.count}: ('' | i18nVersion) }}
           </span>
-          <a class="text-xs underline cursor-pointer text-primary" (click)="clearHistoryData()">{{ 'mon.clear' | t }}</a>
+          <a class="text-xs underline cursor-pointer text-primary" (click)="clearHistoryData()">{{ 'mon.clear' | t: undefined : ('' | i18nVersion) }}</a>
         </ng-container>
       </ng-container>
       <ng-template #noHistory>
         <span>
-          {{ 'mon.noHistory' | t }}
+          {{ 'mon.noHistory' | t: undefined : ('' | i18nVersion) }}
           <ng-container *ngIf="(canUseHistory | async) && (historyEnabled | async) === false">
-            <a class="text-xs underline cursor-pointer text-primary" (click)="enableHistory()">{{ 'mon.enable' | t }}</a>
+            <a class="text-xs underline cursor-pointer text-primary" (click)="enableHistory()">{{ 'mon.enable' | t: undefined : ('' | i18nVersion) }}</a>
           </ng-container>
           <ng-container *ngIf="(canUseHistory | async) === false">
-            <a class="text-xs underline cursor-pointer text-opacity-75" href="https://safing.io/pricing/?source=Portmaster">{{ 'mon.availablePlus' | t }}</a>
+            <a class="text-xs underline cursor-pointer text-opacity-75" href="https://safing.io/pricing/?source=Portmaster">{{ 'mon.availablePlus' | t: undefined : ('' | i18nVersion) }}</a>
           </ng-container>
         </span>
       </ng-template>
     </span>
 
     <span class="text-secondary">
-      {{ 'mon.intro' | t }}
+      {{ 'mon.intro' | t: undefined : ('' | i18nVersion) }}
     </span>
   </div>
 

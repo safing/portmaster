@@ -74,6 +74,33 @@ export const en: Record<string, string> = {
   'pause.spn': 'SPN is paused',
   'pause.autoResume': 'Auto-resume at {{time}}',
 
+  // Action indicator status messages
+  'nav.reloadingUI': 'Reloading UI ...',
+  'nav.reloadUIFailed': 'Failed to Reload UI',
+  'nav.spnReinitialized': 'Re-initialized SPN',
+  'nav.spnReinitFailed': 'Failed to re-initialize the SPN',
+  'nav.dnsCacheCleared': 'DNS Cache Cleared',
+  'nav.dnsCacheClearFailed': 'Failed to Clear DNS Cache.',
+  'nav.historyCleaned': 'Network History Cleaned Up',
+  'nav.historyCleanFailed': 'Failed to Cleanup Network History.',
+  'nav.updatesDownloading': 'Downloading Updates ...',
+  'nav.updatesCheckFailed': 'Failed to Check for Updates',
+  'nav.restarting': 'Restarting ...',
+  'nav.restartFailed': 'Failed to Restart',
+  'nav.pausing': 'Pausing ...',
+  'nav.pauseFailed': 'Failed to Pause',
+  'nav.pausingSPN': 'Pausing SPN...',
+  'nav.pauseSPNFailed': 'Failed to Pause SPN',
+  'nav.resuming': 'Resuming ...',
+  'nav.resumingBoth': 'Resuming Portmaster and SPN ...',
+  'nav.resumingPM': 'Resuming Portmaster ...',
+  'nav.resumingSPN': 'Resuming SPN ...',
+  'nav.resumeFailed': 'Failed to Resume',
+  'nav.dataDirFailed': 'Failed to open data directory',
+  'nav.notificationsCleared': 'Notifications State Cleared',
+  'nav.notificationsClearFailed': 'Failed to Reset Notifications State.',
+  'nav.debugLoadFailed': 'Failed loading debug data',
+
   // Settings page
   'settings.title': 'Global Settings',
   'settings.search': 'Search',
@@ -639,6 +666,15 @@ export const en: Record<string, string> = {
   "app.deleteYes": "Yes, delete it",
   "app.profileDeleted": "Profile Deleted",
   "app.profileDeletedMsg": "Successfully deleted profile {{name}}",
+
+  // Bulk profile deletion dialog (overview page)
+  "app.deleteProfilesConfirm": "Confirm Profile Deletion",
+  "app.deleteProfilesConfirmMsg": "Are you sure you want to delete all {{count}} selected profiles?",
+  "app.attention": "Attention",
+  "app.profilesDeleted": "Selected Profiles Deleted",
+  "app.profilesDeletedMsg": "All selected profiles have been deleted",
+  "app.deleteProfilesFailed": "Failed to Delete Profiles",
+  "app.deleteProfilesFailedMsg": "An error occurred while deleting some profiles: {{error}}",
 
   // --- chart labels rebuilt on language change ---
   "chart.ago": "ago",
