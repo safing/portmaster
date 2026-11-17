@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -264,7 +265,8 @@ func TestRollbackRestoresDirectoryReplacedByArtifact(t *testing.T) {
 		t.Errorf("expected recovery to succeed, got: %s", err)
 	}
 	info, err := os.Stat(oldDir)
-	if err != nil || !info.IsDir() || info.Mode().Perm() != 0o750 {
+	// Windows does not keep Unix permission bits.
+	if err != nil || !info.IsDir() || (runtime.GOOS != "windows" && info.Mode().Perm() != 0o750) {
 		t.Fatalf("directory not restored with its permissions: %v, %v", info, err)
 	}
 	compareSnapshots(t, before, snapshotDir(t, installedDir))
