@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -246,18 +247,28 @@ func decodeIntoMap(_ context.Context, schema *TableSchema, stmt Stmt, mp *map[st
 		*mp = make(map[string]interface{})
 	}
 
+	// execute all decode hooks but make sure we use decodeBasic() as the
+	// last one. A new slice is used so that the backing array of
+	// cfg.DecodeHooks is never written to.
+	hooks := slices.Concat(cfg.DecodeHooks, []DecodeFunc{decodeBasic()})
+
 	for i := range stmt.ColumnCount() {
-		var x interface{}
+		// ColumnName does a linear search, so only look it up once.
+		colName := stmt.ColumnName(i)
+		colDef := schema.GetColumnDef(colName)
 
-		colDef := schema.GetColumnDef(stmt.ColumnName(i))
-
-		outVal := reflect.ValueOf(&x).Elem()
-		fieldType := reflect.StructField{}
+		var (
+			outVal    reflect.Value
+			fieldType reflect.StructField
+		)
 		if colDef != nil {
 			outVal = reflect.New(colDef.GoType).Elem()
 			fieldType = reflect.StructField{
 				Type: colDef.GoType,
 			}
+		} else {
+			var x any
+			outVal = reflect.ValueOf(&x).Elem()
 		}
 
 		val, err := runDecodeHooks(
@@ -266,13 +277,13 @@ func decodeIntoMap(_ context.Context, schema *TableSchema, stmt Stmt, mp *map[st
 			stmt,
 			fieldType,
 			outVal,
-			append(cfg.DecodeHooks, decodeBasic()),
+			hooks,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to decode column %s: %w", stmt.ColumnName(i), err)
+			return fmt.Errorf("failed to decode column %s: %w", colName, err)
 		}
 
-		(*mp)[stmt.ColumnName(i)] = val
+		(*mp)[colName] = val
 	}
 
 	return nil
@@ -282,9 +293,12 @@ func decodeBasic() DecodeFunc {
 	return func(colIdx int, colDef *ColumnDef, stmt Stmt, fieldDef reflect.StructField, outval reflect.Value) (result interface{}, handled bool, err error) {
 		valueKind := getKind(outval)
 		colType := stmt.ColumnType(colIdx)
-		colName := stmt.ColumnName(colIdx)
 
-		errInvalidType := fmt.Errorf("%w %s for column %s with field type %s", errUnexpectedColumnType, colType.String(), colName, outval.Type())
+		// Only build the error when it is returned, the common case is a
+		// matching column type.
+		errInvalidType := func() error {
+			return fmt.Errorf("%w %s for column %s with field type %s", errUnexpectedColumnType, colType.String(), stmt.ColumnName(colIdx), outval.Type())
+		}
 
 		// if we have the column definition available we
 		// use the target go type from there.
@@ -297,15 +311,20 @@ func decodeBasic() DecodeFunc {
 			// or that type aliases like (type myInt int) are decoded into myInt instead of int
 			defer func() {
 				if handled {
-					t := reflect.New(colDef.GoType).Elem()
-
 					if result == nil || reflect.ValueOf(result).IsZero() {
+						return
+					}
+
+					// Already of the model type, re-wrapping it would
+					// only copy the value.
+					if reflect.TypeOf(result) == colDef.GoType {
 						return
 					}
 
 					if reflect.ValueOf(result).Type().ConvertibleTo(colDef.GoType) {
 						result = reflect.ValueOf(result).Convert(colDef.GoType).Interface()
 					}
+					t := reflect.New(colDef.GoType).Elem()
 					t.Set(reflect.ValueOf(result))
 
 					result = t.Interface()
@@ -332,7 +351,7 @@ func decodeBasic() DecodeFunc {
 		switch valueKind { //nolint:exhaustive
 		case reflect.String:
 			if colType != sqlite.TypeText {
-				return nil, false, errInvalidType
+				return nil, false, errInvalidType()
 			}
 			return stmt.ColumnText(colIdx), true, nil
 
@@ -340,19 +359,19 @@ func decodeBasic() DecodeFunc {
 			// sqlite does not have a BOOL type, it rather stores a 1/0 in a column
 			// with INTEGER affinity.
 			if colType != sqlite.TypeInteger {
-				return nil, false, errInvalidType
+				return nil, false, errInvalidType()
 			}
 			return stmt.ColumnBool(colIdx), true, nil
 
 		case reflect.Float64:
 			if colType != sqlite.TypeFloat {
-				return nil, false, errInvalidType
+				return nil, false, errInvalidType()
 			}
 			return stmt.ColumnFloat(colIdx), true, nil
 
 		case reflect.Int, reflect.Uint: // getKind() normalizes all ints to reflect.Int/Uint because sqlite doesn't really care ...
 			if colType != sqlite.TypeInteger {
-				return nil, false, errInvalidType
+				return nil, false, errInvalidType()
 			}
 
 			return stmt.ColumnInt(colIdx), true, nil
@@ -363,7 +382,7 @@ func decodeBasic() DecodeFunc {
 			}
 
 			if colType != sqlite.TypeBlob {
-				return nil, false, errInvalidType
+				return nil, false, errInvalidType()
 			}
 
 			columnValue, err := io.ReadAll(stmt.ColumnReader(colIdx))
