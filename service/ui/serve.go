@@ -99,15 +99,15 @@ var errUpgradeInProgress = errors.New("resources locked, upgrade in progress")
 
 // openArchiveFile opens the requested file from the archive of the given
 // module, loading the archive if needed.
-// The file is opened while holding the archives lock, so that the archive
-// cannot be closed by CloseArchives (eg. via EnableUpgradeLock) at the same
-// time. Also, no archive is loaded or cached while the upgrade lock is enabled.
+// The file is opened while holding the archives lock and keeps the archive in
+// use until it is closed, so that CloseArchives (eg. via EnableUpgradeLock)
+// does not close the archive while it is read. Also, no archive is loaded or cached while the upgrade lock is enabled.
 func (ui *UI) openArchiveFile(moduleName, resPath string) (file http.File, servedPath string, status int, err error) {
 	// Fast path: archive is already loaded.
 	ui.archivesLock.RLock()
-	archiveFS, ok := ui.archives[moduleName]
+	a, ok := ui.archives[moduleName]
 	if ok {
-		file, servedPath, status, err = openFileFromArchive(moduleName, archiveFS, resPath)
+		file, servedPath, status, err = a.open(moduleName, resPath)
 		ui.archivesLock.RUnlock()
 		return file, servedPath, status, err
 	}
@@ -140,7 +140,7 @@ func (ui *UI) openArchiveFile(moduleName, resPath string) (file http.File, serve
 	ui.archivesLock.Lock()
 	defer ui.archivesLock.Unlock()
 
-	switch archiveFS, ok = ui.archives[moduleName]; {
+	switch a, ok = ui.archives[moduleName]; {
 	case ui.upgradeLock.Load():
 		// The upgrade lock was enabled in the meantime, do not keep the archive
 		// open. This is checked while holding the archives lock, as
@@ -151,11 +151,11 @@ func (ui *UI) openArchiveFile(moduleName, resPath string) (file http.File, serve
 		// Another request loaded the archive in the meantime.
 		_ = newArchiveFS.Close()
 	default:
-		archiveFS = newArchiveFS
-		ui.archives[moduleName] = archiveFS
+		a = &archive{fs: newArchiveFS}
+		ui.archives[moduleName] = a
 	}
 
-	return openFileFromArchive(moduleName, archiveFS, resPath)
+	return a.open(moduleName, resPath)
 }
 
 // ServeFileFromArchive serves a file from the given archive.

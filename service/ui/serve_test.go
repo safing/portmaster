@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spkg/zipfs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -57,7 +56,7 @@ func newTestUI(t *testing.T) (*UI, *testInstance) {
 	ui := &UI{
 		mgr:      mgr.New("UI"),
 		instance: ti,
-		archives: make(map[string]*zipfs.FileSystem),
+		archives: make(map[string]*archive),
 	}
 	t.Cleanup(ui.CloseArchives)
 	return ui, ti
@@ -249,4 +248,98 @@ func TestServeDirectoryEntry(t *testing.T) {
 		w := serveTestPath(ui, "assets")
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
+}
+
+// TestCloseArchivesWaitsForServedFiles checks that an archive is only closed
+// once the files served from it are closed, and that new requests are not
+// blocked meanwhile.
+func TestCloseArchivesWaitsForServedFiles(t *testing.T) { //nolint:paralleltest // Modifies archiveCloseWait.
+	ui, _ := newTestUI(t)
+
+	// Open a file and keep it open, as a slow request would.
+	file, _, _, err := ui.openArchiveFile("portmaster", indexFile)
+	require.NoError(t, err)
+
+	closed := make(chan struct{})
+	go func() {
+		ui.CloseArchives()
+		close(closed)
+	}()
+
+	// New requests are served while the old archive waits to be closed.
+	served := make(chan int, 1)
+	go func() { served <- serveTestRequest(ui).Code }()
+	select {
+	case code := <-served:
+		assert.Equal(t, http.StatusOK, code)
+	case <-time.After(5 * time.Second):
+		t.Fatal("request blocked while an archive waits to be closed")
+	}
+
+	select {
+	case <-closed:
+		t.Fatal("archive closed while a file served from it is still open")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	// The open file can still be read.
+	buf := make([]byte, 6)
+	_, err = file.Read(buf)
+	require.NoError(t, err)
+	assert.Equal(t, "<html>", string(buf))
+
+	require.NoError(t, file.Close())
+	select {
+	case <-closed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("archive not closed after the served file was closed")
+	}
+}
+
+// TestCloseArchivesGivesUpWaiting checks that CloseArchives does not wait
+// forever for a file that is not closed, and closes the archive when it is.
+func TestCloseArchivesGivesUpWaiting(t *testing.T) { //nolint:paralleltest // Modifies archiveCloseWait.
+	oldWait := archiveCloseWait
+	archiveCloseWait = 50 * time.Millisecond
+	t.Cleanup(func() { archiveCloseWait = oldWait })
+
+	ui, _ := newTestUI(t)
+	ui.archivesLock.RLock()
+	require.Empty(t, ui.archives)
+	ui.archivesLock.RUnlock()
+
+	file, _, _, err := ui.openArchiveFile("portmaster", indexFile)
+	require.NoError(t, err)
+	ui.archivesLock.RLock()
+	a := ui.archives["portmaster"]
+	ui.archivesLock.RUnlock()
+	require.NotNil(t, a)
+
+	closed := make(chan struct{})
+	go func() {
+		ui.CloseArchives()
+		close(closed)
+	}()
+	select {
+	case <-closed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("CloseArchives did not give up waiting for an open file")
+	}
+
+	// The archive is closed in the background once the file is closed.
+	require.NoError(t, file.Close())
+	released := make(chan struct{})
+	go func() {
+		a.inUse.Wait()
+		close(released)
+	}()
+	select {
+	case <-released:
+	case <-time.After(5 * time.Second):
+		t.Fatal("archive still in use after the file was closed")
+	}
+
+	// Closing a served file twice releases the archive only once; releasing
+	// it twice would panic.
+	assert.NotPanics(t, func() { _ = file.Close() })
 }
