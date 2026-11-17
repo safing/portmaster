@@ -4,6 +4,7 @@ import { BandwidthChartResult, ChartResult } from '@safing/portmaster-api';
 import * as d3 from 'd3';
 import { Selection } from 'd3';
 import { AppComponent } from 'src/app/app.component';
+import { I18nService } from 'src/i18n';
 import { formatDuration, timeAgo } from '../../pipes';
 import { objKeys } from '../../utils';
 import { BytesPipe } from '../../pipes/bytes.pipe';
@@ -110,6 +111,40 @@ export const DefaultBandwidthChartConfig: ChartConfig<BandwidthChartResult<any>>
 
 export interface SeriesData {
   timestamp: number;
+}
+
+/**
+ * Build the bandwidth-chart config with labels taken from the current UI
+ * language. Callers re-create it on `I18nService.language$` so the line chart
+ * redraws (its `config` @Input receives a fresh object) without re-creating
+ * the component.
+ */
+export function createLocalizedBandwidthChartConfig(i18n: I18nService): ChartConfig<BandwidthChartResult<any>> {
+  return {
+    ...DefaultBandwidthChartConfig,
+    valueFormat: (n: d3.NumberValue, seriesKey?: string) => {
+      let prefix = '';
+      if (seriesKey !== undefined) {
+        const label = seriesKey === 'incoming' ? i18n.t('app.received') : i18n.t('app.sent');
+        prefix = `${label}: `;
+      }
+      return prefix + new BytesPipe().transform(n.valueOf())
+    },
+    timeFormat: (n: Date) => {
+      const diff = Math.floor(new Date().getTime() - n.getTime())
+      return `${formatDuration(diff, false, true)} ${i18n.t('chart.ago')}`
+    },
+    tooltipFormat: (n: BandwidthChartResult<any>) => {
+      const bytes = new BytesPipe().transform
+      const received = `${i18n.t('app.received')}: ${bytes(n?.incoming || 0)}`;
+      const sent = `${i18n.t('app.sent')}: ${bytes(n?.outgoing || 0)}`
+
+      if ((n?.incoming || 0) > (n?.outgoing || 0)) {
+        return `${received}\n${sent}`
+      }
+      return `${sent}\n${received}`
+    },
+  };
 }
 
 @Component({

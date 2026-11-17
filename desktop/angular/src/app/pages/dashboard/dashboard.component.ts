@@ -6,7 +6,7 @@ import { AppProfileService, BandwidthChartResult, ChartResult, Database, Feature
 import { SfngDialogService, SfngTabGroupComponent } from "@safing/ui";
 import { Observable, catchError, filter, interval, map, repeat, retry, startWith, throwError } from "rxjs";
 import { ActionIndicatorService } from 'src/app/shared/action-indicator';
-import { DefaultBandwidthChartConfig, SfngNetqueryLineChartComponent } from "src/app/shared/netquery/line-chart/line-chart";
+import { createLocalizedBandwidthChartConfig, SfngNetqueryLineChartComponent } from "src/app/shared/netquery/line-chart/line-chart";
 import { SPNAccountDetailsComponent } from "src/app/shared/spn-account-details";
 import { MAP_HANDLER, MapRef } from "../spn/map-renderer";
 import { CircularBarChartConfig, splitQueryResult } from "src/app/shared/netquery/circular-bar-chart/circular-bar-chart.component";
@@ -156,7 +156,7 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
     this.router.navigate(['/app', profile.slice(0, sep), profile.slice(sep + 1)]);
   }
 
-  bwChartConfig = DefaultBandwidthChartConfig;
+  bwChartConfig = createLocalizedBandwidthChartConfig(this.i18n);
 
   activeConnections: number = 0;
   blockedConnections: number = 0;
@@ -274,6 +274,15 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
   }
 
   async ngOnInit() {
+    // Chart series labels are captured once in the config object; rebuild them
+    // on language change so the chart redraws with translated labels.
+    this.i18n.language$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.bwChartConfig = createLocalizedBandwidthChartConfig(this.i18n);
+        this.cdr.markForCheck();
+      });
+
     this.portapi.getResource<News>(newsResourceIdentifier)
       .pipe(
         repeat({ delay: 60000 }),

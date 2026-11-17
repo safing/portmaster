@@ -1,10 +1,12 @@
-import { ChangeDetectionStrategy, Component, Inject } from "@angular/core";
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, Inject, OnInit, inject } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { Router } from "@angular/router";
 import { SfngDialogRef, SFNG_DIALOG_REF } from "@safing/ui";
+import { I18nService } from "src/i18n";
 import { objKeys } from "../../utils";
 import { NetqueryHelper } from "../connection-helper.service";
 import { SfngSearchbarFields } from "../searchbar";
-import { connectionFieldTranslation } from "../utils";
+import { createLocalizedFieldTranslation } from "../utils";
 
 @Component({
   selector: 'sfng-netquery-search-overlay',
@@ -26,8 +28,12 @@ import { connectionFieldTranslation } from "../utils";
     `
   ]
 })
-export class SfngNetquerySearchOverlayComponent {
-  keyTranslation = connectionFieldTranslation;
+export class SfngNetquerySearchOverlayComponent implements OnInit {
+  private readonly i18n = inject(I18nService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  keyTranslation = createLocalizedFieldTranslation(this.i18n);
 
   textSearch = '';
 
@@ -37,6 +43,15 @@ export class SfngNetquerySearchOverlayComponent {
     @Inject(SFNG_DIALOG_REF) private dialogRef: SfngDialogRef<any>,
     private router: Router,
   ) { }
+
+  ngOnInit(): void {
+    this.i18n.language$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.keyTranslation = createLocalizedFieldTranslation(this.i18n);
+        this.cdr.markForCheck();
+      });
+  }
 
   performSearch() {
     let query = "";

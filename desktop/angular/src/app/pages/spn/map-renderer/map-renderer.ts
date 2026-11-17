@@ -1,5 +1,7 @@
 import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, Inject, InjectionToken, Input, OnDestroy, OnInit, Optional, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { GeoPath, GeoPermissibleObjects, GeoProjection, Selection, ZoomTransform, geoMercator, geoPath, json, pointer, select, zoom, zoomIdentity } from 'd3';
+import { I18nService, LocalizedValueService } from 'src/i18n';
 import { feature } from 'topojson-client';
 
 
@@ -49,11 +51,16 @@ export class MapRendererComponent implements OnInit, AfterViewInit, OnDestroy {
   static readonly LineAnimationDuration = 200;
 
   private readonly destroyRef = inject(DestroyRef);
+  private readonly i18n = inject(I18nService);
+  private readonly localized = inject(LocalizedValueService);
   private destroyed = false;
 
   countryNames: {
     [countryCode: string]: string
   } = {}
+
+  /** Original (English) topojson country features, kept to rebuild names on language change. */
+  private worldCountries: any[] = [];
 
   // SVG group elements
   private svg: MapRoot | null = null;
@@ -83,7 +90,27 @@ export class MapRendererComponent implements OnInit, AfterViewInit, OnDestroy {
       ov.registerMap(this)
     })
 
+    // Country names come from the topojson file in English. Rebuild the
+    // localized lookup table (and the SVG name attributes) when the UI
+    // language changes, without re-creating the map component.
+    this.i18n.language$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.refreshCountryNames());
+
     this.cdr.detach()
+  }
+
+  private refreshCountryNames(): void {
+    this.worldCountries.forEach(country => {
+      const code = country.properties.iso_a2;
+      this.countryNames[code] = this.localized.countryName(code, country.properties.name);
+    })
+    this.countryNames["__"] = this.localized.countryName("__", "Anycast");
+
+    this.worldGroup?.selectAll<SVGPathElement, any>('path[countryCode]')
+      .attr('name', d => this.localized.countryName(d.properties.iso_a2, d.properties.name));
+
+    this.cdr.markForCheck();
   }
 
   select(selector: string) {
@@ -192,25 +219,22 @@ export class MapRendererComponent implements OnInit, AfterViewInit, OnDestroy {
     const data = countries.features;
     const self = this;
 
-    data.forEach((country: any) => {
-      this.countryNames[country.properties.iso_a2] = country.properties.name
-    })
-    // Add special country values.
-    this.countryNames["__"] = "Anycast"
+    this.worldCountries = data;
+    this.refreshCountryNames();
 
     this.worldGroup.selectAll()
       .data<GeoPermissibleObjects>(data)
       .enter()
       .append('path')
       .attr('countryCode', (d: any) => d.properties.iso_a2)
-      .attr('name', (d: any) => d.properties.name)
+      .attr('name', (d: any) => this.localized.countryName(d.properties.iso_a2, d.properties.name))
       .attr('d', this.pathFunc)
       .on('mouseenter', function (event: MouseEvent) {
         const country = select(this).datum() as any;
         const countryEvent: CountryEvent = {
           event: event,
           countryCode: country.properties.iso_a2,
-          countryName: country.properties.name,
+          countryName: self.localized.countryName(country.properties.iso_a2, country.properties.name),
         }
 
         self._countryHoverCb.forEach(cb => cb(countryEvent))
@@ -223,7 +247,7 @@ export class MapRendererComponent implements OnInit, AfterViewInit, OnDestroy {
         const countryEvent: CountryEvent = {
           event: event,
           countryCode: country.properties.iso_a2,
-          countryName: country.properties.name,
+          countryName: self.localized.countryName(country.properties.iso_a2, country.properties.name),
         }
 
         const loc = self.projection.invert!([event.clientX, event.clientY])

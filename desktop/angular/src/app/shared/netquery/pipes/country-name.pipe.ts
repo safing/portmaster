@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Pipe, PipeTransform, Injectable, inject } from '@angular/core';
 import { GeoCoordinates, SPNService } from '@safing/portmaster-api';
+import { LocalizedValueService } from 'src/i18n';
 import { environment } from 'src/environments/environment';
 import { ActionIndicatorService } from '../../action-indicator';
 import { objKeys } from '../../utils';
@@ -23,6 +24,7 @@ export class CountryNameService {
   private readonly spn = inject(SPNService);
   private readonly http = inject(HttpClient);
   private readonly uai = inject(ActionIndicatorService);
+  private readonly localized = inject(LocalizedValueService);
 
   private map: Map<string, string> = new Map();
 
@@ -42,13 +44,16 @@ export class CountryNameService {
   }
 
   resolveName(code: string): string {
-    return this.map.get(code) || '';
+    // Backend delivers English names; localize by ISO code with a safe
+    // fallback to the original value for unknown codes.
+    return this.localized.countryName(code, this.map.get(code) || '');
   }
 }
 
 @Pipe({
   name: 'countryName',
-  pure: true,
+  // Impure so that changing the UI language refreshes already rendered rows.
+  pure: false,
 })
 export class CountryNamePipe implements PipeTransform {
   private countryService = inject(CountryNameService);
