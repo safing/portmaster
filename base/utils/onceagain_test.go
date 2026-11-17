@@ -47,6 +47,7 @@ func TestOnceAgain(t *testing.T) {
 	// Choose values so that about 10 executions are expected
 	var execs uint32
 	testWg.Add(100)
+	started := time.Now()
 	for range 100 {
 		go func() {
 			oa.Do(func() {
@@ -59,13 +60,18 @@ func TestOnceAgain(t *testing.T) {
 		time.Sleep(1 * time.Millisecond)
 	}
 
+	spawned := time.Since(started)
 	testWg.Wait()
-	// Allow for scheduling jitter on loaded machines (eg. CI running many
-	// test packages at once), same bounds as the call limiter test.
+	// Executions take at least 10ms and do not overlap, so at most one
+	// execution fits into every 10ms of spawning, plus one running and one
+	// queued at the end. Sleeps may take longer than requested (eg. on
+	// Windows or on loaded machines), so derive the bound from the time
+	// spawning actually took.
+	maxExecs := uint32(spawned/(10*time.Millisecond)) + 2 //nolint:gosec // Spawning takes seconds at most.
 	if execs <= 5 {
 		t.Errorf("unexpected low exec count: %d", execs)
 	}
-	if execs >= 15 {
-		t.Errorf("unexpected high exec count: %d", execs)
+	if execs > maxExecs {
+		t.Errorf("unexpected high exec count: %d (max %d for %s of spawning)", execs, maxExecs, spawned)
 	}
 }

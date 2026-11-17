@@ -16,6 +16,13 @@ func TestIPScope(t *testing.T) {
 	testScope(t, net.IPv4(172, 16, 1, 1), SiteLocal)
 	testScope(t, net.IPv4(172, 31, 1, 1), SiteLocal)
 	testScope(t, net.IPv4(172, 32, 1, 1), Global)
+
+	testScope(t, net.ParseIP("2a01:4f8::1"), Global)
+	testScope(t, net.ParseIP("fd00::1"), SiteLocal)
+	testScope(t, net.ParseIP("fe80::1"), LinkLocal)
+	testScope(t, net.ParseIP("fec0::15"), SiteLocal)
+	testScope(t, net.ParseIP("feff::1"), SiteLocal)
+	testScope(t, net.ParseIP("ff02::1"), LocalMulticast)
 }
 
 func testScope(t *testing.T, ip net.IP, expectedScope IPScope) {

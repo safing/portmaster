@@ -20,7 +20,9 @@ func WriteFile(filename string, data []byte, perm os.FileMode) error {
 
 	// Set permissions before writing data, in case the data is sensitive.
 	if runtime.GOOS == "windows" {
-		err = acl.Chmod(t.path, perm)
+		// The ACL must be set on the temporary file, not on the destination,
+		// which may not exist yet.
+		err = acl.Chmod(t.Name(), perm)
 	} else {
 		err = t.Chmod(perm)
 	}
