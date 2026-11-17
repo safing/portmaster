@@ -2,6 +2,7 @@ package ships
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -121,7 +122,8 @@ func launchHTTPShip(ctx context.Context, transport *hub.Transport, ip net.IP) (S
 	}
 
 	// Receive HTTP response.
-	response, err := http.ReadResponse(bufio.NewReader(conn), request)
+	reader := bufio.NewReader(conn)
+	response, err := http.ReadResponse(reader, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read HTTP response: %w", err)
 	}
@@ -153,9 +155,10 @@ func launchHTTPShip(ctx context.Context, transport *hub.Transport, ip net.IP) (S
 	}
 
 	// Create ship.
+	// The reader may already hold data the peer sent after the response.
 	ship := &HTTPShip{
 		ShipBase: ShipBase{
-			conn:      conn,
+			conn:      withBufferedData(conn, reader),
 			transport: transport,
 			mine:      true,
 			secure:    false,
@@ -194,11 +197,15 @@ func (pier *HTTPPier) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusSwitchingProtocols)
 
 			// Get connection.
-			conn, _, err = hijacker.Hijack()
+			var bufrw *bufio.ReadWriter
+			conn, bufrw, err = hijacker.Hijack()
 			if err != nil {
 				log.Warningf("ships: failed to hijack http connection from %s: %s", r.RemoteAddr, err)
 				return
 			}
+			// The HTTP server may already have read data the client sent
+			// right after the request.
+			conn = withBufferedData(conn, bufrw.Reader)
 		} else {
 			http.Error(w, "", http.StatusInternalServerError)
 			log.Warningf("ships: connection from %s cannot be hijacked", r.RemoteAddr)
@@ -266,4 +273,35 @@ func (pier *HTTPPier) Abolish() {
 	// Do not close the listener, as it is shared.
 	// Instead, remove the HTTP handler and the shared server will shutdown itself when needed.
 	_ = removeHTTPHandler(pier.transport.Port, pier.transport.Path)
+}
+
+// bufferedConn is a connection whose first bytes were already read into a
+// buffer, such as during an HTTP handshake.
+type bufferedConn struct {
+	net.Conn
+
+	reader io.Reader
+}
+
+// Read reads the buffered data first and then from the connection.
+func (c *bufferedConn) Read(b []byte) (int, error) {
+	return c.reader.Read(b)
+}
+
+// withBufferedData returns conn, or a wrapper that first returns the data
+// held in reader, if it holds any. reader must read from conn.
+func withBufferedData(conn net.Conn, reader *bufio.Reader) net.Conn {
+	if reader == nil || reader.Buffered() == 0 {
+		return conn
+	}
+	return &bufferedConn{
+		Conn:   conn,
+		reader: io.MultiReader(bytes.NewReader(copyBuffered(reader)), conn),
+	}
+}
+
+// copyBuffered returns a copy of the data buffered in reader.
+func copyBuffered(reader *bufio.Reader) []byte {
+	data, _ := reader.Peek(reader.Buffered()) // Cannot fail for buffered data.
+	return bytes.Clone(data)
 }
