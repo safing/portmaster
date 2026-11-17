@@ -248,9 +248,12 @@ Ledger исполнения (git-ignored): `.superpowers/sdd/M0-foundation/progr
   Эталоны сканера и стран сняты с Go.
 
 - Волна закрытия находок полного ревью (2026-11-17, без Windows/пользовательских тестов, коммиты
-  `b6554c2f`..`80be3137`): conntrack cleanup (`delete_all_marked` на старте/стопе, `delete_unmarked`
-  на старте) и `reinsert_displaced` по расписанию 5/10/30 c подключены в `Firewall::start/stop`;
-  rollback флага `started` при ошибке iptables. UDP-прокси: per-session `CancellationToken` +
+  `b6554c2f`..`80be3137`): conntrack cleanup (`delete_all_marked` на старте/стопе) и
+  `reinsert_displaced` по расписанию 5/10/30 c подключены в `Firewall::start/stop`; rollback флага
+  `started` при ошибке iptables. `delete_unmarked` **намеренно НЕ вызывается** (коммит `227973d6`):
+  в Go это под TODO и нужно только при DNAT-фичах (SPN/split-tunneling), а без них оно рвёт все
+  существующие не-loopback-соединения при каждом старте — именно это отключило интернет у
+  пользователя при первом switch на Rust. UDP-прокси: per-session `CancellationToken` +
   `EgressGuard`, relay останавливается при eviction и не обновляет новую сессию того же пира
   (регрессионный тест). `core/apiKeys` перечитываются из конфига при каждом изменении (как Go
   `EventConfigChange`), регрессионный тест. Xray: `plugin`/`pluginOpts` Shadowsocks больше не
