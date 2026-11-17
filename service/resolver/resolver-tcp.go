@@ -49,6 +49,12 @@ type TCPResolver struct {
 	// concurrent queries share one new connection instead of each dialing
 	// their own. It is a channel, so that waiting can be canceled.
 	dialSlot chan struct{}
+	// dialCount counts the completed attempts to establish a connection.
+	dialCount int
+	// dialErr holds the error of the last attempt to establish a connection,
+	// if the server could not be reached. Queries that waited for this
+	// attempt fail with it instead of each dialing again.
+	dialErr error
 }
 
 // tcpResolverConn represents a single connection to an upstream DNS server.
@@ -150,6 +156,7 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		existingConn = tr.resolverConn
 	}
 	seenInstanceID := tr.resolverConnInstanceID
+	seenDialCount := tr.dialCount
 	tr.Unlock()
 
 	// Check if we have a resolver.
@@ -193,6 +200,10 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 	}
 
 	// Use the connection another query created while this one was waiting.
+	// If another query failed to reach the server meanwhile, fail with its
+	// error instead of dialing again, so that waiting queries do not each
+	// wait for a dial to time out, one after another.
+	var sharedDialErr error
 	tr.Lock()
 	if tr.resolverConn != nil &&
 		tr.resolverConnInstanceID != seenInstanceID &&
@@ -200,10 +211,16 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		existingConn = tr.resolverConn
 	} else {
 		existingConn = nil
+		if tr.dialCount != seenDialCount {
+			sharedDialErr = tr.dialErr
+		}
 	}
 	tr.Unlock()
 	if existingConn != nil {
 		return existingConn, nil
+	}
+	if sharedDialErr != nil {
+		return nil, sharedDialErr
 	}
 
 	// Do not dial a new upstream connection once the instance has started
@@ -223,9 +240,13 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		// Nothing left the host if the local port could not be bound. Do not
 		// count this against the resolver or the network.
 		if errors.Is(err, ErrLocalBind) {
+			tr.Lock()
+			// Do not share this failure: queries waiting for this dial try
+			// other local ports themselves.
+			tr.dialCount++
+			tr.dialErr = nil
 			// Concurrent queries dial at the same time. Use the connection
 			// another one has created in the meantime, if there is one.
-			tr.Lock()
 			newConn := tr.resolverConn
 			newInstanceID := tr.resolverConnInstanceID
 			tr.Unlock()
@@ -239,7 +260,19 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 		netenv.ReportFailedConnection()
 
 		log.Debugf("resolver: failed to connect to %s: %s", tr.resolver.Info.DescriptiveName(), err)
-		return nil, fmt.Errorf("%w: failed to connect to %s: %w", ErrFailure, tr.resolver.Info.DescriptiveName(), err)
+		err = fmt.Errorf("%w: failed to connect to %s: %w", ErrFailure, tr.resolver.Info.DescriptiveName(), err)
+
+		// Fail the queries waiting for this dial with the same error, unless
+		// the dial was ended by the context of this query. They dial
+		// themselves then.
+		tr.Lock()
+		tr.dialCount++
+		tr.dialErr = nil
+		if ctx.Err() == nil {
+			tr.dialErr = err
+		}
+		tr.Unlock()
+		return nil, err
 	}
 
 	// Hint network environment at successful connection.
@@ -254,6 +287,8 @@ func (tr *TCPResolver) getOrCreateResolverConn(ctx context.Context) (*tcpResolve
 	// Thread-safe resolverConn creation.
 	tr.Lock()
 	defer tr.Unlock()
+	tr.dialCount++
+	tr.dialErr = nil
 
 	// Create resolver connection.
 	tr.resolverConnInstanceID++
