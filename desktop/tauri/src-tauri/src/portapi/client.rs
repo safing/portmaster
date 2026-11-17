@@ -114,8 +114,25 @@ pub async fn connect(uri: &str) -> Result<PortAPI, Error> {
                                 continue;
                             }
                             
-                            let text = unsafe {
-                                std::str::from_utf8_unchecked(msg.as_payload())
+                            if msg.is_close() {
+                                // tokio-websockets already queued the close acknowledgement;
+                                // the next poll flushes it and yields None, which ends the
+                                // connection above.
+                                debug!("websocket connection closed by server");
+                                continue;
+                            }
+
+                            // The Portmaster API sends binary frames, so their payload
+                            // has to be checked for valid UTF-8 (text frames already are).
+                            let text = match msg.as_text() {
+                                Some(text) => text,
+                                None => match std::str::from_utf8(msg.as_payload()) {
+                                    Ok(text) => text,
+                                    Err(err) => {
+                                        error!("dropping non-UTF-8 websocket frame: {}", err);
+                                        continue;
+                                    }
+                                },
                             };
 
                             match text.parse::<Message>() {
