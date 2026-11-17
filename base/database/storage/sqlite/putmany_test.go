@@ -1,7 +1,9 @@
 package sqlite
 
 import (
+	"bytes"
 	"errors"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -125,6 +127,26 @@ func testPutManyShutdown(t *testing.T) {
 		assert.Error(t, err, "aborted batch %d must not report success", i)
 		assert.False(t, errors.Is(err, dsd.ErrIncompatibleFormat))
 
+		// Closing the database afterwards synchronizes with the watchers.
+		waitForTxWatchers(t)
 		require.NoError(t, db.Shutdown())
 	}
+}
+
+// waitForTxWatchers waits until database/sql has finished rolling back the
+// transactions of canceled contexts. It does so in background goroutines
+// that may outlive the database and read the global time.Local, which
+// TestMigrationTimezoneRoundTrip changes.
+func waitForTxWatchers(t *testing.T) {
+	t.Helper()
+
+	buf := make([]byte, 1<<20)
+	for range 500 {
+		n := runtime.Stack(buf, true)
+		if !bytes.Contains(buf[:n], []byte("database/sql.(*Tx).awaitDone")) {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Log("database/sql transaction watchers did not finish")
 }
