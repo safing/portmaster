@@ -1051,33 +1051,11 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 		return
 	}
 
-	// Do not wait for connections that are locked.
-	// TODO: Use atomic operations for updating bandwidth stats.
-	if !conn.TryLock() {
-		// DEBUG:
-		// log.Warningf("filter: failed to lock connection for bandwidth update: %s", conn)
+	bytesIn, bytesOut, ok := applyBandwidthUpdate(conn, bwUpdate)
+	if !ok {
 		return
 	}
 	defer conn.Unlock()
-
-	bytesIn := bwUpdate.BytesReceived
-	bytesOut := bwUpdate.BytesSent
-
-	// Update stats according to method.
-	switch bwUpdate.Method {
-	case packet.Absolute:
-		bytesIn = bwUpdate.BytesReceived - conn.BytesReceived
-		bytesOut = bwUpdate.BytesSent - conn.BytesSent
-
-		conn.BytesReceived = bwUpdate.BytesReceived
-		conn.BytesSent = bwUpdate.BytesSent
-	case packet.Additive:
-		conn.BytesReceived += bwUpdate.BytesReceived
-		conn.BytesSent += bwUpdate.BytesSent
-	default:
-		log.Warningf("filter: unsupported bandwidth update method: %d", bwUpdate.Method)
-		return
-	}
 
 	// Update bandwidth in the netquery module.
 	if module.instance.NetQuery() != nil && conn.BandwidthEnabled {
@@ -1093,6 +1071,50 @@ func updateBandwidth(ctx context.Context, bwUpdate *packet.BandwidthUpdate) {
 			log.Errorf("filter: failed to persist bandwidth data: %s", err)
 		}
 	}
+}
+
+// applyBandwidthUpdate applies the bandwidth update to the connection and
+// returns the bytes that were transferred since the last applied update.
+// If ok is true, the connection is locked and must be unlocked by the caller.
+//
+// It does not wait for connections that are locked. Additive updates are then
+// kept on the connection and applied with the next update, as their bytes
+// would be missing otherwise. Absolute updates are skipped, as the next
+// update includes their bytes.
+func applyBandwidthUpdate(conn *network.Connection, bwUpdate *packet.BandwidthUpdate) (bytesIn, bytesOut uint64, ok bool) {
+	switch bwUpdate.Method {
+	case packet.Absolute, packet.Additive:
+	default:
+		log.Warningf("filter: unsupported bandwidth update method: %d", bwUpdate.Method)
+		return 0, 0, false
+	}
+
+	if !conn.TryLock() {
+		if bwUpdate.Method == packet.Additive {
+			conn.DeferBandwidthUpdate(bwUpdate.BytesReceived, bwUpdate.BytesSent)
+		}
+		return 0, 0, false
+	}
+
+	// Update stats according to method.
+	switch bwUpdate.Method {
+	case packet.Absolute:
+		bytesIn = bwUpdate.BytesReceived - conn.BytesReceived
+		bytesOut = bwUpdate.BytesSent - conn.BytesSent
+
+		conn.BytesReceived = bwUpdate.BytesReceived
+		conn.BytesSent = bwUpdate.BytesSent
+	case packet.Additive:
+		// Include the updates that could not be applied before.
+		deferredIn, deferredOut := conn.TakeDeferredBandwidthUpdate()
+		bytesIn = bwUpdate.BytesReceived + deferredIn
+		bytesOut = bwUpdate.BytesSent + deferredOut
+
+		conn.BytesReceived += bytesIn
+		conn.BytesSent += bytesOut
+	}
+
+	return bytesIn, bytesOut, true
 }
 
 func statLogger(w *mgr.WorkerCtx) error {

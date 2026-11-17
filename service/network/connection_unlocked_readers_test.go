@@ -93,3 +93,20 @@ func TestIsAttributedToProfileRace(t *testing.T) {
 		t.Error("incomplete connection must not match")
 	}
 }
+
+func TestDeferredBandwidthUpdate(t *testing.T) {
+	t.Parallel()
+
+	conn := &Connection{}
+	conn.DeferBandwidthUpdate(100, 50)
+	conn.DeferBandwidthUpdate(10, 5)
+
+	received, sent := conn.TakeDeferredBandwidthUpdate()
+	if received != 110 || sent != 55 {
+		t.Errorf("got %d/%d, want 110/55", received, sent)
+	}
+	received, sent = conn.TakeDeferredBandwidthUpdate()
+	if received != 0 || sent != 0 {
+		t.Errorf("deferred update was not reset: %d/%d", received, sent)
+	}
+}

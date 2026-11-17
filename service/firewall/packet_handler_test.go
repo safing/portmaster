@@ -100,3 +100,68 @@ func TestFastTrackedLocalDNSKeepsKnownPID(t *testing.T) { //nolint:paralleltest 
 		})
 	}
 }
+
+// TestApplyBandwidthUpdateWhileLocked checks that additive bandwidth updates
+// are not lost when the connection is locked while they arrive.
+func TestApplyBandwidthUpdateWhileLocked(t *testing.T) {
+	t.Parallel()
+
+	conn := &network.Connection{}
+
+	// The connection is locked, eg. while it is evaluated.
+	conn.Lock()
+	for range 3 {
+		_, _, ok := applyBandwidthUpdate(conn, &packet.BandwidthUpdate{
+			BytesReceived: 100,
+			BytesSent:     50,
+			Method:        packet.Additive,
+		})
+		if ok {
+			t.Fatal("update must not be applied to a locked connection")
+		}
+	}
+	conn.Unlock()
+
+	// The next update includes the bytes of the skipped updates.
+	bytesIn, bytesOut, ok := applyBandwidthUpdate(conn, &packet.BandwidthUpdate{
+		BytesReceived: 10,
+		BytesSent:     5,
+		Method:        packet.Additive,
+	})
+	if !ok {
+		t.Fatal("update was not applied to an unlocked connection")
+	}
+	if bytesIn != 310 || bytesOut != 155 {
+		t.Errorf("reported %d/%d bytes, want 310/155", bytesIn, bytesOut)
+	}
+	if conn.BytesReceived != 310 || conn.BytesSent != 155 {
+		t.Errorf("connection has %d/%d bytes, want 310/155", conn.BytesReceived, conn.BytesSent)
+	}
+	conn.Unlock()
+
+	// Skipped absolute updates are included in the next one anyway.
+	conn.Lock()
+	if _, _, ok := applyBandwidthUpdate(conn, &packet.BandwidthUpdate{
+		BytesReceived: 1000,
+		BytesSent:     500,
+		Method:        packet.Absolute,
+	}); ok {
+		t.Fatal("update must not be applied to a locked connection")
+	}
+	conn.Unlock()
+	bytesIn, bytesOut, ok = applyBandwidthUpdate(conn, &packet.BandwidthUpdate{
+		BytesReceived: 2000,
+		BytesSent:     1000,
+		Method:        packet.Absolute,
+	})
+	if !ok {
+		t.Fatal("update was not applied to an unlocked connection")
+	}
+	if bytesIn != 1690 || bytesOut != 845 {
+		t.Errorf("reported %d/%d bytes, want 1690/845", bytesIn, bytesOut)
+	}
+	if conn.BytesReceived != 2000 || conn.BytesSent != 1000 {
+		t.Errorf("connection has %d/%d bytes, want 2000/1000", conn.BytesReceived, conn.BytesSent)
+	}
+	conn.Unlock()
+}

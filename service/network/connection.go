@@ -206,6 +206,12 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// this value will likely not be correct.
 	lastSeen atomic.Int64
 
+	// deferredBytesReceived and deferredBytesSent hold additive bandwidth
+	// updates that could not be applied yet, because the connection was
+	// locked. They are applied with the next bandwidth update.
+	deferredBytesReceived atomic.Uint64
+	deferredBytesSent     atomic.Uint64
+
 	// prompt holds the active prompt for this connection, if there is one.
 	prompt *notifications.Notification
 	// promptLock locks the prompt separately from the connection.
@@ -832,6 +838,20 @@ func (conn *Connection) IsAttributedToProfile(profileSource, profileID string) b
 
 	return conn.ProcessContext.Profile == profileID &&
 		conn.ProcessContext.Source == profileSource
+}
+
+// DeferBandwidthUpdate records an additive bandwidth update that cannot be
+// applied right now, because the connection is locked. It does not require
+// the connection lock.
+func (conn *Connection) DeferBandwidthUpdate(bytesReceived, bytesSent uint64) {
+	conn.deferredBytesReceived.Add(bytesReceived)
+	conn.deferredBytesSent.Add(bytesSent)
+}
+
+// TakeDeferredBandwidthUpdate returns and resets the bandwidth recorded with
+// DeferBandwidthUpdate.
+func (conn *Connection) TakeDeferredBandwidthUpdate() (bytesReceived, bytesSent uint64) {
+	return conn.deferredBytesReceived.Swap(0), conn.deferredBytesSent.Swap(0)
 }
 
 // Process returns the connection's process.
