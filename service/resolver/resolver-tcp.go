@@ -459,6 +459,16 @@ func (trc *tcpResolverConn) shutdown() {
 }
 
 func (trc *tcpResolverConn) handler(workerCtx *mgr.WorkerCtx) error {
+	// The worker manager restarts the handler after a panic. The deferred
+	// shutdown of the panicked run already shut the connection down, and it
+	// must not be shut down twice. The connection is replaced by the next
+	// query, so the restarted handler has nothing to do.
+	select {
+	case <-trc.stopped:
+		return nil
+	default:
+	}
+
 	// Set up context and cleanup.
 	trc.ctx, trc.cancelCtx = context.WithCancel(workerCtx.Ctx())
 	defer trc.shutdown()
