@@ -16,6 +16,7 @@ import (
 type PacketListener struct {
 	sock     net.PacketConn
 	closed   *abool.AtomicBool
+	closing  chan struct{}
 	newConns chan *PacketConn
 
 	lock  sync.Mutex
@@ -35,6 +36,7 @@ func ListenPacket(network, address string) (net.Listener, error) {
 	ln := &PacketListener{
 		sock:     sock,
 		closed:   abool.New(),
+		closing:  make(chan struct{}),
 		newConns: make(chan *PacketConn),
 		conns:    make(map[string]*PacketConn),
 	}
@@ -46,9 +48,10 @@ func ListenPacket(network, address string) (net.Listener, error) {
 
 // Accept waits for and returns the next connection to the listener.
 func (ln *PacketListener) Accept() (net.Conn, error) {
-	conn := <-ln.newConns
-	if conn != nil {
+	select {
+	case conn := <-ln.newConns:
 		return conn, nil
+	case <-ln.closing:
 	}
 
 	// Check if there is a socket error.
@@ -68,8 +71,9 @@ func (ln *PacketListener) Close() error {
 		return nil
 	}
 
-	// Close all channels.
-	close(ln.newConns)
+	// Signal closing and close all connection channels.
+	// newConns is never closed, as the reader might be sending on it.
+	close(ln.closing)
 	ln.lock.Lock()
 	defer ln.lock.Unlock()
 	for _, conn := range ln.conns {
@@ -116,23 +120,13 @@ func (ln *PacketListener) reader(_ *mgr.WorkerCtx) error {
 		}
 		buf = buf[:n]
 
-		// Get connection and supply data.
-		conn, ok := ln.getConn(addr.String())
-		if ok {
-			// Ignore if conn is closed.
-			if conn.closed.IsSet() {
-				continue
-			}
-
-			select {
-			case conn.in <- buf:
-			default:
-			}
+		// Supply data to existing connection.
+		if ln.supplyData(addr.String(), buf) {
 			continue
 		}
 
 		// Or create a new connection.
-		conn = &PacketConn{
+		conn := &PacketConn{
 			ln:            ln,
 			addr:          addr,
 			closed:        abool.New(),
@@ -142,8 +136,36 @@ func (ln *PacketListener) reader(_ *mgr.WorkerCtx) error {
 			inactivityCnt: new(uint32),
 		}
 		ln.setConn(conn)
-		ln.newConns <- conn
+		select {
+		case ln.newConns <- conn:
+		case <-ln.closing:
+		}
 	}
+}
+
+// supplyData supplies the given data to an existing connection and reports
+// whether a connection exists for the given remote address.
+// The send happens under the lock so that it cannot race with Close closing
+// the connection's channel.
+func (ln *PacketListener) supplyData(remoteAddr string, data []byte) (connExists bool) {
+	ln.lock.Lock()
+	defer ln.lock.Unlock()
+
+	conn, ok := ln.conns[remoteAddr]
+	if !ok {
+		return false
+	}
+
+	// Ignore if conn or listener is closed.
+	if conn.closed.IsSet() || ln.closed.IsSet() {
+		return true
+	}
+
+	select {
+	case conn.in <- data:
+	default:
+	}
+	return true
 }
 
 func (ln *PacketListener) cleaner(ctx *mgr.WorkerCtx) error {
