@@ -253,7 +253,11 @@ Ledger исполнения (git-ignored): `.superpowers/sdd/M0-foundation/progr
   `started` при ошибке iptables. `delete_unmarked` **намеренно НЕ вызывается** (коммит `227973d6`):
   в Go это под TODO и нужно только при DNAT-фичах (SPN/split-tunneling), а без них оно рвёт все
   существующие не-loopback-соединения при каждом старте — именно это отключило интернет у
-  пользователя при первом switch на Rust. UDP-прокси: per-session `CancellationToken` +
+  пользователя при первом switch на Rust. Self-check #3 (коммит `f5b4c60d`): шаг 3 пропускается
+  (`dns_response_check=false`), пока в nameserver не подключена подстановка случайного ответа —
+  раньше он всегда падал с `failed to receive test response: no such host`, создавая ложное
+  уведомление о несовместимости и уводя онлайн-статус в Offline (что блокирует DNS для всех
+  доменов, кроме тестовых): объяснение «инета на половину» на Rust-ядре. UDP-прокси: per-session `CancellationToken` +
   `EgressGuard`, relay останавливается при eviction и не обновляет новую сессию того же пира
   (регрессионный тест). `core/apiKeys` перечитываются из конфига при каждом изменении (как Go
   `EventConfigChange`), регрессионный тест. Xray: `plugin`/`pluginOpts` Shadowsocks больше не
