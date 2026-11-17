@@ -3,6 +3,7 @@ package terminal
 import (
 	"errors"
 	"flag"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -75,6 +76,31 @@ func TimedOut(timeout time.Duration) <-chan time.Time {
 		return waitForever
 	}
 	return time.After(timeout)
+}
+
+// timerPool holds stopped timers for reuse.
+var timerPool = sync.Pool{
+	New: func() any {
+		timer := time.NewTimer(time.Hour)
+		timer.Stop()
+		return timer
+	},
+}
+
+// getPooledTimer returns a running timer with the given duration from the pool.
+// It must be returned with putPooledTimer when it is not used anymore.
+func getPooledTimer(d time.Duration) *time.Timer {
+	timer := timerPool.Get().(*time.Timer) //nolint:forcetypeassert // Pool only holds timers.
+	timer.Reset(d)
+	return timer
+}
+
+// putPooledTimer stops the given timer and returns it to the pool.
+// Since Go 1.23, a stopped timer never delivers a stale value on its channel,
+// so it can be safely reused.
+func putPooledTimer(timer *time.Timer) {
+	timer.Stop()
+	timerPool.Put(timer)
 }
 
 // StopScheduler stops the unit scheduler.

@@ -221,10 +221,17 @@ func (t *TerminalBase) Send(msg *Msg, timeout time.Duration) *Error {
 	}
 
 	// Submit message to buffer, if space is available.
+	// This is a hot path, so use a pooled timer instead of allocating a new one.
+	var timedOut <-chan time.Time
+	if timeout != 0 {
+		timer := getPooledTimer(timeout)
+		defer putPooledTimer(timer)
+		timedOut = timer.C
+	}
 	select {
 	case t.sendQueue <- msg:
 		return nil
-	case <-TimedOut(timeout):
+	case <-timedOut:
 		msg.Finish()
 		return ErrTimeout.With("sending via terminal")
 	case <-t.Ctx().Done():
