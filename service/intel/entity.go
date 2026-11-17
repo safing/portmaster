@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -678,21 +677,14 @@ func (e *Entity) getPublicSuffix(d string) (suffix string, icann bool) {
 	return e.publicSuffix, e.publicSuffixICANN
 }
 
+// mergeStringList returns the sorted, distinct values of a and b in a new
+// slice. The result is not nil.
 func mergeStringList(a, b []string) []string {
-	listMap := make(map[string]struct{})
-	for _, s := range a {
-		listMap[s] = struct{}{}
-	}
-	for _, s := range b {
-		listMap[s] = struct{}{}
-	}
-
-	res := make([]string, 0, len(listMap))
-	for s := range listMap {
-		res = append(res, s)
-	}
-	sort.Strings(res)
-	return res
+	res := make([]string, 0, len(a)+len(b))
+	res = append(res, a...)
+	res = append(res, b...)
+	slices.Sort(res)
+	return slices.Compact(res)
 }
 
 // makeDistinctMaxScan is the length up to which makeDistinct scans the
