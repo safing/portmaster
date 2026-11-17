@@ -167,10 +167,12 @@ func (lp *LayeredProfile) LockForUsage() {
 
 // UnlockForUsage unlocks the layered profile, including all layers individually.
 func (lp *LayeredProfile) UnlockForUsage() {
-	lp.RUnlock()
+	// Unlock the layers while still holding the read lock on the layered
+	// profile, as Update may replace layers as soon as it is released.
 	for _, layer := range lp.layers {
 		layer.RUnlock()
 	}
+	lp.RUnlock()
 }
 
 // LocalProfile returns the local profile associated with this layered profile.
