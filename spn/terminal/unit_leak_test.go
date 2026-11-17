@@ -78,6 +78,11 @@ func TestSenderFinishesBufferedUnit(t *testing.T) { //nolint:paralleltest // Rep
 		t.Fatal("sender did not accept msg")
 	}
 
+	// Keep the message buffered for a moment: the stat only counts units with
+	// a lifetime above zero, and on Windows the monotonic clock only advances
+	// every few milliseconds.
+	time.Sleep(20 * time.Millisecond)
+
 	// Stop the sender while the message is buffered.
 	term.cancelCtx()
 	select {
