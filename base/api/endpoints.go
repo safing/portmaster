@@ -460,7 +460,7 @@ func (e *Endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case e.RecordFunc != nil:
 		var rec record.Record
 		rec, err = e.RecordFunc(apiRequest)
-		if err == nil && r != nil {
+		if err == nil && rec != nil {
 			responseData, err = MarshalRecord(rec, false)
 		}
 

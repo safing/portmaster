@@ -118,6 +118,31 @@ func TestEndpoints(t *testing.T) {
 	assert.HTTPBodyContains(t, testHandler.ServeHTTP, "GET", apiV1Path+"test/record-err", nil, failedMsg)
 }
 
+// TestEndpointRecordFuncNilRecord checks that a RecordFunc returning neither
+// a record nor an error results in an empty response, like the other handler
+// types, instead of a panic.
+func TestEndpointRecordFuncNilRecord(t *testing.T) {
+	t.Parallel()
+
+	testHandler := &mainHandler{
+		mux: mainMux,
+	}
+
+	assert.NoError(t, RegisterEndpoint(Endpoint{
+		Path: "test/record-nil",
+		Read: PermitAnyone,
+		RecordFunc: func(_ *Request) (r record.Record, err error) {
+			return nil, nil
+		},
+	}))
+
+	r := httptest.NewRequest(http.MethodGet, apiV1Path+"test/record-nil", nil)
+	w := httptest.NewRecorder()
+	testHandler.ServeHTTP(w, r)
+	assert.Equal(t, http.StatusNoContent, w.Code, "body: %s", w.Body.String())
+	assert.Empty(t, w.Body.String())
+}
+
 // zeroReader endlessly returns zero bytes.
 type zeroReader struct{}
 
