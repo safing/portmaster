@@ -115,17 +115,8 @@ func (mng *Manager) HandleFeed(ctx context.Context, feed <-chan *network.Connect
 // handleConnection persists a new or updated connection and pushes the update
 // to the database subscribers.
 func (mng *Manager) handleConnection(ctx context.Context, conn *network.Connection) {
-	conn.Lock()
-	defer conn.Unlock()
-
-	if !conn.DataIsComplete() {
-		return
-	}
-
-	model, err := convertConnection(conn)
-	if err != nil {
-		log.Errorf("netquery: failed to convert connection %s to sqlite model: %s", conn.ID, err)
-
+	model, meta, historyEnabled, ok := snapshotConnection(conn)
+	if !ok {
 		return
 	}
 
@@ -134,22 +125,45 @@ func (mng *Manager) handleConnection(ctx context.Context, conn *network.Connecti
 
 	// Save to netquery database.
 	// Do not include internal connections in history.
-	err = mng.store.Save(ctx, *model, conn.HistoryEnabled)
+	// The connection is not locked anymore: writing to SQLite must not block
+	// the packet handling of the connection. Updates of a connection stay in
+	// order, as the feed is handled by a single worker.
+	err := mng.store.Save(ctx, *model, historyEnabled)
 	if err != nil {
-		log.Errorf("netquery: failed to save connection %s in sqlite database: %s", conn.ID, err)
+		log.Errorf("netquery: failed to save connection %s in sqlite database: %s", model.ID, err)
 		return
+	}
+
+	// push an update for the connection
+	err = mng.pushConnUpdate(ctx, *meta, *model)
+	if err != nil {
+		log.Errorf("netquery: failed to push update for conn %s via database system: %s", model.ID, err)
+	}
+}
+
+// snapshotConnection returns everything that is needed to persist and push
+// the connection. It only holds the lock of the connection while copying, and
+// the returned values do not reference the connection anymore.
+// It returns false if the connection is not to be persisted (yet).
+func snapshotConnection(conn *network.Connection) (model *Conn, meta *record.Meta, historyEnabled bool, ok bool) {
+	conn.Lock()
+	defer conn.Unlock()
+
+	if !conn.DataIsComplete() {
+		return nil, nil, false, false
+	}
+
+	model, err := convertConnection(conn)
+	if err != nil {
+		log.Errorf("netquery: failed to convert connection %s to sqlite model: %s", conn.ID, err)
+
+		return nil, nil, false, false
 	}
 
 	// we clone the record metadata from the connection
 	// into the new model so the portbase/database layer
 	// can handle NEW/UPDATE correctly.
-	cloned := conn.Meta().Duplicate()
-
-	// push an update for the connection
-	err = mng.pushConnUpdate(ctx, *cloned, *model)
-	if err != nil {
-		log.Errorf("netquery: failed to push update for conn %s via database system: %s", conn.ID, err)
-	}
+	return model, conn.Meta().Duplicate(), conn.HistoryEnabled, true
 }
 
 func (mng *Manager) pushConnUpdate(_ context.Context, meta record.Meta, conn Conn) error {
@@ -211,7 +225,9 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		c.Type = ""
 	}
 
-	c.Allowed = &conn.ConnectionEstablished
+	// Copy the value: the model is used after the connection is unlocked.
+	allowed := conn.ConnectionEstablished
+	c.Allowed = &allowed
 
 	if conn.Ended > 0 {
 		ended := time.Unix(conn.Ended, 0)
