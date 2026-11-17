@@ -6,7 +6,8 @@ export const environment = {
   production: false,
   portAPI: "ws://127.0.0.1:817/api/database/v1",
   httpAPI: "http://127.0.0.1:817/api",
-  supportHub: "https://support.safing.io"
+  // Issues are opened in the browser on the project repository; nothing is sent to Safing.
+  issueTracker: "https://github.com/0n113/portmasterpro/issues"
 };
 
 /*
