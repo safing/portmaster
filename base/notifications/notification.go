@@ -428,6 +428,19 @@ func (n *Notification) delete(pushUpdate bool) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 
+	// A notification that was never saved has no meta data and is not in the
+	// notification storage: only release waiters and the connected state.
+	if n.Meta() == nil {
+		if n.expiredTrigger != nil {
+			close(n.expiredTrigger)
+			n.expiredTrigger = nil
+		}
+		if n.belongsTo != nil {
+			n.belongsTo.Remove(n.EventID)
+		}
+		return
+	}
+
 	// Check if notification is already deleted.
 	if n.Meta().IsDeleted() {
 		return
