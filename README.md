@@ -1,3 +1,16 @@
+> ## portmasterpro — privacy-focused fork
+> This repository is a fork of [safing/portmaster](https://github.com/safing/portmaster) **without SPN, Safing accounts,
+> subscriptions or telemetry**. Network History and Bandwidth Visibility work locally for everyone.
+> Upstream binary update checks are off by default (upstream binaries would replace this build); filter lists and
+> GeoIP data still update from `updates.safing.io`.
+>
+> - **Download:** [Releases](https://github.com/0n113/portmasterpro/releases) (Windows x64 installer; unsigned → SmartScreen warning)
+> - **Build & test:** [BUILDING.md](BUILDING.md) · **Changes:** [CHANGELOG.md](CHANGELOG.md), [desktop/CHANGES.md](desktop/CHANGES.md) · **Release process:** [RELEASE.md](RELEASE.md)
+> - **Branches:** `no-spn-no-telemetry` (fork mainline), `release-candidate/*` (frozen RCs), `development` (upstream mirror)
+> - The kernel driver is Safing's signed stable driver, unchanged. Not affiliated with or endorsed by Safing.
+>
+> The original upstream README follows.
+
 # Get Peace of Mind <br> with [Easy Privacy](https://safing.io/)
 
 Portmaster is a free and open-source application firewall that does the heavy lifting for you.

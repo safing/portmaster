@@ -189,23 +189,18 @@ fn run<'a>(root: bool, cmd: &'a str, args: Vec<&'a str>) -> std::io::Result<std:
             // if we run through pkexec and friends we need to append cmd as the second argument.
 
             args.insert(0, cmd);
-            match get_sudo_cmd() {
-                Ok(cmd) => {
-                    match cmd {
-                        SudoCommand::Pkexec => {
-                            // disable the internal text-based prompt agent from pkexec because it won't work anyway.
-                            args.insert(0, "--disable-internal-agent");
-                            Command::new("/usr/bin/pkexec")
-                        }
-                        SudoCommand::Gksu => {
-                            args.insert(0, "--message=Please enter your password:");
-                            args.insert(1, "--sudo-mode");
-
-                            Command::new("/usr/bin/gksudo")
-                        }
-                    }
+            match get_sudo_cmd()? {
+                SudoCommand::Pkexec => {
+                    // disable the internal text-based prompt agent from pkexec because it won't work anyway.
+                    args.insert(0, "--disable-internal-agent");
+                    Command::new("/usr/bin/pkexec")
                 }
-                Err(err) => return Err(err),
+                SudoCommand::Gksu => {
+                    args.insert(0, "--message=Please enter your password:");
+                    args.insert(1, "--sudo-mode");
+
+                    Command::new("/usr/bin/gksudo")
+                }
             }
         }
         false => Command::new(cmd),

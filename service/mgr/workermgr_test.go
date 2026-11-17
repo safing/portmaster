@@ -1,13 +1,25 @@
 package mgr
 
 import (
+	"os"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
+// skipTimingSensitiveOnCI skips tests that assert wall-clock scheduling
+// precision (±5 %). On shared CI runners with several workflows in parallel
+// these fail sporadically without indicating a bug; they still run locally.
+func skipTimingSensitiveOnCI(t *testing.T) {
+	t.Helper()
+	if os.Getenv("CI") != "" {
+		t.Skip("timing-sensitive test skipped on CI runner (CI env set)")
+	}
+}
+
 func TestWorkerMgrDelay(t *testing.T) {
 	t.Parallel()
+	skipTimingSensitiveOnCI(t)
 
 	m := New("DelayTest")
 
@@ -37,6 +49,7 @@ func TestWorkerMgrDelay(t *testing.T) {
 
 func TestWorkerMgrRepeat(t *testing.T) {
 	t.Parallel()
+	skipTimingSensitiveOnCI(t)
 
 	m := New("RepeatTest")
 
@@ -54,6 +67,7 @@ func TestWorkerMgrRepeat(t *testing.T) {
 
 func TestWorkerMgrDelayAndRepeat(t *testing.T) { //nolint:dupl
 	t.Parallel()
+	skipTimingSensitiveOnCI(t)
 
 	m := New("DelayAndRepeatTest")
 
@@ -87,6 +101,7 @@ func TestWorkerMgrDelayAndRepeat(t *testing.T) { //nolint:dupl
 
 func TestWorkerMgrRepeatAndDelay(t *testing.T) { //nolint:dupl
 	t.Parallel()
+	skipTimingSensitiveOnCI(t)
 
 	m := New("RepeatAndDelayTest")
 

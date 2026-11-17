@@ -1,171 +1,103 @@
-import { HttpClient, HttpParams, HttpResponse } from "@angular/common/http";
-import { Inject, Injectable } from "@angular/core";
-import { BehaviorSubject, Observable, of } from "rxjs";
-import { filter, map, share, switchMap } from "rxjs/operators";
+import { Injectable } from "@angular/core";
+import { Observable, of, throwError } from "rxjs";
 import { FeatureID } from "./features";
-import { PORTMASTER_HTTP_API_ENDPOINT, PortapiService } from './portapi.service';
 import { Feature, Pin, SPNStatus, UserProfile } from "./spn.types";
+
+/**
+ * portmasterpro ships without the Safing Private Network and without user
+ * accounts. This service keeps the public API that the UI components rely on,
+ * but never talks to an account server or the (never started) SPN module:
+ *
+ *  - the profile is a static, local one that unlocks every local feature
+ *    (network history, bandwidth visibility); SPN is reported as unavailable,
+ *  - the SPN status is permanently "disabled",
+ *  - login/logout fail locally without any network request.
+ */
+
+/** Static local profile. Every local feature is available, SPN is not. */
+export const LOCAL_PROFILE: UserProfile = {
+  username: "local",
+  state: "local",
+  balance: 0,
+  device: null,
+  subscription: null,
+  current_plan: {
+    name: "portmasterpro",
+    amount: 0,
+    months: 0,
+    renewable: false,
+    feature_ids: [FeatureID.History, FeatureID.Bandwidth, FeatureID.VPNCompat],
+  },
+  next_plan: null,
+  view: null,
+};
+
+/** Static SPN status: the SPN module does not exist in portmasterpro. */
+export const SPN_DISABLED_STATUS: SPNStatus = {
+  Status: "disabled",
+  HomeHubID: "",
+  HomeHubName: "",
+  ConnectedIP: "",
+  ConnectedTransport: "",
+  ConnectedCountry: null,
+  ConnectedSince: null,
+};
+
+/** Error returned by every removed account operation. */
+export const ERR_ACCOUNT_REMOVED = "Account authentication has been removed from portmasterpro";
 
 @Injectable()
 export class SPNService {
 
-  /** Emits the SPN status whenever it changes */
-  status$: Observable<SPNStatus>;
+  /** Emits the SPN status; permanently disabled. */
+  readonly status$: Observable<SPNStatus> = of(SPN_DISABLED_STATUS);
 
-  profile$ = this.watchProfile()
-    .pipe(
-      share({ connector: () => new BehaviorSubject<UserProfile | null | undefined>(undefined) }),
-      filter(val => val !== undefined)
-    ) as Observable<UserProfile | null>;
-
-  private pins$: Observable<Pin[]>;
-
-  constructor(
-    private portapi: PortapiService,
-    private http: HttpClient,
-    @Inject(PORTMASTER_HTTP_API_ENDPOINT) private httpAPI: string,
-  ) {
-    this.status$ = this.portapi.watch<SPNStatus>('runtime:spn/status', { ignoreDelete: true })
-      .pipe(
-        share({ connector: () => new BehaviorSubject<any | null>(null) }),
-        filter(val => val !== null),
-      )
-
-    this.pins$ = this.status$
-      .pipe(
-        switchMap(status => {
-          if (status.Status !== "disabled") {
-            return this.portapi.watchAll<Pin>("map:main/", { retryDelay: 50000 })
-          }
-
-          return of([] as Pin[]);
-        }),
-        share({ connector: () => new BehaviorSubject<Pin[] | undefined>(undefined) }),
-        filter(val => val !== undefined)
-      ) as Observable<Pin[]>;
-  }
+  /** Emits the static local profile. */
+  readonly profile$: Observable<UserProfile | null> = of(LOCAL_PROFILE);
 
   /**
-   * Watches all pins of the "main" SPN map.
+   * Watches all pins of the "main" SPN map. Always empty.
    */
   watchPins(): Observable<Pin[]> {
-    return this.pins$;
+    return of([] as Pin[]);
   }
 
   /**
-   * Encodes a unicode string to base64.
-   * See https://developer.mozilla.org/en-US/docs/Web/API/btoa
-   * and https://stackoverflow.com/questions/30106476/using-javascripts-atob-to-decode-base64-doesnt-properly-decode-utf-8-strings
+   * Removed: there is no SPN user account. Fails locally, no request is sent.
    */
-  b64EncodeUnicode(str: string): string {
-    return window.btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function (match, p1) {
-      return String.fromCharCode(parseInt(p1, 16))
-    }))
+  login(_: { username: string, password: string }): Observable<never> {
+    return throwError(() => new Error(ERR_ACCOUNT_REMOVED));
   }
 
   /**
-   *  Logs into the SPN user account
+   * Removed: there is no SPN user account. Fails locally, no request is sent.
    */
-  login({ username, password }: { username: string, password: string }): Observable<HttpResponse<string>> {
-    return this.http.post(`${this.httpAPI}/v1/spn/account/login`, undefined, {
-      headers: {
-        Authorization: `Basic ${this.b64EncodeUnicode(username + ':' + password)}`
-      },
-      responseType: 'text',
-      observe: 'response'
-    });
+  logout(_purge = false): Observable<never> {
+    return throwError(() => new Error(ERR_ACCOUNT_REMOVED));
   }
 
-  /**
-   * Log out of the SPN user account
-   *
-   * @param purge Whether or not the portmaster should keep user/device information for the next login
-   */
-  logout(purge = false): Observable<HttpResponse<string>> {
-    let params = new HttpParams();
-    if (!!purge) {
-      params = params.set("purge", "true")
-    }
-    return this.http.delete(`${this.httpAPI}/v1/spn/account/logout`, {
-      params,
-      responseType: 'text',
-      observe: 'response'
-    })
-  }
-
+  /** There are no purchasable feature packages. */
   watchEnabledFeatures(): Observable<(Feature & { enabled: boolean })[]> {
-    return this.profile$
-      .pipe(
-        switchMap(profile => {
-          return this.loadFeaturePackages()
-            .pipe(
-              map(features => {
-                return features.map(feature => {
-                  // console.log(feature, profile?.current_plan?.feature_ids)
-                  return {
-                    ...feature,
-                    enabled: feature.RequiredFeatureID === FeatureID.None || profile?.current_plan?.feature_ids?.includes(feature.RequiredFeatureID) || false,
-                  }
-                })
-              })
-            )
-        })
-      );
+    return of([]);
   }
 
-  /** Returns a list of all feature packages */
+  /** There are no purchasable feature packages. */
   loadFeaturePackages(): Observable<Feature[]> {
-    return this.http.get<{ Features: Feature[] }>(`${this.httpAPI}/v1/account/features`)
-      .pipe(
-        map(response => response.Features.map(feature => {
-          return {
-            ...feature,
-            IconURL: `${this.httpAPI}/v1/account/features/${feature.ID}/icon`,
-          }
-        }))
-      );
+    return of([]);
   }
 
   /**
-   * Returns the current SPN user profile.
-   *
-   * @param refresh Whether or not the user profile should be refreshed from the ticket agent
-   * @returns
+   * Returns the static local profile. The refresh flag is ignored; nothing
+   * is fetched from a ticket agent.
    */
-  userProfile(refresh = false): Observable<UserProfile> {
-    let params = new HttpParams();
-    if (!!refresh) {
-      params = params.set("refresh", true)
-    }
-    return this.http.get<UserProfile>(`${this.httpAPI}/v1/spn/account/user/profile`, {
-      params
-    });
+  userProfile(_refresh = false): Observable<UserProfile> {
+    return of(LOCAL_PROFILE);
   }
 
   /**
-   * Watches the user profile. It will emit null if there is no profile available yet.
+   * Emits the static local profile once.
    */
   watchProfile(): Observable<UserProfile | null> {
-    let hasSent = false;
-    return this.portapi.watch<UserProfile>('core:spn/account/user', { ignoreDelete: true }, { forwardDone: true })
-      .pipe(
-        filter(result => {
-          if ('type' in result && result.type === 'done') {
-            if (hasSent) {
-              return false;
-            }
-          }
-
-          return true
-        }),
-        map(result => {
-          hasSent = true;
-          if ('type' in result) {
-            return null;
-          }
-
-          return result;
-        })
-      );
+    return of(LOCAL_PROFILE);
   }
 }

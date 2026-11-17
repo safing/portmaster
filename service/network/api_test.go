@@ -17,7 +17,11 @@ func TestDebugInfoLineFormatting(t *testing.T) { //nolint:paralleltest // Shares
 
 func TestDebugInfoFormatting(t *testing.T) { //nolint:paralleltest // Sorts the shared connectionTestData.
 
-	fmt.Println(buildNetworkDebugInfoData(connectionTestData))
+	// buildNetworkDebugInfoData sorts the slice in place; use a copy so the
+	// parallel line-formatting test does not race on the shared test data.
+	conns := make([]*Connection, len(connectionTestData))
+	copy(conns, connectionTestData)
+	fmt.Println(buildNetworkDebugInfoData(conns))
 }
 
 var connectionTestData = []*Connection{

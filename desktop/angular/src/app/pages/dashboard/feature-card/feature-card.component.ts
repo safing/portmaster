@@ -40,7 +40,7 @@ export class FeatureCardComponent implements OnChanges, OnDestroy {
       this.configValueSubscription.unsubscribe();
       this.configValueSubscription = Subscription.EMPTY;
 
-      if (!!this.feature?.ConfigKey) {
+      if (this.feature?.ConfigKey) {
         this.configValueSubscription =
           this.configService.watch<BoolSetting>(this.feature!.ConfigKey)
             .subscribe(value => {
@@ -68,7 +68,7 @@ export class FeatureCardComponent implements OnChanges, OnDestroy {
 
   navigateToConfigScope() {
     if (this.disabled) {
-      this.integration.openExternal("https://safing.io/pricing?source=Portmaster")
+      this.integration.openExternal("https://safing.io/pricing")
       return;
     }
 

@@ -78,12 +78,12 @@ func registerUpdateConfig() error {
 	err = config.Register(&config.Option{
 		Name:            "Automatic Software Updates",
 		Key:             enableSoftwareUpdatesKey,
-		Description:     "Automatically check for and download software updates. This does not include intelligence data updates.",
+		Description:     "Automatically check for and download software updates from the upstream Portmaster update server. Disabled by default in portmasterpro: upstream binaries would replace this build and re-introduce SPN and account features. This does not include intelligence data updates.",
 		OptType:         config.OptTypeBool,
 		ExpertiseLevel:  config.ExpertiseLevelExpert,
 		ReleaseLevel:    config.ReleaseLevelStable,
 		RequiresRestart: false,
-		DefaultValue:    true,
+		DefaultValue:    false,
 		Annotations: config.Annotations{
 			config.DisplayOrderAnnotation: -12,
 			config.CategoryAnnotation:     "Updates",
@@ -116,7 +116,7 @@ func registerUpdateConfig() error {
 
 func initUpdateConfig() {
 	releaseChannel = config.Concurrent.GetAsString(ReleaseChannelKey, ReleaseChannelStable)
-	enableSoftwareUpdates = config.Concurrent.GetAsBool(enableSoftwareUpdatesKey, true)
+	enableSoftwareUpdates = config.Concurrent.GetAsBool(enableSoftwareUpdatesKey, false)
 	enableIntelUpdates = config.Concurrent.GetAsBool(enableIntelUpdatesKey, true)
 
 	initialReleaseChannel = releaseChannel()

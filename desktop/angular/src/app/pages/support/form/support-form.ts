@@ -4,8 +4,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DebugAPI } from '@safing/portmaster-api';
 import { ConfirmDialogConfig, SfngDialogService } from '@safing/ui';
-import { BehaviorSubject, Observable, of } from 'rxjs';
-import { debounceTime, mergeMap } from 'rxjs/operators';
+import { BehaviorSubject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { SessionDataService, StatusService } from 'src/app/services';
 import { Issue, SupportHubService } from 'src/app/services/supporthub.service';
 import { ActionIndicatorService } from 'src/app/shared/action-indicator';
@@ -27,13 +27,13 @@ export class SupportFormComponent implements OnInit {
 
   page: SupportPage | null = null;
 
-  debugData: string = '';
-  title: string = '';
+  debugData = '';
+  title = '';
   form: { [key: string]: string } = {}
-  selectedRepo: string = '';
+  selectedRepo = '';
   haveGhAccount = false;
-  version: string = '';
-  buildDate: string = '';
+  version = '';
+  buildDate = '';
   titleMissing = false;
 
   relatedIssues: Issue[] = [];
@@ -94,7 +94,7 @@ export class SupportFormComponent implements OnInit {
         for (let pIdx = 0; pIdx < supportTypes.length; pIdx++) {
           const pageSection = supportTypes[pIdx];
           const page = pageSection.choices.find(choice => choice.type !== 'link' && choice.id === id);
-          if (!!page) {
+          if (page) {
             this.page = page as SupportPage;
             break;
           }
@@ -161,7 +161,8 @@ export class SupportFormComponent implements OnInit {
     const ticketData: TicketData = {
       repo: this.selectedRepo || '',
       title: this.title,
-      debugInfo: this.debugData,
+      // Debug information is never uploaded. It stays in the form to copy.
+      debugInfo: '',
       sections: this.page?.sections.map(section => ({
         title: section.title,
         body: this.form[section.title],
@@ -202,29 +203,9 @@ export class SupportFormComponent implements OnInit {
       return;
     }
 
-    if (genUrl === undefined && this.haveGhAccount) {
-      genUrl = true;
-    }
-
-    if (genUrl === undefined) {
-      this.dialog.confirm({
-        canCancel: true,
-        caption: 'Caution',
-        header: 'Create Issue on GitHub',
-        message: 'You can easily create the issue with your own GitHub account. Or create the GitHub issue privately, but then we will have no way to communicate with you for further information.',
-        buttons: [
-          { id: 'createWithout', text: 'Create Without Account', class: 'outline' },
-          { id: 'openGithub', text: 'Use My Account' },
-        ]
-      })
-        .onAction('openGithub', () => {
-          this.createIssue('github', true)
-        })
-        .onAction('createWithout', () => {
-          this.createIssue('github', false)
-        })
-      return;
-    }
+    // Issues are only created by the user on GitHub: the app opens a
+    // pre-filled "new issue" page and sends nothing itself.
+    this.createIssue('github', genUrl ?? true);
   }
 
   openIssue(issue: Issue) {

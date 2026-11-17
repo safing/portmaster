@@ -1,7 +1,6 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+/* eslint-disable @typescript-eslint/no-unused-vars -- the signatures stay as before for the callers, the arguments are no longer sent anywhere */
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, of, throwError } from 'rxjs';
 import { environment } from 'src/environments/environment';
 
 export interface SupportSection {
@@ -20,63 +19,57 @@ export interface Issue<CreatedAt = Date> {
   labels: string[];
 }
 
+/**
+ * Error returned for private support tickets, which were a service of Safing.
+ */
+export const ERR_TICKETS_REMOVED =
+  'Private support tickets are not available in portmasterpro. Please open a GitHub issue instead.';
+
+/**
+ * SupportHubService used to talk to Safing's support hub:
+ * it listed issues, uploaded debug information and created issues and
+ * private tickets there.
+ *
+ * portmasterpro sends nothing to Safing. Issues are created by opening a
+ * pre-filled "new issue" page of the project repository in the browser, so
+ * the user sees and confirms everything that is submitted. Debug information
+ * is never uploaded.
+ */
 @Injectable({ providedIn: 'root' })
 export class SupportHubService {
-  constructor(private http: HttpClient) { }
-
+  /** Issues are not fetched from any server. */
   loadIssues(): Observable<Issue[]> {
-    interface LoadIssuesResponse {
-      issues: Issue<string>[];
-    }
-    return this.http.get<LoadIssuesResponse>(`${environment.supportHub}/api/v1/issues`)
-      .pipe(map(res => res.issues.map(issue => ({
-        ...issue,
-        createdAt: new Date(issue.createdAt),
-      })).reverse()));
+    return of([]);
   }
 
-  /** Uploads content under name */
-  uploadText(name: string, content: string): Observable<string> {
-    interface UploadResponse {
-      urls: {
-        [key: string]: string[];
-      }
-    }
-    const blob = new Blob([content], { type: 'text/plain' });
-    const data = new FormData();
-    data.set("file", blob, name);
-
-    return this.http.post<UploadResponse>(`${environment.supportHub}/api/v1/upload`, data)
-      .pipe(map(res => res.urls['file'][0]));
+  /**
+   * Debug information is not uploaded. Returns an empty URL, so that the
+   * issue does not reference an upload.
+   */
+  uploadText(_name: string, _content: string): Observable<string> {
+    return of('');
   }
 
-  /** Create github issue */
-  createIssue(repo: string, preset: string, title: string, sections: SupportSection[], debugInfoUrl?: string, opts?: {
+  /**
+   * Returns the URL of a pre-filled "new issue" page in the project
+   * repository. Nothing is sent: the user opens the page and submits it.
+   */
+  createIssue(_repo: string, _preset: string, title: string, sections: SupportSection[], _debugInfoUrl?: string, _opts?: {
     generateUrl: boolean,
   }): Observable<string> {
-    interface CreateIssueResponse {
-      url: string;
-    }
-    const req = {
-      title,
-      sections,
-      debugInfoUrl
-    }
-    let params = new HttpParams();
-    if (!!opts?.generateUrl) {
-      params = params.set('generate-url', '')
-    }
-    return this.http.post<CreateIssueResponse>(`${environment.supportHub}/api/v1/issues/${repo}/${preset}`, req, { params }).pipe(map(r => r.url))
+    const body = [
+      ...sections
+        .filter(section => !!section.body?.trim())
+        .map(section => `### ${section.title}\n\n${section.body.trim()}`),
+      '_Debug information is not uploaded. If it helps, copy it from the support page and paste the relevant parts here._',
+    ].join('\n\n');
+
+    const params = new URLSearchParams({ title, body });
+    return of(`${environment.issueTracker}/new?${params.toString()}`);
   }
 
-  createTicket(repoName: string, title: string, email: string, sections: SupportSection[], debugInfoUrl?: string): Observable<void> {
-    const req = {
-      title,
-      sections,
-      debugInfoUrl,
-      email,
-      repoName,
-    }
-    return this.http.post<void>(`${environment.supportHub}/api/v1/ticket`, req)
+  /** Private tickets were a support service of Safing and are not available. */
+  createTicket(_repoName: string, _title: string, _email: string, _sections: SupportSection[], _debugInfoUrl?: string): Observable<void> {
+    return throwError(() => new Error(ERR_TICKETS_REMOVED));
   }
 }

@@ -18,7 +18,6 @@ func TestDebug(t *testing.T) {
 		t.Fatal(err)
 	}
 	i.serviceGroup = mgr.NewGroup(n)
-	i.SpnGroup = mgr.NewExtendedGroup()
 	err = i.Start()
 	if err != nil {
 		t.Fatal(err)

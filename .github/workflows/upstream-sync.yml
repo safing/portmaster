@@ -1,0 +1,69 @@
+name: Upstream Sync
+
+# Checks safing/portmaster `development` for new commits and opens a pull request into the
+# fork mainline so upstream fixes are reviewed and merged regularly.
+# Runs weekly; can be triggered manually. Needs "Allow GitHub Actions to create and approve
+# pull requests" enabled in the repository settings (Settings → Actions → General).
+
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  UPSTREAM_REPO: https://github.com/safing/portmaster.git
+  UPSTREAM_BRANCH: development
+  TARGET_BRANCH: no-spn-no-telemetry
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+
+      - name: Fetch upstream and detect new commits
+        id: diff
+        run: |
+          git remote add upstream "$UPSTREAM_REPO"
+          git fetch --no-tags upstream "$UPSTREAM_BRANCH"
+          NEW=$(git rev-list --count "HEAD..upstream/$UPSTREAM_BRANCH")
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+          echo "upstream_sha=$(git rev-parse --short upstream/$UPSTREAM_BRANCH)" >> "$GITHUB_OUTPUT"
+          echo "$NEW new upstream commit(s)"
+          git log --oneline "HEAD..upstream/$UPSTREAM_BRANCH" | head -50 > /tmp/upstream-commits.txt || true
+
+      - name: Open or update the sync pull request
+        if: steps.diff.outputs.new != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_SHA: ${{ steps.diff.outputs.upstream_sha }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BRANCH="upstream-sync/$UPSTREAM_SHA"
+          git checkout -B "$BRANCH" "upstream/$UPSTREAM_BRANCH"
+          git push -f origin "$BRANCH"
+          if gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --base "$TARGET_BRANCH" --json number --jq 'length' | grep -q '^0$'; then
+            {
+              echo "Upstream \`safing/portmaster:$UPSTREAM_BRANCH\` has ${{ steps.diff.outputs.new }} new commit(s) up to \`$UPSTREAM_SHA\`."
+              echo
+              echo "Merge checklist:"
+              echo "- [ ] conflicts resolved (typical: \`Cargo.toml\` version, \`service/instance.go\`, \`spn/access\`)"
+              echo "- [ ] no SPN/account references re-introduced into \`service/\` (CI guard)"
+              echo "- [ ] all workflows green"
+              echo
+              echo '```'; cat /tmp/upstream-commits.txt; echo '```'
+            } > /tmp/body.md
+            gh pr create --repo "$GITHUB_REPOSITORY" --base "$TARGET_BRANCH" --head "$BRANCH" \
+              --title "chore: sync upstream development ($UPSTREAM_SHA)" --body-file /tmp/body.md
+          else
+            echo "PR already open for $BRANCH"
+          fi
