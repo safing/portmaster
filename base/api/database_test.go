@@ -1,7 +1,9 @@
 package api
 
 import (
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -243,4 +245,78 @@ func TestDatabaseAPIInsertWithoutAccessor(t *testing.T) {
 	if reply := <-replies; !strings.HasPrefix(reply, "2|error|") {
 		t.Fatalf("unexpected reply: %s", reply)
 	}
+}
+
+// TestDatabaseWebsocketReadLimit checks that the database websocket API
+// closes the connection on a client message exceeding the read limit, while
+// large legitimate messages are still accepted.
+func TestDatabaseWebsocketReadLimit(t *testing.T) { //nolint:paralleltest // Modifies package variable.
+	initTestDatabase(t)
+
+	// The production limit must not be smaller than the HTTP API body limit.
+	if dbAPIReadLimit < maxRequestBodySize {
+		t.Fatalf("websocket read limit %d is smaller than the HTTP request body limit %d", dbAPIReadLimit, maxRequestBodySize)
+	}
+
+	// Lower the limit to keep the test fast.
+	oldLimit := dbAPIReadLimit
+	dbAPIReadLimit = 2 << 20 // 2MiB
+	defer func() { dbAPIReadLimit = oldLimit }()
+
+	srv := httptest.NewServer(http.HandlerFunc(startDatabaseWebsocketAPI))
+	defer srv.Close()
+
+	clientConn, resp, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	defer func() { _ = clientConn.Close() }()
+
+	// updateMsg returns an update message of exactly the given size.
+	updateMsg := func(opID string, size int) []byte {
+		prefix := opID + `|update|api-test:ws-read-limit|J{"Msg":"`
+		suffix := `"}`
+		return []byte(prefix + strings.Repeat("a", size-len(prefix)-len(suffix)) + suffix)
+	}
+
+	// A large but legitimate message (1MiB) is accepted.
+	err = clientConn.WriteMessage(websocket.BinaryMessage, updateMsg("1", 1<<20))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = clientConn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	_, reply, err := clientConn.ReadMessage()
+	if err != nil {
+		t.Fatalf("1MiB message: connection failed: %s", err)
+	}
+	if string(reply) != "1|"+dbMsgTypeSuccess {
+		t.Fatalf("1MiB message: unexpected reply: %s", reply)
+	}
+
+	// A message slightly over the limit closes the connection.
+	// Write in the background, as the server may stop reading mid-message.
+	writeDone := make(chan struct{})
+	go func() {
+		defer close(writeDone)
+		_ = clientConn.WriteMessage(websocket.BinaryMessage, updateMsg("2", int(dbAPIReadLimit)+1))
+	}()
+	_ = clientConn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	_, reply, err = clientConn.ReadMessage()
+	switch {
+	case err == nil:
+		t.Errorf("oversized message: connection still open, got reply: %.100s", reply)
+	case websocket.IsCloseError(err, websocket.CloseMessageTooBig):
+		// Expected.
+	default:
+		var netErr net.Error
+		if errors.As(err, &netErr) && netErr.Timeout() {
+			t.Errorf("oversized message: connection was not closed: %s", err)
+		} else {
+			// The connection may also be reset before the close message is read.
+			t.Logf("oversized message: connection closed without close message: %s", err)
+		}
+	}
+	_ = clientConn.Close()
+	<-writeDone
 }

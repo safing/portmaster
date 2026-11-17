@@ -48,6 +48,24 @@ var (
 	// that keeps the connection open but stopped reading (frozen process,
 	// half-open TCP), which would otherwise block the writer forever.
 	dbAPIWriteTimeout = 60 * time.Second
+
+	// dbAPIReadLimit is the maximum size of a single message a client may send
+	// over the database websocket API. Without a limit, a single message of
+	// arbitrary size is buffered completely in memory.
+	//
+	// The largest legitimate client messages are record creates, updates and
+	// inserts (opID|cmd|key|<record>), eg. profiles with their settings or
+	// config values. These are in the range of kilobytes up to a few hundred
+	// kilobytes for very large rule lists; profile icons are not part of the
+	// profile record, they are uploaded via the HTTP API (profile/icon) and
+	// only referenced by file name.
+	//
+	// The limit is deliberately generous and the same as the HTTP API request
+	// body limit (maxRequestBodySize), so that anything that can be written
+	// via the HTTP API can also be written via the websocket API. It only
+	// exists to keep a single client from exhausting the memory of the
+	// service. It is a variable only so that tests can lower it.
+	dbAPIReadLimit int64 = maxRequestBodySize
 )
 
 func init() {
@@ -112,6 +130,9 @@ func startDatabaseWebsocketAPI(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
+	// Limit the size of incoming messages. When exceeded, the connection is
+	// closed with 1009 (message too big) and the reader fails.
+	wsConn.SetReadLimit(dbAPIReadLimit)
 
 	newDBAPI := &DatabaseWebsocketAPI{
 		DatabaseAPI: DatabaseAPI{
