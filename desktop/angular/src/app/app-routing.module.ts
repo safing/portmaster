@@ -57,12 +57,12 @@ const routes: Routes = [
     component: XrayPageComponent,
   },
   {
-    path: '**',
-    redirectTo: 'dashboard'
-  },
-  {
     path: 'dashboard',
     component: DashboardPageComponent
+  },
+  {
+    path: '**',
+    redirectTo: 'dashboard'
   }
 ];
 

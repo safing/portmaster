@@ -285,7 +285,13 @@ async fn core_serves_api_and_database() {
     // Firewall components are constructed even without root privileges.
     let firewall = &service.firewall;
     assert!(firewall.network.get_connection("does-not-exist").is_none());
-    assert!(firewall.profiles.layered_for(&pm_process::Process::empty("1-0")).is_none());
+    // Like Go, an unseen process gets a persisted default profile so that the
+    // UI can list it and its connections can be written to history.
+    let layered = firewall
+        .profiles
+        .layered_for(&pm_process::Process::empty("1-0"))
+        .expect("a default profile must be created for an unseen process");
+    assert!(!layered.local_profile().id.is_empty());
     assert!(data_dir.join("databases/history.db").exists());
     assert!(service
         .databases

@@ -324,10 +324,20 @@ impl SubscriptionStore {
         };
         let mut total = 0;
         for mut subscription in subscriptions {
-            let body = fetcher
-                .fetch(&subscription.url)
-                .map_err(Error::Fetch)?;
-            let links = decode_payload(&body).map_err(Error::Fetch)?;
+            let body = match fetcher.fetch(&subscription.url) {
+                Ok(body) => body,
+                Err(error) => {
+                    tracing::warn!(%error, id = %subscription.id, "xray: failed to refresh subscription");
+                    continue;
+                }
+            };
+            let links = match decode_payload(&body) {
+                Ok(links) => links,
+                Err(error) => {
+                    tracing::warn!(%error, id = %subscription.id, "xray: failed to decode subscription payload");
+                    continue;
+                }
+            };
             let mut nodes = Vec::new();
             for link in links {
                 match parse_profile(&link, &subscription.id, geoip) {

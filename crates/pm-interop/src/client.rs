@@ -114,19 +114,24 @@ impl TcpIvpnClient {
             write_half: AsyncMutex::new(None),
             events_tx,
             waiters: Arc::new(Mutex::new(HashMap::new())),
-            next_idx: AtomicU32::new(0),
+            next_idx: AtomicU32::new(1),
             reader_cancel: Mutex::new(None),
         }
     }
 
     fn next_message_idx(&self) -> u32 {
-        let idx = self.next_idx.fetch_add(1, Ordering::Relaxed);
-        if idx == 0 {
-            // Zero is reserved as "no index"; skip it on overflow.
-            self.next_idx.fetch_add(1, Ordering::Relaxed);
-            1
-        } else {
-            idx
+        // Zero is reserved as "no index"; allocate with CAS so two callers
+        // can never observe the same index on wraparound.
+        loop {
+            let current = self.next_idx.load(Ordering::Relaxed);
+            let next = if current == u32::MAX { 1 } else { current + 1 };
+            if self
+                .next_idx
+                .compare_exchange_weak(current, next, Ordering::Relaxed, Ordering::Relaxed)
+                .is_ok()
+            {
+                return current;
+            }
         }
     }
 

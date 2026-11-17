@@ -20,6 +20,17 @@ impl Xray {
     }
 }
 
+/// Removes userinfo and query parameters from a subscription URL so that
+/// credentials never appear in an API reply or a UI tooltip.
+fn redact_url(url: &str) -> String {
+    let Some((scheme, rest)) = url.split_once("://") else {
+        return url.split('?').next().unwrap_or(url).to_string();
+    };
+    let host = rest.rsplit('@').next().unwrap_or(rest);
+    let host = host.split('?').next().unwrap_or(host);
+    format!("{scheme}://{host}")
+}
+
 /// Registers the Xray endpoints on `api`.
 pub fn register_api(xray: &Arc<Xray>, api: &Api) -> pm_api::Result<()> {
     // GET: list. POST: add. PUT: update/refresh. DELETE: remove.
@@ -35,7 +46,15 @@ pub fn register_api(xray: &Arc<Xray>, api: &Api) -> pm_api::Result<()> {
         .with_struct(move |request| {
             if request.read_method {
                 let items = subscriptions.store.list().map_err(crate::Error::api)?;
-                // The Angular UI expects a plain array.
+                // The Angular UI expects a plain array. Never expose
+                // credentials embedded in the subscription URL.
+                let items = items
+                    .into_iter()
+                    .map(|mut item| {
+                        item.url = redact_url(&item.url);
+                        item
+                    })
+                    .collect::<Vec<_>>();
                 return serde_json::to_value(items).map_err(pm_api::ApiError::Json);
             }
             match request.effective_method.as_str() {
@@ -115,7 +134,18 @@ pub fn register_api(xray: &Arc<Xray>, api: &Api) -> pm_api::Result<()> {
         .with_read(PERMIT_USER)
         .with_struct(move |_| {
             let items = nodes.store.list_nodes().map_err(crate::Error::api)?;
-            // The Angular UI expects a plain array.
+            // The Angular UI expects a plain array. `raw_config` contains the
+            // full share link (UUIDs/passwords) and must never leave the core.
+            let items = items
+                .iter()
+                .filter_map(|node| {
+                    let mut value = serde_json::to_value(node).ok()?;
+                    if let Some(object) = value.as_object_mut() {
+                        object.remove("raw_config");
+                    }
+                    Some(value)
+                })
+                .collect::<Vec<_>>();
             serde_json::to_value(items).map_err(pm_api::ApiError::Json)
         }),
     )?;

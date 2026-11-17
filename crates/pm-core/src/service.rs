@@ -1026,6 +1026,9 @@ impl Service {
             }
         }
 
+        // The netquery feed must run regardless of interception state.
+        self.firewall.start_netquery_feed();
+
         // Install iptables and start the packet readers when enabled and
         // privileged. This is a no-op otherwise.
         if let Err(error) = self.firewall.start() {

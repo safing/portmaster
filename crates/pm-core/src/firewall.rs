@@ -29,8 +29,8 @@ use pm_network::{
 };
 use pm_process::{ProcReader, Process, ProcessCache};
 use pm_profile::{
-    GlobalProfileConfig, LayeredProfile, Profile, ProfileStore, SOURCE_LOCAL,
-    UNIDENTIFIED_PROFILE_ID,
+    Fingerprint, GlobalProfileConfig, LayeredProfile, Profile, ProfileStore,
+    FINGERPRINT_OPERATION_EQUALS, FINGERPRINT_TYPE_PATH, SOURCE_LOCAL, UNIDENTIFIED_PROFILE_ID,
 };
 use pm_resolver::ipinfo::IpInfoStore;
 use pm_resolver::ResolverService;
@@ -90,17 +90,55 @@ impl CoreProfiles {
             return Some(Arc::clone(profile));
         }
 
-        let profiles = self
-            .profiles
-            .read()
-            .unwrap_or_else(|error| error.into_inner());
-        let matching = pm_profile::find_matching_profile(&profiles, &process.matching_data())?;
+        let md = process.matching_data();
+        let existing = {
+            let profiles = self
+                .profiles
+                .read()
+                .unwrap_or_else(|error| error.into_inner());
+            pm_profile::find_matching_profile(&profiles, &md).map(|match_| match_.profile.clone())
+        };
+        let matching = match existing {
+            Some(profile) => profile,
+            None => {
+                // Go creates and persists a default profile for unidentified
+                // processes. Without this the UI never sees new apps and
+                // their connections never get history_enabled.
+                let path = md.path().to_string();
+                let matching_path = if md.matching_path().is_empty() {
+                    path.clone()
+                } else {
+                    md.matching_path().to_string()
+                };
+                let mut created = Profile::new(Profile {
+                    source: SOURCE_LOCAL.to_string(),
+                    presentation_path: path.clone(),
+                    use_presentation_path: true,
+                    fingerprints: vec![Fingerprint::new(
+                        FINGERPRINT_TYPE_PATH,
+                        "",
+                        FINGERPRINT_OPERATION_EQUALS,
+                        &matching_path,
+                    )],
+                    ..Profile::default()
+                });
+                created.name = name_from_path(&path);
+                if let Err(error) = self.store.save(&created) {
+                    tracing::warn!(%error, "profile: failed to save created profile");
+                } else {
+                    self.profiles
+                        .write()
+                        .unwrap_or_else(|error| error.into_inner())
+                        .push(created.clone());
+                }
+                created
+            }
+        };
         let layered = Arc::new(LayeredProfile::new(
-            Arc::new(matching.profile.clone()),
+            Arc::new(matching),
             &self.config,
             &self.global,
         ));
-        drop(profiles);
         self.layered
             .write()
             .unwrap_or_else(|error| error.into_inner())
@@ -560,6 +598,29 @@ pub struct Firewall {
     winkext_path: std::path::PathBuf,
 }
 
+/// Human-readable profile name derived from a binary path, like Go
+/// `binmeta.GenerateBinaryNameFromPath` for the common case.
+fn name_from_path(path: &str) -> String {
+    let name = path
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or(path)
+        .trim_end_matches(".exe");
+    let mut result = String::new();
+    for character in name.chars() {
+        if character == '-' || character == '_' {
+            result.push(' ');
+        } else {
+            result.push(character);
+        }
+    }
+    let mut chars = result.chars();
+    match chars.next() {
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+        None => String::new(),
+    }
+}
+
 impl Firewall {
     /// Builds the firewall components, without touching the network stack.
     pub fn new(deps: FirewallDeps<'_>) -> anyhow::Result<Firewall> {
@@ -701,6 +762,39 @@ impl Firewall {
     /// Requires root/CAP_NET_ADMIN. When privileges are missing the firewall
     /// stays unstarted and a warning is logged; the rest of the core keeps
     /// working.
+    /// Starts the netquery connection feed. Unlike packet interception this
+    /// must run even when the filter is disabled or the process is not root,
+    /// otherwise the UI sees no active applications or history rows.
+    pub fn start_netquery_feed(&self) {
+        let Some(mut subscription) = self.take_subscription() else {
+            return;
+        };
+        let cancel = self.cancel.clone();
+        let manager = Arc::clone(&self.netquery);
+        let network = Arc::clone(&self.network);
+        let handle_feed = tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    () = cancel.cancelled() => return,
+                    update = subscription.recv() => {
+                        let Some(update) = update else { return };
+                        let Some(conn) = network.get_connection(&update.key.key) else {
+                            continue;
+                        };
+                        let manager = Arc::clone(&manager);
+                        if let Err(error) = tokio::task::spawn_blocking(move || manager.handle(&conn)).await {
+                            tracing::error!(%error, "netquery: connection handler panicked");
+                        }
+                    }
+                }
+            }
+        });
+        self.tasks
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .push(handle_feed);
+    }
+
     #[cfg(target_os = "linux")]
     pub fn start(&self) -> anyhow::Result<()> {
         if !self.env.filter_enabled() {
@@ -755,7 +849,6 @@ impl Firewall {
         let handler = Arc::clone(&self.handler);
         let cancel = self.cancel.clone();
         let metrics = Arc::clone(&self.metrics);
-        let feed = self.netquery.clone();
         let dispatch = tokio::spawn(async move {
             loop {
                 tokio::select! {
@@ -778,30 +871,6 @@ impl Firewall {
             }
         });
 
-        let cancel = self.cancel.clone();
-        let manager = Arc::clone(&feed);
-        let network = Arc::clone(&self.network);
-        let mut subscription = self
-            .take_subscription()
-            .expect("network subscription");
-        let handle_feed = tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    () = cancel.cancelled() => return,
-                    update = subscription.recv() => {
-                        let Some(update) = update else { return };
-                        let Some(conn) = network.get_connection(&update.key.key) else {
-                            continue;
-                        };
-                        let manager = Arc::clone(&manager);
-                        if let Err(error) = tokio::task::spawn_blocking(move || manager.handle(&conn)).await {
-                            tracing::error!(%error, "netquery: connection handler panicked");
-                        }
-                    }
-                }
-            }
-        });
-
         let metrics_writer = {
             let metrics = Arc::clone(&self.metrics);
             let cancel = self.cancel.clone();
@@ -817,7 +886,7 @@ impl Firewall {
             .tasks
             .lock()
             .unwrap_or_else(|error| error.into_inner());
-        tasks.extend([dispatch, stop, handle_feed]);
+        tasks.extend([dispatch, stop]);
         if let Some(task) = metrics_writer {
             tasks.push(task);
         }

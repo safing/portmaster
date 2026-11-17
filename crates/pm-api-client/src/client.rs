@@ -199,7 +199,7 @@ impl Client {
                         let Some(message) = incoming else { break };
                         match message.pack() {
                             Ok(data) => {
-                                debug!("client: sent message: {}", String::from_utf8_lossy(&data));
+                                debug!("client: sent message of {} bytes", data.len());
                                 if let Err(err) = write.send(WsMessage::Binary(data.into())).await {
                                     warn!("client: write error: {err}");
                                     // Keep the unsent request for the next connection.

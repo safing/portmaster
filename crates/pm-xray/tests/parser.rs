@@ -67,3 +67,22 @@ fn detects_flags_bracket_codes_and_names() {
     assert_eq!(country_from_name("Frankfurt, Germany #2").unwrap().0, "DE");
     assert!(country_from_name("Mystery Node").is_none());
 }
+
+#[test]
+fn accepts_vmess_json_with_string_port() {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    let json = r#"{"v":"2","ps":"DE String Port","add":"de.example.net","port":"443","id":"00010203-0405-0607-0809-0a0b0c0d0e0f","net":"ws","type":"none"}"#;
+    let raw = format!("vmess://{}", STANDARD.encode(json));
+    let node = parse_profile(&raw, "sub-1", None).unwrap();
+    assert_eq!(node.port, 443);
+    assert_eq!(node.country_code, "DE");
+}
+
+#[test]
+fn percent_decode_does_not_panic_on_multibyte_characters() {
+    // Invalid percent escape followed by a 4-byte emoji. The old byte-index
+    // slice into &str panicked here ("not a char boundary").
+    let raw = "vless://00010203-0405-0607-0809-0a0b0c0d0e0f@example.com:443#%😀";
+    let node = parse_profile(raw, "sub-1", None).unwrap();
+    assert_eq!(node.port, 443);
+}

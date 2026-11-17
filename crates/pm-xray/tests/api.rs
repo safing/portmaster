@@ -254,3 +254,46 @@ fn stats_endpoint_reports_noop_fallback() {
     .unwrap();
     assert!(status.get("traffic").is_none());
 }
+
+#[test]
+fn api_never_exposes_node_secrets_or_subscription_credentials() {
+    use pm_xray::{AddSubscriptionRequest, XrayNode};
+
+    let (api, xray) = env();
+    xray.store
+        .add(&AddSubscriptionRequest {
+            name: String::new(),
+            url: "https://user:secret@example.com/sub?header-X-Key=token".into(),
+            enabled: false,
+        })
+        .unwrap();
+    let node = XrayNode {
+        id: "n1".into(),
+        subscription_id: "s1".into(),
+        name: "n".into(),
+        country_code: "DE".into(),
+        country_name: "Germany".into(),
+        protocol: pm_xray::Protocol::Vless,
+        address: "example.com".into(),
+        port: 443,
+        raw_config: "vless://uuid:password@example.com:443".into(),
+    };
+    xray.store.replace_nodes("s1", &[node]).unwrap();
+
+    let response = api.handle(request("GET", "/api/v1/xray/nodes", "", Vec::new()));
+    let body = response.body_string();
+    assert!(!body.contains("uuid:password"), "{body}");
+    assert!(!body.contains("raw_config"), "{body}");
+
+    let response = api.handle(request("GET", "/api/v1/xray/subscriptions", "", Vec::new()));
+    let body = response.body_string();
+    assert!(!body.contains("secret"), "{body}");
+    assert!(!body.contains("header-X-Key"), "{body}");
+}
+
+#[test]
+fn new_subscription_is_enabled_by_default() {
+    let req: AddSubscriptionRequest =
+        serde_json::from_str(r#"{"url":"https://example.com/sub"}"#).unwrap();
+    assert!(req.enabled);
+}

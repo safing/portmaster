@@ -102,7 +102,10 @@ pub(crate) fn percent_decode(text: &str) -> String {
                 i += 1;
             }
             b'%' if i + 2 < bytes.len() => {
-                if let Ok(byte) = u8::from_str_radix(&text[i + 1..i + 3], 16) {
+                // Slice the byte buffer: `text` is &str and i is a byte index,
+                // so slicing it here can split a multi-byte UTF-8 character.
+                let hex = std::str::from_utf8(&bytes[i + 1..i + 3]).ok();
+                if let Some(byte) = hex.and_then(|h| u8::from_str_radix(h, 16).ok()) {
                     out.push(byte);
                     i += 3;
                     continue;
@@ -369,9 +372,12 @@ fn parse_vmess(body: &str, fragment: Option<&str>) -> Result<ParsedProfile, Pars
             .unwrap_or("")
             .to_string()
     };
+    // v2rayN/panel emit `port` as a string; accept both spellings.
     let port = json
         .get("port")
-        .and_then(serde_json::Value::as_u64)
+        .and_then(|value| {
+            value.as_u64().or_else(|| value.as_str().and_then(|s| s.parse::<u64>().ok()))
+        })
         .and_then(|value| u16::try_from(value).ok())
         .ok_or_else(|| ParseError::Field("port", "missing or out of range".into()))?;
     if port == 0 {
@@ -774,7 +780,8 @@ pub(crate) fn parse_link(raw: &str) -> Result<ParsedProfile, ParseError> {
         "vless" => parse_vless(body, name),
         "vmess" => parse_vmess(body, fragment),
         "trojan" => parse_trojan(body, name),
-        "ss" | "ssr" => parse_shadowsocks(body, name),
+        "ss" => parse_shadowsocks(body, name),
+        "ssr" => Err(ParseError::Unsupported("ShadowsocksR is not supported".into())),
         "socks" | "socks5" | "socks5h" => parse_socks(body, name),
         "http" => parse_http(body, name, false),
         "https" => parse_http(body, name, true),

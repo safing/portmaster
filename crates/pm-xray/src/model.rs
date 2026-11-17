@@ -115,8 +115,12 @@ pub struct AddSubscriptionRequest {
     #[serde(default)]
     pub name: String,
     pub url: String,
-    #[serde(default)]
+    #[serde(default = "default_enabled")]
     pub enabled: bool,
+}
+
+fn default_enabled() -> bool {
+    true
 }
 
 /// Payload of `POST xray/subscriptions/update`.

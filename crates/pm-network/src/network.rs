@@ -226,11 +226,13 @@ impl Network {
             ..Connection::default()
         };
 
+        // The process must be attached before update_features(): it reads
+        // conn.process to resolve the profile (and history_enabled).
+        conn.process = Some(Arc::clone(&process));
         if let Some(profile) = self.env.profiles.local_profile(&process) {
             conn.internal = profile.internal;
             conn.update_features();
         }
-        conn.process = Some(process);
 
         // DNS requests are saved by the nameserver depending on the result of
         // the query.
