@@ -15,6 +15,7 @@ tracing.workspace = true
 # them are not buildable on other platforms, so they are only compiled on Linux;
 # conntrack and queue resolve to inert stubs everywhere else.
 [target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
 nfq = "0.2.6"
 rustix = { version = "1.1.6", features = ["net", "fs"] }
 

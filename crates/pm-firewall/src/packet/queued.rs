@@ -2,8 +2,9 @@
 //! offers to `packet_handler.go`.
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Instant;
+use parking_lot::Mutex;
 
 use pm_interception::marks::PacketFacts;
 use pm_interception::packet::{icmp_type, PROTO_ICMPV6};
@@ -89,6 +90,7 @@ pub struct NfqPacket {
     facts: PacketFacts,
     payload_offset: Option<usize>,
     raw: Vec<u8>,
+    cached_icmp: IcmpType,
     verdict: Mutex<Option<VerdictHandle>>,
     set: AtomicBool,
     started: Instant,
@@ -106,11 +108,13 @@ impl NfqPacket {
             icmpv6: packet.info.protocol == PROTO_ICMPV6,
             dst: packet.info.dst,
         };
+        let cached_icmp = icmp_type(&packet.payload).map_or(IcmpType::NoLayer, IcmpType::Type);
         NfqPacket {
             info,
             facts,
             payload_offset: packet.info.payload_offset,
             raw: packet.payload,
+            cached_icmp,
             verdict: Mutex::new(Some(packet.verdict)),
             set: AtomicBool::new(false),
             started: Instant::now(),
@@ -138,7 +142,7 @@ impl QueuedPacket for NfqPacket {
     }
 
     fn verdict_set(&self) -> bool {
-        self.set.load(Ordering::SeqCst)
+        self.set.load(Ordering::Acquire)
     }
 
     fn payload(&self) -> Option<&[u8]> {
@@ -153,14 +157,13 @@ impl QueuedPacket for NfqPacket {
     }
 
     fn icmp_type(&self) -> IcmpType {
-        // Packets were parsed before, so loading cannot fail.
-        icmp_type(&self.raw).map_or(IcmpType::NoLayer, IcmpType::Type)
+        self.cached_icmp
     }
 
     fn set_verdict(&self, verdict: Verdict) -> Result<(), VerdictError> {
-        let mut guard = self.verdict.lock().unwrap_or_else(|e| e.into_inner());
+        let mut guard = self.verdict.lock();
         let handle = guard.take().ok_or(VerdictError::AlreadySet)?;
-        self.set.store(true, Ordering::SeqCst);
+        self.set.store(true, Ordering::Release);
         handle.set(verdict.mark(&self.facts));
         if let Some(recorder) = &self.metrics {
             recorder(

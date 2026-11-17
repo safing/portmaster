@@ -47,12 +47,33 @@ pub struct PacketStats {
     pub failed: u64,
 }
 
+/// A 64-byte aligned and cache-line padded atomic u64 to eliminate false sharing across CPU cores.
+#[derive(Default, Debug)]
+#[repr(align(64))]
+pub struct CachePaddedAtomicU64(AtomicU64);
+
+impl CachePaddedAtomicU64 {
+    #[allow(dead_code)]
+    pub const fn new(val: u64) -> Self {
+        Self(AtomicU64::new(val))
+    }
+}
+
+impl std::ops::Deref for CachePaddedAtomicU64 {
+    type Target = AtomicU64;
+
+    #[inline(always)]
+    fn deref(&self) -> &AtomicU64 {
+        &self.0
+    }
+}
+
 #[derive(Default)]
 struct Counters {
-    accepted: AtomicU64,
-    blocked: AtomicU64,
-    dropped: AtomicU64,
-    failed: AtomicU64,
+    accepted: CachePaddedAtomicU64,
+    blocked: CachePaddedAtomicU64,
+    dropped: CachePaddedAtomicU64,
+    failed: CachePaddedAtomicU64,
 }
 
 /// Returned when the nameserver IP matcher is set twice.

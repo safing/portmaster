@@ -396,7 +396,7 @@ impl ProcFs {
         paths.reverse();
         for path in paths {
             if let Ok(link) = fs::read_link(&path) {
-                if link.to_string_lossy() == target {
+                if link.as_os_str() == target.as_str() {
                     return true;
                 }
             }
@@ -415,8 +415,9 @@ pub fn parse_table(stack: Stack, data: &str) -> (Vec<ConnectionInfo>, Vec<BindIn
         Stack::Tcp6 | Stack::Udp6 => convert_ipv6,
     };
 
+    let mut fields_buf = [""; 24];
     for line in data.lines().skip(1) {
-        let fields = split_fields(line);
+        let fields = split_fields_into(line, &mut fields_buf);
         if fields.len() < 14 {
             continue;
         }
@@ -456,51 +457,76 @@ pub fn parse_table(stack: Stack, data: &str) -> (Vec<ConnectionInfo>, Vec<BindIn
     (connections, binds)
 }
 
+/// Splits a line on whitespace and colons into a provided buffer, without heap allocation.
+#[inline]
+fn split_fields_into<'a, 'b>(line: &'a str, out: &'b mut [&'a str]) -> &'b [&'a str] {
+    let mut count = 0;
+    for field in line.split(|c: char| c.is_whitespace() || c == ':') {
+        if !field.is_empty() {
+            if count < out.len() {
+                out[count] = field;
+                count += 1;
+            } else {
+                break;
+            }
+        }
+    }
+    &out[..count]
+}
+
 /// Splits a line on whitespace and colons, like Go's `FieldsFunc`.
-fn split_fields(line: &str) -> Vec<&str> {
+pub fn split_fields(line: &str) -> Vec<&str> {
     line.split(|c: char| c.is_whitespace() || c == ':')
         .filter(|field| !field.is_empty())
         .collect()
 }
 
-/// Converts a proc hex IPv4 address (reversed byte order).
+#[inline(always)]
+fn hex_val(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
+    }
+}
+
+/// Converts a proc hex IPv4 address (reversed byte order) without heap allocations.
 pub fn convert_ipv4(data: &str) -> Option<IpAddr> {
-    let decoded = hex_decode(data)?;
-    if decoded.len() != 4 {
+    let bytes = data.as_bytes();
+    if bytes.len() != 8 {
         return None;
+    }
+    let mut decoded = [0u8; 4];
+    for (i, pair) in bytes.chunks_exact(2).enumerate() {
+        let high = hex_val(pair[0])?;
+        let low = hex_val(pair[1])?;
+        decoded[i] = (high << 4) | low;
     }
     Some(IpAddr::V4(Ipv4Addr::new(
         decoded[3], decoded[2], decoded[1], decoded[0],
     )))
 }
 
-/// Converts a proc hex IPv6 address (groups of four bytes reversed).
+/// Converts a proc hex IPv6 address (groups of four bytes reversed) without heap allocations.
 pub fn convert_ipv6(data: &str) -> Option<IpAddr> {
-    let mut decoded = hex_decode(data)?;
-    if decoded.len() != 16 {
+    let bytes = data.as_bytes();
+    if bytes.len() != 32 {
         return None;
+    }
+    let mut decoded = [0u8; 16];
+    for (i, pair) in bytes.chunks_exact(2).enumerate() {
+        let high = hex_val(pair[0])?;
+        let low = hex_val(pair[1])?;
+        decoded[i] = (high << 4) | low;
     }
     for group in decoded.chunks_exact_mut(4) {
         group.reverse();
     }
-    let mut octets = [0u8; 16];
-    octets.copy_from_slice(&decoded);
-    Some(IpAddr::V6(Ipv6Addr::from(octets)))
+    Some(IpAddr::V6(Ipv6Addr::from(decoded)))
 }
 
-fn hex_decode(data: &str) -> Option<Vec<u8>> {
-    let bytes = data.as_bytes();
-    if !bytes.len().is_multiple_of(2) {
-        return None;
-    }
-    let mut decoded = Vec::with_capacity(bytes.len() / 2);
-    for pair in bytes.chunks_exact(2) {
-        let high = (pair[0] as char).to_digit(16)?;
-        let low = (pair[1] as char).to_digit(16)?;
-        decoded.push((high * 16 + low) as u8);
-    }
-    Some(decoded)
-}
+
 
 #[cfg(test)]
 mod tests {

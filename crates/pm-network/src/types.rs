@@ -1,6 +1,6 @@
 //! Basic network types: verdicts, connection types, packet info and IDs.
 
-use std::fmt;
+use std::fmt::{self, Write};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::time::SystemTime;
 
@@ -281,6 +281,16 @@ impl From<&pm_interception::packet::Parsed> for PacketInfo {
     }
 }
 
+#[inline]
+fn write_ip(buf: &mut String, ip: Option<IpAddr>) {
+    match ip {
+        Some(ip) => {
+            let _ = write!(buf, "{}", canonical_ip(ip));
+        }
+        None => buf.push_str("<none>"),
+    }
+}
+
 /// Creates a connection ID, like Go `packet.CreateConnectionID`.
 ///
 /// The ID does not depend on the packet direction: the local side comes first.
@@ -292,15 +302,22 @@ pub fn create_connection_id(
     dst_port: u16,
     inbound: bool,
 ) -> String {
-    let (src_s, dst_s) = (format_ip(src), format_ip(dst));
+    let mut s = String::with_capacity(48);
+    let (first_ip, first_port, second_ip, second_port) = if inbound {
+        (dst, dst_port, src, src_port)
+    } else {
+        (src, src_port, dst, dst_port)
+    };
+
+    let _ = write!(s, "{protocol}-");
+    write_ip(&mut s, first_ip);
     if protocol == protocol::TCP || protocol == protocol::UDP {
-        if inbound {
-            return format!("{protocol}-{dst_s}-{dst_port}-{src_s}-{src_port}");
-        }
-        return format!("{protocol}-{src_s}-{src_port}-{dst_s}-{dst_port}");
+        let _ = write!(s, "-{first_port}-");
+        write_ip(&mut s, second_ip);
+        let _ = write!(s, "-{second_port}");
+    } else {
+        s.push('-');
+        write_ip(&mut s, second_ip);
     }
-    if inbound {
-        return format!("{protocol}-{dst_s}-{src_s}");
-    }
-    format!("{protocol}-{src_s}-{dst_s}")
+    s
 }

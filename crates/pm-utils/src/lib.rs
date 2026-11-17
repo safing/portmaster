@@ -18,6 +18,7 @@ pub mod fs;
 pub mod mimetypes;
 pub mod once_again;
 pub mod renameio;
+pub mod ring_buffer;
 pub mod slices;
 pub mod stable_pool;
 pub mod structure;

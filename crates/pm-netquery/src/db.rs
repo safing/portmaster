@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 use std::path::Path;
-use std::sync::{Mutex, MutexGuard};
+use parking_lot::{Mutex, MutexGuard};
 
 use base64::Engine as _;
 use rusqlite::types::{Value as Sql, ValueRef};
@@ -62,8 +62,7 @@ impl Database {
     }
 
     fn lock(&self) -> MutexGuard<'_, Connection> {
-        // A panic while holding the lock leaves the connection usable.
-        self.conn.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+        self.conn.lock()
     }
 
     fn apply_migrations(&self) -> Result<(), DbError> {

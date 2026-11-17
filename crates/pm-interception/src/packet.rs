@@ -211,6 +211,41 @@ fn parse_transport(parsed: &mut Parsed, data: &[u8], offset: usize) -> Result<()
     Ok(())
 }
 
+/// Computes the RFC 1071 internet checksum over `data`.
+/// Uses a 64-bit unrolled accumulator over 8-byte blocks followed by carry folding,
+/// maximizing hardware instruction pipelining and auto-vectorization across x86_64 AVX2 / ARM NEON.
+pub fn internet_checksum(data: &[u8]) -> u16 {
+    let mut sum: u64 = 0;
+    let mut chunks = data.chunks_exact(8);
+    for chunk in &mut chunks {
+        let w0 = u16::from_be_bytes([chunk[0], chunk[1]]) as u64;
+        let w1 = u16::from_be_bytes([chunk[2], chunk[3]]) as u64;
+        let w2 = u16::from_be_bytes([chunk[4], chunk[5]]) as u64;
+        let w3 = u16::from_be_bytes([chunk[6], chunk[7]]) as u64;
+        sum += w0 + w1 + w2 + w3;
+    }
+    let remainder = chunks.remainder();
+    let mut chunks2 = remainder.chunks_exact(2);
+    for chunk in &mut chunks2 {
+        sum += u16::from_be_bytes([chunk[0], chunk[1]]) as u64;
+    }
+    let remainder = chunks2.remainder();
+    if let Some(&b) = remainder.first() {
+        sum += (u16::from(b) << 8) as u64;
+    }
+
+    while (sum >> 16) != 0 {
+        sum = (sum & 0xffff) + (sum >> 16);
+    }
+    !(sum as u16)
+}
+
+/// Verifies whether an RFC 1071 internet checksum over `data` is valid (folds to 0).
+#[inline]
+pub fn verify_internet_checksum(data: &[u8]) -> bool {
+    internet_checksum(data) == 0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -303,5 +338,23 @@ mod tests {
         frag[6] = 0x00;
         frag[7] = 0x10;
         assert_eq!(parse_layer3(&frag).unwrap().dst_port, 0);
+    }
+
+    #[test]
+    fn rfc1071_internet_checksum_test() {
+        // Standard RFC 1071 test vector
+        let data = [0x00, 0x01, 0xf2, 0x03, 0xf4, 0xf5, 0xf6, 0xf7];
+        let csum = internet_checksum(&data);
+        assert_eq!(csum, 0x220d);
+
+        // A packet with its checksum inserted folds to 0
+        let mut pkt = data.to_vec();
+        pkt.extend_from_slice(&csum.to_be_bytes());
+        assert!(verify_internet_checksum(&pkt));
+
+        // Odd length test
+        let odd_data = [0x45, 0x00, 0x00, 0x3c, 0x1c, 0x46, 0x40, 0x00, 0x40];
+        let csum_odd = internet_checksum(&odd_data);
+        assert_ne!(csum_odd, 0);
     }
 }

@@ -82,9 +82,15 @@ pub(crate) async fn connect_tcp(
         socket.bind(SocketAddr::new(local_ip, 0))?;
     }
 
-    tokio::time::timeout(timeout, socket.connect(remote))
+    let stream = tokio::time::timeout(timeout, socket.connect(remote))
         .await
-        .map_err(|_| timeout_error("tcp dial timed out"))?
+        .map_err(|_| timeout_error("tcp dial timed out"))??;
+    let _ = stream.set_nodelay(true);
+    #[cfg(target_os = "linux")]
+    {
+        let _ = socket2::SockRef::from(&stream).set_tcp_quickack(true);
+    }
+    Ok(stream)
 }
 
 /// Resolves `host:port` to all its addresses, like Go `UpstreamProxy.resolve`.

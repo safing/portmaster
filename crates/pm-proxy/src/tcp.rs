@@ -82,6 +82,11 @@ impl TcpProxy {
                 res = self.listener.accept() => {
                     match res {
                         Ok((client_stream, peer_addr)) => {
+                            let _ = client_stream.set_nodelay(true);
+                            #[cfg(target_os = "linux")]
+                            {
+                                let _ = socket2::SockRef::from(&client_stream).set_tcp_quickack(true);
+                            }
                             if self.config.max_sessions > 0
                                 && self.metrics.active_sessions.load(Ordering::Relaxed) >= self.config.max_sessions
                             {
@@ -219,8 +224,14 @@ async fn handle_tcp_session(
         connect_tcp(target_addr, binding, connect_timeout).await?
     };
 
+    let _ = upstream.set_nodelay(true);
+    #[cfg(target_os = "linux")]
+    {
+        let _ = socket2::SockRef::from(&upstream).set_tcp_quickack(true);
+    }
+
     let result = tokio::select! {
-        res = tokio::io::copy_bidirectional(&mut client, &mut upstream) => {
+        res = tokio::io::copy_bidirectional_with_sizes(&mut client, &mut upstream, 65536, 65536) => {
             let (tx, rx) = res?;
             metrics.add_bytes(tx, rx);
             Ok(())

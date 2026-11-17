@@ -1,59 +1,82 @@
-//! The connection store, a port of Go `network/connection_store.go`.
+//! High-performance sharded connection store, a low-contention port of Go `network/connection_store.go`.
 
 use std::collections::HashMap;
-use std::sync::RwLock;
+use std::hash::{BuildHasher, Hash, Hasher};
+use foldhash::fast::RandomState;
+use parking_lot::RwLock;
 
 use crate::connection::SharedConnection;
 
-/// Connections by ID.
-#[derive(Default)]
+const NUM_SHARDS: usize = 32;
+
+/// Connections partitioned across 32 shards to minimize lock contention under
+/// high concurrent packet throughput.
 pub struct ConnectionStore {
-    items: RwLock<HashMap<String, SharedConnection>>,
+    shards: Box<[RwLock<HashMap<String, SharedConnection, RandomState>>; NUM_SHARDS]>,
+    hasher: RandomState,
+}
+
+impl Default for ConnectionStore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ConnectionStore {
     pub fn new() -> ConnectionStore {
-        ConnectionStore::default()
+        let hasher = RandomState::default();
+        let shards = Box::new(std::array::from_fn(|_| {
+            RwLock::new(HashMap::with_hasher(RandomState::default()))
+        }));
+        ConnectionStore { shards, hasher }
+    }
+
+    #[inline]
+    fn shard_index(&self, id: &str) -> usize {
+        let mut h = self.hasher.build_hasher();
+        id.hash(&mut h);
+        (h.finish() as usize) % NUM_SHARDS
     }
 
     pub fn add(&self, id: &str, conn: &SharedConnection) {
-        self.items
-            .write()
-            .expect("lock poisoned")
-            .insert(id.to_string(), conn.clone());
+        let idx = self.shard_index(id);
+        self.shards[idx].write().insert(id.to_string(), conn.clone());
     }
 
     pub fn delete(&self, id: &str) {
-        self.items.write().expect("lock poisoned").remove(id);
+        let idx = self.shard_index(id);
+        self.shards[idx].write().remove(id);
     }
 
     pub fn get(&self, id: &str) -> Option<SharedConnection> {
-        self.items.read().expect("lock poisoned").get(id).cloned()
+        let idx = self.shard_index(id);
+        self.shards[idx].read().get(id).cloned()
     }
 
     /// Returns the first connection whose ID matches the prefix; the result is
     /// not deterministic if several match.
     pub fn find_by_prefix(&self, prefix: &str) -> Option<SharedConnection> {
-        self.items
-            .read()
-            .expect("lock poisoned")
-            .iter()
-            .find(|(id, _)| id.starts_with(prefix))
-            .map(|(_, conn)| conn.clone())
+        for shard in self.shards.iter() {
+            let guard = shard.read();
+            if let Some((_, conn)) = guard.iter().find(|(id, _)| id.starts_with(prefix)) {
+                return Some(conn.clone());
+            }
+        }
+        None
     }
 
     /// Returns a snapshot of all connections.
     pub fn list(&self) -> Vec<SharedConnection> {
-        self.items
-            .read()
-            .expect("lock poisoned")
-            .values()
-            .cloned()
-            .collect()
+        let mut total = Vec::new();
+        for shard in self.shards.iter() {
+            let guard = shard.read();
+            total.extend(guard.values().cloned());
+        }
+        total
     }
 
     pub fn len(&self) -> usize {
-        self.items.read().expect("lock poisoned").len()
+        self.shards.iter().map(|s| s.read().len()).sum()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -63,9 +86,15 @@ impl ConnectionStore {
     /// Counts connections with `ended != 0`, exactly like Go `active()`
     /// (which despite its name counts the ended ones).
     pub fn active(&self) -> usize {
-        self.list()
-            .iter()
-            .filter(|conn| conn.lock().expect("lock poisoned").ended != 0)
-            .count()
+        let mut count = 0;
+        for shard in self.shards.iter() {
+            let guard = shard.read();
+            for conn in guard.values() {
+                if conn.lock().expect("lock poisoned").ended != 0 {
+                    count += 1;
+                }
+            }
+        }
+        count
     }
 }

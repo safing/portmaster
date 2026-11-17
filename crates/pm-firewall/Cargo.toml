@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 async-trait.workspace = true
 hickory-proto.workspace = true
+parking_lot.workspace = true
 pm-config = { path = "../pm-config" }
 pm-endpoints = { path = "../pm-endpoints" }
 pm-interception = { path = "../pm-interception" }

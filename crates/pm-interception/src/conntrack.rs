@@ -272,7 +272,7 @@ impl Conntrack {
     /// Waits for the ACK of the last sent message; replies to older requests
     /// (e.g. leftovers of an aborted dump) are skipped.
     fn wait_ack(&mut self) -> io::Result<()> {
-        let mut buf = vec![0u8; 8192];
+        let mut buf = [0u8; 8192];
         loop {
             let (n, _) = recv(&self.fd, &mut buf[..], RecvFlags::empty())?;
             for (kind, seq, payload) in messages(&buf[..n]) {

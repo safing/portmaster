@@ -1,13 +1,40 @@
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
-/// ProxyMetrics tracks live and historical connection metrics.
+/// A 64-byte cacheline-padded atomic u64 to avoid false sharing.
+#[repr(align(64))]
+#[derive(Debug, Default)]
+pub struct PaddedAtomicU64(AtomicU64);
+
+impl std::ops::Deref for PaddedAtomicU64 {
+    type Target = AtomicU64;
+    #[inline(always)]
+    fn deref(&self) -> &AtomicU64 {
+        &self.0
+    }
+}
+
+/// A 64-byte cacheline-padded atomic usize to avoid false sharing.
+#[repr(align(64))]
+#[derive(Debug, Default)]
+pub struct PaddedAtomicUsize(AtomicUsize);
+
+impl std::ops::Deref for PaddedAtomicUsize {
+    type Target = AtomicUsize;
+    #[inline(always)]
+    fn deref(&self) -> &AtomicUsize {
+        &self.0
+    }
+}
+
+/// ProxyMetrics tracks live and historical connection metrics with cacheline-padded
+/// atomics to eliminate false sharing between high-frequency transfer bytes and session counters.
 #[derive(Debug, Default)]
 pub struct ProxyMetrics {
-    pub active_sessions: AtomicUsize,
-    pub total_sessions: AtomicU64,
-    pub bytes_tx: AtomicU64,
-    pub bytes_rx: AtomicU64,
-    pub errors: AtomicU64,
+    pub active_sessions: PaddedAtomicUsize,
+    pub total_sessions: PaddedAtomicU64,
+    pub bytes_tx: PaddedAtomicU64,
+    pub bytes_rx: PaddedAtomicU64,
+    pub errors: PaddedAtomicU64,
 }
 
 impl ProxyMetrics {

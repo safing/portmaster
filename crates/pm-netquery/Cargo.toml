@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 base64.workspace = true
 http.workspace = true
+parking_lot.workspace = true
 pm-api = { path = "../pm-api" }
 pm-dsd = { path = "../pm-dsd" }
 pm-network = { path = "../pm-network" }
