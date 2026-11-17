@@ -55,6 +55,10 @@ export class DynamicItemsPaginator<T> implements Pagination<T> {
           this._pageLoading$.next(false);
           this._pageItems$.next(results);
           this._pageNumber$.next(pageNumber);
+        },
+        error: () => {
+          this._pageLoading$.next(false);
+          this._pageItems$.next([]);
         }
       });
   }

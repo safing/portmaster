@@ -106,7 +106,16 @@ export class XrayPageComponent implements OnInit, OnDestroy {
   }
 
   private onCountryClick(event: CountryEvent): void {
-    this.selectedCountry = this.selectedCountry === event.countryCode ? null : event.countryCode;
+    const wasSelected = this.selectedCountry === event.countryCode;
+    this.selectedCountry = wasSelected ? null : event.countryCode;
+
+    if (!wasSelected) {
+      const countryPins = this.pins.filter(pin => pin.entity.Country === event.countryCode);
+      if (countryPins.length > 0) {
+        this.selectPin(countryPins[0]);
+        this.connect(countryPins[0]);
+      }
+    }
     this.cdr.markForCheck();
   }
 

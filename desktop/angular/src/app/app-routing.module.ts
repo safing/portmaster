@@ -50,7 +50,7 @@ const routes: Routes = [
   },
   {
     path: 'spn',
-    component: SpnPageComponent,
+    redirectTo: 'xray',
   },
   {
     path: 'xray',

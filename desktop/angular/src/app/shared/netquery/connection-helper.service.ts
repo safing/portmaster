@@ -38,7 +38,7 @@ export class NetqueryHelper {
   private addToFilter$ = new Subject<SfngSearchbarFields>();
   private destroy$ = new Subject<void>();
   private appProfiles$ = new BehaviorSubject<LocalAppProfile[]>([]);
-  private spnMapPins$ = new BehaviorSubject<Pin[] | null>(null);
+  private spnMapPins$ = new BehaviorSubject<Pin[] | null>([]);
   private readonly integration = inject(INTEGRATION_SERVICE);
 
   readonly onShiftKey: Observable<boolean>;
@@ -108,9 +108,14 @@ export class NetqueryHelper {
 
     this.spnService.watchPins()
       .pipe(takeUntil(this.destroy$))
-      .subscribe(pins => {
-        this.spnMapPins$.next(pins);
-      })
+      .subscribe({
+        next: pins => {
+          this.spnMapPins$.next(pins || []);
+        },
+        error: () => {
+          this.spnMapPins$.next([]);
+        }
+      });
   }
 
   decodePrettyValues(field: keyof NetqueryConnection, values: any[]): any[] {

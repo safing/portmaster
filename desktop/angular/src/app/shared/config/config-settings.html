@@ -94,16 +94,24 @@
     </ng-container>
 
     <ng-container *ngIf="!!others">
-      <h2 id="config:other" #navLink>
-        Other
-      </h2>
-      <div class="category">
-        <ng-container *ngFor="let setting of others; trackBy: configService.trackBy">
-          <app-generic-setting *appExpertiseLevel="setting.ExpertiseLevel; data: setting; overwrite: mustShowSetting"
-            [setting]="setting" [resetLabelText]="resetLabelText" (save)="saveSetting($event, setting)"
-            [lockDefaults]="lockDefaults" [displayStackable]="displayStackable" [selectMode]="exportMode" [(selected)]="selectedSettings[setting.Key]">
-          </app-generic-setting>
-        </ng-container>
+      <div class="max-w-screen-lg space-y-4" #navLink anchor="top">
+        <h2 id="config:other" class="w-full px-0 ml-0 text-xl text-primary">
+          Other
+        </h2>
+        <div class="flex items-center justify-between p-3 px-5 bg-gray-300 rounded select-none">
+          <h4 class="text-md text-primary">Other Settings</h4>
+        </div>
+        <div class="space-y-4">
+          <ng-container *ngFor="let setting of others; trackBy: configService.trackBy">
+            <div class="ml-6"
+              *appExpertiseLevel="setting.ExpertiseLevel; data: setting; overwrite: mustShowSetting">
+              <app-generic-setting [class.highlighted]="highlightKey === setting.Key" [setting]="setting"
+                [attr.id]="setting.Key" [resetLabelText]="resetLabelText" (save)="saveSetting($event, setting)"
+                [lockDefaults]="lockDefaults" [displayStackable]="displayStackable" [selectMode]="exportMode" [(selected)]="selectedSettings[setting.Key]">
+              </app-generic-setting>
+            </div>
+          </ng-container>
+        </div>
       </div>
     </ng-container>
     <div class="pb-24"></div>

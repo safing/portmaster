@@ -345,10 +345,10 @@ export class ConfigSettingsViewComponent
           settings.forEach((setting) => {
             let pushed = false;
             this.subsystems.forEach((subsys) => {
+              const prefix = subsys.ConfigKeySpace.slice('config:'.length);
               if (
-                setting.Key.startsWith(
-                  subsys.ConfigKeySpace.slice('config:'.length)
-                )
+                setting.Key.startsWith(prefix) ||
+                (subsys.ID === 'xray' && setting.Key.startsWith('spn/'))
               ) {
                 // get the category name annotation and fallback to 'others'
                 let catName = 'other';

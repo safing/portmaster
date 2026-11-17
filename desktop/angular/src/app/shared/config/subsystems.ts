@@ -209,64 +209,28 @@ export const subsystems : SubsystemWithExpertise[] = [
     }
   },
   {
-    minimumExpertise: ExpertiseLevelNumber.developer,
+    minimumExpertise: ExpertiseLevelNumber.user,
     isDisabled: false,
     hasUserDefinedValues: false,
-    ID: "spn",
-    Name: "SPN",
-    Description: "Safing Privacy Network",
+    ID: "xray",
+    Name: "Xray",
+    Description: "Xray VPN Integration and Outbound Routing",
     Modules: [
       {
-        Name: "captain",
-        Enabled: false
-      },
-      {
-        Name: "terminal",
-        Enabled: false
-      },
-      {
-        Name: "cabin",
-        Enabled: false
-      },
-      {
-        Name: "ships",
-        Enabled: false
-      },
-      {
-        Name: "docks",
-        Enabled: false
-      },
-      {
-        Name: "access",
-        Enabled: false
-      },
-      {
-        Name: "crew",
-        Enabled: false
-      },
-      {
-        Name: "navigator",
-        Enabled: false
-      },
-      {
-        Name: "sluice",
-        Enabled: false
-      },
-      {
-        Name: "patrol",
-        Enabled: false
+        Name: "xray",
+        Enabled: true
       }
     ],
-    ToggleOptionKey: "spn/enable",
+    ToggleOptionKey: "xray/enable",
     ExpertiseLevel: "user",
     ReleaseLevel: 0,
-    ConfigKeySpace: "config:spn/",
+    ConfigKeySpace: "config:xray/",
     _meta: {
       Created: 0,
       Modified: 0,
       Expires: 0,
       Deleted: 0,
-      Key: "runtime:subsystems/spn"
+      Key: "runtime:subsystems/xray"
     }
   },
   {

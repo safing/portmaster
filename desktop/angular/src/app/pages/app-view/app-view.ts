@@ -77,8 +77,8 @@ export class AppViewComponent implements OnInit, OnDestroy {
 
   private readonly i18n = inject(I18nService);
 
-  canUseHistory = false;
-  canViewBW = false;
+  canUseHistory = true;
+  canViewBW = true;
   canUseSPN = false;
 
   /** subscription to our update-process observable */
@@ -617,11 +617,9 @@ export class AppViewComponent implements OnInit, OnDestroy {
     this.spn.profile$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (profile) => {
         this.canUseHistory =
-          profile?.current_plan?.feature_ids?.includes(FeatureID.History) ||
-          false;
-        this.canViewBW =
-          profile?.current_plan?.feature_ids?.includes(FeatureID.Bandwidth) ||
-          false;
+          profile?.current_plan?.feature_ids?.includes(FeatureID.History) ??
+          true;
+        this.canViewBW = true;
         this.canUseSPN =
           profile?.current_plan?.feature_ids?.includes(FeatureID.SPN) || false;
       },

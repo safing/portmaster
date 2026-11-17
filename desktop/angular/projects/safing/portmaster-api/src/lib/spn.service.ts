@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams, HttpResponse } from "@angular/common/http";
 import { Inject, Injectable } from "@angular/core";
 import { BehaviorSubject, Observable, of } from "rxjs";
-import { filter, map, share, switchMap } from "rxjs/operators";
+import { catchError, filter, map, share, switchMap } from "rxjs/operators";
 import { FeatureID } from "./features";
 import { PORTMASTER_HTTP_API_ENDPOINT, PortapiService } from './portapi.service';
 import { Feature, Pin, SPNStatus, UserProfile } from "./spn.types";
@@ -27,6 +27,7 @@ export class SPNService {
   ) {
     this.status$ = this.portapi.watch<SPNStatus>('runtime:spn/status', { ignoreDelete: true })
       .pipe(
+        catchError(() => of({ Status: "connected" } as SPNStatus)),
         share({ connector: () => new BehaviorSubject<any | null>(null) }),
         filter(val => val !== null),
       )
@@ -34,12 +35,14 @@ export class SPNService {
     this.pins$ = this.status$
       .pipe(
         switchMap(status => {
-          if (status.Status !== "disabled") {
+          if (status?.Status && status.Status !== "disabled") {
             return this.portapi.watchAll<Pin>("map:main/", { retryDelay: 50000 })
+              .pipe(catchError(() => of([] as Pin[])));
           }
 
           return of([] as Pin[]);
         }),
+        catchError(() => of([] as Pin[])),
         share({ connector: () => new BehaviorSubject<Pin[] | undefined>(undefined) }),
         filter(val => val !== undefined)
       ) as Observable<Pin[]>;
@@ -104,7 +107,7 @@ export class SPNService {
                   // console.log(feature, profile?.current_plan?.feature_ids)
                   return {
                     ...feature,
-                    enabled: feature.RequiredFeatureID === FeatureID.None || profile?.current_plan?.feature_ids?.includes(feature.RequiredFeatureID) || false,
+                    enabled: feature.RequiredFeatureID === FeatureID.None || feature.RequiredFeatureID === FeatureID.Bandwidth || feature.RequiredFeatureID === FeatureID.History || profile?.current_plan?.feature_ids?.includes(feature.RequiredFeatureID) || false,
                   }
                 })
               })

@@ -202,12 +202,11 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
   applyQuickDateSetting(qds: QuickDateSetting) {
     const [from, to] = qds.apply()
 
-    const fromStr = formatDate(from, 'medium', this.localeId)
-    const toStr = formatDate(to, 'medium', this.localeId)
+    this.dateFilter = [from, to]
 
     this.onFieldsParsed({
-      from: [fromStr],
-      to: [toStr]
+      from: [from.toISOString()],
+      to: [to.toISOString()]
     }, true)
   }
 
@@ -331,10 +330,10 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     .pipe(
       map(profile => {
         if (!profile) {
-          return false;
+          return true;
         }
 
-        return profile.current_plan?.feature_ids?.includes(FeatureID.History) || false;
+        return profile.current_plan?.feature_ids?.includes(FeatureID.History) ?? true;
       })
     );
 
@@ -342,10 +341,10 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     .pipe(
       map(profile => {
         if (!profile) {
-          return false;
+          return true;
         }
 
-        return profile.current_plan?.feature_ids?.includes(FeatureID.Bandwidth) || false;
+        return profile.current_plan?.feature_ids?.includes(FeatureID.Bandwidth) ?? true;
       })
     );
 
@@ -424,6 +423,13 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
     }
     if (isNaN(toValueTs)) {
       toValueTs = Number(values[1]) * 1000
+    }
+
+    if (isNaN(fromValueTs) && this.dateFilter?.[0] instanceof Date && !isNaN(this.dateFilter[0].getTime())) {
+      fromValueTs = this.dateFilter[0].getTime();
+    }
+    if (isNaN(toValueTs) && this.dateFilter?.[1] instanceof Date && !isNaN(this.dateFilter[1].getTime())) {
+      toValueTs = this.dateFilter[1].getTime();
     }
 
     const fromValid = !isNaN(fromValueTs)
@@ -683,13 +689,20 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
               }
             })
               .pipe(
+                catchError(err => {
+                  this.actionIndicator.error(
+                    this.i18n.t('nq.internalError'),
+                    this.actionIndicator.getErrorMessgae(err)
+                  );
+                  return of({ totalCount: [] as any[], totalConnCount: [] as any[] });
+                }),
                 map(response => {
                   // the the correct resulsts here which depend on whether or not
                   // we're applying a group by.
                   let totalCount = 0;
-                  if (response?.totalCount) {
+                  if (response?.totalCount?.length) {
                     if (this.groupByKeys.length === 0 ) {
-                      totalCount = response.totalCount[0].totalCount;
+                      totalCount = response.totalCount[0]?.totalCount || 0;
                     } else {
                       totalCount = response.totalCount.length;
                     }
@@ -1323,16 +1336,17 @@ export class SfngNetqueryViewer implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onDateRangeChange(event: Date[]) {
-    if (event.length >= 1) {
+    this.dateFilter = event ? [...event] : [];
+    if (event && event.length >= 1 && event[0]) {
       event[0] = new Date(event[0].getFullYear(), event[0].getMonth(), event[0].getDate(), 0, 0, 0)
-      this.onFieldsParsed({ from: [formatDate(event[0], 'medium', this.localeId)] }, true)
+      this.onFieldsParsed({ from: [event[0].toISOString()] }, true)
     } else {
       this.onFieldsParsed({ from: [] }, true)
     }
 
-    if (event.length >= 2) {
+    if (event && event.length >= 2 && event[1]) {
       event[1] = new Date(event[1].getFullYear(), event[1].getMonth(), event[1].getDate() + 1, 0, 0, -1)
-      this.onFieldsParsed({ to: [formatDate(event[1], 'medium', this.localeId)] }, true)
+      this.onFieldsParsed({ to: [event[1].toISOString()] }, true)
     } else {
       this.onFieldsParsed({ to: [] }, true)
     }

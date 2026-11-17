@@ -12,33 +12,7 @@
     </div>
   </div>
 
-  <div class="absolute top-0 bottom-0 left-0 flex flex-row items-start justify-start w-full h-full"
-    [class.w-full]="currentUser === null || status === 'disabled'">
-    <div
-      class="z-10 flex flex-col items-center justify-center flex-grow h-full bg-white bg-opacity-90 backdrop-filter backdrop-blur-sm"
-      *ngIf="!currentUser || status === 'disabled'">
-
-      <spn-feature-carousel class="w-full p-10 mb-6 overflow-visible h-1/2">
-      </spn-feature-carousel>
-
-      <div class="flex flex-col items-center justify-center gap-4">
-        <button (click)="openAccountDetails()" *ngIf="!currentUser?.current_plan?.feature_ids?.includes(featureID)"
-          class="w-56 px-5 py-2 font-medium uppercase rounded-full bg-blue bg-opacity-90 hover:bg-blue text-primary">
-          {{ 'spn.login' | t: undefined : ('' | i18nVersion) }}
-        </button>
-
-        <button (click)="toggleSPN()" *ngIf="currentUser?.current_plan?.feature_ids?.includes(featureID)"
-          class="w-56 px-5 py-2 font-medium text-white uppercase rounded-full bg-blue bg-opacity-90 hover:bg-blue">
-          {{ 'spn.enable' | t: undefined : ('' | i18nVersion) }}
-        </button>
-
-        <a href="https://safing.io/pricing/?source=Portmaster"
-          class="w-56 px-5 py-2 font-medium text-center text-white uppercase rounded-full bg-background bg-opacity-90 hover:bg-background">
-          {{ 'spn.pricing' | t: undefined : ('' | i18nVersion) }}
-        </a>
-      </div>
-    </div>
-  </div>
+  <!-- Overlay disabled: map is always directly accessible without login -->
 </ng-container>
 
 
@@ -52,8 +26,7 @@
 </div>
 
 <div class="relative flex-grow h-full">
-  <spn-map-renderer class="block w-full h-full" mapId="spn-map"
-    [class.disabled]="!currentUser || (mapService.status$ | async) === 'disabled'">
+  <spn-map-renderer class="block w-full h-full" mapId="spn-map">
   </spn-map-renderer>
 
   <spn-map-country-overlay *ngIf="hoveredCountry as ctry" class="absolute right-10 bottom-10"
