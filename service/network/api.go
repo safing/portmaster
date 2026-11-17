@@ -168,7 +168,10 @@ func AddNetworkDebugData(di *debug.Info, profile, where string) {
 
 		// Count.
 		total++
-		switch conn.Verdict { //nolint:exhaustive
+		conn.Lock()
+		verdict := conn.Verdict
+		conn.Unlock()
+		switch verdict { //nolint:exhaustive
 		case VerdictAccept,
 			VerdictRerouteToNameserver,
 			VerdictRerouteToSplitTun,
