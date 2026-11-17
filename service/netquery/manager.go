@@ -10,6 +10,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/runtime"
 	"github.com/safing/portmaster/service/network"
+	"github.com/safing/portmaster/service/resolver"
 	"github.com/safing/structures/dsd"
 )
 
@@ -193,6 +194,29 @@ func (mng *Manager) pushConnUpdate(_ context.Context, meta record.Meta, conn Con
 	return nil
 }
 
+// connExtraData is the extra data of a connection that is stored as JSON in
+// the extra_data column.
+//
+// It is encoded exactly like the map[string]any it replaces: The fields are
+// in the sorted order of the map keys, and a field is omitted if and only if
+// its key was not set in the map. The entity fields are pointers, so that
+// they are set to null instead of being omitted if the entity has no value.
+// New fields must keep the key order, and their types must not have
+// MarshalJSON or MarshalText methods with pointer receivers, which the map
+// did not use. TestConvertConnectionExtraData compares the encoding with the
+// map.
+type connExtraData struct {
+	BlockedByLists   *[]string                   `json:"blockedByLists,omitempty"`
+	BlockedEntities  *[]string                   `json:"blockedEntities,omitempty"`
+	CNAME            *[]string                   `json:"cname,omitempty"`
+	DNS              *resolver.DNSRequestContext `json:"dns,omitempty"`
+	PID              int                         `json:"pid"`
+	ProcessCreatedAt int64                       `json:"processCreatedAt"`
+	Reason           *network.Reason             `json:"reason,omitempty"`
+	SplitTun         *network.SplitTunContext    `json:"split_tun,omitempty"`
+	Tunnel           any                         `json:"tunnel,omitempty"`
+}
+
 // convertConnection converts conn to the local representation used
 // to persist the information in SQLite.
 // The caller must hold the lock to the given network.Connection.
@@ -243,35 +267,35 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 		c.Active = true
 	}
 
-	extraData := map[string]interface{}{
-		"pid":              conn.ProcessContext.PID,
-		"processCreatedAt": conn.ProcessContext.CreatedAt,
+	extraData := connExtraData{
+		PID:              conn.ProcessContext.PID,
+		ProcessCreatedAt: conn.ProcessContext.CreatedAt,
 	}
 
 	if conn.TunnelContext != nil {
-		extraData["tunnel"] = conn.TunnelContext
+		extraData.Tunnel = conn.TunnelContext
 		exitNode := conn.TunnelContext.GetExitNodeID()
 		c.ExitNode = &exitNode
 	}
 
 	if conn.SplitTunContext != nil {
-		extraData["split_tun"] = conn.SplitTunContext
+		extraData.SplitTun = conn.SplitTunContext
 	}
 
 	if conn.DNSContext != nil {
-		extraData["dns"] = conn.DNSContext
+		extraData.DNS = conn.DNSContext
 	}
 
 	// TODO(ppacher): enable when TLS inspection is merged
 	// if conn.TLSContext != nil {
-	// 	extraData["tls"] = conn.TLSContext
+	// 	extraData.TLS = conn.TLSContext
 	// }
 
 	if conn.Entity != nil {
-		extraData["cname"] = conn.Entity.CNAME
-		extraData["blockedByLists"] = conn.Entity.BlockedByLists
-		extraData["blockedEntities"] = conn.Entity.BlockedEntities
-		extraData["reason"] = conn.Reason
+		extraData.CNAME = &conn.Entity.CNAME
+		extraData.BlockedByLists = &conn.Entity.BlockedByLists
+		extraData.BlockedEntities = &conn.Entity.BlockedEntities
+		extraData.Reason = &conn.Reason
 
 		c.RemoteIP = conn.Entity.IP.String()
 		c.RemotePort = conn.Entity.Port
@@ -288,7 +312,7 @@ func convertConnection(conn *network.Connection) (*Conn, error) {
 
 	// pre-compute the JSON blob for the extra data column
 	// and assign it.
-	extraDataBlob, err := json.Marshal(extraData)
+	extraDataBlob, err := json.Marshal(&extraData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal extra data: %w", err)
 	}
