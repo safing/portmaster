@@ -36,6 +36,17 @@ func (s *Status) handleModuleStatusUpdate(_ *mgr.WorkerCtx, update mgr.StateUpda
 	s.statesLock.Lock()
 	defer s.statesLock.Unlock()
 
+	// State update callbacks run in their own goroutines, so updates of the
+	// same module may arrive out of order. Use the module's current states,
+	// read under the lock, so that the last callback always applies the
+	// latest states instead of a stale update.
+	for _, current := range s.instance.GetStates() {
+		if current.Module == update.Module {
+			update = current
+			break
+		}
+	}
+
 	s.states[update.Module] = update
 	s.deriveNotificationsFromStateUpdate(update)
 	s.triggerPublishStatus()
