@@ -9,6 +9,7 @@
 pub mod api;
 pub mod block;
 pub mod conn;
+pub mod dns_check;
 pub mod env;
 pub mod error;
 pub mod ipinfo;
@@ -29,6 +30,7 @@ use std::sync::Arc;
 
 pub use block::is_blocked_upstream;
 pub use conn::{BasicResolverConn, Query, ResolverConn};
+pub use dns_check::ResolverDnsCheck;
 pub use error::{ParseResolverError, ResolveError};
 pub use model::{
     IpScope, Resolver, ResolverInfo, Scope, BLOCK_DETECTION_DISABLED, BLOCK_DETECTION_EMPTY_ANSWER,

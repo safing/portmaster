@@ -81,6 +81,21 @@ fn ipv4_routes_are_decoded_little_endian() {
 }
 
 #[test]
+fn ipv4_routes_skip_malformed_gateways() {
+    let data = "Iface\tDestination\tGateway\tFlags\tRefCnt\tUse\tMetric\tMask\n\
+                eth0\t00000000\tNOTHEX\t0003\t0\t0\t100\t00FFFFFF\n\
+                tun0\t00000000\t0101A8C0\t0003\t0\t0\t0\t00FFFFFF\n";
+    let gateways = parse_ipv4_routes(data).expect("parse routes");
+    assert_eq!(
+        gateways.len(),
+        1,
+        "a malformed line must not abort the remaining gateways"
+    );
+    assert_eq!(gateways[0].interface, "tun0");
+    assert_eq!(gateways[0].ip, "192.168.1.1".parse::<IpAddr>().unwrap());
+}
+
+#[test]
 fn ipv6_routes_ignore_link_local_entries() {
     let zero = "00000000000000000000000000000000";
     let data = format!(

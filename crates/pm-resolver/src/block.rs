@@ -35,17 +35,8 @@ pub fn is_blocked_upstream(detection: &str, answer: &Message) -> bool {
             }
 
             for ip in ips {
-                match ip {
-                    IpAddr::V4(v4) => {
-                        if v4 != Ipv4Addr::new(0, 0, 0, 0) {
-                            return false;
-                        }
-                    }
-                    IpAddr::V6(v6) => {
-                        if v6 != Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0) {
-                            return false;
-                        }
-                    }
+                if !is_zero_ip(ip) {
+                    return false;
                 }
             }
 
@@ -59,6 +50,14 @@ pub fn is_blocked_upstream(detection: &str, answer: &Message) -> bool {
         }
         _ => false,
     }
+}
+
+/// Go's `ip.IsUnspecified()` treats an IPv4-mapped `::ffff:0.0.0.0` as the
+/// IPv4 zero address too, so canonicalize before comparing.
+fn is_zero_ip(ip: IpAddr) -> bool {
+    let canonical = ip.to_canonical();
+    canonical == IpAddr::V4(Ipv4Addr::UNSPECIFIED)
+        || canonical == IpAddr::V6(Ipv6Addr::UNSPECIFIED)
 }
 
 #[cfg(test)]
@@ -101,6 +100,11 @@ mod tests {
         let mut zero_v6_msg = make_test_message(ResponseCode::NoError);
         zero_v6_msg.add_answer(Record::from_rdata(name.clone(), 60, RData::AAAA(AAAA(Ipv6Addr::UNSPECIFIED))));
         assert!(is_blocked_upstream(BLOCK_DETECTION_ZERO_IP, &zero_v6_msg));
+
+        // ::ffff:0.0.0.0 (IPv4-mapped zero) -> true, like Go's IsUnspecified
+        let mut mapped_zero_msg = make_test_message(ResponseCode::NoError);
+        mapped_zero_msg.add_answer(Record::from_rdata(name.clone(), 60, RData::AAAA(AAAA("::ffff:0.0.0.0".parse().unwrap()))));
+        assert!(is_blocked_upstream(BLOCK_DETECTION_ZERO_IP, &mapped_zero_msg));
 
         // Non-zero IP -> false
         let mut real_ip_msg = make_test_message(ResponseCode::NoError);

@@ -19,6 +19,22 @@ pub const ONLINE_CHECK_INTERVAL: Duration = Duration::from_secs(15);
 /// Monitor interval while offline.
 pub const OFFLINE_CHECK_INTERVAL: Duration = Duration::from_secs(1);
 
+/// Go's `net.Flags.String()` restricted to the flags this port tracks.
+fn flags_string(up: bool, loopback: bool) -> String {
+    let mut flags = Vec::new();
+    if up {
+        flags.push("up");
+    }
+    if loopback {
+        flags.push("loopback");
+    }
+    if flags.is_empty() {
+        "0".to_string()
+    } else {
+        flags.join("|")
+    }
+}
+
 /// Watches the network interfaces for changes.
 pub struct NetworkChangeMonitor {
     source: Arc<dyn InterfaceSource>,
@@ -56,8 +72,10 @@ impl NetworkChangeMonitor {
         let mut hasher = sha1::Sha1::new();
         for interface in interfaces {
             hasher.update(interface.name.as_bytes());
-            hasher.update([u8::from(interface.up), u8::from(interface.loopback)]);
-            hasher.update(interface.mac.unwrap_or_default().as_bytes());
+            // Go hashes `iface.Flags.String()`. The system source tracks only
+            // up and loopback, so build the equivalent flag string. The MAC is
+            // deliberately not hashed, matching Go.
+            hasher.update(flags_string(interface.up, interface.loopback).as_bytes());
             for (ip, prefix) in interface.addrs {
                 hasher.update(ip.to_string().as_bytes());
                 hasher.update([prefix]);

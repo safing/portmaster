@@ -205,8 +205,17 @@ pub fn parse_ipv4_routes(data: &str) -> Result<Vec<GatewayInfo>, String> {
         if fields.len() < 4 || fields[1] != "00000000" {
             continue;
         }
-        let gateway = decode_le_ipv4(fields[2])
-            .ok_or_else(|| format!("could not parse gateway {} from /proc/net/route", fields[2]))?;
+        let gateway = match decode_le_ipv4(fields[2]) {
+            Some(gateway) => gateway,
+            None => {
+                // One malformed line must not hide the remaining gateways.
+                tracing::warn!(
+                    raw = fields[2],
+                    "netenv: could not parse gateway from /proc/net/route"
+                );
+                continue;
+            }
+        };
         let mask = fields
             .get(7)
             .and_then(|value| decode_le_ipv4(value))
