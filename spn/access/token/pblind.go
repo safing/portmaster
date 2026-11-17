@@ -461,6 +461,9 @@ func (pbh *PBlindHandler) Verify(token *Token) error {
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrTokenMalformed, err)
 	}
+	if t.Signature == nil {
+		return fmt.Errorf("%w: missing signature", ErrTokenMalformed)
+	}
 
 	// Check if serial is valid.
 	switch {
