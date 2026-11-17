@@ -441,7 +441,11 @@ func (n *Notification) delete(pushUpdate bool) {
 	func() {
 		notsLock.Lock()
 		defer notsLock.Unlock()
-		delete(nots, n.EventID)
+		// Only remove the entry if it is this very notification, as it might
+		// have been replaced by a newer one with the same EventID.
+		if nots[n.EventID] == n {
+			delete(nots, n.EventID)
+		}
 	}()
 
 	// Close expiry channel if available.
