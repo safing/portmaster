@@ -45,9 +45,19 @@ jobs:
       - name: Reject known Safing account endpoints
         run: |
           ! grep -RInE 'account\.safing\.io|telemetry\.safing\.io|api\.safing\.io' service/sync spn/access
-      - name: Reject outbound HTTP clients in removed account packages
+      - name: Reject outbound HTTP clients in sync and removed account packages
+        # service/sync serves the local import/export API and needs net/http
+        # for status codes, but must never send requests itself.
         run: |
-          ! grep -RInE 'net/http|http\.Client|http\.NewRequest' service/sync spn/access
+          ! grep -RInE 'net/http' spn/access
+          ! grep -RInE 'http\.Client|http\.NewRequest|http\.(Get|Post|Head|PostForm)\(|DefaultClient' service/sync spn/access
+      - name: Reject Safing online check and tracking parameters
+        run: |
+          ! grep -RIn --include='*.go' 'online-check\.safing\.io' service base
+          ! grep -RIn 'source=Portmaster' service base desktop/angular/src desktop/angular/projects desktop/tauri/src-tauri/src
+      - name: Reject the Safing support hub in the UI
+        run: |
+          ! grep -RIn 'support\.safing\.io' desktop/angular/src desktop/angular/projects
       - name: Reject spn/access imports anywhere in service/
         run: |
           ! grep -RIn --include='*.go' '"github.com/safing/portmaster/spn/access' service
