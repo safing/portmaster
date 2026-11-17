@@ -281,3 +281,53 @@ fn finds_matching_profiles() {
     assert!(process.find_profile(&[]).is_none());
     let _ = root;
 }
+
+#[test]
+fn set_primary_profile_updates_cached_process() {
+    let (_root, cache) = setup("profile-id");
+
+    let process = cache.get_or_find(2000).unwrap();
+    assert_eq!(process.primary_profile_id, "");
+
+    assert_eq!(cache.set_primary_profile(2000, "local/_child"), 1);
+    let updated = cache
+        .get_from_storage(process.key())
+        .expect("updated process");
+    assert_eq!(updated.primary_profile_id, "local/_child");
+    // The previously handed-out Arc is an immutable snapshot.
+    assert_eq!(process.primary_profile_id, "");
+
+    // Re-assigning the same value changes nothing.
+    assert_eq!(cache.set_primary_profile(2000, "local/_child"), 0);
+
+    // Other and unknown PIDs are left alone.
+    let parent = cache.get_or_find(1500).unwrap();
+    assert_eq!(parent.primary_profile_id, "");
+    assert_eq!(cache.set_primary_profile(9999, "local/_missing"), 0);
+}
+
+#[test]
+fn portmaster_special_profile_helpers() {
+    assert_eq!(pm_process::PORTMASTER_APP_PROFILE_ID, "_portmaster-app");
+    assert_eq!(
+        pm_process::PORTMASTER_NOTIFIER_PROFILE_ID,
+        "_portmaster-notifier"
+    );
+    assert_eq!(
+        pm_process::portmaster_app_profile_scoped_id(),
+        "local/_portmaster-app"
+    );
+    assert_eq!(
+        pm_process::portmaster_notifier_profile_scoped_id(),
+        "local/_portmaster-notifier"
+    );
+    assert!(pm_process::is_portmaster_component_profile_id(
+        "_portmaster-app"
+    ));
+    assert!(pm_process::is_portmaster_component_profile_id(
+        "_portmaster-notifier"
+    ));
+    assert!(!pm_process::is_portmaster_component_profile_id(
+        "_portmaster"
+    ));
+}
