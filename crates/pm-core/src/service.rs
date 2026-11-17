@@ -1,6 +1,7 @@
 //! Service startup: databases, configuration and the API.
 
 use std::path::PathBuf;
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -76,8 +77,12 @@ pub struct Service {
     pub interop: Arc<pm_interop::Interop>,
     /// Core-side environment of the interoperability module.
     pub interop_env: Arc<crate::interop::CoreInteropEnv>,
-    /// Triggered by a restart request (updater or API).
-    pub restart_token: CancellationToken,
+    /// Cancelled when the service should stop, both for a graceful shutdown
+    /// and for a restart (updater or API).
+    pub stop_token: CancellationToken,
+    /// Set only when the stop was requested by a restart (API or updater), so
+    /// `main` can exit with [`crate::cli::RESTART_EXIT_CODE`] instead of 0.
+    restart_requested: Arc<std::sync::atomic::AtomicBool>,
     /// Split tunnel proxies.
     pub split_proxies: Arc<pm_splittun::Proxies>,
     /// Pending split tunnel requests.
@@ -157,11 +162,16 @@ impl Service {
             &databases,
         )));
 
-        // Restart requests from the updater are handled as a graceful stop;
-        // the service manager can then start the new binary.
-        let restart_token = CancellationToken::new();
-        let updater_restart = restart_token.clone();
-        let service_restart_token = restart_token.clone();
+        // One token stops the service for both a graceful shutdown and a
+        // restart. A separate flag records *why* it stopped: a restart must
+        // exit with the supervisor's restart code (23) so that the service
+        // manager actually starts the new binary. Without it, `run()` returns
+        // Ok and main exits 0, which `Restart=on-failure` never acts on.
+        let stop_token = CancellationToken::new();
+        let restart_requested = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let updater_stop = stop_token.clone();
+        let updater_restart_requested = Arc::clone(&restart_requested);
+        let service_stop_token = stop_token.clone();
 
         // Binary updater: checks the release channel, downloads and applies on
         // user action only, needs a restart.
@@ -204,7 +214,10 @@ impl Service {
                 Arc::new(pm_updates::HttpsClient::new()),
                 env!("CARGO_PKG_VERSION"),
                 Some(Arc::clone(&notifications)),
-                Some(Arc::new(move || updater_restart.cancel())),
+                Some(Arc::new(move || {
+                    updater_restart_requested.store(true, Ordering::SeqCst);
+                    updater_stop.cancel();
+                })),
             )
             .map_err(|error| anyhow::anyhow!("create binary updater: {error}"))?,
         );
@@ -394,7 +407,7 @@ impl Service {
         xray.start();
 
         // The remaining core endpoints: shutdown and directory map.
-        let shutdown_token = service_restart_token.clone();
+        let shutdown_token = service_stop_token.clone();
         api.register_endpoint(
             pm_api::Endpoint::new("core/shutdown", "Shut Down Portmaster", "Shut down the Portmaster Core Service and all UI components.")
                 .with_write(pm_api::PERMIT_SELF)
@@ -419,12 +432,15 @@ impl Service {
         )
         .map_err(|error| anyhow::anyhow!("register paths api: {error}"))?;
 
-        // Restart endpoint; a restart is a graceful stop for the supervisor.
-        let api_restart = service_restart_token.clone();
+        // Restart endpoint: stop gracefully, but remember that this was a
+        // restart so main exits with the supervisor's restart exit code.
+        let api_restart = service_stop_token.clone();
+        let api_restart_requested = Arc::clone(&restart_requested);
         api.register_endpoint(
             pm_api::Endpoint::new("core/restart", "Restart Portmaster", "Restart the Portmaster Core Service.")
                 .with_write(pm_api::PERMIT_ADMIN)
                 .with_action(move |_| {
+                    api_restart_requested.store(true, Ordering::SeqCst);
                     api_restart.cancel();
                     Ok("restart initiated".to_string())
                 }),
@@ -603,7 +619,7 @@ impl Service {
             crate::control::CoreControlEnv::new(
                 Arc::clone(&config),
                 Arc::clone(&firewall),
-                service_restart_token.clone(),
+                service_stop_token.clone(),
             ),
             Arc::new(crate::control::CoreNotificationSink(Arc::clone(&notifications)))
                 as Arc<dyn pm_control::NotificationSink>,
@@ -692,7 +708,9 @@ impl Service {
         )
         .map_err(|error| anyhow::anyhow!("register netquery api: {error}"))?;
 
-        api.set_ready(true);
+        // Readiness is published in `run()`, after interception startup has
+        // been attempted, so `/api/v1/ready` is not true while part of the
+        // service is still being wired up.
 
         Ok(Service {
             config,
@@ -721,7 +739,8 @@ impl Service {
             broadcasts,
             interop,
             interop_env,
-            restart_token,
+            stop_token,
+            restart_requested,
             split_proxies: Arc::clone(&split_proxies),
             split_queue: Arc::clone(&split_queue),
             sync,
@@ -738,6 +757,15 @@ impl Service {
     /// Returns the bound API address.
     pub fn local_addr(&self) -> std::net::SocketAddr {
         self.local_addr
+    }
+
+    /// Returns whether the service was asked to restart rather than shut down.
+    ///
+    /// `main` uses this to exit with [`crate::cli::RESTART_EXIT_CODE`] so the
+    /// supervisor restarts the process. A plain shutdown (including SIGTERM)
+    /// leaves this false and exits 0.
+    pub fn restart_requested(&self) -> bool {
+        self.restart_requested.load(Ordering::SeqCst)
     }
 
     /// Returns the addresses the nameserver listens on.
@@ -1037,14 +1065,21 @@ impl Service {
         self.interop_env
             .set_interception_started(self.firewall.is_running());
 
+        // Publish readiness only now that the API is fully wired and packet
+        // interception startup has been attempted. A failed start (for example
+        // without root privileges) is not fatal: the core keeps serving the
+        // API, so it is still "ready". Readiness therefore means "API usable
+        // and interception startup attempted", not "interception active".
+        self.api.set_ready(true);
+
         let outcome: anyhow::Result<()> = tokio::select! {
             result = server => result.map_err(anyhow::Error::from),
             _ = shutdown_signal() => {
                 tracing::info!("shutting down");
                 Ok(())
             }
-            _ = self.restart_token.cancelled() => {
-                tracing::info!("restart requested, stopping the service");
+            _ = self.stop_token.cancelled() => {
+                tracing::info!("stop requested, stopping the service");
                 Ok(())
             }
             _ = maintenance(Arc::clone(&databases)) => Ok(()),
