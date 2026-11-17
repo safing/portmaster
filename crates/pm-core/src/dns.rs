@@ -13,8 +13,8 @@ use pm_firewall::dns_filter::FirewallDnsHook;
 use pm_firewall::packet::{LayeredProfileLookup, PacketEnv};
 use pm_nameserver::{
     DnsRequestInfo, FilterOutcome, FirewallHook, ListenerEvent, Nameserver, NameserverDeps,
-    NameserverIpMatcher, NetstateLookup, PermissiveHook, RequestAttributor, Running, StartOptions,
-    SystemEnv,
+    NameserverIpMatcher, NetstateLookup, PermissiveHook, RequestAttributor, Running, ServerEnv,
+    StartOptions, SystemEnv,
 };
 use pm_netenv::{network_changed_flag, OnlineStatus};
 use pm_netstate::{NetState, ProcFs};
@@ -292,7 +292,8 @@ impl Dns {
             let config = Arc::clone(config);
             move || config.get_as_bool(CFG_NETWORK_SERVICE, false)()
         };
-        let system_env = Arc::new(SystemEnv::new(network_service));
+        let system_env_concrete = Arc::new(SystemEnv::new(network_service));
+        let system_env: Arc<dyn ServerEnv> = Arc::clone(&system_env_concrete) as Arc<dyn ServerEnv>;
         let firewall_hook = Arc::new(OnceLock::new());
         let matcher = Arc::new(RwLock::new(None));
         let listeners = Arc::new(Listeners {
@@ -329,7 +330,7 @@ impl Dns {
         // Reset failing queries after a network change, like Go's nameserver
         // reading `netenv.GetNetworkChangedFlag`.
         tasks.push(tokio::spawn({
-            let system_env = Arc::clone(&system_env);
+            let system_env = Arc::clone(&system_env_concrete);
             let cancel = cancel.clone();
             let flag = network_changed_flag();
             async move {

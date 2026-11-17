@@ -591,6 +591,7 @@ impl Service {
             Arc::clone(&profiles) as Arc<dyn pm_splittun::SplitTunnelProfiles>,
         ));
 
+        let dns_ip_info = Arc::clone(&ip_info);
         let firewall = Arc::new(crate::firewall::Firewall::new(
             crate::firewall::FirewallDeps {
                 config: Arc::clone(&config),
@@ -613,6 +614,21 @@ impl Service {
         )?);
 
 
+
+        // DNS firewall filtering and rogue-DNS detection, wired after the
+        // firewall owns the shared pieces.
+        let _ = dns.set_firewall_dns_hook(
+            Arc::clone(&firewall.env) as Arc<dyn pm_firewall::packet::PacketEnv>,
+            Arc::clone(&firewall.profiles) as Arc<dyn pm_firewall::packet::LayeredProfileLookup>,
+            dns_ip_info,
+            Some(Arc::clone(&firewall.network)),
+        );
+        if let Some(matcher) = dns.nameserver_ip_matcher() {
+            let _ = firewall
+                .handler
+                .set_nameserver_ip_matcher(Box::new(move |ip| matcher.matches_ip(ip)));
+        }
+        let _ = online_monitor.set_dns_check(dns.resolver().dns_check());
 
         // Go service/control: pause/resume with automatic resume.
         let control = Arc::new(pm_control::Control::new(

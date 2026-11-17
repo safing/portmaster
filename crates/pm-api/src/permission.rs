@@ -222,7 +222,7 @@ fn now_unix() -> i64 {
 /// Minimal standard base64 decoder (Go `base64.StdEncoding.DecodeString`).
 fn decode_base64(input: &str) -> Option<Vec<u8>> {
     let bytes = input.as_bytes();
-    if bytes.len() % 4 != 0 {
+    if !bytes.len().is_multiple_of(4) {
         return None;
     }
     let mut output = Vec::with_capacity(bytes.len() / 4 * 3);

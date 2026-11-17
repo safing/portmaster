@@ -84,7 +84,7 @@ pub(crate) async fn connect_tcp(
 
     tokio::time::timeout(timeout, socket.connect(remote))
         .await
-        .map_err(|_| timeout_error("tcp dial timed out"))
+        .map_err(|_| timeout_error("tcp dial timed out"))?
 }
 
 /// Resolves `host:port` to all its addresses, like Go `UpstreamProxy.resolve`.

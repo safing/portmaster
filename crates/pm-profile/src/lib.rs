@@ -101,6 +101,15 @@ pub const PORTMASTER_PROFILE_ID: &str = "_portmaster";
 /// Name of the Portmaster core profile.
 pub const PORTMASTER_PROFILE_NAME: &str = "Portmaster Core Service";
 
+/// Profile ID of the Portmaster UI component.
+pub const PORTMASTER_APP_PROFILE_ID: &str = "_portmaster-app";
+/// Name of the Portmaster UI component profile.
+pub const PORTMASTER_APP_PROFILE_NAME: &str = "Portmaster User Interface";
+/// Profile ID of the Portmaster notifier component.
+pub const PORTMASTER_NOTIFIER_PROFILE_ID: &str = "_portmaster-notifier";
+/// Name of the Portmaster notifier component profile.
+pub const PORTMASTER_NOTIFIER_PROFILE_NAME: &str = "Portmaster Notifier";
+
 /// Returns the scoped profile ID (`source/id`).
 pub fn make_scoped_id(source: &str, id: &str) -> String {
     format!("{source}/{id}")
@@ -120,6 +129,8 @@ pub fn is_special_profile_id(id: &str) -> bool {
             | SYSTEM_PROFILE_ID
             | SYSTEM_RESOLVER_PROFILE_ID
             | PORTMASTER_PROFILE_ID
+            | PORTMASTER_APP_PROFILE_ID
+            | PORTMASTER_NOTIFIER_PROFILE_ID
     )
 }
 
@@ -131,6 +142,8 @@ pub fn special_profile_name(id: &str) -> Option<&'static str> {
         SYSTEM_PROFILE_ID => Some(SYSTEM_PROFILE_NAME),
         SYSTEM_RESOLVER_PROFILE_ID => Some(SYSTEM_RESOLVER_PROFILE_NAME),
         PORTMASTER_PROFILE_ID => Some(PORTMASTER_PROFILE_NAME),
+        PORTMASTER_APP_PROFILE_ID => Some(PORTMASTER_APP_PROFILE_NAME),
+        PORTMASTER_NOTIFIER_PROFILE_ID => Some(PORTMASTER_NOTIFIER_PROFILE_NAME),
         _ => None,
     }
 }

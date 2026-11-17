@@ -325,6 +325,10 @@ impl Recorder {
     fn calls(&self) -> Vec<String> {
         self.calls.lock().expect("lock poisoned").clone()
     }
+
+    fn clear(&self) {
+        self.calls.lock().expect("lock poisoned").clear();
+    }
 }
 
 impl Hook for Recorder {
@@ -561,7 +565,7 @@ fn write_paths_do_not_run_read_hooks() {
         .unwrap();
     assert_eq!(recorder.calls(), vec!["pre_put"]);
 
-    recorder.calls().clear();
+    recorder.clear();
     limited
         .set_absolute_expiry("core:hooked/a", now() + 100)
         .unwrap();

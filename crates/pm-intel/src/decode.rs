@@ -244,7 +244,7 @@ mod tests {
         assert!(read_uvarint(&mut overflow.as_slice()).is_err());
 
         // Ten continuation bytes without a terminator also overflow.
-        let mut unterminated = [0x80u8; 10];
+        let unterminated = [0x80u8; 10];
         assert!(read_uvarint(&mut unterminated.as_slice()).is_err());
 
         // The largest valid 10-byte encoding ends with a single 1.

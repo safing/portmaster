@@ -45,6 +45,7 @@ pub struct CoreProfiles {
     store: ProfileStore,
     profiles: RwLock<Vec<Profile>>,
     layered: RwLock<std::collections::HashMap<String, Arc<LayeredProfile>>>,
+    process_cache: RwLock<Option<Arc<ProcessCache>>>,
 }
 
 impl CoreProfiles {
@@ -61,6 +62,7 @@ impl CoreProfiles {
             store,
             profiles: RwLock::new(profiles),
             layered: RwLock::new(std::collections::HashMap::new()),
+            process_cache: RwLock::new(None),
         })
     }
 
@@ -134,6 +136,15 @@ impl CoreProfiles {
                 created
             }
         };
+        let scoped_id = pm_profile::make_scoped_id(&matching.source, &matching.id);
+        if let Some(cache) = self
+            .process_cache
+            .read()
+            .unwrap_or_else(|error| error.into_inner())
+            .as_ref()
+        {
+            cache.set_primary_profile(process.pid, &scoped_id);
+        }
         let layered = Arc::new(LayeredProfile::new(
             Arc::new(matching),
             &self.config,
@@ -144,6 +155,15 @@ impl CoreProfiles {
             .unwrap_or_else(|error| error.into_inner())
             .insert(key, Arc::clone(&layered));
         Some(layered)
+    }
+
+    /// Attaches the process cache so resolved profiles can be written back
+    /// to the process (`PrimaryProfileID`), like Go.
+    pub fn set_process_cache(&self, cache: Arc<ProcessCache>) {
+        *self
+            .process_cache
+            .write()
+            .unwrap_or_else(|error| error.into_inner()) = Some(cache);
     }
 
     /// Returns the store, used to load outdated profiles.
@@ -635,8 +655,11 @@ impl Firewall {
             verdict_enabled,
         ));
 
+        let process_cache =
+            ProcessCache::with_default_tag_handlers(ProcReader::new(pm_netstate::ProcFs::default()));
+        profiles.set_process_cache(Arc::clone(&process_cache));
         let processes: Arc<dyn ProcessResolver> = Arc::new(SystemProcessResolver::new(
-            ProcessCache::with_default_tag_handlers(ProcReader::new(pm_netstate::ProcFs::default())),
+            process_cache,
             Arc::new(pm_netstate::NetState::new(pm_netstate::ProcFs::default())),
         ));
         let lists = Arc::clone(&filter_lists);
