@@ -3,6 +3,7 @@ package terminal
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -178,6 +179,20 @@ func (dfq *DuplexFlowQueue) reportableRecvSpace() int32 {
 	// be commonly triggered due to the buffer of the force report channel.
 	if toReport <= 1 {
 		return 0
+	}
+
+	// The receiver parses reported space as a 16 bit number, so never report
+	// more than that in one message. The remainder is not added to the reported
+	// space and is thus reported with the next report.
+	if toReport > math.MaxUint16 {
+		toReport = math.MaxUint16
+
+		// Make sure the remainder is reported soon, even if no more data is
+		// received.
+		select {
+		case dfq.forceSpaceReport <- struct{}{}:
+		default:
+		}
 	}
 
 	// Add space to report to dfq.reportedSpace and return it.
