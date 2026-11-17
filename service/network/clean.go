@@ -84,7 +84,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 				var connActive bool
 				switch conn.IPProtocol { //nolint:exhaustive
 				case packet.TCP, packet.UDP:
-					connActive = state.Exists(&packet.Info{
+					pktInfo := &packet.Info{
 						Inbound:  false, // src == local
 						Version:  conn.IPVersion,
 						Protocol: conn.IPProtocol,
@@ -94,11 +94,16 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 						DstPort:  conn.Entity.Port,
 						PID:      process.UndefinedProcessID,
 						SeenAt:   time.Unix(conn.Started, 0), // State tables will be updated if older than this.
-					}, now)
+					}
+					existsInState := state.Exists(pktInfo, now)
 					// Update last seen value for permanent verdict connections.
-					if connActive && conn.VerdictPermanent {
+					if existsInState && conn.VerdictPermanent {
 						conn.lastSeen.Store(nowUnix)
 					}
+					connActive = ipConnActive(
+						conn.IPProtocol, existsInState, conn.VerdictPermanent, conn.lastSeen.Load(), now,
+						func() bool { return state.UDPSocketExists(pktInfo) },
+					)
 
 				case packet.ICMP, packet.ICMPv6:
 					connActive = conn.lastSeen.Load() > endICMPNotSeenSince
@@ -155,4 +160,34 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 	})
 
 	return activePIDs
+}
+
+// ipConnActive decides whether a TCP or UDP connection is still active.
+// existsInState is the result of state.Exists() for the connection, lastSeen
+// is the last seen timestamp of the connection (unix seconds) and
+// udpSocketExists checks if the local UDP socket of the connection is still
+// bound.
+func ipConnActive(
+	protocol packet.IPProtocol,
+	existsInState, verdictPermanent bool,
+	lastSeen int64,
+	now time.Time,
+	udpSocketExists func() bool,
+) bool {
+	if existsInState {
+		return true
+	}
+
+	// The UDP state only knows when the connection was last looked up, which
+	// is only done for its first packet. Long-lived UDP flows are still active
+	// while their packets are handled, which updates lastSeen, and while
+	// their socket is still bound.
+	// The last seen timestamp of permanent verdict connections does not tell
+	// about their packets, as these are not handled anymore: The cleaner sets
+	// it while the connection exists in the state.
+	if protocol == packet.UDP && !verdictPermanent {
+		return lastSeen > now.Add(-state.UDPConnectionTTL).Unix() && udpSocketExists()
+	}
+
+	return false
 }

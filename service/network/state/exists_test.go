@@ -181,6 +181,43 @@ func TestUDPExistsDualStack(t *testing.T) {
 	}
 }
 
+// TestUDPSocketExistsAfterFlowExpired checks the socket check that the
+// cleaner uses for UDP flows whose packets are still seen: Exists() only knows
+// the time the flow was last looked up, but the socket is still bound.
+func TestUDPSocketExistsAfterFlowExpired(t *testing.T) {
+	t.Parallel()
+
+	udp4, udp6, _ := newDualStackTestTables()
+	now := time.Now()
+
+	// Outbound IPv4 flow from the dual-stack [::]:5353 socket, looked up for
+	// its first packet only.
+	_, _, err := udp4.lookup(udp4TestPacket(false), true)
+	if err != nil {
+		t.Fatalf("lookup failed: %s", err)
+	}
+	check := cleanerPacket(packet.IPv4, packet.UDP, testLocal4, 5353, testRemote4, 53)
+	later := now.Add(UDPConnectionTTL + time.Minute)
+
+	if udp4.exists(check, later) {
+		t.Fatal("flow not looked up within the TTL reported as existing")
+	}
+	if udp4.findBindOrDualStack(check) == nil {
+		t.Fatal("bound dual-stack socket of the flow not found")
+	}
+	if udp4.findBindOrDualStack(cleanerPacket(packet.IPv4, packet.UDP, testLocal4, 5354, testRemote4, 53)) != nil {
+		t.Fatal("socket found for a port that is not bound")
+	}
+
+	// Close the dual-stack socket.
+	udp6.lock.Lock()
+	udp6.binds = nil
+	udp6.lock.Unlock()
+	if udp4.findBindOrDualStack(check) != nil {
+		t.Fatal("closed dual-stack socket of the flow found")
+	}
+}
+
 func TestUDPExists(t *testing.T) {
 	t.Parallel()
 

@@ -40,6 +40,21 @@ func Exists(pktInfo *packet.Info, now time.Time) (exists bool) {
 	}
 }
 
+// UDPSocketExists checks if the local UDP socket of the given connection is
+// still bound, regardless of when the connection was last looked up.
+func UDPSocketExists(pktInfo *packet.Info) (exists bool) {
+	switch {
+	case pktInfo.Version == packet.IPv4 && pktInfo.Protocol == packet.UDP:
+		return udp4Table.findBindOrDualStack(pktInfo) != nil
+
+	case pktInfo.Version == packet.IPv6 && pktInfo.Protocol == packet.UDP:
+		return udp6Table.findBindOrDualStack(pktInfo) != nil
+
+	default:
+		return false
+	}
+}
+
 func (table *tcpTable) exists(pktInfo *packet.Info, now time.Time) (exists bool) {
 	// Update the tables if they are older than the connection that is checked
 	// or older than the maximum age. Only lookups of new connections update
@@ -94,13 +109,7 @@ func (table *tcpTable) existsInTable(pktInfo *packet.Info, updateIfOlderThan int
 }
 
 func (table *udpTable) exists(pktInfo *packet.Info, now time.Time) (exists bool) {
-	// Find the socket like lookups do: first in this table, then in the
-	// dual-stack table. Lookups store the connection state of sockets of
-	// the dual-stack table in this table.
-	socketInfo := table.findBind(pktInfo)
-	if socketInfo == nil && table.dualStack != nil {
-		socketInfo = table.dualStack.findBind(pktInfo)
-	}
+	socketInfo := table.findBindOrDualStack(pktInfo)
 	if socketInfo == nil {
 		return false
 	}
@@ -114,6 +123,17 @@ func (table *udpTable) exists(pktInfo *packet.Info, now time.Time) (exists bool)
 	}
 
 	return udpConnState.lastSeen.After(now.Add(-UDPConnectionTTL))
+}
+
+// findBindOrDualStack finds the socket of the given connection like lookups
+// do: first in this table, then in the dual-stack table. Lookups store the
+// connection state of sockets of the dual-stack table in this table.
+func (table *udpTable) findBindOrDualStack(pktInfo *packet.Info) *socket.BindInfo {
+	socketInfo := table.findBind(pktInfo)
+	if socketInfo == nil && table.dualStack != nil {
+		socketInfo = table.dualStack.findBind(pktInfo)
+	}
+	return socketInfo
 }
 
 // findBind returns the bind of the given connection, matching it the same way
