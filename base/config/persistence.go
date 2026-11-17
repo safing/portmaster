@@ -1,14 +1,17 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/base/utils"
 )
 
 var (
@@ -92,8 +95,13 @@ func SaveConfig() error {
 		return err
 	}
 
-	// write file
-	return os.WriteFile(configFilePath, data, 0o0600)
+	// Write file atomically (temp file in the same directory, fsync, rename),
+	// so that a failed or interrupted write never leaves a truncated config
+	// file behind, which would fail to load on the next start.
+	return utils.CreateAtomic(configFilePath, bytes.NewReader(data), &utils.AtomicFileOptions{
+		Mode:    0o0600,
+		TempDir: filepath.Dir(configFilePath),
+	})
 }
 
 // JSONToMap parses and flattens a hierarchical json object.
