@@ -103,7 +103,7 @@ func (s *Status) buildSystemStatus() *SystemStatusRecord {
 		// Check if state is worst so far.
 		for _, state := range newStateUpdate.States {
 			if state.Type.Severity() > status.WorstState.Type.Severity() {
-				s.mgr.Error("new worst state", "state", state)
+				s.mgr.Debug("new worst state", "state", state)
 				status.WorstState.State = state
 				status.WorstState.Module = newStateUpdate.Module
 			}
