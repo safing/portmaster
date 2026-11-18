@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'windows_core_dll/**'
+      - '.github/workflows/windows-dll.yml'
     branches:
       - main
       - development
@@ -13,6 +14,7 @@ on:
   pull_request:
     paths:
       - 'windows_core_dll/**'
+      - '.github/workflows/windows-dll.yml'
     branches:
       - main
       - development
@@ -20,6 +22,13 @@ on:
       - v1-legacy-develop
 
   workflow_dispatch:
+  # Used by the release workflow, which ships this DLL in the installer.
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to build (defaults to the triggering ref)"
+        required: false
+        type: string
 
 jobs:
   build:
@@ -28,6 +37,8 @@ jobs:
     steps:
     - name: Checkout Repository
       uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      with:
+        ref: ${{ inputs.ref || github.ref }}
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2
     - name: Build DLL
@@ -37,6 +48,20 @@ jobs:
       run: |
         if (!(Test-Path "windows_core_dll/x64/Release/portmaster-core.dll")) {
           Write-Error "DLL build failed: portmaster-core.dll not found"
+          exit 1
+        }
+    - name: Check that the DLL does not need the VC++ runtime
+      # A clean Windows has no VCRUNTIME140.dll, and the DLL then fails to load
+      # with "module not found", so the C runtime must be linked statically.
+      shell: pwsh
+      run: |
+        $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+        $dumpbin = Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe |
+          Where-Object FullName -Match 'Hostx64\\x64' | Select-Object -First 1
+        $deps = & $dumpbin.FullName /dependents windows_core_dll\x64\Release\portmaster-core.dll
+        $deps
+        if ($deps -match 'VCRUNTIME|MSVCP|api-ms-win-crt') {
+          Write-Error "portmaster-core.dll depends on the VC++ runtime"
           exit 1
         }
     - name: Upload artifacts
