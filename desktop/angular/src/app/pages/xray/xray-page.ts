@@ -26,7 +26,7 @@ export class XrayPageComponent implements OnInit, OnDestroy {
 
   pins: MapPin[] = [];
   selectedPinId: string | null = null;
-  showRealExitIp: boolean = false;
+  showRealExitIp = false;
 
   toggleRealExitIp(): void {
     this.xrayMapService.showRealExitIp = this.showRealExitIp;

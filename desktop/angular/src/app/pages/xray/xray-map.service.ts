@@ -20,7 +20,7 @@ import { countryCenter } from './country-centers';
 @Injectable()
 export class XrayMapService {
   readonly _pins$ = new BehaviorSubject<MapPin[]>([]);
-  showRealExitIp: boolean = false;
+  showRealExitIp = false;
 
   get pins$(): Observable<MapPin[]> {
     return this._pins$.asObservable();
