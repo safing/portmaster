@@ -13,7 +13,6 @@ import { ExpertiseModule } from "../expertise/expertise.module";
 import { SfngFocusModule } from "../focus";
 import { SfngMenuModule } from "../menu";
 import { CommonPipesModule } from "../pipes";
-import { SPNModule } from './../../pages/spn/spn.module';
 import { SfngNetqueryAddToFilterDirective } from "./add-to-filter";
 import { CombinedMenuPipe } from "./combined-menu.pipe";
 import { SfngNetqueryConnectionDetailsComponent } from "./connection-details";
@@ -48,7 +47,6 @@ import { CircularBarChartComponent } from './circular-bar-chart/circular-bar-cha
     CountIndicatorModule,
     FontAwesomeModule,
     CommonPipesModule,
-    SPNModule,
     NzDatePickerModule,
   ],
   exports: [

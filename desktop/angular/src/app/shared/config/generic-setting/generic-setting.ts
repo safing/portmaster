@@ -3,7 +3,7 @@ import { TemplatePortal } from '@angular/cdk/portal';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, EventEmitter, HostBinding, Input, OnInit, Output, TemplateRef, ViewChild, ViewContainerRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NgModel } from '@angular/forms';
-import { BaseSetting, ConfigService, ExpertiseLevel, ExpertiseLevelNumber, ExternalOptionHint, OptionType, PortapiService, QuickSetting, ReleaseLevel, SPNService, SettingValueType, UserProfile, WellKnown, applyQuickSetting } from '@safing/portmaster-api';
+import { BaseSetting, ConfigService, ExpertiseLevel, ExpertiseLevelNumber, ExternalOptionHint, OptionType, PortapiService, QuickSetting, ReleaseLevel, SettingValueType, WellKnown, applyQuickSetting } from '@safing/portmaster-api';
 import { SfngDialogRef, SfngDialogService } from '@safing/ui';
 import { Button } from 'js-yaml-loader!../../../i18n/helptexts.yaml';
 import { Subject } from 'rxjs';
@@ -11,7 +11,6 @@ import { debounceTime, tap } from 'rxjs/operators';
 import { ActionIndicatorService } from '../../action-indicator';
 import { fadeInAnimation, fadeOutAnimation } from '../../animations';
 import { ExpertiseService } from '../../expertise/expertise.service';
-import { SPNAccountDetailsComponent } from '../../spn-account-details';
 
 export interface SaveSettingEvent<S extends BaseSetting<any, any> = any> {
   key: string;
@@ -48,10 +47,6 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
   helpTemplate: TemplateRef<any> | null = null;
   private helpDialogRef: SfngDialogRef<any> | null = null;
 
-  // Whether or not the user needs to upgrade his/her account before
-  // this setting is valid.
-  _upgradeRequired = false;
-
   /**
    * Whether or not the component/setting is disabled and should
    * be read-only.
@@ -62,9 +57,9 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
     this._disabled = coerceBooleanProperty(v);
   }
   get disabled() {
-    return this._disabled || this._upgradeRequired;
+    return this._disabled;
   }
-  private _disabled: boolean = false;
+  private _disabled = false;
 
   /** Returns the symbolMap annoation for endpoint-lists */
   get symbolMap() {
@@ -127,7 +122,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
   get lockDefaults() {
     return this._lockDefaults;
   }
-  private _lockDefaults: boolean = false;
+  private _lockDefaults = false;
 
   /** The label to display in the reset-value button */
   @Input()
@@ -362,7 +357,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
               }
 
               // close any existing help dialog for THIS setting.
-              if (!!this.helpDialogRef) {
+              if (this.helpDialogRef) {
                 this.helpDialogRef.close();
               }
 
@@ -461,7 +456,6 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
     private dialog: SfngDialogService,
     private changeDetectorRef: ChangeDetectorRef,
     private actionIndicator: ActionIndicatorService,
-    private spn: SPNService,
     private viewRef: ViewContainerRef,
     private destryoRef: DestroyRef,
   ) { }
@@ -473,25 +467,6 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
         takeUntilDestroyed(this.destryoRef),
       )
       .subscribe(() => this.emitSaveRequest())
-
-    // watch the SPN user profile so we know which feature_ids
-    // are available for the user.
-    this.spn.profile$
-      .pipe(takeUntilDestroyed(this.destryoRef))
-      .subscribe((profile: UserProfile | null) => {
-        let value = this.setting?.Annotations[WellKnown.RequiresFeatureID]
-        if (value === undefined) {
-          this._upgradeRequired = false;
-        } else {
-          if (!Array.isArray(value)) {
-            value = [value];
-          }
-
-          this._upgradeRequired = value.some(val => !(profile?.current_plan?.feature_ids || []).includes(val))
-        }
-
-        this.changeDetectorRef.markForCheck();
-      })
   }
 
   /**
@@ -540,13 +515,6 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
     }
 
     this.updateValue(value, true);
-  }
-
-  openAccountDetails() {
-    this.dialog.create(SPNAccountDetailsComponent, {
-      autoclose: true,
-      backdrop: 'light'
-    })
   }
 
   restartNow() {
@@ -602,7 +570,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
   private _saveInterval: any;
   private emitSaveRequest() {
     const isDefault = this.wasReset;
-    let value = this._setting!['Value'];
+    const value = this._setting!['Value'];
 
     if (isDefault) {
       delete (this._setting!['Value']);
@@ -611,11 +579,11 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
     }
 
 
-    let wasReset = this.wasReset;
+    const wasReset = this.wasReset;
     this.wasReset = false;
     this._rejected = null;
     this._changeAccepted = false;
-    if (!!this._saveInterval) {
+    if (this._saveInterval) {
       clearTimeout(this._saveInterval);
     }
 
@@ -660,7 +628,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
 
     this._changeAccepted = false;
     this._rejected = null;
-    if (!!this._saveInterval) {
+    if (this._saveInterval) {
       clearTimeout(this._saveInterval);
     }
 

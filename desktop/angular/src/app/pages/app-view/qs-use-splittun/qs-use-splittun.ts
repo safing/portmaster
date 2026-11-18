@@ -7,9 +7,6 @@ const configKeys = {
   splitTunUse: 'splittun/use',
   splitTunEnable: 'splittun/enable',
   splitTunUsagePolicy: 'splittun/usagePolicy',
-  spnUse: 'spn/use',
-  spnEnable: 'spn/enable',
-  spnUsagePolicy: 'spn/usagePolicy',
 } as const;
 
 @Component({
@@ -33,15 +30,6 @@ export class QuickSettingUseSplitTunButtonComponent implements OnInit, OnChanges
 
   /** Whether the Split Tunneling module is globally enabled. null = not yet loaded. */
   splitTunModuleEnabled: boolean | null = null;
-
-  /** Whether SPN is enabled for this app — overrides split tunnel for SPN-routed connections. */
-  spnEnabled = false;
-
-  /** Whether SPN fully overrides split tunnel: SPN in use with no Exclude rules in spn/usagePolicy. */
-  spnFullOverride = false;
-
-  /** Whether the SPN module is globally enabled. */
-  private spnModuleEnabled = false;
 
   constructor(
     private configService: ConfigService,
@@ -69,14 +57,6 @@ export class QuickSettingUseSplitTunButtonComponent implements OnInit, OnChanges
         this.updateInterfering();
         this.cdr.markForCheck();
       });
-
-    this.configService.watch<BoolSetting>(configKeys.spnEnable)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(value => {
-        this.spnModuleEnabled = !!value;
-        this.updateInterfering();
-        this.cdr.markForCheck();
-      });
   }
 
   updateUseSplitTun(enabled: boolean): void {
@@ -89,22 +69,9 @@ export class QuickSettingUseSplitTunButtonComponent implements OnInit, OnChanges
 
   private updateInterfering(): void {
     this.interferingSettings = [];
-    this.spnEnabled = false;
-    this.spnFullOverride = false;
 
     if (!this.currentValue || !this.splitTunModuleEnabled) {
       return;
-    }
-
-    const spnUseSetting = this.settings.find(s => s.Key === configKeys.spnUse) as BoolSetting | undefined;
-    this.spnEnabled = this.spnModuleEnabled && !!spnUseSetting && !!getActualValue(spnUseSetting);
-
-    // If SPN is enabled, check if it fully overrides Split Tunnel (no Exclude rules in SPN policy)
-    if (this.spnEnabled) {
-      const spnPolicy = this.settings.find(s => s.Key === configKeys.spnUsagePolicy) as StringArraySetting | undefined;
-      const spnPolicyValue = spnPolicy ? getActualValue(spnPolicy) : [];
-      const hasSpnExcludeRules = Array.isArray(spnPolicyValue) && spnPolicyValue.some(rule => rule.startsWith('- ') || rule === '-');
-      this.spnFullOverride = !hasSpnExcludeRules;
     }
 
     // Exclude rules in usagePolicy may prevent some connections from being tunneled

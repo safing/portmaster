@@ -119,8 +119,7 @@
 
   <div class="flex-grow"></div>
 
-  <div class="flex flex-row items-center gap-2 px-2 bg-gray-300 border border-gray-300 rounded text-xxs"
-    *ngIf="(canUseHistory$ | async)">
+  <div class="flex flex-row items-center gap-2 px-2 bg-gray-300 border border-gray-300 rounded text-xxs">
     Search History:
     <nz-range-picker [nzShowTime]="false" class="py-0" [nzRenderExtraFooter]="customTimeRange" [(ngModel)]="dateFilter"
       [nzBorderless]="true" (ngModelChange)="onDateRangeChange($event)" [nzAllowClear]="true" [nzFormat]="dateFormat">
@@ -165,7 +164,7 @@
   </div>
 </div>
 
-<div class="relative flex-shrink-0 my-1 bg-gray-200 p-2 rounded grid" [class.grid-cols-2]="featureBw$ | async">
+<div class="relative flex-shrink-0 my-1 bg-gray-200 p-2 rounded grid grid-cols-2">
   <div>
     <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">Connections</h2>
     <div class="h-32">
@@ -173,7 +172,7 @@
     </div>
   </div>
 
-  <div *ngIf="featureBw$ | async">
+  <div>
     <h2 class="text-secondary text-xxs uppercase font-light p-0 m-0 mb-1 w-full text-center">Data Usage</h2>
     <div class="h-32">
       <sfng-netquery-line-chart [config]="bwChartConfig" [data]="bwChartData" class="h-full" *ngIf="!!bwChartData?.length" [@fadeIn]></sfng-netquery-line-chart>
@@ -216,20 +215,8 @@
           <span>{{ data.__profile.Name }}</span>
         </span>
 
-        <!-- SPN Pin specific column rendering -->
-        <span *ngIf="key === 'exit_node' && !!data.__exitNode" class="flex flex-row items-center gap-2">
-          <span class="text-secondary text-xxs">
-            (
-            <span class="text-primary"
-              *ngIf="(data.__exitNode.EntityV4 || data.__exitNode.EntityV6)?.Country as country"
-              [appCountryFlags]="country"></span>
-            )
-          </span>
-          <span>{{ data.__exitNode.Name }}</span>
-        </span>
-
         <!-- everything else -->
-        <span style="direction: rtl" *ngIf="key !== 'domain' && key !== 'profile' && key !== 'exit_node'"
+        <span style="direction: rtl" *ngIf="key !== 'domain' && key !== 'profile'"
           class="overflow-hidden text-primary overflow-ellipsis">
           <span style="direction: ltr; unicode-bidi: bidi-override;">
             {{ data[key] || 'N/A' }}

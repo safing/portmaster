@@ -2,13 +2,11 @@ import { KeyValue } from "@angular/common";
 import { AfterContentInit, AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, OnInit, QueryList, TrackByFunction, ViewChild, ViewChildren, forwardRef, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { Router } from "@angular/router";
-import { AppProfileService, BandwidthChartResult, ChartResult, Database, FeatureID, Netquery, PortapiService, SPNService, UserProfile, Verdict } from "@safing/portmaster-api";
-import { SfngDialogService, SfngTabGroupComponent } from "@safing/ui";
+import { AppProfileService, BandwidthChartResult, ChartResult, Database, Netquery, PortapiService, Verdict } from "@safing/portmaster-api";
+import { SfngTabGroupComponent } from "@safing/ui";
 import { Observable, catchError, filter, interval, map, repeat, retry, startWith, throwError } from "rxjs";
-import { ActionIndicatorService } from 'src/app/shared/action-indicator';
 import { DefaultBandwidthChartConfig, SfngNetqueryLineChartComponent } from "src/app/shared/netquery/line-chart/line-chart";
-import { SPNAccountDetailsComponent } from "src/app/shared/spn-account-details";
-import { MAP_HANDLER, MapRef } from "../spn/map-renderer";
+import { MAP_HANDLER, MapRef } from "src/app/shared/map-renderer";
 import { CircularBarChartConfig, splitQueryResult } from "src/app/shared/netquery/circular-bar-chart/circular-bar-chart.component";
 import { BytesPipe } from "src/app/shared/pipes/bytes.pipe";
 import { HttpErrorResponse } from "@angular/common/http";
@@ -62,10 +60,7 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly netquery = inject(Netquery);
-  private readonly spn = inject(SPNService);
-  private readonly actionIndicator = inject(ActionIndicatorService);
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly dialog = inject(SfngDialogService);
   private readonly portapi = inject(PortapiService)
   private readonly router = inject(Router);
 
@@ -158,23 +153,13 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
   activeConnections = 0;
   blockedConnections = 0;
   activeProfiles = 0;
-  activeIdentities = 0;
   dataIncoming = 0;
   dataOutgoing = 0;
   connectionChart: ChartResult[] = [];
-  tunneldConnectionChart: ChartResult[] = [];
 
   countriesPerProfile: { [profile: string]: string[] } = {}
 
-  profile: UserProfile | null = null;
-
-  featureBw = false;
-  featureSPN = false;
-
   hoveredCard: NewsCard | null = null;
-
-  features$ = this.spn.watchEnabledFeatures()
-    .pipe(takeUntilDestroyed());
 
   trackCountry: TrackByFunction<KeyValue<string, any>> = (_, ctr) => ctr.key;
   trackApp: TrackByFunction<BlockedProfile> = (_, bp) => bp.profileID;
@@ -212,13 +197,6 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
 
   onCarouselTabHover(card: NewsCard | null) {
     this.hoveredCard = card;
-  }
-
-  openAccountDetails() {
-    this.dialog.create(SPNAccountDetailsComponent, {
-      autoclose: true,
-      backdrop: 'light'
-    })
   }
 
   onCountryHover(code: string | null) {
@@ -355,16 +333,6 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
           groupBy: ['profile', 'country', 'active'],
           databases: [Database.Live],
         },
-
-        exitNodes: {
-          query: { tunneled: { $eq: true }, exit_node: { $ne: "" } },
-          groupBy: ['exit_node'],
-          select: [
-            'exit_node',
-            { $count: { field: '*', as: 'totalCount' } }
-          ],
-          databases: [Database.Live],
-        }
       })
       .pipe(
         repeat({ delay: 10000 }),
@@ -429,9 +397,6 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
         });
 
         this.activeProfiles = profiles.size;
-
-        // exitNodes
-        this.activeIdentities = response.exitNodes?.length || 0;
         this.cdr.markForCheck();
       })
 
@@ -459,49 +424,5 @@ export class DashboardPageComponent implements OnInit, AfterViewInit {
         this.bandwidthLineChart = bw;
         this.cdr.markForCheck();
       })
-
-    this.netquery
-      .activeConnectionChart({ tunneled: { $eq: true } })
-      .pipe(
-        repeat({ delay: 10000 }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe(result => {
-        this.tunneldConnectionChart = result;
-        this.cdr.markForCheck();
-      })
-
-    // SPN profile and enabled/allowed features
-
-    this.spn
-      .profile$
-      .pipe(
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (profile) => {
-          this.profile = profile || null;
-          this.featureBw = profile?.current_plan?.feature_ids?.includes(FeatureID.Bandwidth) || false;
-          this.featureSPN = profile?.current_plan?.feature_ids?.includes(FeatureID.SPN) || false;
-
-          // force a full change-detection cylce now!
-          this.cdr.detectChanges()
-
-          // force re-draw of the charts after change-detection because the
-          // width may change now.
-          this.lineCharts?.forEach(chart => chart.redraw())
-
-          this.cdr.markForCheck();
-        },
-      })
-  }
-
-  /** Logs the user out of the SPN completely by purgin the user profile from the local storage */
-  logoutCompletely(_: Event) {
-    this.spn.logout(true)
-      .subscribe(this.actionIndicator.httpObserver(
-        'Logout',
-        'You have been logged out of the SPN completely.'
-      ))
   }
 }

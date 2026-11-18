@@ -58,19 +58,13 @@ navApps:
   title: Per-App Settings
   content: |
     Configure per-app settings which override the global default.
-  nextKey: navMap
+  nextKey: navSettings
   buttons:
     - name: Take the tour
       action:
         Type: open-page
         Payload: apps
       nextKey: appsTitle
-
-navMap:
-  title: SPN Map
-  content: |
-    View the SPN map and see how your connections are routed.
-  nextKey: navSettings
 
 navSettings:
   title: Global Settings
@@ -105,8 +99,6 @@ navPause:
   title: Pause and Resume
   content: |
     Temporarily disable Portmaster's protection and network monitoring.
-    
-    Choose to pause SPN only or disable all protection completely.
   nextKey: navPower
 
 navPower:
@@ -336,12 +328,6 @@ appSettings-QuickSettings:
 
     When other settings might overwrite this, a yellow dot next to the toggle will inform you of possible exceptions.
 
-    __SPN__
-
-    Quickly enable or disable SPN for this app.
-
-    When other settings might overwrite this, a yellow dot next to the toggle will inform you of possible exceptions.
-
     __Keep History__
 
     Save connections in a database (on disk) in order to view and search them later.
@@ -360,16 +346,6 @@ support-page-related-issues:
 
 #########################
 ### Configuration Options
-
-spn:
-  title: Safing Privacy Network
-  content: |
-    The Safing Privacy Network (SPN) is a Portmaster Add-On that protects your identity
-    and Internet traffic from prying eyes. It spreads your connections over multiple server,
-    letting you access the Internet from many places at once in order to effectively hide
-    your tracks.
-  url: https://safing.io/spn/
-  urlText: Learn More
 
 ###########################
 # Process Matching and Fingerprints

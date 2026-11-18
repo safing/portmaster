@@ -209,67 +209,6 @@ export const subsystems : SubsystemWithExpertise[] = [
     }
   },
   {
-    minimumExpertise: ExpertiseLevelNumber.developer,
-    isDisabled: false,
-    hasUserDefinedValues: false,
-    ID: "spn",
-    Name: "SPN",
-    Description: "Safing Privacy Network",
-    Modules: [
-      {
-        Name: "captain",
-        Enabled: false
-      },
-      {
-        Name: "terminal",
-        Enabled: false
-      },
-      {
-        Name: "cabin",
-        Enabled: false
-      },
-      {
-        Name: "ships",
-        Enabled: false
-      },
-      {
-        Name: "docks",
-        Enabled: false
-      },
-      {
-        Name: "access",
-        Enabled: false
-      },
-      {
-        Name: "crew",
-        Enabled: false
-      },
-      {
-        Name: "navigator",
-        Enabled: false
-      },
-      {
-        Name: "sluice",
-        Enabled: false
-      },
-      {
-        Name: "patrol",
-        Enabled: false
-      }
-    ],
-    ToggleOptionKey: "spn/enable",
-    ExpertiseLevel: "user",
-    ReleaseLevel: 0,
-    ConfigKeySpace: "config:spn/",
-    _meta: {
-      Created: 0,
-      Modified: 0,
-      Expires: 0,
-      Deleted: 0,
-      Key: "runtime:subsystems/spn"
-    }
-  },
-  {
   minimumExpertise: ExpertiseLevelNumber.user,  // User level since UI is user-facing
   isDisabled: false,
   hasUserDefinedValues: false,

@@ -3,10 +3,5 @@
     Keep History
   </span>
 
-  <span *ngIf="!canUse" routerLink="/dashboard" class="cursor-pointer text-tertiary hover:underline">
-    Get Plus
-  </span>
-
-  <sfng-toggle *ngIf="canUse" [ngModel]="currentValue" (ngModelChange)="updateHistoryEnabled($event)"
-    [disabled]="(historyFeatureAllowed | async) === false"></sfng-toggle>
+  <sfng-toggle [ngModel]="currentValue" (ngModelChange)="updateHistoryEnabled($event)"></sfng-toggle>
 </div>

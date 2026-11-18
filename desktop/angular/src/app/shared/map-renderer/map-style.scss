@@ -1,0 +1,11 @@
+:host-context(.disabled) {
+  @apply bg-white;
+
+  #world-group {
+    path {
+      fill: #000000;
+      stroke: #111111;
+      stroke-width: .5px;
+    }
+  }
+}

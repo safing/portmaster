@@ -27,14 +27,10 @@ import { NavigationComponent } from './layout/navigation/navigation';
 import { SideDashComponent } from './layout/side-dash/side-dash';
 import { AppOverviewComponent, AppViewComponent, QuickSettingInternetButtonComponent } from './pages/app-view';
 import { QsHistoryComponent } from './pages/app-view/qs-history/qs-history.component';
-import { QuickSettingSelectExitButtonComponent } from './pages/app-view/qs-select-exit/qs-select-exit';
-import { QuickSettingUseSPNButtonComponent } from './pages/app-view/qs-use-spn/qs-use-spn';
 import { QuickSettingUseSplitTunButtonComponent } from './pages/app-view/qs-use-splittun/qs-use-splittun';
 import { DashboardPageComponent } from './pages/dashboard/dashboard.component';
-import { FeatureCardComponent } from './pages/dashboard/feature-card/feature-card.component';
 import { MonitorPageComponent } from './pages/monitor';
 import { SettingsComponent } from './pages/settings/settings';
-import { SPNModule } from './pages/spn/spn.module';
 import { SupportPageComponent } from './pages/support';
 import { SupportFormComponent } from './pages/support/form';
 import { NotificationsService } from './services';
@@ -47,10 +43,10 @@ import { EditProfileDialog } from './shared/edit-profile-dialog';
 import { ExitScreenComponent } from './shared/exit-screen/exit-screen';
 import { ExpertiseModule } from './shared/expertise/expertise.module';
 import { ExternalLinkDirective } from './shared/external-link.directive';
-import { FeatureScoutComponent } from './shared/feature-scout';
 import { SfngFocusModule } from './shared/focus';
 import { FuzzySearchPipe } from './shared/fuzzySearch';
 import { LoadingComponent } from './shared/loading';
+import { MapRendererComponent } from './shared/map-renderer';
 import { SfngMenuModule } from './shared/menu';
 import { SfngMultiSwitchModule } from './shared/multi-switch';
 import { NetqueryModule } from './shared/netquery';
@@ -61,9 +57,6 @@ import { CommonPipesModule } from './shared/pipes';
 import { ProcessDetailsDialogComponent } from './shared/process-details-dialog';
 import { PromptListComponent } from './shared/prompt-list/prompt-list.component';
 import { SecurityLockComponent } from './shared/security-lock';
-import { SPNAccountDetailsComponent } from './shared/spn-account-details';
-import { SPNLoginComponent } from './shared/spn-login';
-import { SPNStatusComponent } from './shared/spn-status';
 import { PlaceholderComponent } from './shared/text-placeholder';
 import { DashboardWidgetComponent } from './pages/dashboard/dashboard-widget/dashboard-widget.component';
 import { MergeProfileDialogComponent } from './pages/app-view/merge-profile-dialog/merge-profile-dialog.component';
@@ -75,7 +68,7 @@ import { SupportProgressDialogComponent } from './pages/support/progress-dialog'
 function loadAndSetLocaleInitializer(configService: ConfigService) {
   return async function () {
     let angularLocaleID = 'en-GB';
-    let nzLocaleID: string = 'en_GB';
+    let nzLocaleID = 'en_GB';
 
     try {
       const setting = await firstValueFrom(configService.get("core/locale"))
@@ -138,8 +131,6 @@ const localeConfig = {
     FuzzySearchPipe,
     AppViewComponent,
     QuickSettingInternetButtonComponent,
-    QuickSettingUseSPNButtonComponent,
-    QuickSettingSelectExitButtonComponent,
     QuickSettingUseSplitTunButtonComponent,
     AppOverviewComponent,
     PlaceholderComponent,
@@ -149,17 +140,13 @@ const localeConfig = {
     SupportPageComponent,
     SupportFormComponent,
     SecurityLockComponent,
-    SPNStatusComponent,
-    FeatureScoutComponent,
-    SPNLoginComponent,
-    SPNAccountDetailsComponent,
     NetworkScoutComponent,
     EditProfileDialog,
     ProcessDetailsDialogComponent,
     QsHistoryComponent,
     DashboardPageComponent,
     DashboardWidgetComponent,
-    FeatureCardComponent,
+    MapRendererComponent,
     MergeProfileDialogComponent,
     AppInsightsComponent,
     SupportProgressDialogComponent,
@@ -202,7 +189,6 @@ const localeConfig = {
     NetqueryModule,
     CommonPipesModule,
     UiModule,
-    SPNModule,
     PortmasterAPIModule.forRoot({
       httpAPI: environment.httpAPI,
       websocketAPI: environment.portAPI,

@@ -6,21 +6,6 @@
         Dashboard
         <sfng-tipup key="dashboardIntro" placement="left"></sfng-tipup>
       </h1>
-
-    <!--
-      \\ DISABLED because: Displaying the SPN username in a prominent location may raise security and privacy concerns for some users.
-      
-      <span class="text-sm font-normal text-secondary">
-        <ng-container *ngIf="!!profile; else: noUsername">
-          Welcome back, <span class="text-primary">{{ profile.username }}</span>!
-          <a *ngIf="profile?.state === '' && !!profile?.username" class="text-xs underline cursor-pointer text-tertiary"
-            (click)="logoutCompletely($event)">Clear</a>
-        </ng-container>
-        <ng-template #noUsername>
-          Welcome back!
-        </ng-template>
-      </span>
-    -->
     </div>
 
     <div class="flex flex-row gap-8">
@@ -63,24 +48,16 @@
       <div class="mini-stat">
         <!-- eslint-disable-next-line @angular-eslint/template/label-has-associated-control -- caption of a statistic, not a form control -->
         <label>Data Received</label>
-        <span *ngIf="featureBw">
+        <span>
           {{ dataIncoming | bytes }}
-        </span>
-        <span *ngIf="!featureBw"
-          class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
-          Bandwidth data not available yet
         </span>
       </div>
 
       <div class="mini-stat">
         <!-- eslint-disable-next-line @angular-eslint/template/label-has-associated-control -- caption of a statistic, not a form control -->
         <label>Data Sent</label>
-        <span *ngIf="featureBw">
+        <span>
           {{ dataOutgoing | bytes }}
-        </span>
-        <span *ngIf="!featureBw"
-          class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
-          Bandwidth data not available yet
         </span>
       </div>
 
@@ -150,25 +127,15 @@
   </app-dashboard-widget>
 
   <app-dashboard-widget class="flex-grow" id="connmap" style="min-height: 400px" label="Recent Connection Countries" beta="true">
-    <spn-map-renderer class="w-full h-full" mapId="dashboard-map"></spn-map-renderer>
+    <app-map-renderer class="w-full h-full" mapId="dashboard-map"></app-map-renderer>
   </app-dashboard-widget>
 
-  <app-dashboard-widget class="flex-grow" id="bwvis-bar" [ngStyle]="{minHeight: featureBw ? '400px' : 'unset'}" label="Recent Top Consumers" beta="true">
-    <sfng-netquery-circular-bar-chart *ngIf="featureBw" class="block w-full h-full" [data]="bandwidthBarData" [config]="bandwidthBarConfig" (stackClick)="openProfile($event)"></sfng-netquery-circular-bar-chart>
-
-    <span *ngIf="!featureBw"
-      class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
-      Bandwidth data not available yet
-    </span>
+  <app-dashboard-widget class="flex-grow" id="bwvis-bar" style="min-height: 400px" label="Recent Top Consumers" beta="true">
+    <sfng-netquery-circular-bar-chart class="block w-full h-full" [data]="bandwidthBarData" [config]="bandwidthBarConfig" (stackClick)="openProfile($event)"></sfng-netquery-circular-bar-chart>
   </app-dashboard-widget>
 
-  <app-dashboard-widget class="flex-grow" id="bwvis-line" [ngStyle]="{minHeight: featureBw ? '400px' : 'unset'}" label="Recent Bandwidth Usage" beta="true">
-    <sfng-netquery-line-chart class="block w-full h-full" *ngIf="featureBw" [data]="bandwidthLineChart" [config]="bwChartConfig"></sfng-netquery-line-chart>
-
-    <span *ngIf="!featureBw"
-      class="!text-xxs !font-light !text-tertiary !text-opacity-50 w-full text-center !leading-3">
-      Bandwidth data not available yet
-    </span>
+  <app-dashboard-widget class="flex-grow" id="bwvis-line" style="min-height: 400px" label="Recent Bandwidth Usage" beta="true">
+    <sfng-netquery-line-chart class="block w-full h-full" [data]="bandwidthLineChart" [config]="bwChartConfig"></sfng-netquery-line-chart>
   </app-dashboard-widget>
 
   <app-dashboard-widget class="flex-grow relative" id="news" label="News">

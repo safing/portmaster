@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { Inject, Injectable, Renderer2, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AppProfile, AppProfileService, ConfigService, IPScope, NetqueryConnection, Pin, PossilbeValue, QueryResult, SPNService, Verdict, deepClone, flattenProfileConfig, getAppSetting, setAppSetting } from '@safing/portmaster-api';
+import { AppProfile, AppProfileService, ConfigService, IPScope, NetqueryConnection, PossilbeValue, QueryResult, Verdict, deepClone, flattenProfileConfig, getAppSetting, setAppSetting } from '@safing/portmaster-api';
 import { BehaviorSubject, Observable, OperatorFunction, Subject, combineLatest } from 'rxjs';
 import { distinctUntilChanged, filter, map, switchMap, take, takeUntil } from 'rxjs/operators';
 import { ActionIndicatorService } from '../action-indicator';
@@ -35,7 +35,6 @@ export class NetqueryHelper {
   private addToFilter$ = new Subject<SfngSearchbarFields>();
   private destroy$ = new Subject<void>();
   private appProfiles$ = new BehaviorSubject<LocalAppProfile[]>([]);
-  private spnMapPins$ = new BehaviorSubject<Pin[] | null>(null);
   private readonly integration = inject(INTEGRATION_SERVICE);
 
   readonly onShiftKey: Observable<boolean>;
@@ -47,7 +46,6 @@ export class NetqueryHelper {
     private configService: ConfigService,
     private actionIndicator: ActionIndicatorService,
     private renderer: Renderer2,
-    private spnService: SPNService,
     @Inject(DOCUMENT) private document: Document,
   ) {
     const cleanupKeyDown = this.renderer.listen(this.document, 'keydown', (event: KeyboardEvent) => {
@@ -102,12 +100,6 @@ export class NetqueryHelper {
           }
         }))
       });
-
-    this.spnService.watchPins()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(pins => {
-        this.spnMapPins$.next(pins);
-      })
   }
 
   decodePrettyValues(field: keyof NetqueryConnection, values: any[]): any[] {
@@ -119,7 +111,7 @@ export class NetqueryHelper {
       return values.map(val => {
         // check if it's a value of the IPScope enum
         const scopeValue = IPScope[val];
-        if (!!scopeValue) {
+        if (scopeValue) {
           return scopeValue;
         }
 
@@ -149,14 +141,6 @@ export class NetqueryHelper {
       })
     }
 
-    if (field === 'exit_node') {
-      const lm = new Map<string, Pin>();
-      (this.spnMapPins$.getValue() || [])
-        .forEach(pin => lm.set(pin.Name, pin));
-
-      return values.map(val => lm.get(val)?.ID || val)
-    }
-
     return values;
   }
 
@@ -166,7 +150,7 @@ export class NetqueryHelper {
       this.appProfiles$,
     ]).pipe(
       map(([items, profiles]) => {
-        let lm = new Map<string, LocalAppProfile>();
+        const lm = new Map<string, LocalAppProfile>();
         profiles.forEach(profile => {
           lm.set(`${profile.Source}/${profile.ID}`, profile)
         })
@@ -182,42 +166,15 @@ export class NetqueryHelper {
     )
   }
 
-  attachPins(): OperatorFunction<QueryResult[], (QueryResult & { __exitNode?: Pin })[]> {
-    return source => combineLatest([
-      source,
-      this.spnMapPins$
-        .pipe(
-          filter(result => result !== null),
-          take(1),
-        ),
-    ]).pipe(
-      map(([items, pins]) => {
-        let lm = new Map<string, Pin>();
-        pins!.forEach(pin => {
-          lm.set(pin.ID, pin)
-        })
-
-        return items.map(item => {
-          if ('exit_node' in item) {
-            item.__exitNode = lm.get(item.exit_node!)
-          }
-
-          return item;
-        })
-      })
-    )
-  }
-
   encodeToPossibleValues(field: string): OperatorFunction<QueryResult[], (QueryResult & PossilbeValue)[]> {
     return source => combineLatest([
       source,
       this.appProfiles$,
-      this.spnMapPins$,
     ]).pipe(
-      map(([items, profiles, pins]) => {
+      map(([items, profiles]) => {
         // convert profile IDs to profile name
         if (field === 'profile') {
-          let lm = new Map<string, AppProfile>();
+          const lm = new Map<string, AppProfile>();
           profiles.forEach(profile => {
             lm.set(`${profile.Source}/${profile.ID}`, profile)
           })
@@ -281,21 +238,6 @@ export class NetqueryHelper {
                 ...item
               }
             })
-        }
-
-        if (field === 'exit_node') {
-          const lm = new Map<string, Pin>();
-          pins!.forEach(pin => lm.set(pin.ID, pin));
-
-          return items.map(item => {
-            const pin = lm.get(item.exit_node!);
-            return {
-              Name: pin?.Name || item.exit_node,
-              Value: item.exit_node,
-              Description: 'Operated by ' + (pin?.VerifiedOwner || 'N/A'),
-              ...item
-            }
-          })
         }
 
         // the rest is just converted into the {@link PossibleValue} form
@@ -378,7 +320,7 @@ export class NetqueryHelper {
 
     let profile = conn.profile
 
-    if (!!reason.Profile) {
+    if (reason.Profile) {
       profile = reason.Profile;
     }
 
