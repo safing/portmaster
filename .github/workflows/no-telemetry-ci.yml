@@ -107,7 +107,7 @@ jobs:
             libsoup-3.0-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libgtk-3-dev
       # Same Rust version as the builds (rust_version in the Earthfile), so
       # that a new stable release cannot break this job without a change
-      # here: Rust 1.100 does not compile wl-clipboard-rs 0.8.1.
+      # here.
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.89"
