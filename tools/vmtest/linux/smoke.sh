@@ -118,6 +118,16 @@ wait "${load_pids[@]}" # not "wait" alone, which would wait for portmaster-core
 check "service alive after 40 parallel connections" kill -0 "$core_pid"
 check "https://$ALLOWED still reachable" https_ok "$ALLOWED"
 
+step "Bandwidth"
+# Several requests over one kept-alive connection, so that the connection
+# is open long enough for the eBPF bandwidth monitor to sample it.
+curl -s -o /dev/null --max-time 20 --rate 2/s "https://$ALLOWED/?bw=[1-8]" || true
+sleep 3 # let the bandwidth updates reach netquery
+bw=$(curl -sf --max-time 10 -X POST "$API/netquery/query" -H 'Content-Type: application/json' \
+	-d "{\"query\":{\"domain\":{\"\$like\":\"%$ALLOWED%\"}},\"select\":[\"bytes_received\",\"bytes_sent\"],\"pageSize\":100}" |
+	jq '[.results[] | (.bytes_received // 0) + (.bytes_sent // 0)] | add // 0' 2>/dev/null || echo 0)
+if [[ "$bw" =~ ^[0-9]+$ ]] && ((bw > 0)); then pass "eBPF bandwidth data recorded ($bw bytes)"; else fail "eBPF bandwidth data recorded (got '$bw')"; fi
+
 step "Shutdown"
 kill -TERM "$core_pid"
 stopped=0
