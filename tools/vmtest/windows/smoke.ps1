@@ -1,13 +1,17 @@
 # Integration smoke test of portmaster-core on Windows. Runs inside the test
 # VM as administrator (see test-windows.sh):
 #
-#   .\smoke.ps1 -Core C:\vmtest\portmaster-core.exe
+#   .\smoke.ps1 -Core C:\vmtest\portmaster-core.exe [-Dll C:\vmtest\portmaster-core.dll]
 #
+# With -Dll, the given core DLL replaces the downloaded one and must load.
 # Fetches the signed release binaries (including the kernel extension) with
 # the update command, then starts the given portmaster-core with packet
 # interception and checks that it intercepts and filters traffic, answers its
 # API and shuts down cleanly. Exits non-zero if any check fails.
-param([Parameter(Mandatory = $true)][string]$Core)
+param(
+    [Parameter(Mandatory = $true)][string]$Core,
+    [string]$Dll
+)
 
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
@@ -60,6 +64,13 @@ if ($kext) {
     Fail 'kernel extension downloaded'
     Get-Content $Log -Tail 30
     exit 1
+}
+
+if ($Dll) {
+    $target = Get-ChildItem -Path $Bin -Recurse -Filter 'portmaster-core*.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
+    $targetPath = if ($target) { $target.FullName } else { Join-Path $Bin 'portmaster-core.dll' }
+    Copy-Item -Force $Dll $targetPath
+    Pass "core DLL replaced with $Dll"
 }
 
 # Block one domain in the global settings.
@@ -130,6 +141,16 @@ Step 'Log'
 Get-Content "$Log.err" -ErrorAction SilentlyContinue | Add-Content $Log
 $panics = @(Select-String -Path $Log -Pattern '^panic:|fatal error:' -ErrorAction SilentlyContinue).Count
 if ($panics -eq 0) { Pass 'no panics in the log' } else { Fail "$panics panics in the log" }
+# The core DLL provides the ETW DNS integration. It fails to load when it
+# needs a C runtime that the system does not have.
+$dllLoaded = [bool](Select-String -Path $Log -Pattern 'integration: initialize successful' -SimpleMatch -ErrorAction SilentlyContinue)
+if ($dllLoaded) {
+    Pass 'core DLL loaded'
+} elseif ($Dll) {
+    Fail 'core DLL loaded'
+} else {
+    Write-Output '  info: core DLL not loaded (the upstream DLL needs the VC++ runtime)'
+}
 $errors = @(Select-String -Path $Log -Pattern ' (ERR|CRT) ' -CaseSensitive -ErrorAction SilentlyContinue).Count
 Write-Output "  log: $(@(Get-Content $Log).Count) lines, $errors error lines (see core.log)"
 

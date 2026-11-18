@@ -40,6 +40,12 @@ if [[ "$what" == smoke || "$what" == all ]]; then
 	log "building portmaster-core.exe"
 	(cd "$VMTEST_REPO" && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 "$(go_bin)" build -o "$results/portmaster-core.exe" ./cmds/portmaster-core)
 	vm_scp "$WINDOWS_SSH_PORT" "$WINDOWS_USER" "$results/portmaster-core.exe" "$VMTEST_REPO/tools/vmtest/windows/smoke.ps1" "$VMTEST_REPO/tools/vmtest/windows/smoke-task.ps1" 'C:/vmtest/'
+	# WINDOWS_CORE_DLL: test this core DLL instead of the downloaded one.
+	vm_ssh "$WINDOWS_SSH_PORT" "$WINDOWS_USER" 'Remove-Item C:\vmtest\portmaster-core.dll -ErrorAction SilentlyContinue' || true
+	if [[ -n "${WINDOWS_CORE_DLL:-}" ]]; then
+		log "using core DLL $WINDOWS_CORE_DLL"
+		vm_scp "$WINDOWS_SSH_PORT" "$WINDOWS_USER" "$WINDOWS_CORE_DLL" 'C:/vmtest/portmaster-core.dll'
+	fi
 	log "running smoke test as administrator"
 	# Run as a scheduled task, detached from the SSH session: while Portmaster
 	# starts intercepting, the session may be dropped. Then wait for the
