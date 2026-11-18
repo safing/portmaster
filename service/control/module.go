@@ -6,14 +6,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
 )
 
 type PauseInfo struct {
 	Interception bool      // Whether Portmaster interception is paused
-	SPN          bool      // Whether SPN is paused
+	SPN          bool      // Always false: this build has no SPN. Kept for clients that expect the field.
 	TillTime     time.Time // When the pause will end
 }
 
@@ -30,7 +29,6 @@ type Control struct {
 }
 
 type instance interface {
-	Config() *config.Config
 	InterceptionGroup() *mgr.GroupModule
 	IsShuttingDown() bool
 }

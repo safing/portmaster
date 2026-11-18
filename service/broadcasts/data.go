@@ -9,7 +9,6 @@ import (
 	"github.com/safing/portmaster/service/core"
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/netenv"
-	"github.com/safing/portmaster/spn/captain"
 )
 
 var portmasterStarted = time.Now()
@@ -57,8 +56,8 @@ func collectData() interface{} {
 		}
 	}
 
-	// Get data about SPN status.
-	data["SPN"] = captain.GetSPNStatus()
+	// SPN data has been removed: portmasterpro has no SPN.
+	data["SPN"] = &DataError{Error: errNoSPN}
 
 	// Account data has been removed: portmasterpro has no user accounts.
 	data["Account"] = &DataError{Error: errNoAccount}
@@ -87,8 +86,12 @@ type Location struct {
 	SourceAccuracy int
 }
 
-// errNoAccount is reported in place of the removed SPN account data.
-var errNoAccount = errors.New("accounts have been removed from portmasterpro")
+var (
+	// errNoAccount is reported in place of the removed SPN account data.
+	errNoAccount = errors.New("accounts have been removed from portmasterpro")
+	// errNoSPN is reported in place of the removed SPN status data.
+	errNoSPN = errors.New("the SPN has been removed from portmasterpro")
+)
 
 // DataError represents an error getting some matching data.
 type DataError struct {

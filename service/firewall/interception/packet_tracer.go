@@ -61,11 +61,6 @@ func (p *tracedPacket) RerouteToNameserver() error {
 	return p.Packet.RerouteToNameserver()
 }
 
-func (p *tracedPacket) RerouteToTunnel() error {
-	defer p.markServed("reroute-tunnel")
-	return p.Packet.RerouteToTunnel()
-}
-
 func (p *tracedPacket) RerouteToSplitTun() error {
 	defer p.markServed("reroute-splittun")
 	return p.Packet.RerouteToSplitTun()

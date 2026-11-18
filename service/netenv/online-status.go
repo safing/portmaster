@@ -50,7 +50,6 @@ var (
 	DNSTestExpectedIPs = []net.IP{net.IPv4(1, 1, 1, 1), net.IPv4(1, 0, 0, 1)}
 	DNSTestQueryFunc   func(ctx context.Context, fdqn string) (ips []net.IP, ok bool, err error)
 
-	ConnectedToSPN = abool.New()
 	ConnectedToDNS = abool.New()
 
 	// SpecialCaptivePortalDomain is the domain name used to point to the detected captive portal IP
@@ -485,12 +484,7 @@ func checkOnlineStatus(ctx context.Context) {
 		return StatusUnknown
 	}*/
 
-	// 0) check if connected to SPN and/or DNS.
-
-	if ConnectedToSPN.IsSet() {
-		updateOnlineStatus(StatusOnline, nil, "connected to SPN")
-		return
-	}
+	// 0) check if connected to DNS.
 
 	if ConnectedToDNS.IsSet() {
 		updateOnlineStatus(StatusOnline, nil, "connected to DNS")

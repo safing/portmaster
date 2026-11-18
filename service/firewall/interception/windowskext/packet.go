@@ -133,14 +133,6 @@ func (pkt *Packet) RerouteToNameserver() error {
 	return nil
 }
 
-// RerouteToTunnel permanently reroutes the connection to the local tunnel entrypoint (and the current packet).
-func (pkt *Packet) RerouteToTunnel() error {
-	if pkt.verdictSet.SetToIf(false, true) {
-		return SetVerdict(pkt, network.VerdictRerouteToTunnel)
-	}
-	return nil
-}
-
 // RerouteToSplitTun permanently reroutes the connection to the split tunnel (and the current packet).
 func (pkt *Packet) RerouteToSplitTun() error {
 	if pkt.verdictSet.SetToIf(false, true) {

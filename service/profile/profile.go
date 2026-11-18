@@ -121,9 +121,6 @@ type Profile struct {
 	serviceEndpoints    endpoints.Endpoints
 	filterListsSet      bool
 	filterListIDs       []string
-	spnUsagePolicy      endpoints.Endpoints
-	spnTransitHubPolicy endpoints.Endpoints
-	spnExitHubPolicy    endpoints.Endpoints
 	splitTunUsagePolicy endpoints.Endpoints
 
 	// Lifecycle Management
@@ -208,33 +205,6 @@ func (profile *Profile) parseConfig() error {
 	profile.splitTunUsagePolicy = nil
 	if ok {
 		profile.splitTunUsagePolicy, err = endpoints.ParseEndpoints(list)
-		if err != nil {
-			lastErr = err
-		}
-	}
-
-	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionSPNUsagePolicyKey)
-	profile.spnUsagePolicy = nil
-	if ok {
-		profile.spnUsagePolicy, err = endpoints.ParseEndpoints(list)
-		if err != nil {
-			lastErr = err
-		}
-	}
-
-	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionTransitHubPolicyKey)
-	profile.spnTransitHubPolicy = nil
-	if ok {
-		profile.spnTransitHubPolicy, err = endpoints.ParseEndpoints(list)
-		if err != nil {
-			lastErr = err
-		}
-	}
-
-	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionExitHubPolicyKey)
-	profile.spnExitHubPolicy = nil
-	if ok {
-		profile.spnExitHubPolicy, err = endpoints.ParseEndpoints(list)
 		if err != nil {
 			lastErr = err
 		}

@@ -75,7 +75,6 @@ func triggerClientHealthCheck() {
 func clientManager(ctx *mgr.WorkerCtx) error {
 	defer func() {
 		ready.UnSet()
-		netenv.ConnectedToSPN.UnSet()
 		resetSPNStatus(StatusDisabled, true)
 		module.states.Clear()
 		clientStopHomeHub(ctx)
@@ -111,7 +110,6 @@ reconnect:
 
 		// Reset SPN status.
 		if ready.SetToIf(true, false) {
-			netenv.ConnectedToSPN.UnSet()
 			log.Info("spn/captain: client not ready")
 		}
 		resetSPNStatus(StatusConnecting, true)
@@ -142,7 +140,6 @@ reconnect:
 
 		log.Info("spn/captain: client is ready")
 		ready.Set()
-		netenv.ConnectedToSPN.Set()
 
 		module.EventSPNConnected.Submit(struct{}{})
 		if conf.Integrated() {

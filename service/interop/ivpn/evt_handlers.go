@@ -15,7 +15,7 @@ import (
 func (i *InteropIvpn) onConnectionStarting(wc *mgr.WorkerCtx, _ string, messageData string) {
 	// While VPN is active, ignore network-derived location sources.
 	// Virtual VPN interfaces/IPs can skew detected device location
-	// and lead to selecting an incorrect SPN home hub.
+	// and lead to an incorrect device location.
 	netenv.DisableNetworkDerivedLocation(true)
 
 	connInfo := ivpnclient.ConnectionStarting{}

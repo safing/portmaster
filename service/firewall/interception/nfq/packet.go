@@ -206,10 +206,6 @@ func (pkt *packet) RerouteToNameserver() error {
 	return pkt.mark(MarkRerouteNS)
 }
 
-func (pkt *packet) RerouteToTunnel() error {
-	return pkt.mark(MarkRerouteSPN)
-}
-
 func (pkt *packet) RerouteToSplitTun() error {
 	return pkt.mark(MarkRerouteSplitTun)
 }

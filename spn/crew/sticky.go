@@ -101,7 +101,11 @@ func getStickiedHub(conn *network.Connection) (sticksTo *stickyHub) {
 	}
 
 	// Disregard stickied Hub if it is disregard with the current options.
-	matcher := conn.TunnelOpts.Destination.Matcher(mapIntel)
+	tunnelOpts := getTunnelOptions(conn)
+	if tunnelOpts == nil {
+		return nil
+	}
+	matcher := tunnelOpts.Destination.Matcher(mapIntel)
 	if !matcher(sticksTo.Pin) {
 		return nil
 	}

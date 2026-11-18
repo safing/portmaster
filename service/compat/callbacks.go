@@ -37,11 +37,3 @@ func ReportSecureDNSBypassIssue(p *process.Process) {
 		return nil
 	})
 }
-
-// ReportMultiPeerUDPTunnelIssue reports a multi-peer UDP tunnel for the given process.
-func ReportMultiPeerUDPTunnelIssue(p *process.Process) {
-	module.mgr.Go("report multi-peer udp tunnel issue", func(w *mgr.WorkerCtx) error {
-		multiPeerUDPTunnelIssue.notify(p)
-		return nil
-	})
-}

@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
 )
 
-func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
+func (c *Control) pause(duration time.Duration) (retErr error) {
 	if c.instance.IsShuttingDown() {
 		c.mgr.Debug("Cannot pause: system is shutting down")
 		return nil
@@ -32,18 +31,6 @@ func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
 		return errors.New("invalid pause duration")
 	}
 
-	cfgSpnEnabled := config.GetAsBool("spn/enable", false)
-
-	if onlySPN {
-		if c.pauseInfo.Interception {
-			return errors.New("cannot pause SPN separately when core is paused")
-		}
-		// If SPN is not running and not already paused, cannot pause it or change pause duration.
-		if !cfgSpnEnabled() && !c.pauseInfo.SPN {
-			return errors.New("cannot pause SPN when it is not running")
-		}
-	}
-
 	// Stop resume worker if running and start a new one later.
 	c.stopResumeWorker()
 	defer func() {
@@ -52,32 +39,6 @@ func (c *Control) pause(duration time.Duration, onlySPN bool) (retErr error) {
 			c.startResumeWorker(duration)
 		}
 	}()
-
-	// Pause SPN if not already paused.
-	if !c.pauseInfo.SPN {
-		if cfgSpnEnabled() {
-			// "spn/access" module is responsible for starting/stopping SPN service.
-			// Here we just change the config to notify it to stop SPN.
-			// TODO: the 'pause' state must not make permanent config changes.
-			//       Consider possibility to not store permanent config changes.
-			//       E.g. SPN enabled -> pause SPN -> restart PC/Portmaster -> SPN should be enabled again.
-			config.SetConfigOption("spn/enable", false)
-
-			// Wait until SPN is fully stopped with timeout 30s.
-			err := c.waitSPNStopped(time.Second * 30)
-			if err != nil {
-				config.SetConfigOption("spn/enable", true) // revert config change on error
-				return err
-			}
-
-			c.mgr.Info("SPN paused")
-			c.pauseInfo.SPN = true
-		}
-	}
-
-	if onlySPN {
-		return nil
-	}
 
 	if !c.pauseInfo.Interception {
 		if err := c.instance.InterceptionGroup().Stop(); err != nil {
@@ -130,17 +91,6 @@ func (c *Control) doResume(wc *mgr.WorkerCtx) (superseded bool, retErr error) {
 		c.pauseInfo.Interception = false
 	}
 
-	if c.pauseInfo.SPN {
-		cfgSpnEnabled := config.GetAsBool("spn/enable", false)
-		// "spn/access" module is responsible for starting/stopping SPN service.
-		// Here we just change the config to notify it to start SPN.
-		if !cfgSpnEnabled() {
-			config.SetConfigOption("spn/enable", true)
-			c.mgr.Info("SPN resumed")
-		}
-		c.pauseInfo.SPN = false
-	}
-
 	return false, nil
 }
 
@@ -166,10 +116,6 @@ func (c *Control) startResumeWorker(duration time.Duration) {
 	resumerWorkerFunc := func(wc *mgr.WorkerCtx) error {
 		wc.Info(fmt.Sprintf("Scheduling resume in %v", duration))
 
-		// Subscribe to config changes to detect SPN enable.
-		cfgChangeEvt := c.instance.Config().EventConfigChange.Subscribe("control: spn enable check", 10)
-		defer cfgChangeEvt.Cancel()
-
 		// Timer for the deadline.
 		timer := time.NewTimer(time.Until(deadline))
 		defer timer.Stop()
@@ -177,20 +123,12 @@ func (c *Control) startResumeWorker(duration time.Duration) {
 		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()
 
-		cfgSpnEnabled := config.GetAsBool("spn/enable", false)
-
-		// Wait until duration elapses or SPN is enabled by user.
+		// Wait until duration elapses.
 		needToAutoResume := false
 		for !needToAutoResume {
 			select {
 			case <-wc.Ctx().Done():
 				return nil
-			case <-cfgChangeEvt.Events():
-				if cfgSpnEnabled() {
-					cfgChangeEvt.Cancel() // we do not need it anymore (no problem to cancel multiple times)
-					wc.Info("SPN enabled by user. Auto-resume initiated.")
-					needToAutoResume = true
-				}
 			case <-ticker.C:
 				// Check wall-clock time.
 				if time.Now().Round(0).After(deadline) {
@@ -238,7 +176,7 @@ func (c *Control) updateStatesAndNotify() {
 	// A new pause/resume attempt supersedes the error of a previous one.
 	c.deleteErrorNotification()
 
-	if !c.pauseInfo.Interception && !c.pauseInfo.SPN {
+	if !c.pauseInfo.Interception {
 		if c.pauseNotification != nil {
 			c.pauseNotification.Delete()
 			c.pauseNotification = nil
@@ -246,21 +184,12 @@ func (c *Control) updateStatesAndNotify() {
 		return
 	}
 
-	title := ""
-	nType := notifications.Warning
-	if c.pauseInfo.Interception && c.pauseInfo.SPN {
-		title = "Portmaster and SPN paused"
-	} else if c.pauseInfo.Interception {
-		title = "Portmaster paused"
-	} else if c.pauseInfo.SPN {
-		title = "SPN paused"
-		nType = notifications.Info // less severe notification for SPN-only pause
-	}
+	title := "Portmaster paused"
 	message := fmt.Sprintf("%s until %v", title, c.pauseInfo.TillTime.Format(time.TimeOnly))
 
 	c.pauseNotification = &notifications.Notification{
 		EventID:      "control:paused",
-		Type:         nType,
+		Type:         notifications.Warning,
 		Title:        title,
 		Message:      message,
 		ShowOnSystem: false, // TODO: Before enabling, ensure that UI client (Tauri implementation) supports ActionTypeWebhook.
@@ -325,10 +254,4 @@ func (c *Control) showNotification(title, message string) *notifications.Notific
 	}
 	notifications.Notify(n)
 	return n
-}
-
-// waitSPNStopped is kept for compatibility. portmasterpro has no SPN module,
-// so there is nothing to wait for.
-func (c *Control) waitSPNStopped(_ time.Duration) error {
-	return nil
 }

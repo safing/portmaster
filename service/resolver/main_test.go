@@ -11,7 +11,6 @@ import (
 	"github.com/safing/portmaster/base/config"
 	"github.com/safing/portmaster/base/database/dbmodule"
 	"github.com/safing/portmaster/service/core/base"
-	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/ui"
 	"github.com/safing/portmaster/service/updates"
@@ -26,9 +25,6 @@ type testInstance struct {
 	netenv *netenv.NetEnv
 }
 
-func (stub *testInstance) GetEventSPNConnected() *mgr.EventMgr[struct{}] {
-	return mgr.NewEventMgr[struct{}]("spn connect", nil)
-}
 func (stub *testInstance) IntelUpdates() *updates.Updater     { return nil }
 func (stub *testInstance) Config() *config.Config             { return stub.config }
 func (stub *testInstance) NetEnv() *netenv.NetEnv             { return stub.netenv }

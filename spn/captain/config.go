@@ -1,13 +1,36 @@
 package captain
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/safing/portmaster/base/config"
-	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/service/profile/endpoints"
 	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/navigator"
+)
+
+var (
+	// spnRulesQuickSettings are generated automatically shortly after start.
+	spnRulesQuickSettings = []config.QuickSetting{
+		{Name: "Loading...", Action: config.QuickMergeTop, Value: []string{""}},
+	}
+
+	// spnRulesVerdictNames defines the verdicts names to be used for SPN Rules.
+	spnRulesVerdictNames = map[string]string{
+		"-": "Exclude", // Default.
+		"+": "Allow",
+	}
+
+	// spnRulesHelp defines the help text for SPN related Hub selection rules.
+	spnRulesHelp = strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match the following attributes of SPN Nodes:
+
+- Country (based on IPs): "US" (two-letter country codes according to ISO 3166-1 alpha-2)
+- AS number: "AS123456"
+- Address: "192.168.0.1"
+- Network: "192.168.0.1/24"
+- Anything: "*"
+`, `"`, "`")
 )
 
 var (
@@ -81,7 +104,7 @@ func prepConfig() error {
 By default, the Portmaster tries to choose the nearest node as your Home Node in order to reduce your exposure to the open Internet.
 
 Reconnect to the SPN in order to apply new rules.`,
-		Help:            profile.SPNRulesHelp,
+		Help:            spnRulesHelp,
 		Sensitive:       true,
 		OptType:         config.OptTypeStringArray,
 		RequiresRestart: true,
@@ -91,8 +114,8 @@ Reconnect to the SPN in order to apply new rules.`,
 			config.CategoryAnnotation:                    "Routing",
 			config.DisplayOrderAnnotation:                cfgOptionHomeHubPolicyOrder,
 			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
-			config.QuickSettingsAnnotation:               profile.SPNRulesQuickSettings,
-			endpoints.EndpointListVerdictNamesAnnotation: profile.SPNRulesVerdictNames,
+			config.QuickSettingsAnnotation:               spnRulesQuickSettings,
+			endpoints.EndpointListVerdictNamesAnnotation: spnRulesVerdictNames,
 		},
 		ValidationRegex: endpoints.ListEntryValidationRegex,
 		ValidationFunc:  endpoints.ValidateEndpointListConfigOption,
@@ -111,7 +134,7 @@ Reconnect to the SPN in order to apply new rules.`,
 By default, the Portmaster will exit DNS requests directly at your Home Node in order to keep them fast and close to your location. This is important, as DNS resolution often takes your approximate location into account when deciding which optimized DNS records are returned to you. As the Portmaster encrypts your DNS requests by default, you effectively gain a two-hop security level for your DNS requests in order to protect your privacy.
 
 This setting mainly exists for when you need to simulate your presence in another location on a lower level too. This might be necessary to defeat more intelligent geo-blocking systems.`,
-		Help:            profile.SPNRulesHelp,
+		Help:            spnRulesHelp,
 		Sensitive:       true,
 		OptType:         config.OptTypeStringArray,
 		RequiresRestart: true,
@@ -121,8 +144,8 @@ This setting mainly exists for when you need to simulate your presence in anothe
 			config.CategoryAnnotation:                    "Routing",
 			config.DisplayOrderAnnotation:                cfgOptionDNSExitHubPolicyOrder,
 			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
-			config.QuickSettingsAnnotation:               profile.SPNRulesQuickSettings,
-			endpoints.EndpointListVerdictNamesAnnotation: profile.SPNRulesVerdictNames,
+			config.QuickSettingsAnnotation:               spnRulesQuickSettings,
+			endpoints.EndpointListVerdictNamesAnnotation: spnRulesVerdictNames,
 		},
 		ValidationRegex: endpoints.ListEntryValidationRegex,
 		ValidationFunc:  endpoints.ValidateEndpointListConfigOption,
@@ -207,7 +230,7 @@ This setting mainly exists for when you need to simulate your presence in anothe
 
 	// Config options for use.
 	if conf.Integrated() {
-		cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(profile.CfgOptionRoutingAlgorithmKey, navigator.DefaultRoutingProfileID)
+		cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(navigator.CfgOptionRoutingAlgorithmKey, navigator.DefaultRoutingProfileID)
 	} else {
 		cfgOptionRoutingAlgorithm = func() string { return navigator.DefaultRoutingProfileID }
 	}
