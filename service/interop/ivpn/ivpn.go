@@ -134,9 +134,11 @@ func (i *InteropIvpn) connectIvpnClient(wc *mgr.WorkerCtx) error {
 
 	servicePort, _, err := ivpnclient.GetConnectionPortInfo()
 	switch {
-	case errors.Is(err, fs.ErrNotExist):
+	case errors.Is(err, fs.ErrNotExist), err != nil && !clientInstalled():
 		// The IVPN client is not installed: its connection info (registry key
 		// or file) does not exist. This is the common case, not an error.
+		// On Linux the IVPN library does not wrap fs.ErrNotExist, so the
+		// installation is checked separately.
 		log.Debugf("interop/ivpn: client not installed: %s", err)
 		return nil
 	case err != nil:

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"os/exec"
 	"strconv"
 	"sync/atomic"
@@ -176,4 +177,17 @@ func parseNftInsertHandle(data []byte) (int, error) {
 		}
 	}
 	return 0, fmt.Errorf("no rule entry found in nft output")
+}
+
+// clientInstalled reports whether the IVPN client is installed, either as a
+// package or as a snap. These are the directories the IVPN client library
+// looks for the connection info in.
+func clientInstalled() bool {
+	for _, dir := range []string{"/etc/opt/ivpn/mutable", "/var/snap/ivpn/common"} {
+		_, err := os.Stat(dir)
+		if err == nil {
+			return true
+		}
+	}
+	return false
 }
