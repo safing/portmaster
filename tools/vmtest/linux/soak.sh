@@ -54,17 +54,20 @@ traffic &
 traffic_pid=$!
 trap 'kill "$traffic_pid" 2>/dev/null; kill "$core_pid" 2>/dev/null' EXIT
 
-echo "minute,rss_kb,goroutines,fds,db_kb" >"$CSV"
+echo "minute,rss_kb,heap_kb,goroutines,fds,db_kb" >"$CSV"
 sample() {
-	local rss goroutines fds db
+	local rss heap goroutines fds db
 	rss=$(ps -o rss= -p "$core_pid" | tr -d ' ')
 	# The stack endpoint returns a grouped goroutine profile with the total in
 	# its first line: "goroutine profile: total N".
 	goroutines=$(curl -sf --max-time 10 "$API/debug/stack" | sed -n 's/^goroutine profile: total \([0-9]*\).*/\1/p' | head -1)
+	# Prometheus metrics are served at /metrics, with a namespace prefix and
+	# possibly labels: portmaster_go_memstats_heap_inuse_bytes{...} VALUE
+	heap=$(curl -sf --max-time 10 http://127.0.0.1:817/metrics | awk '$1 ~ /^([a-z]+_)?go_memstats_heap_inuse_bytes(\{.*\})?$/ {printf "%d", $NF/1024; exit}')
 	fds=$(ls "/proc/$core_pid/fd" | wc -l)
 	db=$(du -sk "$DATA" | cut -f1)
-	echo "$1,$rss,$goroutines,$fds,$db" >>"$CSV"
-	printf 'minute %3d: rss %6d KB  goroutines %5d  fds %4d  data %6d KB\n' "$1" "$rss" "$goroutines" "$fds" "$db"
+	echo "$1,$rss,${heap:-0},$goroutines,$fds,$db" >>"$CSV"
+	printf 'minute %3d: rss %6d KB  heap %6d KB  goroutines %5d  fds %4d  data %6d KB\n' "$1" "$rss" "${heap:-0}" "$goroutines" "$fds" "$db"
 }
 
 for m in $(seq 0 "$MINUTES"); do
@@ -77,16 +80,23 @@ for m in $(seq 0 "$MINUTES"); do
 	[ "$m" -lt "$MINUTES" ] && sleep 60
 done
 
-# Compare the average of minutes 5-9 (after warm-up) with the last 5 samples.
+# Compare the averages after warm-up with the averages at the end. The
+# connection history keeps ended connections for 10 minutes, so memory only
+# levels off after about 20 minutes under constant traffic. Open files vary
+# with the connections open at each sample, so averages over 10 samples are
+# compared.
 python3 - "$CSV" <<'PY'
 import csv, sys
 rows = list(csv.DictReader(open(sys.argv[1])))
 if len(rows) < 15:
     print("SOAK INCONCLUSIVE: too few samples"); sys.exit(0)
 def avg(rs, k): return sum(int(r[k] or 0) for r in rs) / len(rs)
-early, late = rows[5:10], rows[-5:]
+if len(rows) >= 45:
+    early, late = rows[20:30], rows[-10:]
+else:
+    early, late = rows[5:10], rows[-5:]
 failed = False
-for k, limit in (("rss_kb", 1.5), ("goroutines", 1.3), ("fds", 1.3)):
+for k, limit in (("rss_kb", 1.5), ("heap_kb", 1.5), ("goroutines", 1.3), ("fds", 1.5)):
     a, b = avg(early, k), avg(late, k)
     ratio = b / a if a else 0
     flag = "GROWING" if ratio > limit else "ok"

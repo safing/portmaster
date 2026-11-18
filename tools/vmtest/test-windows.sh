@@ -2,6 +2,7 @@
 # Run the test suite in the Windows VM as administrator:
 #
 #   test-windows.sh [unit|smoke|all]   (default: unit)
+#   test-windows.sh soak [MINUTES]     (not part of all; default 60 minutes)
 #
 # Results are written to $VMTEST_WORK/results/windows-*.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
@@ -58,6 +59,33 @@ if [[ "$what" == smoke || "$what" == all ]]; then
 	[[ "$("${SSH[@]}" '(Get-Content C:\vmtest\smoke.done).Trim()' 2>/dev/null | tr -d '\r')" == 0 ]] || rc=1
 	"${SSH[@]}" 'Unregister-ScheduledTask -TaskName pm-smoke -Confirm:$false' >/dev/null 2>&1 || true
 	vm_fetch "$WINDOWS_SSH_PORT" "$WINDOWS_USER" 'C:/vmtest/pm-smoke/core.log' "$results/core.log" 2>/dev/null || true
+fi
+
+if [[ "$what" == soak ]]; then
+	minutes="${2:-60}"
+	log "building portmaster-core.exe"
+	(cd "$VMTEST_REPO" && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 "$(go_bin)" build -o "$results/portmaster-core.exe" ./cmds/portmaster-core)
+	vm_scp "$WINDOWS_SSH_PORT" "$WINDOWS_USER" "$results/portmaster-core.exe" "$VMTEST_REPO/tools/vmtest/windows/soak.ps1" 'C:/vmtest/'
+	log "running soak test for $minutes minutes as administrator"
+	# Like the smoke test: run as a scheduled task, detached from SSH.
+	"${SSH[@]}" "
+		Remove-Item C:\\vmtest\\soak.txt, C:\\vmtest\\soak.done -ErrorAction SilentlyContinue
+		Set-Content -Path C:\\vmtest\\soak-task.ps1 -Value '& C:\\vmtest\\soak.ps1 -Core C:\\vmtest\\portmaster-core.exe -Minutes $minutes *> C:\\vmtest\\soak.txt; Set-Content -Path C:\\vmtest\\soak.done -Value \$LASTEXITCODE'
+		\$action = New-ScheduledTaskAction -Execute powershell.exe -Argument '-NoProfile -ExecutionPolicy Bypass -File C:\\vmtest\\soak-task.ps1'
+		Register-ScheduledTask -TaskName pm-soak -Action \$action -User SYSTEM -RunLevel Highest -Force | Out-Null
+		Start-ScheduledTask -TaskName pm-soak"
+	waited=0
+	limit=$(((minutes + 20) * 60))
+	until vm_ssh "$WINDOWS_SSH_PORT" "$WINDOWS_USER" 'if (-not (Test-Path C:\vmtest\soak.done)) { exit 1 }' 2>/dev/null; do
+		sleep 30
+		((waited += 30))
+		((waited < limit)) || { log "soak test did not finish in time"; rc=1; break; }
+	done
+	"${SSH[@]}" 'Get-Content C:\vmtest\soak.txt' | tee "$results/soak.txt"
+	[[ "$("${SSH[@]}" '(Get-Content C:\vmtest\soak.done).Trim()' 2>/dev/null | tr -d '\r')" == 0 ]] || rc=1
+	"${SSH[@]}" 'Unregister-ScheduledTask -TaskName pm-soak -Confirm:$false' >/dev/null 2>&1 || true
+	vm_fetch "$WINDOWS_SSH_PORT" "$WINDOWS_USER" 'C:/vmtest/pm-soak/samples.csv' "$results/samples.csv" 2>/dev/null || true
+	vm_fetch "$WINDOWS_SSH_PORT" "$WINDOWS_USER" 'C:/vmtest/pm-soak/core.log' "$results/core.log" 2>/dev/null || true
 fi
 
 log "results in $results"
