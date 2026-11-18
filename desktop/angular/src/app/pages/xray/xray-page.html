@@ -15,6 +15,14 @@
           <span *ngIf="st.exitCountry"> ({{ st.exitCountry }})</span>
         </span>
       </p>
+      <div *ngIf="status$ | async as st" class="mt-0.5 text-xxs">
+        <span *ngIf="st.binary_available" class="text-secondary">
+          {{ 'xray.binaryAvailable' | t: { path: st.binary }: ('' | i18nVersion) }}
+        </span>
+        <span *ngIf="!st.binary_available" class="text-amber-400">
+          ⚠️ {{ 'xray.binaryMissing' | t: undefined : ('' | i18nVersion) }}
+        </span>
+      </div>
       <label class="inline-flex flex-row items-center gap-1.5 mt-1 text-xs text-secondary cursor-pointer" *ngIf="(status$ | async)?.connected">
         <input type="checkbox" [(ngModel)]="showRealExitIp" (change)="toggleRealExitIp()" class="cursor-pointer">
         <span>{{ 'xray.showRealExitIp' | t: undefined : ('' | i18nVersion) }}</span>

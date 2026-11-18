@@ -107,6 +107,7 @@ pub struct Updater {
     restart: Option<Arc<dyn Fn() + Send + Sync>>,
     events: EventMgr<()>,
     client: Arc<dyn HttpClient>,
+    current_version: String,
 }
 
 impl Updater {
@@ -164,6 +165,7 @@ impl Updater {
             restart,
             events: EventMgr::new(RESOURCE_UPDATE_EVENT),
             client,
+            current_version: current_version.to_string(),
         })
     }
 
@@ -372,6 +374,45 @@ impl Updater {
         let _guard = RunningGuard(&self.running);
 
         let config = self.config();
+        if let Some(repo) = &config.github_repo {
+            tracing::info!("updates/{}: checking GitHub releases for {}", config.name, repo);
+            let check_result = crate::github::check_github_repo_release(
+                self.client.as_ref(),
+                repo,
+                &self.current_version,
+            );
+            match check_result {
+                crate::github::GithubCheckResult::UpdateAvailable { current, latest, release_name: _, html_url } => {
+                    tracing::info!(
+                        "updates/{}: new update to {} available on GitHub (current: {})",
+                        config.name, latest, current
+                    );
+                    self.notify_github_update(&latest, &current, &html_url);
+                    return Ok(());
+                }
+                crate::github::GithubCheckResult::UpToDate { current } => {
+                    tracing::info!("updates/{}: Portmaster-Rust is up-to-date ({})", config.name, current);
+                    if let Some(notifications) = &self.notifications {
+                        notifications.delete(UPDATE_AVAILABLE_NOTIFICATION_ID);
+                    }
+                    self.notify(
+                        Notification::info(
+                            NO_NEW_UPDATE_NOTIFICATION_ID,
+                            "Portmaster Is Up-To-Date",
+                            &format!("Portmaster-Rust v{} is the newest version.", current),
+                        )
+                        .with_action(Action::new("ack", "OK"))
+                        .with_expiry(now() + 60),
+                    );
+                    return Ok(());
+                }
+                crate::github::GithubCheckResult::Error(err) => {
+                    tracing::warn!("updates/{}: GitHub release check failed: {}", config.name, err);
+                    return Err(UpdateError::UpdateIndex(err));
+                }
+            }
+        }
+
         let repair_corrupted_resources = self.corrupted_installation().is_some()
             && config.auto_apply
             && !config.needs_restart;
@@ -583,6 +624,29 @@ impl Updater {
             restart();
         }
         Ok(())
+    }
+
+    fn notify_github_update(&self, latest: &str, current: &str, html_url: &str) {
+        let msg = format!(
+            "Portmaster-Rust {} доступен на GitHub (текущая: {}). Нажмите «Открыть релиз» для просмотра и установки.",
+            latest, current
+        );
+        let notif = Notification::info(
+            UPDATE_AVAILABLE_NOTIFICATION_ID,
+            "Доступно обновление",
+            &msg,
+        )
+        .with_action(
+            Action::new("open-github", "Открыть релиз")
+                .with_type(
+                    pm_notifications::ACTION_TYPE_OPEN_URL,
+                    serde_json::Value::String(html_url.to_string()),
+                ),
+        )
+        .with_action(Action::new("ack", "Позже"))
+        .with_expiry(now() + 86400);
+
+        self.notify(notif);
     }
 
     /// Sends a notification, if notifications are enabled and available.

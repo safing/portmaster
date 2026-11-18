@@ -134,6 +134,8 @@ export const ru: Record<string, string> = {
   'xray.details': 'Подробнее',
   'xray.exitIp': 'Выходной IP',
   'xray.showRealExitIp': 'Реальный IP сервера (выходной узел)',
+  'xray.binaryAvailable': 'Бинарник: {{path}}',
+  'xray.binaryMissing': 'Бинарник xray-rust не найден (поиск: <папка Portmaster>/xray-rust, /usr/bin/xray-rust, /usr/local/bin/xray-rust, /opt/xray-rust/xray-rust, /opt/v2rayn-bin/bin/xray/xray или системный PATH)',
 
 
   // --- additional UI strings (ru) ---

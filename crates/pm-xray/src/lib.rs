@@ -63,33 +63,33 @@ pub const XRAY_BINARY_NAME: &str = "xray-rust";
 fn xray_binary_options() -> Vec<pm_config::PossibleValue> {
     vec![
         pm_config::PossibleValue {
-            name: "v2rayN Binary (/opt/v2rayn-bin/bin/xray/xray)".to_string(),
-            description: "Embedded v2rayN Xray core binary".to_string(),
-            value: Value::String("/opt/v2rayn-bin/bin/xray/xray".to_string()),
-        },
-        pm_config::PossibleValue {
-            name: "Auto-detect (System / PATH)".to_string(),
-            description: "Automatically detect Xray binary in /opt/v2rayn-bin, PATH or bin directory".to_string(),
+            name: "Auto-detect (поиск: <папка Portmaster>/xray-rust, /usr/bin, /usr/local/bin, /opt/xray-rust, PATH)".to_string(),
+            description: "Автоматический поиск бинарника xray-rust в каталоге Portmaster, стандартных путях и PATH".to_string(),
             value: Value::String(String::new()),
         },
         pm_config::PossibleValue {
+            name: "xray-rust (/usr/bin/xray-rust, /usr/local/bin/xray-rust, /opt/xray-rust/xray-rust)".to_string(),
+            description: "Выделенный бинарник xray-rust".to_string(),
+            value: Value::String("xray-rust".to_string()),
+        },
+        pm_config::PossibleValue {
+            name: "v2rayN Binary (/opt/v2rayn-bin/bin/xray/xray)".to_string(),
+            description: "Встроенный бинарник Xray core из v2rayN (/opt/v2rayn-bin/bin/xray/xray)".to_string(),
+            value: Value::String("/opt/v2rayn-bin/bin/xray/xray".to_string()),
+        },
+        pm_config::PossibleValue {
             name: "System binary (/usr/bin/xray)".to_string(),
-            description: "Standard system binary in /usr/bin/xray".to_string(),
+            description: "Системный бинарник /usr/bin/xray".to_string(),
             value: Value::String("/usr/bin/xray".to_string()),
         },
         pm_config::PossibleValue {
             name: "Local binary (/usr/local/bin/xray)".to_string(),
-            description: "Locally installed binary in /usr/local/bin/xray".to_string(),
+            description: "Локальный бинарник /usr/local/bin/xray".to_string(),
             value: Value::String("/usr/local/bin/xray".to_string()),
         },
         pm_config::PossibleValue {
-            name: "xray-rust".to_string(),
-            description: "Dedicated xray-rust binary".to_string(),
-            value: Value::String("xray-rust".to_string()),
-        },
-        pm_config::PossibleValue {
             name: "xray (PATH)".to_string(),
-            description: "Standard xray binary in PATH".to_string(),
+            description: "Стандартный бинарник xray из системного PATH".to_string(),
             value: Value::String("xray".to_string()),
         },
     ]
@@ -107,7 +107,7 @@ pub fn register_options(config: &Config) -> pm_config::Result<()> {
         ConfigOption::new(
             "Xray Binary",
             CFG_XRAY_BINARY,
-            "Path to the Xray binary. Select a pre-installed binary or auto-detect.",
+            "Путь к бинарнику Xray. Автопоиск проверяет: <папка Portmaster>/xray-rust, /usr/bin/xray-rust, /usr/local/bin/xray-rust, /opt/xray-rust/xray-rust, /opt/v2rayn-bin/bin/xray/xray или PATH.",
             pm_config::OPT_TYPE_STRING,
             Value::String(default_binary.clone()),
         )

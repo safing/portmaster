@@ -50,6 +50,8 @@ pub struct UpdaterConfig {
     pub notify: bool,
     /// Commands to run after an upgrade.
     pub post_upgrade_commands: Vec<UpdateCommandConfig>,
+    /// Optional GitHub repository (`owner/repo`) to check for releases instead of index files.
+    pub github_repo: Option<String>,
 }
 
 /// An obvious configuration error.

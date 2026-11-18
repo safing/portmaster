@@ -30,6 +30,7 @@ mod index_scan;
 mod upgrade;
 mod updater;
 mod version;
+pub mod github;
 
 pub use config::{ConfigError, UpdateCommandConfig, UpdaterConfig};
 pub use configure::{

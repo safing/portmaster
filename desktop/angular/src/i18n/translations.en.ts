@@ -134,6 +134,8 @@ export const en: Record<string, string> = {
   'xray.details': 'Details',
   'xray.exitIp': 'Exit IP',
   'xray.showRealExitIp': 'Real Server IP (Exit Node)',
+  'xray.binaryAvailable': 'Binary: {{path}}',
+  'xray.binaryMissing': 'Binary xray-rust not found (searched: <Portmaster dir>/xray-rust, /usr/bin/xray-rust, /usr/local/bin/xray-rust, /opt/xray-rust/xray-rust, /opt/v2rayn-bin/bin/xray/xray, or system PATH)',
 
 
   // --- additional UI strings (en) ---

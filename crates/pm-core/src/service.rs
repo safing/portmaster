@@ -15,6 +15,11 @@ use tokio_util::sync::CancellationToken;
 use crate::api_auth::{ApiAuthenticator, SystemLookup};
 use crate::cli::Options;
 
+/// Current Portmaster release version.
+pub const PORTMASTER_VERSION: &str = "2.2.10";
+/// GitHub repository for update checks.
+pub const CFG_GITHUB_RELEASE_REPO: &str = "core/updates/githubRepo";
+
 /// Configuration keys of the core.
 pub const CFG_RELEASE_CHANNEL: &str = "core/releaseChannel";
 /// Whether automatic software updates are enabled.
@@ -173,7 +178,7 @@ impl Service {
         let updater_restart_requested = Arc::clone(&restart_requested);
         let service_stop_token = stop_token.clone();
 
-        // Binary updater: checks the release channel, downloads and applies on
+        // Binary updater: checks GitHub releases (or the release channel), downloads and applies on
         // user action only, needs a restart.
         #[allow(unused_mut)] // mutated only in the Linux SELinux block below
         let mut binary_config = pm_updates::UpdaterConfig {
@@ -195,6 +200,7 @@ impl Service {
             auto_apply: false,
             needs_restart: true,
             notify: true,
+            github_repo: Some("VLOD-ZDOV/portmaster-rust".to_string()),
             ..pm_updates::UpdaterConfig::default()
         };
         #[cfg(target_os = "linux")]
@@ -212,7 +218,7 @@ impl Service {
             pm_updates::Updater::new(
                 binary_config,
                 Arc::new(pm_updates::HttpsClient::new()),
-                env!("CARGO_PKG_VERSION"),
+                PORTMASTER_VERSION,
                 Some(Arc::clone(&notifications)),
                 Some(Arc::new(move || {
                     updater_restart_requested.store(true, Ordering::SeqCst);
@@ -1271,6 +1277,19 @@ fn register_options(config: &Config, options: &Options) -> anyhow::Result<()> {
         )
         .with_expertise_level(pm_config::EXPERTISE_LEVEL_EXPERT)
         .with_annotation(pm_config::DISPLAY_ORDER_ANNOTATION, json!(-11))
+        .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("Updates")),
+    )?;
+
+    config.register(
+        ConfigOption::new(
+            "GitHub Release Repository",
+            CFG_GITHUB_RELEASE_REPO,
+            "GitHub repository ('owner/repo') to check for software updates.",
+            pm_config::OPT_TYPE_STRING,
+            Value::String("VLOD-ZDOV/portmaster-rust".to_string()),
+        )
+        .with_expertise_level(pm_config::EXPERTISE_LEVEL_DEVELOPER)
+        .with_annotation(pm_config::DISPLAY_ORDER_ANNOTATION, json!(-10))
         .with_annotation(pm_config::CATEGORY_ANNOTATION, json!("Updates")),
     )?;
 

@@ -29,6 +29,8 @@ export interface XrayNode {
 /** Current state of the Xray connection. */
 export interface XrayStatus {
   connected: boolean;
+  binary?: string;
+  binary_available?: boolean;
   nodeId?: string | null;
   node_name?: string | null;
   country?: string | null;
