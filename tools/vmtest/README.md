@@ -58,7 +58,12 @@ What the smoke tests check:
 
 The Windows smoke test downloads the signed release binaries (including the
 kernel extension) from Safing's update server with `portmaster-core update`
-and runs the locally built `portmaster-core.exe` with them.
+and runs the locally built `portmaster-core.exe` with them. The downloaded
+core DLL needs the VC++ runtime, which the clean test VM does not have, so it
+does not load there. To test a DLL built with the static C runtime (the
+`portmaster-core-dll` artifact of the "Windows Portmaster Core DLL" workflow),
+pass it with `WINDOWS_CORE_DLL=path/to/portmaster-core.dll`; the smoke test
+then fails if it does not load.
 
 ## Run on Proxmox VE
 

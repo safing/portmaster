@@ -31,8 +31,16 @@ env:
   RUST_TARGET: x86_64-pc-windows-gnu
 
 jobs:
+  core-dll:
+    # Built here instead of taking the upstream DLL: that one needs the VC++
+    # runtime, which a clean Windows does not have.
+    uses: ./.github/workflows/windows-dll.yml
+    with:
+      ref: ${{ inputs.tag || github.ref_name }}
+
   windows-installer:
     name: Cross-build Windows installer and upload release assets
+    needs: core-dll
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -108,13 +116,19 @@ jobs:
           CGO_ENABLED=0 go build -trimpath -o /tmp/updatemgr ./cmds/updatemgr
           dist/binary/linux_amd64/portmaster-core version
 
-      - name: Fetch signed kernel driver, core DLL and intel data (upstream stable)
+      - name: Fetch signed kernel driver and intel data (upstream stable)
         run: |
           mkdir -p dist/downloaded/windows_amd64 dist/intel
           /tmp/updatemgr download https://updates.safing.io/stable.v3.json --platform windows_amd64 dist/downloaded/windows_amd64
-          find dist/downloaded/windows_amd64 -type f ! -name "portmaster-kext.sys" ! -name "portmaster-core.dll" -delete
+          find dist/downloaded/windows_amd64 -type f ! -name "portmaster-kext.sys" -delete
           /tmp/updatemgr download https://updates.safing.io/intel.v3.json dist/intel
-          ls -la dist/downloaded/windows_amd64 dist/intel
+          ls -la dist/intel
+
+      - name: Use the core DLL built with the static C runtime
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: portmaster-core-dll
+          path: dist/downloaded/windows_amd64
 
       - name: Cross-build Tauri UI (portmaster.exe)
         working-directory: desktop/tauri/src-tauri
