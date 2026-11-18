@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/base/utils"
@@ -220,7 +221,22 @@ func (d *Downloader) getArtifact(ctx context.Context, artifact *Artifact, url st
 	return artifactData, nil
 }
 
+// downloadStallTimeout is how long a download may make no progress, waiting
+// for the response or for more data, before it is aborted.
+var downloadStallTimeout = time.Minute
+
 func (d *Downloader) downloadData(ctx context.Context, url string) ([]byte, error) {
+	// Abort the download if it stalls. Without this, a connection on which
+	// the server stops sending blocks the updater forever, so that no more
+	// updates are done until a restart. Large files may take long on slow
+	// connections, so only a stall is limited, not the whole download.
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+	stallTimer := time.AfterFunc(downloadStallTimeout, func() {
+		cancel(fmt.Errorf("%w: no progress for %s", errDownloadStalled, downloadStallTimeout))
+	})
+	defer stallTimer.Stop()
+
 	// Setup request.
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
@@ -233,6 +249,10 @@ func (d *Downloader) downloadData(ctx context.Context, url string) ([]byte, erro
 	// Start request with shared http client.
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
+		cause := context.Cause(ctx)
+		if errors.Is(cause, errDownloadStalled) {
+			err = cause
+		}
 		return nil, fmt.Errorf("failed a get file request to: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -242,12 +262,35 @@ func (d *Downloader) downloadData(ctx context.Context, url string) ([]byte, erro
 		return nil, fmt.Errorf("server returned non-OK status: %d %s", resp.StatusCode, resp.Status)
 	}
 
-	// Read the full body and return it.
-	content, err := io.ReadAll(resp.Body)
+	// Read the full body and return it. Every read with data resets the
+	// stall timer.
+	content, err := io.ReadAll(&progressReader{r: resp.Body, progress: func() {
+		stallTimer.Reset(downloadStallTimeout)
+	}})
 	if err != nil {
+		cause := context.Cause(ctx)
+		if errors.Is(cause, errDownloadStalled) {
+			err = cause
+		}
 		return nil, fmt.Errorf("failed to read body of response: %w", err)
 	}
 	return content, nil
+}
+
+var errDownloadStalled = errors.New("download stalled")
+
+// progressReader calls progress whenever a read returns data.
+type progressReader struct {
+	r        io.Reader
+	progress func()
+}
+
+func (pr *progressReader) Read(p []byte) (int, error) {
+	n, err := pr.r.Read(p)
+	if n > 0 {
+		pr.progress()
+	}
+	return n, err
 }
 
 // Decompress decompresses the given data according to the specified type.
