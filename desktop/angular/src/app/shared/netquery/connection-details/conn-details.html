@@ -80,10 +80,6 @@
       <span>Encrypted:</span>
       <span>{{ conn.encrypted ? 'yes' : 'no' }}</span>
     </span>
-    <span sfngAddToFilter="tunneled" [sfngAddToFilterValue]="conn.tunneled">
-      <span>SPN Protected:</span>
-      <span>{{ conn.tunneled ? 'yes' : 'no' }}</span>
-    </span>
 
     <span *ngIf="conn.bytes_received > 0">
       <span>Data Received:</span>
@@ -219,40 +215,6 @@
             "Global" }} Settings</span>
       </span>
     </span>
-  </div>
-
-  <div *ngIf="conn.scope === scopes.Global && !!conn.tunneled">
-    <h3 class="text-primary text-xxs">SPN Tunnel</h3>
-    <ng-container [ngSwitch]="true">
-      <span *ngSwitchCase="!conn.tunneled" class="inline-flex items-center gap-2 text-secondary">
-        This connection has not been routed through the Safing Privacy Network.
-        <sfng-tipup key="spn"></sfng-tipup>
-      </span>
-
-      <div *ngSwitchCase="!!conn.extra_data?.tunnel" class="meta">
-        <div *ngIf="conn.extra_data?.tunnel as tunnel">
-          <span>
-            <span></span>
-            <sfng-spn-pin-route [route]="tunnel.Path"></sfng-spn-pin-route>
-          </span>
-        </div>
-        <div *appExpertiseLevel="'developer'" class="flex flex-col items-start justify-start gap-1 mt-2">
-          <span class="flex flex-row items-center gap-2">
-            <span class="text-secondary">Path Costs:</span>
-            <span>{{ conn.extra_data?.tunnel?.PathCost }}</span>
-          </span>
-          <span class="flex flex-row items-center gap-2">
-            <span class="text-secondary">Routing Algorithm:</span>
-            <span>{{ conn.extra_data?.tunnel?.RoutingAlg }}</span>
-          </span>
-        </div>
-      </div>
-
-      <span *ngSwitchDefault class="inline-flex items-center gap-2 text-secondary">
-        The connection was routed through the Safing Privacy Network, but the tunnel information is not available. Try
-        reloading the connections.
-      </span>
-    </ng-container>
   </div>
 
   <div *ngIf="!!conn.extra_data?.split_tun">

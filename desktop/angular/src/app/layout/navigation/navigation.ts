@@ -1,7 +1,7 @@
 import { INTEGRATION_SERVICE, IntegrationService } from 'src/app/integration';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Inject, OnInit, Output, inject } from '@angular/core';
-import { ConfigService, DebugAPI, PortapiService, SPNService, StringSetting, BoolSetting } from '@safing/portmaster-api';
+import { ConfigService, DebugAPI, PortapiService, StringSetting } from '@safing/portmaster-api';
 import { tap } from 'rxjs/operators';
 import { AppComponent } from 'src/app/app.component';
 import { NotificationType, NotificationsService, StatusService, VersionStatus, GetModuleState, ControlPauseStateData } from 'src/app/services';
@@ -37,16 +37,10 @@ export class NavigationComponent implements OnInit {
   notificationColor = 'text-green-300';
 
   pauseState: ControlPauseStateData | null = null;
-  get isPaused(): boolean { return this.pauseState?.Interception===true || this.pauseState?.SPN===true; }
-  get isPausedInterception(): boolean { return this.pauseState?.Interception===true; }
-  get isPausedSPN(): boolean { return this.pauseState?.SPN===true; }
+  get isPaused(): boolean { return this.pauseState?.Interception===true; }
   get pauseInfo(): string {
-    if (this.pauseState?.Interception===true && this.pauseState?.SPN===true) 
-      return 'Portmaster and SPN are paused';
-    else if (this.pauseState?.Interception===true)
+    if (this.pauseState?.Interception===true)
       return 'Portmaster is paused';
-    else if (this.pauseState?.SPN===true)
-      return 'SPN is paused';
     return '';
   }
   get pauseInfoTillTime(): string {
@@ -65,9 +59,6 @@ export class NavigationComponent implements OnInit {
   /** Whether or not prompting is globally enabled. */
   globalPromptingEnabled = false;
 
-  /** Whether or not the SPN is currently enabled */
-  spnEnabled = false;
-
   @Output()
   sideDashChange = new EventEmitter<'collapsed' | 'expanded' | 'force-overlay'>();
 
@@ -83,7 +74,6 @@ export class NavigationComponent implements OnInit {
     private debugAPI: DebugAPI,
     private actionIndicator: ActionIndicatorService,
     private notificationService: NotificationsService,
-    private spnService: SPNService,
     private cdr: ChangeDetectorRef
   ) { }
 
@@ -128,12 +118,6 @@ export class NavigationComponent implements OnInit {
         this.globalPromptingEnabled = defaultAction === 'ask';
         this.cdr.markForCheck();
       })
-    
-    this.configService.watch<BoolSetting>("spn/enable")
-      .subscribe(value => {
-        this.spnEnabled = value;
-        this.cdr.markForCheck();
-      });
 
     this.notificationService.new$
       .subscribe(notif => {
@@ -275,22 +259,10 @@ export class NavigationComponent implements OnInit {
     event.preventDefault();
     event.stopPropagation();
 
-    this.portapi.pause(duration, false)
+    this.portapi.pause(duration)
       .subscribe(this.actionIndicator.httpObserver(
         'Pausing ...',
         'Failed to Pause',
-      ))
-  }
-  pauseSPN(event: Event, duration: number) {
-    // prevent default and stop-propagation to avoid
-    // expanding the accordion body.
-    event.preventDefault();
-    event.stopPropagation();
-
-    this.portapi.pause(duration, true)
-      .subscribe(this.actionIndicator.httpObserver(
-        'Pausing SPN...',
-        'Failed to Pause SPN',
       ))
   }
   resume(event: Event) {
@@ -300,12 +272,8 @@ export class NavigationComponent implements OnInit {
     event.stopPropagation();
 
     let msg = 'Resuming ...';
-    if (this.pauseState?.Interception===true && this.pauseState?.SPN===true) 
-      msg = 'Resuming Portmaster and SPN ...';
-    else if (this.pauseState?.Interception===true)
+    if (this.pauseState?.Interception===true)
       msg = 'Resuming Portmaster ...';
-    else if (this.pauseState?.SPN===true)
-      msg = 'Resuming SPN ...';
 
     this.portapi.resume()
       .subscribe(this.actionIndicator.httpObserver(

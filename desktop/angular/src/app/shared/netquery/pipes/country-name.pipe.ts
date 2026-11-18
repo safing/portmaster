@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Pipe, PipeTransform, Injectable, inject } from '@angular/core';
-import { GeoCoordinates, SPNService } from '@safing/portmaster-api';
+import { GeoCoordinates } from '@safing/portmaster-api';
 import { environment } from 'src/environments/environment';
 import { ActionIndicatorService } from '../../action-indicator';
 import { objKeys } from '../../utils';
@@ -20,7 +20,6 @@ export interface CountryListResponse {
 
 @Injectable()
 export class CountryNameService {
-  private readonly spn = inject(SPNService);
   private readonly http = inject(HttpClient);
   private readonly uai = inject(ActionIndicatorService);
 

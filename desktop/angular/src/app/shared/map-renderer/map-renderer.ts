@@ -34,8 +34,7 @@ export interface MapHandler {
 export const MAP_HANDLER = new InjectionToken<MapHandler>('MAP_HANDLER');
 
 @Component({
-  // eslint-disable-next-line @angular-eslint/component-selector
-  selector: 'spn-map-renderer',
+  selector: 'app-map-renderer',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: '',
   styleUrls: [

@@ -5,7 +5,6 @@ import { DebugAPI } from "./debug-api.service";
 import { MetaAPI } from "./meta-api.service";
 import { Netquery } from "./netquery.service";
 import { PortapiService, PORTMASTER_HTTP_API_ENDPOINT, PORTMASTER_WS_API_ENDPOINT } from "./portapi.service";
-import { SPNService } from "./spn.service";
 import { WebsocketService } from "./websocket.service";
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { TauriHttpInterceptor } from "./platform-specific/tauri/tauri-http-interceptor";
@@ -67,7 +66,6 @@ export class PortmasterAPIModule {
         AppProfileService,
         DebugAPI,
         Netquery,
-        SPNService,
         {
           provide: PORTMASTER_HTTP_API_ENDPOINT,
           useValue: cfg.httpAPI,

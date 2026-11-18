@@ -167,17 +167,16 @@ export class PortapiService {
     });
   }
 
-  /** Triggers a pause of the portmaster or SPN service
+  /** Triggers a pause of the portmaster service
    * @param duration The duration of the pause in seconds
-   * @param onlySPN Whether or not only the SPN should be paused
    */
-  pause(duration: number, onlySPN: boolean): Observable<any> {
-    return this.http.post(`${this.httpEndpoint}/v1/control/pause`, { duration, onlySPN }, {
+  pause(duration: number): Observable<any> {
+    return this.http.post(`${this.httpEndpoint}/v1/control/pause`, { duration }, {
       observe: 'response',
       responseType: 'arraybuffer',
     });
   }
-  /** Triggers a resume of the portmaster (and SPN) service */
+  /** Triggers a resume of the portmaster service */
   resume(): Observable<any> {
     return this.http.post(`${this.httpEndpoint}/v1/control/resume`, undefined, {
       observe: 'response',
@@ -216,14 +215,6 @@ export class PortapiService {
       undefined,
       { observe: 'response', responseType: 'arraybuffer' }
     );
-  }
-
-  /** Re-initialize the SPN */
-  reinitSPN(): Observable<any> {
-    return this.http.post(`${this.httpEndpoint}/v1/spn/reinit`, undefined, {
-      observe: 'response',
-      responseType: 'arraybuffer',
-    });
   }
 
   /** Cleans up the history database by applying history retention settings */

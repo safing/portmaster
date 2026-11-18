@@ -1,13 +1,11 @@
 import {
   ChangeDetectorRef,
   Component,
-  DestroyRef,
   OnDestroy,
   OnInit,
   ViewChild,
   inject,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   AppProfile,
@@ -17,13 +15,11 @@ import {
   Database,
   DebugAPI,
   ExpertiseLevel,
-  FeatureID,
   FlatConfigObject,
   IProfileStats,
   LayeredProfile,
   Netquery,
   PortapiService,
-  SPNService,
   Setting,
   flattenProfileConfig,
   setAppSetting
@@ -70,13 +66,6 @@ export class AppViewComponent implements OnInit, OnDestroy {
 
   @ViewChild(SfngNetqueryViewer)
   netqueryViewer?: SfngNetqueryViewer;
-
-  destroyRef = inject(DestroyRef);
-  spn = inject(SPNService);
-
-  canUseHistory = false;
-  canViewBW = false;
-  canUseSPN = false;
 
   /** subscription to our update-process observable */
   private subscription = Subscription.EMPTY;
@@ -610,19 +599,6 @@ export class AppViewComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       }
     );
-
-    this.spn.profile$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (profile) => {
-        this.canUseHistory =
-          profile?.current_plan?.feature_ids?.includes(FeatureID.History) ||
-          false;
-        this.canViewBW =
-          profile?.current_plan?.feature_ids?.includes(FeatureID.Bandwidth) ||
-          false;
-        this.canUseSPN =
-          profile?.current_plan?.feature_ids?.includes(FeatureID.SPN) || false;
-      },
-    });
   }
 
   /**

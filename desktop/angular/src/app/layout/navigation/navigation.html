@@ -217,11 +217,6 @@
         <hr/>
       </div>
 
-      <!-- we show 'Pause SPN...' items even when isPausedSPN to allow pause time modification-->
-      <app-menu-item (click)="pauseSPN($event, 60*5)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">Pause SPN for 5 minutes</app-menu-item>
-      <app-menu-item (click)="pauseSPN($event, 60*15)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">Pause SPN for 15 minutes</app-menu-item>
-      <app-menu-item (click)="pauseSPN($event, 60*60)" *ngIf="spnEnabled || isPausedSPN" [disabled]="isPausedInterception">Pause SPN for 1 hour</app-menu-item>
-      <hr/>
       <app-menu-item (click)="pause($event, 60*5)">Pause for 5 minutes</app-menu-item>
       <app-menu-item (click)="pause($event, 60*15)">Pause for 15 minutes</app-menu-item>
       <app-menu-item (click)="pause($event, 60*60)">Pause for 1 hour</app-menu-item>
