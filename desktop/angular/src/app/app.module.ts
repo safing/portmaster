@@ -68,7 +68,7 @@ import { SupportProgressDialogComponent } from './pages/support/progress-dialog'
 function loadAndSetLocaleInitializer(configService: ConfigService) {
   return async function () {
     let angularLocaleID = 'en-GB';
-    let nzLocaleID: string = 'en_GB';
+    let nzLocaleID = 'en_GB';
 
     try {
       const setting = await firstValueFrom(configService.get("core/locale"))

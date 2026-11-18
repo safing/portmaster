@@ -111,7 +111,7 @@ export class NetqueryHelper {
       return values.map(val => {
         // check if it's a value of the IPScope enum
         const scopeValue = IPScope[val];
-        if (!!scopeValue) {
+        if (scopeValue) {
           return scopeValue;
         }
 
@@ -150,7 +150,7 @@ export class NetqueryHelper {
       this.appProfiles$,
     ]).pipe(
       map(([items, profiles]) => {
-        let lm = new Map<string, LocalAppProfile>();
+        const lm = new Map<string, LocalAppProfile>();
         profiles.forEach(profile => {
           lm.set(`${profile.Source}/${profile.ID}`, profile)
         })
@@ -174,7 +174,7 @@ export class NetqueryHelper {
       map(([items, profiles]) => {
         // convert profile IDs to profile name
         if (field === 'profile') {
-          let lm = new Map<string, AppProfile>();
+          const lm = new Map<string, AppProfile>();
           profiles.forEach(profile => {
             lm.set(`${profile.Source}/${profile.ID}`, profile)
           })
@@ -320,7 +320,7 @@ export class NetqueryHelper {
 
     let profile = conn.profile
 
-    if (!!reason.Profile) {
+    if (reason.Profile) {
       profile = reason.Profile;
     }
 

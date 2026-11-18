@@ -60,7 +60,7 @@ export class MapRendererComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Projection and line rendering functions
   projection!: GeoProjection;
-  zoomScale: number = 1
+  zoomScale = 1
 
   private pathFunc!: GeoPath<any, GeoPermissibleObjects>;
 
@@ -69,7 +69,7 @@ export class MapRendererComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   @Input()
-  mapId: string = 'map'
+  mapId = 'map'
 
   constructor(
     private mapRoot: ElementRef<HTMLElement>,
@@ -133,7 +133,7 @@ export class MapRendererComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    if (!!this.svg) {
+    if (this.svg) {
       this.svg.remove()
     }
 
@@ -189,7 +189,6 @@ export class MapRendererComponent implements OnInit, AfterViewInit, OnDestroy {
   private renderWorld(countries: any) {
     // actually render the countries
     const data = countries.features;
-    const self = this;
 
     data.forEach((country: any) => {
       this.countryNames[country.properties.iso_a2] = country.properties.name
@@ -204,32 +203,26 @@ export class MapRendererComponent implements OnInit, AfterViewInit, OnDestroy {
       .attr('countryCode', (d: any) => d.properties.iso_a2)
       .attr('name', (d: any) => d.properties.name)
       .attr('d', this.pathFunc)
-      .on('mouseenter', function (event: MouseEvent) {
-        const country = select(this).datum() as any;
+      .on('mouseenter', (event: MouseEvent, country: any) => {
         const countryEvent: CountryEvent = {
           event: event,
           countryCode: country.properties.iso_a2,
           countryName: country.properties.name,
         }
 
-        self._countryHoverCb.forEach(cb => cb(countryEvent))
+        this._countryHoverCb.forEach(cb => cb(countryEvent))
       })
-      .on('mouseout', function (event: MouseEvent) {
-        self._countryHoverCb.forEach(cb => cb(null))
+      .on('mouseout', () => {
+        this._countryHoverCb.forEach(cb => cb(null))
       })
-      .on('click', function (event: MouseEvent) {
-        const country = select(this).datum() as any;
+      .on('click', (event: MouseEvent, country: any) => {
         const countryEvent: CountryEvent = {
           event: event,
           countryCode: country.properties.iso_a2,
           countryName: country.properties.name,
         }
 
-        const loc = self.projection.invert!([event.clientX, event.clientY])
-
-        console.log(loc)
-
-        self._countryClickCb.forEach(cb => cb(countryEvent))
+        this._countryClickCb.forEach(cb => cb(countryEvent))
       })
   }
 
@@ -294,16 +287,14 @@ export class MapRendererComponent implements OnInit, AfterViewInit, OnDestroy {
       k: 0,
     }
 
-    const self = this;
-
-    let z = zoom<SVGSVGElement, unknown>()
+    const z = zoom<SVGSVGElement, unknown>()
       .scaleExtent(scaleExtent as [number, number])
       .on('zoom', (e) => {
         const t: ZoomTransform = e.transform;
 
         if (t.k != tlast.k) {
-          let p = pointer(e)
-          let scrollToMouse = () => { };
+          const p = pointer(e)
+          let scrollToMouse = () => { /* only set when the pointer is on the map */ };
 
           if (!!p && !!p[0]) {
             const tp = this.projection.translate();
@@ -328,7 +319,7 @@ export class MapRendererComponent implements OnInit, AfterViewInit, OnDestroy {
           // use x translation to rotate based on current scale
           this.projection.rotate([yaw + 360.0 * dx / size.width * scaleExtent[0] / t.k, 0, 0])
           // use y translation to translate projection clamped to bounds
-          let bounds = mercatorBounds();
+          const bounds = mercatorBounds();
           if (bounds[0][1] + dy > 0) {
             dy = -bounds[0][1];
           } else if (bounds[1][1] + dy < size.height) {

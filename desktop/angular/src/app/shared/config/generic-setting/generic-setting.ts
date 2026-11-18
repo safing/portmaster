@@ -59,7 +59,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
   get disabled() {
     return this._disabled;
   }
-  private _disabled: boolean = false;
+  private _disabled = false;
 
   /** Returns the symbolMap annoation for endpoint-lists */
   get symbolMap() {
@@ -122,7 +122,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
   get lockDefaults() {
     return this._lockDefaults;
   }
-  private _lockDefaults: boolean = false;
+  private _lockDefaults = false;
 
   /** The label to display in the reset-value button */
   @Input()
@@ -357,7 +357,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
               }
 
               // close any existing help dialog for THIS setting.
-              if (!!this.helpDialogRef) {
+              if (this.helpDialogRef) {
                 this.helpDialogRef.close();
               }
 
@@ -570,7 +570,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
   private _saveInterval: any;
   private emitSaveRequest() {
     const isDefault = this.wasReset;
-    let value = this._setting!['Value'];
+    const value = this._setting!['Value'];
 
     if (isDefault) {
       delete (this._setting!['Value']);
@@ -579,11 +579,11 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
     }
 
 
-    let wasReset = this.wasReset;
+    const wasReset = this.wasReset;
     this.wasReset = false;
     this._rejected = null;
     this._changeAccepted = false;
-    if (!!this._saveInterval) {
+    if (this._saveInterval) {
       clearTimeout(this._saveInterval);
     }
 
@@ -628,7 +628,7 @@ export class GenericSettingComponent<S extends BaseSetting<any, any>> implements
 
     this._changeAccepted = false;
     this._rejected = null;
-    if (!!this._saveInterval) {
+    if (this._saveInterval) {
       clearTimeout(this._saveInterval);
     }
 
