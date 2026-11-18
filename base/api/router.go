@@ -162,7 +162,7 @@ func (mh *mainHandler) handle(w http.ResponseWriter, r *http.Request) error {
 		w.Header().Set(
 			"Content-Security-Policy",
 			"default-src 'self'; "+
-				"connect-src https://*.safing.io 'self'; "+
+				"connect-src 'self'; "+
 				"style-src 'self' 'unsafe-inline'; "+
 				"img-src 'self' data: blob:",
 		)
