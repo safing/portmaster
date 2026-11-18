@@ -2,6 +2,7 @@ package control
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -14,9 +15,16 @@ const (
 	APIEndpointResume = "control/resume"
 )
 
+// errOnlySPNNotSupported is returned when a client asks to pause only the SPN.
+// This build has no SPN, so such a request is rejected instead of pausing the
+// whole interception, which the client did not ask for.
+var errOnlySPNNotSupported = errors.New("pausing only the SPN is not supported: this build has no SPN")
+
 type pauseRequestParams struct {
-	Duration int  `json:"duration"` // Duration in seconds
-	OnlySPN  bool `json:"onlySPN"`  // Whether to pause only the SPN service
+	Duration int `json:"duration"` // Duration in seconds
+	// OnlySPN is still accepted for compatibility with older clients. A value
+	// of false is ignored, true is rejected with errOnlySPNNotSupported.
+	OnlySPN bool `json:"onlySPN"`
 }
 
 func (c *Control) registerAPIEndpoints() error {
@@ -32,12 +40,6 @@ func (c *Control) registerAPIEndpoints() error {
 				Method:      http.MethodPost,
 				Field:       "duration",
 				Description: "Specify the duration to pause the service in seconds.",
-			},
-			{
-				Method:      http.MethodPost,
-				Field:       "onlySPN",
-				Value:       "false",
-				Description: "Specify whether to pause only the SPN service.",
 			}},
 	}); err != nil {
 		return err
@@ -65,12 +67,13 @@ func (c *Control) handlePause(r *api.Request) (msg string, err error) {
 	}
 
 	if params.OnlySPN {
-		c.mgr.Info(fmt.Sprintf("Received SPN Pause(%v) action request ", params.Duration))
-	} else {
-		c.mgr.Info(fmt.Sprintf("Received Pause(%v) action request ", params.Duration))
+		return "Bad Request: " + errOnlySPNNotSupported.Error(), errOnlySPNNotSupported
 	}
 
-	if err := c.pause(time.Duration(params.Duration)*time.Second, params.OnlySPN); err != nil {
+	c.mgr.Info(fmt.Sprintf("Received Pause(%v) action request ", params.Duration))
+
+	err = c.pause(time.Duration(params.Duration) * time.Second)
+	if err != nil {
 		return "Failed to pause", err
 	}
 	return "Pause initiated", nil

@@ -115,33 +115,6 @@ var (
 	cfgOptionKeepHistory      config.IntOption
 	cfgOptionKeepHistoryOrder = 97
 
-	// Setting "Enable SPN" at order 128.
-
-	CfgOptionUseSPNKey   = "spn/use"
-	cfgOptionUseSPN      config.BoolOption
-	cfgOptionUseSPNOrder = 129
-
-	CfgOptionSPNUsagePolicyKey   = "spn/usagePolicy"
-	cfgOptionSPNUsagePolicy      config.StringArrayOption
-	cfgOptionSPNUsagePolicyOrder = 130
-
-	CfgOptionRoutingAlgorithmKey   = "spn/routingAlgorithm"
-	cfgOptionRoutingAlgorithm      config.StringOption
-	cfgOptionRoutingAlgorithmOrder = 144
-	DefaultRoutingProfileID        = "double-hop" // Copied due to import loop.
-
-	// Setting "Home Node Rules" at order 145.
-
-	CfgOptionTransitHubPolicyKey   = "spn/transitHubPolicy"
-	cfgOptionTransitHubPolicy      config.StringArrayOption
-	cfgOptionTransitHubPolicyOrder = 146
-
-	CfgOptionExitHubPolicyKey   = "spn/exitHubPolicy"
-	cfgOptionExitHubPolicy      config.StringArrayOption
-	cfgOptionExitHubPolicyOrder = 147
-
-	// Setting "DNS Exit Node Rules" at order 148.
-
 	// Split Tunnel.
 	CfgOptionSplitTunUseKey   = "splittun/use"
 	cfgOptionSplitTunUse      config.BoolOption
@@ -154,29 +127,6 @@ var (
 	CfgOptionSplitTunUsagePolicyKey   = "splittun/usagePolicy"
 	cfgOptionSplitTunUsagePolicy      config.StringArrayOption
 	cfgOptionSplitTunUsagePolicyOrder = 216
-)
-
-var (
-	// SPNRulesQuickSettings are now generated automatically shorty after start.
-	SPNRulesQuickSettings = []config.QuickSetting{
-		{Name: "Loading...", Action: config.QuickMergeTop, Value: []string{""}},
-	}
-
-	// SPNRulesVerdictNames defines the verdicts names to be used for SPN Rules.
-	SPNRulesVerdictNames = map[string]string{
-		"-": "Exclude", // Default.
-		"+": "Allow",
-	}
-
-	// SPNRulesHelp defines the help text for SPN related Hub selection rules.
-	SPNRulesHelp = strings.ReplaceAll(`Rules are checked from top to bottom, stopping after the first match. They can match the following attributes of SPN Nodes:
-
-- Country (based on IPs): "US" (two-letter country codes according to ISO 3166-1 alpha-2)
-- AS number: "AS123456"
-- Address: "192.168.0.1"
-- Network: "192.168.0.1/24"
-- Anything: "*"
-`, `"`, "`")
 )
 
 func registerConfiguration() error { //nolint:maintidx
@@ -686,150 +636,6 @@ Please note that DNS bypass attempts might be additionally blocked in the System
 	cfgOptionPreventBypassing = config.Concurrent.GetAsBool(CfgOptionPreventBypassingKey, true)
 	cfgBoolOptions[CfgOptionPreventBypassingKey] = cfgOptionPreventBypassing
 
-	// Use SPN
-	err = config.Register(&config.Option{
-		Name:         "Use SPN",
-		Key:          CfgOptionUseSPNKey,
-		Description:  "Protect network traffic with the Safing Privacy Network. If the SPN is not available or the connection is interrupted, network traffic will be blocked.",
-		OptType:      config.OptTypeBool,
-		DefaultValue: true,
-		Annotations: config.Annotations{
-			config.SettablePerAppAnnotation: true,
-			config.DisplayOrderAnnotation:   cfgOptionUseSPNOrder,
-			config.CategoryAnnotation:       "General",
-		},
-	})
-	if err != nil {
-		return err
-	}
-	cfgOptionUseSPN = config.Concurrent.GetAsBool(CfgOptionUseSPNKey, true)
-	cfgBoolOptions[CfgOptionUseSPNKey] = cfgOptionUseSPN
-
-	// SPN Rules
-	err = config.Register(&config.Option{
-		Name:         "SPN Rules",
-		Key:          CfgOptionSPNUsagePolicyKey,
-		Description:  `Customize rules which connections should or should not be routed through the SPN. Only active if "Use SPN" is enabled.`,
-		Help:         rulesHelp,
-		Sensitive:    true,
-		OptType:      config.OptTypeStringArray,
-		DefaultValue: []string{},
-		Annotations: config.Annotations{
-			config.SettablePerAppAnnotation:              true,
-			config.StackableAnnotation:                   true,
-			config.CategoryAnnotation:                    "General",
-			config.DisplayOrderAnnotation:                cfgOptionSPNUsagePolicyOrder,
-			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
-			endpoints.EndpointListVerdictNamesAnnotation: SPNRulesVerdictNames,
-		},
-		ValidationRegex: endpoints.ListEntryValidationRegex,
-		ValidationFunc:  endpoints.ValidateEndpointListConfigOption,
-	})
-	if err != nil {
-		return err
-	}
-	cfgOptionSPNUsagePolicy = config.Concurrent.GetAsStringArray(CfgOptionSPNUsagePolicyKey, []string{})
-	cfgStringArrayOptions[CfgOptionSPNUsagePolicyKey] = cfgOptionSPNUsagePolicy
-
-	// Transit Node Rules
-	err = config.Register(&config.Option{
-		Name:           "Transit Node Rules",
-		Key:            CfgOptionTransitHubPolicyKey,
-		Description:    `Customize which countries should or should not be used as Transit Nodes. Transit Nodes are used to transit the SPN from your Home to your Exit Node.`,
-		Help:           SPNRulesHelp,
-		Sensitive:      true,
-		OptType:        config.OptTypeStringArray,
-		ExpertiseLevel: config.ExpertiseLevelExpert,
-		DefaultValue:   []string{},
-		Annotations: config.Annotations{
-			config.SettablePerAppAnnotation:              true,
-			config.StackableAnnotation:                   true,
-			config.CategoryAnnotation:                    "Routing",
-			config.DisplayOrderAnnotation:                cfgOptionTransitHubPolicyOrder,
-			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
-			config.QuickSettingsAnnotation:               SPNRulesQuickSettings,
-			endpoints.EndpointListVerdictNamesAnnotation: SPNRulesVerdictNames,
-		},
-		ValidationRegex: endpoints.ListEntryValidationRegex,
-		ValidationFunc:  endpoints.ValidateEndpointListConfigOption,
-	})
-	if err != nil {
-		return err
-	}
-	cfgOptionTransitHubPolicy = config.Concurrent.GetAsStringArray(CfgOptionTransitHubPolicyKey, []string{})
-	cfgStringArrayOptions[CfgOptionTransitHubPolicyKey] = cfgOptionTransitHubPolicy
-
-	// Exit Node Rules
-	err = config.Register(&config.Option{
-		Name: "Exit Node Rules",
-		Key:  CfgOptionExitHubPolicyKey,
-		Description: `Customize which countries should or should not be used for your Exit Nodes. Exit Nodes are used to exit the SPN and establish a connection to your destination.
-
-By default, the Portmaster tries to choose the node closest to the destination as the Exit Node. This reduces your exposure to the open Internet. Exit Nodes are chosen for every destination separately.`,
-		Help:         SPNRulesHelp,
-		Sensitive:    true,
-		OptType:      config.OptTypeStringArray,
-		DefaultValue: []string{},
-		Annotations: config.Annotations{
-			config.SettablePerAppAnnotation:              true,
-			config.StackableAnnotation:                   true,
-			config.CategoryAnnotation:                    "Routing",
-			config.DisplayOrderAnnotation:                cfgOptionExitHubPolicyOrder,
-			config.DisplayHintAnnotation:                 endpoints.DisplayHintEndpointList,
-			config.QuickSettingsAnnotation:               SPNRulesQuickSettings,
-			endpoints.EndpointListVerdictNamesAnnotation: SPNRulesVerdictNames,
-		},
-		ValidationRegex: endpoints.ListEntryValidationRegex,
-		ValidationFunc:  endpoints.ValidateEndpointListConfigOption,
-	})
-	if err != nil {
-		return err
-	}
-	cfgOptionExitHubPolicy = config.Concurrent.GetAsStringArray(CfgOptionExitHubPolicyKey, []string{})
-	cfgStringArrayOptions[CfgOptionExitHubPolicyKey] = cfgOptionExitHubPolicy
-
-	// Select SPN Routing Algorithm
-	err = config.Register(&config.Option{
-		Name:         "Select SPN Routing Algorithm",
-		Key:          CfgOptionRoutingAlgorithmKey,
-		Description:  "Select the routing algorithm for your connections through the SPN. Configure your preferred balance between speed and privacy. Portmaster may automatically upgrade the routing algorithm if necessary to protect your privacy.",
-		OptType:      config.OptTypeString,
-		DefaultValue: DefaultRoutingProfileID,
-		Annotations: config.Annotations{
-			config.SettablePerAppAnnotation: true,
-			config.DisplayHintAnnotation:    config.DisplayHintOneOf,
-			config.DisplayOrderAnnotation:   cfgOptionRoutingAlgorithmOrder,
-			config.CategoryAnnotation:       "Routing",
-		},
-		PossibleValues: []config.PossibleValue{
-			{
-				Name:        "Plain VPN Mode",
-				Value:       "home",
-				Description: "Always connect to the destination directly from the Home Hub. Only provides very basic privacy, as the Home Hub both knows where you are coming from and where you are connecting to.",
-			},
-			{
-				Name:        "Speed Focused",
-				Value:       "single-hop",
-				Description: "Optimize routes with a minimum of one hop. Provides good speeds. This will often use the Home Hub to connect to destinations near you, but will use more hops to far away destinations for better privacy over long distances.",
-			},
-			{
-				Name:        "Balanced",
-				Value:       "double-hop",
-				Description: "Optimize routes with a minimum of two hops. Provides good privacy as well as good speeds. No single node knows where you are coming from *and* where you are connecting to.",
-			},
-			{
-				Name:        "Privacy Focused",
-				Value:       "triple-hop",
-				Description: "Optimize routes with a minimum of three hops. Provides very good privacy. No single node knows where you are coming from *and* where you are connecting to - with an additional hop just to be sure.",
-			},
-		},
-	})
-	if err != nil {
-		return err
-	}
-	cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(CfgOptionRoutingAlgorithmKey, DefaultRoutingProfileID)
-	cfgStringOptions[CfgOptionRoutingAlgorithmKey] = cfgOptionRoutingAlgorithm
-
 	//
 	// Split Tunnel
 	//
@@ -840,9 +646,7 @@ By default, the Portmaster tries to choose the node closest to the destination a
 		Key:  CfgOptionSplitTunUseKey,
 		Description: `Route specific traffic through a different network interface, bypassing default system routing (useful for avoiding VPNs for certain apps).
 
-When you enable this and the Network Interface option is empty, Portmaster will try to route your traffic through the default physical network interface.
-
-Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN, configure SPN on a per-app basis or define exceptions that allow Split Tunnel to take effect.`,
+When you enable this and the Network Interface option is empty, Portmaster will try to route your traffic through the default physical network interface.`,
 		OptType:      config.OptTypeBool,
 		DefaultValue: false,
 		Annotations: config.Annotations{
@@ -868,9 +672,7 @@ Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN,
 
 Leave empty to let Portmaster detect the physical network interface and ignore virtual VPN interfaces. This helps bypass VPN tunnels. For better reliability, you can specify the interface manually if empty value does not work as expected.
 
-Important: The connection will be dropped if the network interface cannot be detected or becomes unavailable.
-
-Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN, configure SPN on a per-app basis or define exceptions that allow Split Tunnel to take effect.`,
+Important: The connection will be dropped if the network interface cannot be detected or becomes unavailable.`,
 		Sensitive:    true,
 		OptType:      config.OptTypeString,
 		DefaultValue: "",
@@ -899,11 +701,9 @@ Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN,
 	}
 
 	err = config.Register(&config.Option{
-		Name: "Split Tunnel Rules",
-		Key:  CfgOptionSplitTunUsagePolicyKey,
-		Description: `Customize rules which connections should or should not be routed through the Split Tunnel. Only active if "Use Split Tunnel" is enabled.
-		
-Important: SPN takes precedence over Split Tunnel. To use Split Tunnel with SPN, configure SPN on a per-app basis or define exceptions that allow Split Tunnel to take effect.`,
+		Name:         "Split Tunnel Rules",
+		Key:          CfgOptionSplitTunUsagePolicyKey,
+		Description:  `Customize rules which connections should or should not be routed through the Split Tunnel. Only active if "Use Split Tunnel" is enabled.`,
 		Help:         rulesHelp,
 		Sensitive:    true,
 		OptType:      config.OptTypeStringArray,

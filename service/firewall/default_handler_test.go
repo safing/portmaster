@@ -49,7 +49,6 @@ func (pkt *verdictTestPacket) PermanentAccept() error     { pkt.permAccepted.Add
 func (pkt *verdictTestPacket) PermanentBlock() error      { pkt.permBlocked.Add(1); return nil }
 func (pkt *verdictTestPacket) PermanentDrop() error       { pkt.permDropped.Add(1); return nil }
 func (pkt *verdictTestPacket) RerouteToNameserver() error { pkt.rerouted.Add(1); return nil }
-func (pkt *verdictTestPacket) RerouteToTunnel() error     { pkt.rerouted.Add(1); return nil }
 func (pkt *verdictTestPacket) RerouteToSplitTun() error   { pkt.rerouted.Add(1); return nil }
 
 func (pkt *verdictTestPacket) LoadPacketData() error {

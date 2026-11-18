@@ -2,7 +2,6 @@ package navigator
 
 import (
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/portmaster/service/profile"
 )
 
 // RoutingProfile defines a routing algorithm with some options.
@@ -43,7 +42,7 @@ const (
 
 // Routing Profiles.
 var (
-	DefaultRoutingProfileID = profile.DefaultRoutingProfileID
+	DefaultRoutingProfileID = RoutingProfileDoubleHopID
 
 	RoutingProfileHome = &RoutingProfile{
 		ID:      "home",

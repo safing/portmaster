@@ -72,12 +72,6 @@ var (
 		// , or [find out about other options](link to new docs page)
 		level: notifications.Warning,
 	}
-	multiPeerUDPTunnelIssue = &appIssue{
-		id:      "compat:multi-peer-udp-tunnel-%s",
-		title:   "Detected SPN Incompatibility in %s",
-		message: "Portmaster detected that [APPNAME] is trying to connect to multiple servers via the SPN using a single UDP connection. This is common for technologies such as torrents. Unfortunately, the SPN does not support this feature currently. You can try to change this behavior within the affected app or you could exempt it from using the SPN.",
-		level:   notifications.Warning,
-	}
 )
 
 func startNotify() {

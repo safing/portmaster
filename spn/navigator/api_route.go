@@ -119,7 +119,7 @@ func handleRouteCalculationRequest(ar *api.Request) (msg string, err error) { //
 		}
 
 		// Require a trusted home node when the routing profile requires less than two hops.
-		routingProfile := GetRoutingProfile(config.GetAsString(profile.CfgOptionRoutingAlgorithmKey, DefaultRoutingProfileID)())
+		routingProfile := GetRoutingProfile(config.GetAsString(CfgOptionRoutingAlgorithmKey, DefaultRoutingProfileID)())
 		if routingProfile.MinHops < 2 {
 			opts.Home.Regard = opts.Home.Regard.Add(StateTrusted)
 		}

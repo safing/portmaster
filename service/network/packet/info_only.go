@@ -69,11 +69,6 @@ func (pkt *InfoPacket) RerouteToNameserver() error {
 	return ErrInfoOnlyPacket
 }
 
-// RerouteToTunnel does nothing on an info-only packet.
-func (pkt *InfoPacket) RerouteToTunnel() error {
-	return ErrInfoOnlyPacket
-}
-
 func (pkt *InfoPacket) RerouteToSplitTun() error {
 	return ErrInfoOnlyPacket
 }

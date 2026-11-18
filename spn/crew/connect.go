@@ -120,8 +120,24 @@ func (t *Tunnel) connectWorker(wc *mgr.WorkerCtx) (err error) {
 	return nil
 }
 
+// errNoTunnelOptions is returned when a connection to be tunneled carries no
+// navigator options.
+var errNoTunnelOptions = errors.New("no tunnel options set for connection")
+
+// getTunnelOptions returns the navigator options stored in the connection, or
+// nil if the connection has none.
+func getTunnelOptions(conn *network.Connection) *navigator.Options {
+	opts, _ := conn.TunnelOpts.(*navigator.Options)
+	return opts
+}
+
 func (t *Tunnel) establish(ctx context.Context) (err error) {
 	var routes *navigator.Routes
+
+	tunnelOpts := getTunnelOptions(t.connInfo)
+	if tunnelOpts == nil {
+		return errNoTunnelOptions
+	}
 
 	// Check if the destination sticks to a Hub.
 	sticksTo := getStickiedHub(t.connInfo)
@@ -142,7 +158,7 @@ func (t *Tunnel) establish(ctx context.Context) (err error) {
 		}
 
 		// Append to policies.
-		t.connInfo.TunnelOpts.Destination.HubPolicies = append(t.connInfo.TunnelOpts.Destination.HubPolicies, avoidPolicy)
+		tunnelOpts.Destination.HubPolicies = append(tunnelOpts.Destination.HubPolicies, avoidPolicy)
 
 	default:
 		log.Tracer(ctx).Tracef("spn/crew: using stickied %s", sticksTo.Pin.Hub)
@@ -160,7 +176,7 @@ func (t *Tunnel) establish(ctx context.Context) (err error) {
 		// If not, attempt to find a route to the stickied hub.
 		routes, err = navigator.Main.FindRouteToHub(
 			sticksTo.Pin.Hub.ID,
-			t.connInfo.TunnelOpts,
+			tunnelOpts,
 		)
 		if err != nil {
 			log.Tracer(ctx).Tracef("spn/crew: failed to find route to stickied %s: %s", sticksTo.Pin.Hub, err)
@@ -175,7 +191,7 @@ func (t *Tunnel) establish(ctx context.Context) (err error) {
 		log.Tracer(ctx).Trace("spn/crew: finding routes...")
 		routes, err = navigator.Main.FindRoutes(
 			t.connInfo.Entity.IP,
-			t.connInfo.TunnelOpts,
+			tunnelOpts,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to find routes to %s: %w", t.connInfo.Entity.IP, err)

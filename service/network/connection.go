@@ -22,7 +22,6 @@ import (
 	"github.com/safing/portmaster/service/process"
 	_ "github.com/safing/portmaster/service/process/tags"
 	"github.com/safing/portmaster/service/resolver"
-	"github.com/safing/portmaster/spn/navigator"
 )
 
 // FirewallHandler defines the function signature for a firewall
@@ -157,12 +156,16 @@ type Connection struct {
 	// using the connection lock.
 	Inspecting bool
 	// Tunneled is set to true when the connection has been routed through the
-	// SPN.
+	// SPN. portmasterpro never tunnels connections, so it always stays false;
+	// it is kept because it is part of the served and stored connection data.
 	Tunneled bool
 	// Encrypted is currently unused and MUST be ignored.
 	Encrypted bool
-	// TunnelOpts holds options for tunneling the connection.
-	TunnelOpts *navigator.Options
+	// TunnelOpts holds options for tunneling the connection. portmaster-core
+	// never sets it; it is kept because it is part of the serialized
+	// connection, and the SPN packages (used by the hub binaries) store
+	// their *navigator.Options here.
+	TunnelOpts any
 	// ProcessContext holds additional information about the process
 	// that initiated the connection. It is set once when the connection
 	// object is created and is considered immutable afterwards.

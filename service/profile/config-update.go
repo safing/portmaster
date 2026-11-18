@@ -18,9 +18,6 @@ var (
 	cfgEndpoints           endpoints.Endpoints
 	cfgServiceEndpoints    endpoints.Endpoints
 	cfgSplitTunUsagePolicy endpoints.Endpoints
-	cfgSPNUsagePolicy      endpoints.Endpoints
-	cfgSPNTransitHubPolicy endpoints.Endpoints
-	cfgSPNExitHubPolicy    endpoints.Endpoints
 	cfgFilterLists         []string
 )
 
@@ -77,27 +74,6 @@ func updateGlobalConfigProfile(_ context.Context) error {
 
 	list = cfgOptionSplitTunUsagePolicy()
 	cfgSplitTunUsagePolicy, err = endpoints.ParseEndpoints(list)
-	if err != nil {
-		// TODO: module error?
-		lastErr = err
-	}
-
-	list = cfgOptionSPNUsagePolicy()
-	cfgSPNUsagePolicy, err = endpoints.ParseEndpoints(list)
-	if err != nil {
-		// TODO: module error?
-		lastErr = err
-	}
-
-	list = cfgOptionTransitHubPolicy()
-	cfgSPNTransitHubPolicy, err = endpoints.ParseEndpoints(list)
-	if err != nil {
-		// TODO: module error?
-		lastErr = err
-	}
-
-	list = cfgOptionExitHubPolicy()
-	cfgSPNExitHubPolicy, err = endpoints.ParseEndpoints(list)
 	if err != nil {
 		// TODO: module error?
 		lastErr = err

@@ -52,8 +52,6 @@ type LayeredProfile struct {
 	FilterCNAMEs        config.BoolOption   `json:"-"`
 	PreventBypassing    config.BoolOption   `json:"-"`
 	DomainHeuristics    config.BoolOption   `json:"-"`
-	UseSPN              config.BoolOption   `json:"-"`
-	SPNRoutingAlgorithm config.StringOption `json:"-"`
 	EnableHistory       config.BoolOption   `json:"-"`
 	KeepHistory         config.IntOption    `json:"-"`
 	UseSplitTun         config.BoolOption   `json:"-"`
@@ -135,14 +133,6 @@ func NewLayeredProfile(localProfile *Profile) *LayeredProfile {
 	lp.SplitTunInterface = lp.wrapStringOption(
 		CfgOptionSplitTunInterfaceKey,
 		cfgOptionSplitTunInterface,
-	)
-	lp.UseSPN = lp.wrapBoolOption(
-		CfgOptionUseSPNKey,
-		cfgOptionUseSPN,
-	)
-	lp.SPNRoutingAlgorithm = lp.wrapStringOption(
-		CfgOptionRoutingAlgorithmKey,
-		cfgOptionRoutingAlgorithm,
 	)
 	lp.EnableHistory = lp.wrapBoolOption(
 		CfgOptionEnableHistoryKey,
@@ -392,56 +382,6 @@ func (lp *LayeredProfile) MatchSplitTunUsagePolicy(ctx context.Context, entity *
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
 	return cfgSplitTunUsagePolicy.Match(ctx, entity)
-}
-
-// MatchSPNUsagePolicy checks if the given endpoint matches an entry in any of the profiles. This functions requires the layered profile to be read locked.
-func (lp *LayeredProfile) MatchSPNUsagePolicy(ctx context.Context, entity *intel.Entity) (endpoints.EPResult, endpoints.Reason) {
-	for _, layer := range lp.layers {
-		if layer.spnUsagePolicy.IsSet() {
-			result, reason := layer.spnUsagePolicy.Match(ctx, entity)
-			if endpoints.IsDecision(result) {
-				return result, reason
-			}
-		}
-	}
-
-	cfgLock.RLock()
-	defer cfgLock.RUnlock()
-	return cfgSPNUsagePolicy.Match(ctx, entity)
-}
-
-// StackedTransitHubPolicies returns all transit hub policies of the layered profile, including the global one.
-func (lp *LayeredProfile) StackedTransitHubPolicies() []endpoints.Endpoints {
-	policies := make([]endpoints.Endpoints, 0, len(lp.layers)+3) // +1 for global policy, +2 for intel policies
-
-	for _, layer := range lp.layers {
-		if layer.spnTransitHubPolicy.IsSet() {
-			policies = append(policies, layer.spnTransitHubPolicy)
-		}
-	}
-
-	cfgLock.RLock()
-	defer cfgLock.RUnlock()
-	policies = append(policies, cfgSPNTransitHubPolicy)
-
-	return policies
-}
-
-// StackedExitHubPolicies returns all exit hub policies of the layered profile, including the global one.
-func (lp *LayeredProfile) StackedExitHubPolicies() []endpoints.Endpoints {
-	policies := make([]endpoints.Endpoints, 0, len(lp.layers)+3) // +1 for global policy, +2 for intel policies
-
-	for _, layer := range lp.layers {
-		if layer.spnExitHubPolicy.IsSet() {
-			policies = append(policies, layer.spnExitHubPolicy)
-		}
-	}
-
-	cfgLock.RLock()
-	defer cfgLock.RUnlock()
-	policies = append(policies, cfgSPNExitHubPolicy)
-
-	return policies
 }
 
 // MatchFilterLists matches the entity against the set of filter

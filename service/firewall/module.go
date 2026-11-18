@@ -69,7 +69,7 @@ func prep() error {
 	network.SetDefaultFirewallHandler(defaultFirewallHandler, defaultLockFreeFirewallHandler)
 
 	// Reset connections every time configuration changes
-	// this will be triggered on spn enable/disable
+	// so that changed settings apply to existing connections.
 	module.instance.Config().EventConfigChange.AddCallback("reset connection verdicts after global config change", func(w *mgr.WorkerCtx, _ struct{}) (bool, error) {
 		resetAllConnectionVerdicts()
 		return false, nil

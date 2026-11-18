@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/safing/portmaster/base/config"
+	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/notifications"
 	"github.com/safing/portmaster/service/mgr"
 )
@@ -100,40 +100,17 @@ func TestErrorNotificationClearedByNextPause(t *testing.T) {
 }
 
 type controlTestInstance struct {
-	cfg          *config.Config
 	interception *mgr.GroupModule
 }
 
-func (i *controlTestInstance) Config() *config.Config              { return i.cfg }
 func (i *controlTestInstance) InterceptionGroup() *mgr.GroupModule { return i.interception }
-func (i *controlTestInstance) SPNGroup() *mgr.ExtendedGroup        { return mgr.NewExtendedGroup() }
 func (i *controlTestInstance) IsShuttingDown() bool                { return false }
-
-type configTestInstance struct {
-	dataDir string
-}
-
-func (i *configTestInstance) DataDir() string                  { return i.dataDir }
-func (i *configTestInstance) SetCmdLineOperation(func() error) {}
-
-var (
-	testConfig          *config.Config
-	testConfigSetupOnce sync.Once
-)
 
 func newTestControlWithInstance(t *testing.T) *Control {
 	t.Helper()
 
 	c := newTestControl(t)
-	testConfigSetupOnce.Do(func() {
-		var err error
-		testConfig, err = config.New(&configTestInstance{dataDir: t.TempDir()})
-		if err != nil {
-			t.Fatalf("failed to create config module: %s", err)
-		}
-	})
 	c.instance = &controlTestInstance{
-		cfg:          testConfig,
 		interception: mgr.NewGroupModule("Interception"),
 	}
 	return c
@@ -143,13 +120,13 @@ func newTestControlWithInstance(t *testing.T) *Control {
 // timer fired while another pause request held the lock and replaced it does
 // not resume afterwards, undoing the new pause.
 //
-//nolint:paralleltest // Uses the global notification storage and config.
+//nolint:paralleltest // Uses the global notification storage.
 func TestSupersededResumeWorkerDoesNotResume(t *testing.T) {
 	c := newTestControlWithInstance(t)
 	defer c.mgr.Cancel()
 
 	// Pause for a short time.
-	err := c.pause(20*time.Millisecond, false)
+	err := c.pause(20 * time.Millisecond)
 	if err != nil {
 		t.Fatalf("pause failed: %s", err)
 	}
@@ -180,12 +157,12 @@ func TestSupersededResumeWorkerDoesNotResume(t *testing.T) {
 // TestResumeWorkerResumesAfterDuration checks that a pause still ends
 // automatically after its duration.
 //
-//nolint:paralleltest // Uses the global notification storage and config.
+//nolint:paralleltest // Uses the global notification storage.
 func TestResumeWorkerResumesAfterDuration(t *testing.T) {
 	c := newTestControlWithInstance(t)
 	defer c.mgr.Cancel()
 
-	err := c.pause(20*time.Millisecond, false)
+	err := c.pause(20 * time.Millisecond)
 	if err != nil {
 		t.Fatalf("pause failed: %s", err)
 	}
@@ -201,4 +178,21 @@ func TestResumeWorkerResumesAfterDuration(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 	}
 	t.Fatal("pause did not end after its duration")
+}
+
+// TestPauseOnlySPNRejected checks that a request to pause only the SPN, as
+// sent by older clients, is rejected and does not pause the interception.
+//
+//nolint:paralleltest // Uses the global notification storage.
+func TestPauseOnlySPNRejected(t *testing.T) {
+	c := newTestControlWithInstance(t)
+	defer c.mgr.Cancel()
+
+	_, err := c.handlePause(&api.Request{InputData: []byte(`{"duration":60,"onlySPN":true}`)})
+	if !errors.Is(err, errOnlySPNNotSupported) {
+		t.Fatalf("expected %v, got %v", errOnlySPNNotSupported, err)
+	}
+	if c.pauseInfo.Interception || c.pauseInfo.SPN {
+		t.Fatalf("pause state changed by rejected request: %+v", c.pauseInfo)
+	}
 }

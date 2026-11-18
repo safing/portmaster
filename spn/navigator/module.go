@@ -13,8 +13,14 @@ import (
 )
 
 const (
-	// cfgOptionRoutingAlgorithmKey is copied from profile/config.go to avoid import loop.
-	cfgOptionRoutingAlgorithmKey = "spn/routingAlgorithm"
+	// CfgOptionRoutingAlgorithmKey is the config key of the SPN routing
+	// algorithm. The client settings using the SPN keys have been removed from
+	// service/profile, as portmaster-core no longer includes the SPN.
+	CfgOptionRoutingAlgorithmKey = "spn/routingAlgorithm"
+	// CfgOptionTransitHubPolicyKey is the config key of the SPN transit hub policy.
+	CfgOptionTransitHubPolicyKey = "spn/transitHubPolicy"
+	// CfgOptionExitHubPolicyKey is the config key of the SPN exit hub policy.
+	CfgOptionExitHubPolicyKey = "spn/exitHubPolicy"
 
 	// cfgOptionRoutingAlgorithmKey is copied from captain/config.go to avoid import loop.
 	cfgOptionTrustNodeNodesKey = "spn/trustNodes"
@@ -74,7 +80,7 @@ func start() error {
 	cfgOptionTrustNodeNodes = config.Concurrent.GetAsStringArray(cfgOptionTrustNodeNodesKey, []string{})
 
 	if conf.Integrated() {
-		cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(cfgOptionRoutingAlgorithmKey, DefaultRoutingProfileID)
+		cfgOptionRoutingAlgorithm = config.Concurrent.GetAsString(CfgOptionRoutingAlgorithmKey, DefaultRoutingProfileID)
 	} else {
 		cfgOptionRoutingAlgorithm = func() string { return DefaultRoutingProfileID }
 	}

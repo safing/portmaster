@@ -81,7 +81,7 @@ func resetProfileConnectionVerdict(profileSource, profileID string) {
 	defer tracer.Submit()
 
 	// Resetting will force all the connection to be evaluated by the firewall again
-	// this will set new verdicts if configuration was update or spn has been disabled or enabled.
+	// this will set new verdicts if configuration was updated.
 	tracer.Infof("filter: re-evaluating connections of %s/%s", profileSource, profileID)
 
 	// Re-evaluate all connections.
@@ -105,7 +105,7 @@ func resetAllConnectionVerdicts() {
 	defer tracer.Submit()
 
 	// Resetting will force all the connection to be evaluated by the firewall again
-	// this will set new verdicts if configuration was update or spn has been disabled or enabled.
+	// this will set new verdicts if configuration was updated.
 	tracer.Info("filter: re-evaluating all connections")
 
 	// Re-evaluate all connections.
@@ -143,7 +143,6 @@ func resetConnectionVerdict(ctx context.Context, conn *network.Connection) (verd
 	// Skip internal connections:
 	// - Pre-authenticated connections from Portmaster
 	// - Redirected DNS requests
-	// - SPN Uplink to Home Hub
 	if conn.Internal {
 		// tracer.Tracef("filter: skipping internal connection %s", conn)
 		return false
@@ -152,16 +151,8 @@ func resetConnectionVerdict(ctx context.Context, conn *network.Connection) (verd
 	tracer.Debugf("filter: re-evaluating verdict of %s", conn)
 	previousVerdict := conn.Verdict
 
-	// Apply privacy filter and check tunneling.
+	// Apply privacy filter and check split tunneling.
 	FilterConnection(ctx, conn, nil, true, true)
-
-	// Stop existing SPN tunnel if not needed anymore.
-	if conn.Verdict != network.VerdictRerouteToTunnel && conn.TunnelContext != nil {
-		err := conn.TunnelContext.StopTunnel()
-		if err != nil {
-			tracer.Debugf("filter: failed to stopped unneeded tunnel: %s", err)
-		}
-	}
 
 	// Save if verdict changed.
 	if conn.Verdict != previousVerdict {
@@ -536,7 +527,7 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 		return
 	}
 
-	// Apply privacy filter and check tunneling.
+	// Apply privacy filter and check split tunneling.
 	FilterConnection(pkt.Ctx(), conn, pkt, filterConnection, checkTunnel)
 
 	// Decide how to continue handling connection.
@@ -554,7 +545,7 @@ func filterHandler(conn *network.Connection, pkt packet.Packet) {
 	}
 }
 
-// FilterConnection runs all the filtering (and tunneling) procedures.
+// FilterConnection runs all the filtering (and split tunneling) procedures.
 func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.Packet, checkFilter, checkTunnel bool) {
 	// Skip if data is not complete.
 	if !conn.DataIsComplete() {
@@ -591,8 +582,7 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 	// TODO: Enable inspection framework again.
 	// conn.Inspecting = false
 
-	// TODO: Quick fix for the SPN.
-	// Use inspection framework for proper encryption detection.
+	// TODO: Use inspection framework for proper encryption detection.
 	switch conn.Entity.DstPort() {
 	case
 		22,  // SSH
@@ -604,29 +594,12 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 		conn.Encrypted = true
 	}
 
-	// Check if connection should be tunneled.
+	// Check if connection should be split tunneled.
 	if checkTunnel {
-		checkTunneling(ctx, conn)
-
-		if conn.Verdict != network.VerdictRerouteToTunnel {
-			// SPN takes precedence over Split Tunnel, so only check split tunneling if not already set to tunnel.
-			checkSplitTunneling(ctx, conn)
-		}
+		checkSplitTunneling(ctx, conn)
 	}
 
-	// Request tunneling if no tunnel is set and connection should be tunneled.
-	if conn.Verdict == network.VerdictRerouteToTunnel &&
-		conn.TunnelContext == nil {
-		err := requestTunneling(ctx, conn)
-		if err == nil {
-			conn.ConnectionEstablished = true
-		} else {
-			// Set connection to failed, but keep tunneling data.
-			// The tunneling data makes connection easy to recognize as a failed SPN
-			// connection and the data will help with debugging and displaying in the UI.
-			conn.Failed(fmt.Sprintf("failed to request tunneling: %s", err), "")
-		}
-	} else if conn.Verdict == network.VerdictRerouteToSplitTun {
+	if conn.Verdict == network.VerdictRerouteToSplitTun {
 		// Request split tunneling
 		err := requestSplitTunneling(ctx, conn)
 		if err != nil {
@@ -874,7 +847,7 @@ func icmpEvaluate(conn *network.Connection, pkt packet.Packet) {
 	// Check if we already have a verdict.
 	switch conn.Verdict { //nolint:exhaustive
 	case network.VerdictUndecided, network.VerdictUndeterminable:
-		// Apply privacy filter and check tunneling.
+		// Apply privacy filter and check split tunneling.
 		FilterConnection(pkt.Ctx(), conn, pkt, true, false)
 
 		// Save and propagate changes.
@@ -886,7 +859,7 @@ func icmpEvaluate(conn *network.Connection, pkt packet.Packet) {
 		// Change direction from inbound to outbound on first outbound ICMP packet.
 		conn.Inbound = false
 
-		// Apply privacy filter and check tunneling.
+		// Apply privacy filter and check split tunneling.
 		FilterConnection(pkt.Ctx(), conn, pkt, true, false)
 
 		// Save and propagate changes.
@@ -980,14 +953,13 @@ func applyVerdict(pkt packet.Packet, verdict network.Verdict, state network.Verd
 		}
 	case network.VerdictRerouteToNameserver:
 		err = pkt.RerouteToNameserver()
-	case network.VerdictRerouteToTunnel:
-		err = pkt.RerouteToTunnel()
 	case network.VerdictRerouteToSplitTun:
 		err = pkt.RerouteToSplitTun()
 	case network.VerdictFailed:
 		atomic.AddUint64(packetsFailed, 1)
 		err = pkt.Drop()
-	case network.VerdictUndecided, network.VerdictUndeterminable:
+	case network.VerdictUndecided, network.VerdictUndeterminable,
+		network.VerdictRerouteToTunnel: // SPN tunneling is not available in this build.
 		log.Tracer(pkt.Ctx()).Warningf("filter: tried to apply verdict %s to pkt %s: dropping instead", verdict, pkt)
 		fallthrough
 	default:
@@ -999,19 +971,6 @@ func applyVerdict(pkt packet.Packet, verdict network.Verdict, state network.Verd
 		log.Tracer(pkt.Ctx()).Warningf("filter: failed to apply verdict to pkt %s: %s", pkt, err)
 	}
 }
-
-// func tunnelHandler(pkt packet.Packet) {
-// 	tunnelInfo := GetTunnelInfo(pkt.Info().Dst)
-// 	if tunnelInfo == nil {
-// 		pkt.Block()
-// 		return
-// 	}
-//
-// 	entry.CreateTunnel(pkt, tunnelInfo.Domain, tunnelInfo.RRCache.ExportAllARecords())
-// 	log.Tracef("filter: rerouting %s to tunnel entry point", pkt)
-// 	pkt.RerouteToTunnel()
-// 	return
-// }
 
 func packetHandler(w *mgr.WorkerCtx) error {
 	for {

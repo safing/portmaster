@@ -19,7 +19,6 @@ import (
 	"github.com/safing/portmaster/service/intel/geoip"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/netenv"
-	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/spn/hub"
 )
 
@@ -575,24 +574,29 @@ func (m *Map) UpdateConfigQuickSettings(wc *mgr.WorkerCtx) error {
 	}
 
 	// Home Policy.
-	if err := m.updateQuickSettingExcludeCountryList(ctx, "spn/homePolicy", opts, HomeHub); err != nil {
+	err := m.updateQuickSettingExcludeCountryList(ctx, "spn/homePolicy", opts, HomeHub)
+	if err != nil {
 		return err
 	}
 	// Transit Policy.
-	if err := m.updateQuickSettingExcludeCountryList(ctx, profile.CfgOptionTransitHubPolicyKey, opts, TransitHub); err != nil {
+	err = m.updateQuickSettingExcludeCountryList(ctx, CfgOptionTransitHubPolicyKey, opts, TransitHub)
+	if err != nil {
 		return err
 	}
 	// Exit Policy.
-	if err := m.updateSelectRuleCountryList(ctx, profile.CfgOptionExitHubPolicyKey, opts, DestinationHub); err != nil {
+	err = m.updateSelectRuleCountryList(ctx, CfgOptionExitHubPolicyKey, opts, DestinationHub)
+	if err != nil {
 		return err
 	}
 	// DNS Exit Policy.
-	if err := m.updateSelectRuleCountryList(ctx, "spn/dnsExitPolicy", opts, DestinationHub); err != nil {
+	err = m.updateSelectRuleCountryList(ctx, "spn/dnsExitPolicy", opts, DestinationHub)
+	if err != nil {
 		return err
 	}
 
 	// Trust Nodes.
-	if err := m.updateQuickSettingVerifiedOwnerList(ctx, "spn/trustNodes"); err != nil {
+	err = m.updateQuickSettingVerifiedOwnerList(ctx, "spn/trustNodes")
+	if err != nil {
 		return err
 	}
 
