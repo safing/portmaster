@@ -2,6 +2,8 @@ package netenv
 
 import (
 	"context"
+	"errors"
+	"net"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -84,4 +86,57 @@ func TestCheckAndGetOnlineStatusWaitsForNewCheck(t *testing.T) { //nolint:parall
 		})
 	}
 	wg.Wait()
+}
+
+var errTestConnectTimeout = errors.New("connect timeout")
+
+// TestQueryDNSTestDomainRetriesOnce checks that a single failed dns query
+// check is retried before it is reported, and that a second failure is.
+func TestQueryDNSTestDomainRetriesOnce(t *testing.T) { //nolint:paralleltest // Replaces package-level hooks.
+	oldQuery, oldDelay := DNSTestQueryFunc, dnsCheckRetryDelay
+	t.Cleanup(func() { DNSTestQueryFunc, dnsCheckRetryDelay = oldQuery, oldDelay })
+	dnsCheckRetryDelay = time.Millisecond
+
+	var calls int
+	failFirst := func(n int) func(context.Context, string) ([]net.IP, bool, error) {
+		return func(_ context.Context, _ string) ([]net.IP, bool, error) {
+			calls++
+			if calls <= n {
+				return nil, false, errTestConnectTimeout
+			}
+			return []net.IP{net.IPv4(1, 1, 1, 1)}, true, nil
+		}
+	}
+
+	// One failure: the retry succeeds.
+	calls = 0
+	DNSTestQueryFunc = failFirst(1)
+	ips, ok, err := queryDNSTestDomain(context.Background())
+	if !ok || err != nil || len(ips) != 1 || calls != 2 {
+		t.Errorf("one failure: got ips=%v ok=%v err=%v after %d calls, want success after 2 calls", ips, ok, err, calls)
+	}
+
+	// Two failures: the failure is reported.
+	calls = 0
+	DNSTestQueryFunc = failFirst(2)
+	_, ok, err = queryDNSTestDomain(context.Background())
+	if ok || err == nil || calls != 2 {
+		t.Errorf("two failures: got ok=%v err=%v after %d calls, want failure after 2 calls", ok, err, calls)
+	}
+
+	// A successful first query is not repeated.
+	calls = 0
+	DNSTestQueryFunc = failFirst(0)
+	if _, ok, _ = queryDNSTestDomain(context.Background()); !ok || calls != 1 {
+		t.Errorf("success: got ok=%v after %d calls, want 1 call", ok, calls)
+	}
+
+	// No retry once the context is done.
+	calls = 0
+	DNSTestQueryFunc = failFirst(1)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, ok, _ = queryDNSTestDomain(ctx); ok || calls != 1 {
+		t.Errorf("canceled: got ok=%v after %d calls, want failure after 1 call", ok, calls)
+	}
 }

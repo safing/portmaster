@@ -613,7 +613,7 @@ func checkOnlineStatus(ctx context.Context) {
 		updateOnlineStatus(StatusOnline, nil, "all checks passed, dns query check disabled")
 		return
 	}
-	ips, ok, err := DNSTestQueryFunc(ctx, DNSTestDomain)
+	ips, ok, err := queryDNSTestDomain(ctx)
 	switch {
 	case ok && err != nil:
 		updateOnlineStatus(StatusOnline, nil, fmt.Sprintf(
@@ -632,4 +632,28 @@ func checkOnlineStatus(ctx context.Context) {
 		log.Warningf("netenv: dns query check failed: %s", err)
 		updateOnlineStatus(StatusOffline, nil, "dns query check failed")
 	}
+}
+
+// dnsCheckRetryDelay is how long to wait before retrying a failed dns query
+// check.
+var dnsCheckRetryDelay = time.Second
+
+// queryDNSTestDomain resolves the dns check domain. A failed query is retried
+// once after a short delay before it is reported: a single failure, such as a
+// timeout while connecting to an encrypted resolver right after startup,
+// would otherwise set the status to offline, and all dns queries would fail
+// until the next check 10 seconds later.
+func queryDNSTestDomain(ctx context.Context) (ips []net.IP, ok bool, err error) {
+	ips, ok, err = DNSTestQueryFunc(ctx, DNSTestDomain)
+	if ok {
+		return ips, ok, err
+	}
+
+	log.Debugf("netenv: dns query check failed, retrying: %s", err)
+	select {
+	case <-ctx.Done():
+		return ips, ok, err
+	case <-time.After(dnsCheckRetryDelay):
+	}
+	return DNSTestQueryFunc(ctx, DNSTestDomain)
 }
