@@ -48,6 +48,9 @@ var (
 	ErrAutoCheckDisabled = errors.New("automatic update checks are disabled")
 	ErrNoUpdateAvailable = errors.New("no update available")
 	ErrActionRequired    = errors.New("action required")
+	// ErrReadOnlyInstallation is returned when the installation directory
+	// cannot be written, such as on immutable systems.
+	ErrReadOnlyInstallation = errors.New("installation directory is read-only")
 )
 
 // UpdateCommandConfig defines the configuration for a shell command
@@ -323,6 +326,29 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 			}
 			return fmt.Errorf("%w: %w", ErrNoUpdateAvailable, err)
 		}
+	}
+
+	// An upgrade replaces the files in the installation directory. Do not
+	// start one that cannot finish, as on immutable systems where the
+	// directory is part of the read-only system image.
+	err = checkDirWritable(u.cfg.Directory)
+	if err != nil {
+		log.Warningf("updates/%s: update to v%s available, but cannot upgrade: %s", u.cfg.Name, downloader.index.Version, err)
+		if u.cfg.Notify && u.instance.Notifications() != nil {
+			u.instance.Notifications().Notify(&notifications.Notification{
+				EventID: updateAvailableNotificationID,
+				Type:    notifications.Info,
+				Title:   "New Update Available",
+				Message: "Portmaster v" + downloader.index.Version + " is available, but Portmaster cannot write to its installation directory " + u.cfg.Directory + ". Please update it through your system's package manager or image.",
+				AvailableActions: []*notifications.Action{
+					{
+						ID:   "ack",
+						Text: "OK",
+					},
+				},
+			})
+		}
+		return fmt.Errorf("%w: %w", ErrReadOnlyInstallation, err)
 	}
 
 	// Check if automatic downloads are enabled.
