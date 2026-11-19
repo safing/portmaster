@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/safing/portmaster/base/api"
@@ -146,6 +147,18 @@ func GetProcessByRequestOrigin(ar *api.Request) (*Process, error) {
 		Src:      remoteIP,   // source as in the process we are looking for
 		SrcPort:  remotePort, // source as in the process we are looking for
 		PID:      UndefinedProcessID,
+	}
+	if remoteIP.To4() == nil {
+		pkt.Version = packet.IPv6
+	}
+	// The socket lookup also matches the other end of the connection: the
+	// local address of the API server that received the request.
+	if localAddr, ok := ar.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
+		localIP, localPort, err := netutils.ParseIPPort(localAddr.String())
+		if err == nil {
+			pkt.Dst = localIP
+			pkt.DstPort = localPort
+		}
 	}
 
 	pid, _, err := GetPidOfConnection(ar.Context(), pkt)

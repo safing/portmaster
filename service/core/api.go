@@ -30,10 +30,15 @@ import (
 )
 
 var (
-	errInvalidReadPermission = errors.New("invalid read permission")
-	errAppAccessDenied       = errors.New("access denied")
-	errAppAuthTimeout        = errors.New("timeout")
+	errInvalidReadPermission  = errors.New("invalid read permission")
+	errInvalidWritePermission = errors.New("invalid write permission")
+	errInvalidTTL             = errors.New("ttl must be positive and at most 30 days")
+	errAppAccessDenied        = errors.New("access denied")
+	errAppAuthTimeout         = errors.New("timeout")
 )
+
+// maxAppAuthTTL is the longest lifetime an app may request for its API key.
+const maxAppAuthTTL = 30 * 24 * time.Hour
 
 // appAuthAllowActionID is the notification action ID to authorize an app.
 const appAuthAllowActionID = "allow"
@@ -390,7 +395,10 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 		return nil, errInvalidReadPermission
 	}
 	if getSavePermission(writePermStr) <= api.NotSupported {
-		return nil, errInvalidReadPermission
+		return nil, errInvalidWritePermission
+	}
+	if ttl <= 0 || ttl > maxAppAuthTTL {
+		return nil, errInvalidTTL
 	}
 
 	proc, err := process.GetProcessByRequestOrigin(ar)
@@ -399,10 +407,13 @@ func authorizeApp(ar *api.Request) (interface{}, error) {
 	}
 
 	n := notifications.Notification{
-		Type:         notifications.Prompt,
-		EventID:      "core:authorize-app-" + time.Now().String(),
-		Title:        "An app requests access to the Portmaster",
-		Message:      "Allow " + appName + " (" + proc.Profile().LocalProfile().Name + ") to query and modify the Portmaster?\n\nBinary: " + proc.Path,
+		Type:    notifications.Prompt,
+		EventID: "core:authorize-app-" + time.Now().String(),
+		Title:   "An app requests access to the Portmaster",
+		Message: fmt.Sprintf(
+			"Allow %q (%s) to access the Portmaster with %s read and %s write permission for %s?\n\nBinary: %s",
+			appName, proc.Profile().LocalProfile().Name, readPermStr, writePermStr, ttl, proc.Path,
+		),
 		ShowOnSystem: true,
 		Expires:      time.Now().Add(time.Minute).Unix(),
 		AvailableActions: []*notifications.Action{
