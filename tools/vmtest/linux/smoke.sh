@@ -113,6 +113,10 @@ except urllib.error.HTTPError as e:
     print(e.code)
 " 2>/dev/null)
 if [[ "$code" == 403 || "$code" == 401 ]]; then pass "API denies an unauthorized local client ($code)"; else fail "API denies an unauthorized local client (got '$code')"; fi
+# app/auth identifies the calling process and waits for the user to answer
+# the prompt; without the process (safing/portmaster#2302 B1) it fails at once.
+auth_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$API/app/auth?app-name=vmtest&read=user&write=user&ttl=1h")
+if [[ "$auth_code" == 000 ]]; then pass "app/auth identifies the caller and waits for the prompt"; else fail "app/auth identifies the caller and waits for the prompt (got HTTP $auth_code)"; fi
 
 step "Load"
 load_pids=()
