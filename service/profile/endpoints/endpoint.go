@@ -201,6 +201,9 @@ func (ep *EndpointBase) parsePPP(typedEp Endpoint, fields []string) (Endpoint, e
 					return nil, invalidDefinitionError(fields, "port number cannot be 0")
 				}
 				ep.EndPort = n16
+				if ep.EndPort < ep.StartPort {
+					return nil, invalidDefinitionError(fields, "start port must not be greater than end port")
+				}
 			}
 		}
 		// check if anything was parsed
