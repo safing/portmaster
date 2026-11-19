@@ -574,7 +574,10 @@ func (conn *Connection) GatherConnectionInfo(pkt packet.Packet) (err error) {
 	}
 
 	// Find domain and DNS context of entity.
-	if localProfile := conn.process.Profile().LocalProfile(); conn.Entity.Domain == "" && localProfile != nil {
+	// An unspecified remote IP (0.0.0.0, ::) does not identify a destination,
+	// so any domain recorded for it would be unrelated to the connection.
+	if localProfile := conn.process.Profile().LocalProfile(); conn.Entity.Domain == "" && localProfile != nil &&
+		!pkt.Info().RemoteIP().IsUnspecified() {
 		profileScope := localProfile.ID
 		// check if we can find a domain for that IP
 		ipinfo, err := resolver.GetIPInfo(profileScope, pkt.Info().RemoteIP().String())
