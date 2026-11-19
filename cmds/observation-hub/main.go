@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -26,18 +27,18 @@ var (
 		Run:              cmdbase.RunService,
 	}
 
-	binDir  string
 	dataDir string
 
 	logToStdout bool
 	logDir      string
 	logLevel    string
+
+	errNoDataDir = errors.New("no data directory set, use --data-dir")
 )
 
 func init() {
 	// Add persistent flags for all commands.
-	rootCmd.PersistentFlags().StringVar(&binDir, "bin-dir", "", "set directory for executable binaries (rw/ro)")
-	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", "set directory for variable data (rw)")
+	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", "set directory for variable data (rw); required")
 
 	// Add flags for service only.
 	rootCmd.Flags().BoolVar(&logToStdout, "log-stdout", false, "log to stdout instead of file")
@@ -48,7 +49,6 @@ func init() {
 
 	// Add other commands.
 	rootCmd.AddCommand(cmdbase.VersionCmd)
-	rootCmd.AddCommand(cmdbase.UpdateCmd)
 }
 
 func main() {
@@ -82,35 +82,23 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 
 	// Configure service.
 	cmdbase.SvcFactory = func(svcCfg *service.ServiceConfig) (cmdbase.ServiceInstance, error) {
-		svc, err := service.New(svcCfg)
-
-		// Add additional modules.
-		observer, err := New(svc)
-		if err != nil {
-			fmt.Printf("error creating an instance: create observer module: %s\n", err)
-			os.Exit(2)
+		// Without this check the service falls back to Portmaster's own data directory.
+		if svcCfg.DataDir == "" {
+			return nil, errNoDataDir
 		}
-		svc.AddModule(observer)
-		_, err = NewApprise(svc)
-		if err != nil {
-			fmt.Printf("error creating an instance: create apprise module: %s\n", err)
-			os.Exit(2)
-		}
-		svc.AddModule(observer)
 
-		return svc, err
+		// Return the error unchanged: cmdbase checks it for mgr.ErrExecuteCmdLineOp.
+		return NewInstance(svcCfg)
 	}
+	// No binary directory and no binary index: the instance has no binary updater.
 	cmdbase.SvcConfig = &service.ServiceConfig{
-		BinDir:  binDir,
 		DataDir: dataDir,
 
 		LogToStdout: logToStdout,
 		LogDir:      logDir,
 		LogLevel:    logLevel,
 
-		BinariesIndexURLs:   configure.DefaultStableBinaryIndexURLs,
-		IntelIndexURLs:      configure.DefaultIntelIndexURLs,
-		VerifyBinaryUpdates: configure.BinarySigningTrustStore,
-		VerifyIntelUpdates:  configure.IntelSigningTrustStore,
+		IntelIndexURLs:     configure.DefaultIntelIndexURLs,
+		VerifyIntelUpdates: configure.IntelSigningTrustStore,
 	}
 }
