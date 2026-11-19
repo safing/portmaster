@@ -17,6 +17,7 @@ import (
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/spn/captain"
+	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/navigator"
 )
 
@@ -147,7 +148,7 @@ func observerWorker(ctx *mgr.WorkerCtx) error {
 	time.Sleep(1 * time.Second)
 
 	// Step 2: Get current state.
-	mapQuery := query.New("map:main/")
+	mapQuery := query.New("map:" + conf.MainMapName + "/")
 	q, err := db.Query(mapQuery)
 	if err != nil {
 		return fmt.Errorf("failed to start map query: %w", err)
