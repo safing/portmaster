@@ -11,7 +11,9 @@ var (
 	nameOnly          = regexp.MustCompile("^[A-Za-z0-9]+$")
 	delimitersAtStart = regexp.MustCompile("^[^A-Za-z0-9]+")
 	delimitersOnly    = regexp.MustCompile("^[^A-Za-z0-9]+$")
-	removeQuotes      = strings.NewReplacer(`"`, ``, `'`, ``)
+	// removeUnsafeChars removes quotes and angle brackets: names are shown in
+	// the UI, and brackets would let a binary inject HTML through its name.
+	removeUnsafeChars = strings.NewReplacer(`"`, ``, `'`, ``, `<`, ``, `>`, ``)
 )
 
 // GenerateBinaryNameFromPath generates a more human readable binary name from
@@ -89,9 +91,9 @@ func GenerateBinaryNameFromPath(path string) string {
 func cleanFileDescription(fileDescr string) string {
 	fields := strings.Fields(fileDescr)
 
-	// Clean out and `"` and `'`.
+	// Clean out quotes and angle brackets.
 	for i := range fields {
-		fields[i] = removeQuotes.Replace(fields[i])
+		fields[i] = removeUnsafeChars.Replace(fields[i])
 	}
 
 	// If there is a 1 or 2 character delimiter field, only use fields before it.

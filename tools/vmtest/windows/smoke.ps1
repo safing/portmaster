@@ -137,6 +137,10 @@ try {
     $code = 200
 } catch { $code = [int]$_.Exception.Response.StatusCode }
 if ($code -eq 403 -or $code -eq 401) { Pass "API denies an unauthorized local client ($code)" } else { Fail "API denies an unauthorized local client (got $code)" }
+# app/auth identifies the calling process and waits for the user to answer
+# the prompt; without the process (safing/portmaster#2302 B1) it fails at once.
+$authCode = & $Curl -s -o NUL -w '%{http_code}' --max-time 5 "$Api/app/auth?app-name=vmtest&read=user&write=user&ttl=1h" 2>$null
+if ($authCode -eq '000') { Pass 'app/auth identifies the caller and waits for the prompt' } else { Fail "app/auth identifies the caller and waits for the prompt (got HTTP $authCode)" }
 
 Step 'Load'
 $jobs = 1..40 | ForEach-Object { Start-Process -FilePath $Curl -PassThru -WindowStyle Hidden -ArgumentList @('-s', '-o', 'NUL', '--max-time', '10', "https://$Allowed/?n=$_") }

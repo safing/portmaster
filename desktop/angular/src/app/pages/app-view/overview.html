@@ -126,11 +126,11 @@
         <app-icon [profile]="profile"></app-icon>
 
         <span class="card-title">
-          <span [innerHTML]="profile?.Name | safe:'html'"></span>
+          <span [innerHTML]="profile?.Name"></span>
           <span
             class="card-sub-title"
             *appExpertiseLevel="'expert'"
-            [innerHTML]="profile?.PresentationPath | safe:'html'"
+            [innerHTML]="profile?.PresentationPath"
           ></span>
         </span>
 
