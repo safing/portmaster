@@ -15,6 +15,17 @@ import (
 	"github.com/safing/portmaster/base/utils"
 )
 
+// checkDirWritable checks that files can be created in dir.
+func checkDirWritable(dir string) error {
+	f, err := os.CreateTemp(dir, ".write-check-*")
+	if err != nil {
+		return err
+	}
+	name := f.Name()
+	_ = f.Close()
+	return os.Remove(name)
+}
+
 func (u *Updater) upgrade(downloader *Downloader, ignoreVersion bool) error {
 	// Lock index for the upgrade.
 	u.indexLock.Lock()
