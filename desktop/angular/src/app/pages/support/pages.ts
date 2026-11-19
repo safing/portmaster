@@ -75,9 +75,9 @@ export const supportTypes: PageSections[] = [
       },
       {
         type: 'link',
-        title: 'Follow us on Twitter',
-        url: 'https://twitter.com/SafingIO',
-        shortHelp: 'Get updates and privacy jokes on Twitter.'
+        title: 'Follow us on X',
+        url: 'https://x.com/SafingIO',
+        shortHelp: 'Get updates and privacy jokes on X.'
       }
     ]
   },
