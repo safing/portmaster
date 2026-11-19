@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -133,7 +134,11 @@ func Flatten(config map[string]interface{}) (flattenedConfig map[string]interfac
 }
 
 func flattenMap(rootMap, subMap map[string]interface{}, subKey string) {
-	for key, entry := range subMap {
+	// Iterate in sorted order, so that a key set both nested and flattened
+	// (e.g. "core": {"devMode": ...} and "core/devMode") resolves the same way
+	// on every start: the flattened key sorts after its parent and wins.
+	for _, key := range slices.Sorted(maps.Keys(subMap)) {
+		entry := subMap[key]
 
 		// get next level key
 		subbedKey := path.Join(subKey, key)
