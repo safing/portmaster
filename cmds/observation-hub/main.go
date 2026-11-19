@@ -39,10 +39,13 @@ var (
 func init() {
 	// Add persistent flags for all commands.
 	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", "set directory for variable data (rw); required")
+	// Builds from the former stand-alone safing/spn repository named this flag
+	// "--data". Existing deployments still use it.
+	rootCmd.PersistentFlags().StringVar(&dataDir, "data", "", "same as --data-dir")
 
 	// Add flags for service only.
-	rootCmd.Flags().BoolVar(&logToStdout, "log-stdout", false, "log to stdout instead of file")
-	rootCmd.Flags().StringVar(&logDir, "log-dir", "", "set directory for logs")
+	rootCmd.Flags().BoolVar(&logToStdout, "log-stdout", false, "log to stdout instead of file (default, unless --log-dir is set)")
+	rootCmd.Flags().StringVar(&logDir, "log-dir", "", "set directory for logs; switches from stdout to log files")
 	rootCmd.Flags().StringVar(&logLevel, "log", "", "set log level to [trace|debug|info|warning|error|critical]")
 	rootCmd.Flags().BoolVar(&cmdbase.PrintStackOnExit, "print-stack-on-exit", false, "prints the stack before of shutting down")
 	rootCmd.Flags().BoolVar(&cmdbase.RebootOnRestart, "reboot-on-restart", false, "reboot server instead of service restart")
@@ -79,6 +82,12 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 	// Disable unneeded listeners.
 	sluice.EnableListener = false
 	api.EnableServer = false
+
+	// Log to stdout unless a log directory is given, as the builds from the
+	// former stand-alone safing/spn repository did.
+	if logDir == "" {
+		logToStdout = true
+	}
 
 	// Configure service.
 	cmdbase.SvcFactory = func(svcCfg *service.ServiceConfig) (cmdbase.ServiceInstance, error) {
