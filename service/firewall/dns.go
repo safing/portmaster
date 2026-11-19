@@ -313,8 +313,7 @@ func formatRR(rr dns.RR) string {
 func SaveIPsInCache(ips []net.IP, profileID string, record resolver.ResolvedDomain) {
 	// Package IPs and CNAMEs into IPInfo structs.
 	for _, ip := range ips {
-		// Never save domain attributions for localhost IPs.
-		if netutils.GetIPScope(ip) == netutils.HostLocal {
+		if !resolver.RecordDomainsFor(ip) {
 			continue
 		}
 

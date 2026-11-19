@@ -2,12 +2,14 @@ package resolver
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/safing/portmaster/base/database"
 	"github.com/safing/portmaster/base/database/record"
+	"github.com/safing/portmaster/service/network/netutils"
 )
 
 const (
@@ -159,6 +161,14 @@ func (info *IPInfo) MostRecentDomain() *ResolvedDomain {
 
 	mostRecent := info.ResolvedDomains[len(info.ResolvedDomains)-1]
 	return &mostRecent
+}
+
+// RecordDomainsFor reports whether domains resolved to ip should be recorded
+// for naming connections to it. Localhost IPs are never recorded, nor are
+// 0.0.0.0 and ::, which DNS filters answer for blocked names: connections to
+// them would otherwise get the name of the last blocked domain.
+func RecordDomainsFor(ip net.IP) bool {
+	return !ip.IsUnspecified() && netutils.GetIPScope(ip) != netutils.HostLocal
 }
 
 func makeIPInfoKey(profileID, ip string) string {

@@ -12,7 +12,6 @@ import (
 	"github.com/safing/portmaster/service/compat"
 	"github.com/safing/portmaster/service/integration"
 	"github.com/safing/portmaster/service/mgr"
-	"github.com/safing/portmaster/service/network/netutils"
 	"github.com/safing/portmaster/service/resolver"
 )
 
@@ -110,8 +109,7 @@ func processIfSelfCheckDomain(fqdn string) bool {
 func saveIPsInCache(ips []net.IP, profileID string, record resolver.ResolvedDomain) {
 	// Package IPs and CNAMEs into IPInfo structs.
 	for _, ip := range ips {
-		// Never save domain attributions for localhost IPs.
-		if netutils.GetIPScope(ip) == netutils.HostLocal {
+		if !resolver.RecordDomainsFor(ip) {
 			continue
 		}
 

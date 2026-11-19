@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -71,4 +72,20 @@ func TestIPInfoCNAMETargetQueriedDirectly(t *testing.T) {
 	// A different domain resolved later still becomes the most recent one.
 	info.AddDomain(other)
 	assert.Equal(t, other.Domain, info.MostRecentDomain().Domain)
+}
+
+func TestRecordDomainsFor(t *testing.T) {
+	t.Parallel()
+
+	for ip, want := range map[string]bool{
+		"0.0.0.0":         false,
+		"::":              false,
+		"127.0.0.1":       false,
+		"::1":             false,
+		"93.184.216.34":   true,
+		"192.168.1.10":    true,
+		"2606:4700::6810": true,
+	} {
+		assert.Equal(t, want, RecordDomainsFor(net.ParseIP(ip)), ip)
+	}
 }
