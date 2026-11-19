@@ -51,6 +51,32 @@ function Resolves($domain) {
         Where-Object { $_.IPAddress -and $_.IPAddress -ne '0.0.0.0' }
     return [bool]$r
 }
+# UdpDatagramsReceived sends three datagrams to a local UDP listener and
+# returns how many arrived (safing/portmaster#2286). With -CloseAfterEach, a
+# new sender socket sends one datagram and closes right away.
+function UdpDatagramsReceived($address, [switch]$CloseAfterEach) {
+    $listener = New-Object System.Net.Sockets.UdpClient(0)
+    $sender = $null
+    try {
+        $port = $listener.Client.LocalEndPoint.Port
+        $data = [Text.Encoding]::ASCII.GetBytes('portmaster-udp-test')
+        foreach ($i in 1..3) {
+            if ($null -eq $sender) { $sender = New-Object System.Net.Sockets.UdpClient }
+            [void]$sender.Send($data, $data.Length, $address, $port)
+            if ($CloseAfterEach) { $sender.Close(); $sender = $null }
+            Start-Sleep -Milliseconds 300
+        }
+        $got = 0
+        $from = New-Object System.Net.IPEndPoint([Net.IPAddress]::Any, 0)
+        $listener.Client.ReceiveTimeout = 1000
+        try { while ($true) { [void]$listener.Receive([ref]$from); $got++ } } catch { }
+        return $got
+    } finally {
+        if ($null -ne $sender) { $sender.Close() }
+        $listener.Close()
+    }
+}
+
 function ApiReady {
     & $Curl -sf --max-time 5 "$Api/ready" 2>$null | Out-Null
     return $LASTEXITCODE -eq 0
@@ -64,6 +90,7 @@ Check "https://$Allowed reachable" { HttpsOk $Allowed }
 # This also puts the name into the DNS Client cache: Portmaster must flush it
 # on start, or the connection would have no domain and pass the rule below.
 Check "http://$CnameBlocked reachable" { HttpOk $CnameBlocked }
+Check 'UDP to a local listener on 127.0.0.1' { (UdpDatagramsReceived '127.0.0.1') -eq 3 }
 
 Step 'Release binaries'
 & $Core update --bin-dir $Bin --data-dir $Data *>> $Log
@@ -117,6 +144,11 @@ Check "https://$Allowed reachable" { HttpsOk $Allowed }
 Write-Output "  info: $Blocked resolves through the DNS Client service: $(Resolves $Blocked)"
 Check "https://$Blocked is blocked" { -not (HttpsOk $Blocked) }
 Check "http://$CnameBlocked is blocked by the rule for .$CnameZone (CNAME outside the zone)" { -not (HttpOk $CnameBlocked) }
+Check 'UDP to a local listener on 127.0.0.1' { (UdpDatagramsReceived '127.0.0.1') -eq 3 }
+# Known kext limitation: the first datagram of a socket waits for the verdict
+# and is re-injected through the sending socket, so it is lost when the socket
+# is already closed by then.
+Write-Output "  info: UDP from send-and-close sockets received: $(UdpDatagramsReceived '127.0.0.1' -CloseAfterEach) of 3"
 
 Step 'API'
 Check 'ping endpoint' { & $Curl -sf --max-time 5 "$Api/ping" 2>$null | Out-Null; $LASTEXITCODE -eq 0 }
