@@ -281,7 +281,7 @@ func getCountryInfo(code string) geoip.CountryInfo {
 // }
 
 // NewApprise returns a new Apprise module.
-func NewApprise(instance instance) (*Observer, error) {
+func NewApprise(instance instance) (*Apprise, error) { //nolint:funcorder // At the end of the file, like New in observe.go.
 	if !appriseShimLoaded.CompareAndSwap(false, true) {
 		return nil, errors.New("only one instance allowed")
 	}
@@ -292,5 +292,5 @@ func NewApprise(instance instance) (*Observer, error) {
 		instance: instance,
 	}
 
-	return observerModule, nil
+	return appriseModule, nil
 }
