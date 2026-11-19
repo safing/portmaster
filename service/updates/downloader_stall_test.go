@@ -15,6 +15,9 @@ func TestDownloadDataStall(t *testing.T) { //nolint:paralleltest // Changes the 
 	old := downloadStallTimeout
 	downloadStallTimeout = 200 * time.Millisecond
 	t.Cleanup(func() { downloadStallTimeout = old })
+	oldDelays := downloadRetryDelays
+	downloadRetryDelays = nil // Check a single download.
+	t.Cleanup(func() { downloadRetryDelays = oldDelays })
 
 	release := make(chan struct{})
 	t.Cleanup(func() { close(release) })
