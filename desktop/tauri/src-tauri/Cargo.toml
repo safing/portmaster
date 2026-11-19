@@ -49,7 +49,9 @@ http = "1.0.0"
 url = "2.5.0"
 thiserror = "1.0"
 log = "0.4.21"
-reqwest = { version = "0.12", features = ["cookies", "json"] }
+# Only talks to the local API over plain HTTP, so no TLS backend (and no
+# libssl dependency on Linux).
+reqwest = { version = "0.12", default-features = false, features = ["cookies", "json", "charset"] }
 
 rfd = { version = "*", default-features = false, features = [ "tokio", "gtk3", "common-controls-v6" ] }
 open = "5.1.3"
