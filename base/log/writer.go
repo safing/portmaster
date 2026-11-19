@@ -34,10 +34,14 @@ func NewFileWriter(dir string) (*LogWriter, error) {
 
 	// Open new log file.
 	logFile := time.Now().UTC().Format("2006-01-02_15-04-05") + ".log"
-	file, err := os.Create(filepath.Join(dir, logFile))
+	// Create the file itself with strict permissions too: the directory may
+	// already exist with broader permissions (e.g. created by a package).
+	file, err := os.OpenFile(filepath.Join(dir, logFile), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return nil, err
 	}
+	// The file may already exist (the name changes only every second).
+	_ = file.Chmod(0o600)
 
 	return &LogWriter{
 		file:     file,
