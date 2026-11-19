@@ -572,9 +572,14 @@ func (u *Updater) Start() error {
 
 	// Check for updates automatically, if enabled.
 	if u.cfg.AutoCheck {
-		u.updateCheckWorkerMgr.
-			Repeat(updateTaskRepeatDuration).
-			Delay(15 * time.Second)
+		u.updateCheckWorkerMgr.Repeat(updateTaskRepeatDuration)
+		if u.missingResources() {
+			// Without usable resources, dependent modules (such as the filter
+			// lists) fail until the first download, so do not wait for it.
+			u.updateCheckWorkerMgr.Go()
+		} else {
+			u.updateCheckWorkerMgr.Delay(15 * time.Second)
+		}
 	}
 
 	u.started.SetTo(true)
@@ -678,4 +683,13 @@ type instance interface {
 	Shutdown()
 	Notifications() *notifications.Notifications
 	UI() *ui.UI
+}
+
+// missingResources reports whether the installed resources are absent or
+// unusable, so that an update check should not be delayed.
+func (u *Updater) missingResources() bool {
+	u.indexLock.Lock()
+	defer u.indexLock.Unlock()
+
+	return u.index == nil || len(u.index.Artifacts) == 0 || u.corruptedInstallation != nil
 }

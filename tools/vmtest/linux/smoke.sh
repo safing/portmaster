@@ -88,6 +88,7 @@ fi
 pass "portmaster-core starts and reports ready"
 check "interception rules installed" rules_present
 check "nfqueue bound" bash -c 'grep -q . /proc/net/netfilter/nfnetlink_queue'
+check "systemd-resolved cache flushed" grep -q 'flushed the systemd-resolved cache' "$LOG"
 
 step "Filtering"
 check "$ALLOWED resolves" resolves "$ALLOWED"

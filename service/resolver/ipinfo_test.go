@@ -44,3 +44,31 @@ func TestIPInfo(t *testing.T) {
 	info.AddDomain(subOverWrite)
 	assert.Equal(t, ResolvedDomains{example, sub2Example, subOverWrite}, info.ResolvedDomains)
 }
+
+func TestIPInfoCNAMETargetQueriedDirectly(t *testing.T) {
+	t.Parallel()
+
+	chain := ResolvedDomain{
+		Domain: "tr.archive.ubuntu.com.",
+		CNAMEs: []string{"ftp.linux.org.tr."},
+	}
+	target := ResolvedDomain{
+		Domain: "ftp.linux.org.tr.",
+	}
+	other := ResolvedDomain{
+		Domain: "other.example.",
+	}
+
+	info := &IPInfo{IP: "193.140.98.183"}
+	info.AddDomain(other)
+	info.AddDomain(chain)
+	// The resolver follows the chain and queries the target on its own.
+	info.AddDomain(target)
+
+	assert.Equal(t, ResolvedDomains{other, target, chain}, info.ResolvedDomains)
+	assert.Equal(t, chain.Domain, info.MostRecentDomain().Domain)
+
+	// A different domain resolved later still becomes the most recent one.
+	info.AddDomain(other)
+	assert.Equal(t, other.Domain, info.MostRecentDomain().Domain)
+}
