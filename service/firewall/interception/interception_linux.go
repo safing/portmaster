@@ -29,6 +29,9 @@ func startInterception(packets chan packet.Packet) error {
 		return bandwidth.BandwidthStatsWorker(wc.Ctx(), 1*time.Second, BandwidthUpdates)
 	})
 
+	// Make apps resolve names again, so that Portmaster sees the queries.
+	flushSystemDNSCache()
+
 	return nil
 }
 

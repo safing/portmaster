@@ -132,6 +132,20 @@ func (info *IPInfo) AddDomain(resolved ResolvedDomain) {
 
 	// Add new entry to the end.
 	info.ResolvedDomains = append(info.ResolvedDomains, resolved)
+
+	// Resolvers that follow a CNAME chain themselves (such as
+	// systemd-resolved) query the CNAME target directly after the requested
+	// domain. Keep the entry with the full chain as the most recent one, so
+	// that rules for the requested domain still apply to the connection.
+	if len(resolved.CNAMEs) == 0 {
+		for idx, d := range info.ResolvedDomains[:len(info.ResolvedDomains)-1] {
+			if len(d.CNAMEs) > 0 && d.CNAMEs[len(d.CNAMEs)-1] == resolved.Domain {
+				info.ResolvedDomains = append(info.ResolvedDomains[:idx], info.ResolvedDomains[idx+1:]...)
+				info.ResolvedDomains = append(info.ResolvedDomains, d)
+				break
+			}
+		}
+	}
 }
 
 // MostRecentDomain returns the most recent domain.
