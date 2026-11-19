@@ -54,7 +54,9 @@ func (l *CallLimiter2) Do(f func()) {
 func (l *CallLimiter2) waitAndExec(f func()) {
 	defer func() {
 		// Update last exec time.
-		l.lastExec = time.Now().UTC()
+		// Keep the monotonic clock reading: a wall-clock jump must not
+		// change how long the next call waits.
+		l.lastExec = time.Now()
 		// Enable next execution first.
 		l.executing.Store(false)
 		// Move to next slot aftewards to prevent wait loops.
@@ -62,13 +64,16 @@ func (l *CallLimiter2) waitAndExec(f func()) {
 	}()
 
 	// Wait for the minimum duration between executions.
-	if l.pause > 0 {
-		sinceLastExec := time.Since(l.lastExec)
-		if sinceLastExec < l.pause {
-			time.Sleep(l.pause - sinceLastExec)
-		}
+	if wait := l.waitTime(); wait > 0 {
+		time.Sleep(wait)
 	}
 
 	// Execute.
 	f()
+}
+
+// waitTime returns how long to wait before the next execution.
+// It never exceeds the minimum pause, even if lastExec lies in the future.
+func (l *CallLimiter2) waitTime() time.Duration {
+	return limiterWait(l.pause, l.lastExec)
 }

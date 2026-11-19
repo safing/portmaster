@@ -67,7 +67,9 @@ func (l *CallLimiter) lead(f func()) {
 	// Transition from out lock to in lock when done.
 	defer func() {
 		// Update last execution time.
-		l.lastExec = time.Now().UTC()
+		// Keep the monotonic clock reading: a wall-clock jump must not
+		// change how long the next call waits.
+		l.lastExec = time.Now()
 		// Stop newcomers from waiting on previous execution.
 		l.inLock.Lock()
 		// Allow waiters to leave.
@@ -75,13 +77,34 @@ func (l *CallLimiter) lead(f func()) {
 	}()
 
 	// Wait for the minimum duration between executions.
-	if l.pause > 0 {
-		sinceLastExec := time.Since(l.lastExec)
-		if sinceLastExec < l.pause {
-			time.Sleep(l.pause - sinceLastExec)
-		}
+	if wait := l.waitTime(); wait > 0 {
+		time.Sleep(wait)
 	}
 
 	// Execute.
 	f()
+}
+
+// waitTime returns how long to wait before the next execution.
+// It never exceeds the minimum pause, even if lastExec lies in the future.
+func (l *CallLimiter) waitTime() time.Duration {
+	return limiterWait(l.pause, l.lastExec)
+}
+
+// limiterWait returns how long to wait so that at least pause passes since
+// lastExec. The result is capped at pause, so a lastExec in the future (after
+// the system clock was set back) costs at most one pause instead of the jump.
+func limiterWait(pause time.Duration, lastExec time.Time) time.Duration {
+	if pause <= 0 {
+		return 0
+	}
+	since := time.Since(lastExec)
+	switch {
+	case since < 0:
+		return pause
+	case since < pause:
+		return pause - since
+	default:
+		return 0
+	}
 }
