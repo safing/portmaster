@@ -225,7 +225,60 @@ func (d *Downloader) getArtifact(ctx context.Context, artifact *Artifact, url st
 // for the response or for more data, before it is aborted.
 var downloadStallTimeout = time.Minute
 
+// downloadRetryDelays are the pauses before the retries of a failed download.
+// Downloads fail now and then on unstable connections, or when the server or
+// a proxy resets the stream; a single failure would fail the whole update.
+var downloadRetryDelays = []time.Duration{2 * time.Second, 10 * time.Second}
+
+// downloadData downloads the given URL, and retries on errors that may be
+// temporary.
 func (d *Downloader) downloadData(ctx context.Context, url string) ([]byte, error) {
+	for attempt := 0; ; attempt++ {
+		data, err := d.downloadOnce(ctx, url)
+		if err == nil || attempt >= len(downloadRetryDelays) || !retryableDownloadError(ctx, err) {
+			return data, err
+		}
+		log.Debugf("updates/%s: download of %s failed, retrying: %s", d.name(), url, err)
+		select {
+		case <-time.After(downloadRetryDelays[attempt]):
+		case <-ctx.Done():
+			return nil, err
+		}
+	}
+}
+
+// retryableDownloadError reports whether a download that failed with err may
+// succeed when tried again.
+func retryableDownloadError(ctx context.Context, err error) bool {
+	if ctx.Err() != nil {
+		return false // Canceled by the caller.
+	}
+	if statusErr, ok := errors.AsType[*httpStatusError](err); ok {
+		// Client errors (e.g. 404) will not go away; server errors may.
+		return statusErr.code >= 500 || statusErr.code == http.StatusTooManyRequests
+	}
+	return true
+}
+
+// httpStatusError is returned for responses with a status other than 200 OK.
+type httpStatusError struct {
+	code   int
+	status string
+}
+
+func (e *httpStatusError) Error() string {
+	return fmt.Sprintf("server returned non-OK status: %d %s", e.code, e.status)
+}
+
+func (d *Downloader) name() string {
+	if d.u == nil {
+		return "downloader"
+	}
+	return d.u.cfg.Name
+}
+
+// downloadOnce downloads the given URL once.
+func (d *Downloader) downloadOnce(ctx context.Context, url string) ([]byte, error) {
 	// Abort the download if it stalls. Without this, a connection on which
 	// the server stops sending blocks the updater forever, so that no more
 	// updates are done until a restart. Large files may take long on slow
@@ -259,7 +312,7 @@ func (d *Downloader) downloadData(ctx context.Context, url string) ([]byte, erro
 
 	// Check for HTTP status errors.
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("server returned non-OK status: %d %s", resp.StatusCode, resp.Status)
+		return nil, &httpStatusError{code: resp.StatusCode, status: resp.Status}
 	}
 
 	// Read the full body and return it. Every read with data resets the
