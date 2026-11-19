@@ -113,6 +113,9 @@ func startInterception(packets chan packet.Packet) error {
 		})
 	}
 
+	// Names resolved before the start must be resolved again through Portmaster.
+	flushSystemDNSCache()
+
 	return nil
 }
 

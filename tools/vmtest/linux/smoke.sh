@@ -16,6 +16,9 @@ LOG="$WORK/core.log"
 API=http://127.0.0.1:817/api/v1
 ALLOWED=example.com
 BLOCKED=example.org
+# A name whose CNAME points outside the blocked zone (safing/portmaster#2306).
+CNAME_BLOCKED=tr.archive.ubuntu.com
+CNAME_ZONE=ubuntu.com
 
 failures=0
 pass() { printf '  \033[32mPASS\033[0m %s\n' "$*"; }
@@ -29,6 +32,7 @@ step() { printf '\n== %s\n' "$*"; }
 
 rules_present() { iptables-save 2>/dev/null | grep -q PORTMASTER || ip6tables-save 2>/dev/null | grep -q PORTMASTER; }
 https_ok() { curl -sS -o /dev/null --max-time 15 "https://$1/"; }
+http_ok() { curl -sS -o /dev/null --max-time 15 "http://$1/"; }
 resolves() { getent ahostsv4 "$1" | grep -qv '^0\.0\.0\.0'; }
 api_ready() { curl -sf --max-time 5 "$API/ready"; }
 core_pid=""
@@ -67,13 +71,14 @@ rm -rf "$WORK" && mkdir -p "$DATA"
 step "Before start"
 check "no Portmaster rules installed" bash -c '! { iptables-save | grep -q PORTMASTER; }'
 check "https://$ALLOWED reachable" https_ok "$ALLOWED"
+check "http://$CNAME_BLOCKED reachable" http_ok "$CNAME_BLOCKED"
 
 # Block one domain and allow incoming SSH (the test is controlled over SSH)
 # in the global settings.
 write_config() {
 	printf '{"filter":{"endpoints":[%s],"serviceEndpoints":["+ * TCP/22"]}}\n' "$1" >"$DATA/config.json"
 }
-write_config "\"- $BLOCKED\""
+write_config "\"- $BLOCKED\",\"- .$CNAME_ZONE\""
 
 step "Start"
 if ! start_core; then
@@ -91,6 +96,7 @@ check "https://$ALLOWED reachable" https_ok "$ALLOWED"
 # to the connection, not to the DNS query.
 echo "  info: $BLOCKED resolves through systemd-resolved: $(resolves "$BLOCKED" && echo yes || echo no)"
 check "https://$BLOCKED is blocked" bash -c "! curl -sS -o /dev/null --max-time 10 https://$BLOCKED/"
+check "http://$CNAME_BLOCKED is blocked by the rule for .$CNAME_ZONE (CNAME outside the zone)" bash -c "! curl -sS -o /dev/null --max-time 10 http://$CNAME_BLOCKED/"
 check "Portmaster nameserver answers" bash -c "dig +short +time=5 +tries=1 $ALLOWED @127.0.0.1 | grep -q ."
 
 step "API"
