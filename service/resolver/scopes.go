@@ -127,7 +127,7 @@ var (
 		".bbs.",
 		".chan.",
 		".dyn.",
-		".free.",
+		// ".free." is now an ICANN TLD (IANA root zone) and is resolved normally.
 		".fur.",
 		".geek.",
 		".glue.",
