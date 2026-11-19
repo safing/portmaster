@@ -70,11 +70,26 @@ impl std::fmt::Display for ProcessInfo {
     }
 }
 
+/// Returns the key under which the lookup result for a process is cached.
+///
+/// The lookup uses the executable path, the command line and the matching path,
+/// so all three are part of the key. Keying on the executable path alone made
+/// processes that share a launcher, like `/usr/bin/bwrap` for every flatpak,
+/// share one result, so all flatpaks got the icon of whichever app was looked
+/// up first.
+fn cache_key(process_info: &ProcessInfo) -> String {
+    format!(
+        "{}\0{}\0{}",
+        process_info.exec_path, process_info.cmdline, process_info.matching_path
+    )
+}
+
 pub fn get_app_info(process_info: ProcessInfo) -> Result<AppInfo> {
+    let key = cache_key(&process_info);
     {
         let cache = APP_INFO_CACHE.read().unwrap();
 
-        if let Some(value) = cache.get(process_info.exec_path.as_str()) {
+        if let Some(value) = cache.get(key.as_str()) {
             match value {
                 Some(app_info) => return Ok(app_info.clone()),
                 None => {
@@ -141,7 +156,7 @@ pub fn get_app_info(process_info: ProcessInfo) -> Result<AppInfo> {
         APP_INFO_CACHE
             .write()
             .unwrap()
-            .insert(process_info.exec_path, None);
+            .insert(key, None);
 
         Err(Error::new(ErrorKind::NotFound, "failed to find app info".to_string()).into())
     } else {
@@ -161,7 +176,7 @@ pub fn get_app_info(process_info: ProcessInfo) -> Result<AppInfo> {
                     APP_INFO_CACHE
                         .write()
                         .unwrap()
-                        .insert(process_info.exec_path, Some(info.0.clone()));
+                        .insert(key, Some(info.0.clone()));
 
                     return Ok(info.0);
                 }
@@ -513,6 +528,27 @@ mod tests {
         // GTK will otherwise be initialize by Tauri.
 
         gtk::init().expect("failed to initialize GTK for tests")
+    }
+
+    #[test]
+    fn test_cache_key_separates_apps_with_a_shared_launcher() {
+        let steam = ProcessInfo {
+            exec_path: "/usr/bin/bwrap".to_string(),
+            cmdline: "bwrap --args 81 -- /app/bin/steam".to_string(),
+            pid: 1,
+            matching_path: "/app/bin/steam".to_string(),
+        };
+        let telegram = ProcessInfo {
+            exec_path: "/usr/bin/bwrap".to_string(),
+            cmdline: "bwrap --args 42 -- /app/bin/Telegram".to_string(),
+            pid: 2,
+            matching_path: "/app/bin/Telegram".to_string(),
+        };
+        assert_ne!(cache_key(&steam), cache_key(&telegram));
+
+        // The pid does not take part in the lookup, so it must not split the cache.
+        let steam_again = ProcessInfo { pid: 3, ..steam.clone() };
+        assert_eq!(cache_key(&steam), cache_key(&steam_again));
     }
 
     #[test]
