@@ -32,6 +32,8 @@ func TestCleanFileDescription(t *testing.T) {
 	assert.Equal(t, "Product Name", cleanFileDescription("Product Name - Does this and that."))
 	assert.Equal(t, "Product Name", cleanFileDescription("Product Name / Does this and that."))
 	assert.Equal(t, "Product Name", cleanFileDescription("Product Name :: Does this and that."))
+	// Angle brackets would let a binary inject HTML through its name.
+	assert.Equal(t, "img src=x onerror=alert(1)", cleanFileDescription(`<img src=x onerror=alert(1)>`))
 	assert.Equal(t, "/ Product Name", cleanFileDescription("/ Product Name"))
 	assert.Equal(t, "Product", cleanFileDescription("Product / Name"))
 	assert.Equal(t, "Software 2", cleanFileDescription("Software 2"))
