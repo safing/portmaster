@@ -24,6 +24,9 @@ $Api = 'http://127.0.0.1:817/api/v1'
 $Curl = 'C:\Windows\System32\curl.exe'
 $Allowed = 'example.com'
 $Blocked = 'example.org'
+# A name whose CNAME points outside the blocked zone (safing/portmaster#2306).
+$CnameBlocked = 'tr.archive.ubuntu.com'
+$CnameZone = 'ubuntu.com'
 
 $script:failures = 0
 function Pass($msg) { Write-Output "  PASS $msg" }
@@ -37,6 +40,10 @@ function Step($msg) { Write-Output ''; Write-Output "== $msg" }
 
 function HttpsOk($domain) {
     & $Curl -sS -o NUL --max-time 15 "https://$domain/" 2>$null
+    return $LASTEXITCODE -eq 0
+}
+function HttpOk($domain) {
+    & $Curl -sS -o NUL --max-time 15 "http://$domain/" 2>$null
     return $LASTEXITCODE -eq 0
 }
 function Resolves($domain) {
@@ -54,6 +61,9 @@ New-Item -ItemType Directory -Force -Path $Bin, $Data | Out-Null
 
 Step 'Before start'
 Check "https://$Allowed reachable" { HttpsOk $Allowed }
+# This also puts the name into the DNS Client cache: Portmaster must flush it
+# on start, or the connection would have no domain and pass the rule below.
+Check "http://$CnameBlocked reachable" { HttpOk $CnameBlocked }
 
 Step 'Release binaries'
 & $Core update --bin-dir $Bin --data-dir $Data *>> $Log
@@ -76,7 +86,7 @@ if ($Dll) {
 # Block one domain in the global settings.
 # Also allow incoming SSH, as the test is controlled over SSH.
 Set-Content -Path (Join-Path $Data 'config.json') -Encoding ASCII `
-    -Value ('{"filter":{"endpoints":["- ' + $Blocked + '"],"serviceEndpoints":["+ * TCP/22"]}}')
+    -Value ('{"filter":{"endpoints":["- ' + $Blocked + '","- .' + $CnameZone + '"],"serviceEndpoints":["+ * TCP/22"]}}')
 
 Step 'Start'
 $proc = Start-Process -FilePath $Core -PassThru -WindowStyle Hidden `
@@ -95,6 +105,7 @@ while (-not (ApiReady)) {
     }
 }
 Pass "portmaster-core starts and reports ready (${waited}s)"
+Check 'DNS Client cache flushed' { Select-String -Path $Log -Quiet -SimpleMatch 'flushed the DNS Client cache' }
 Check 'kernel extension service running' { (Get-Service -Name 'PortmasterKext' -ErrorAction SilentlyContinue).Status -eq 'Running' -or (sc.exe query type= driver | Select-String -Quiet 'PortmasterKext') }
 
 Step 'Filtering'
@@ -105,6 +116,7 @@ Check "https://$Allowed reachable" { HttpsOk $Allowed }
 # per-app rule applies to the connection, not to the DNS query.
 Write-Output "  info: $Blocked resolves through the DNS Client service: $(Resolves $Blocked)"
 Check "https://$Blocked is blocked" { -not (HttpsOk $Blocked) }
+Check "http://$CnameBlocked is blocked by the rule for .$CnameZone (CNAME outside the zone)" { -not (HttpOk $CnameBlocked) }
 
 Step 'API'
 Check 'ping endpoint' { & $Curl -sf --max-time 5 "$Api/ping" 2>$null | Out-Null; $LASTEXITCODE -eq 0 }
@@ -116,6 +128,9 @@ $out = & $Curl -sf --max-time 10 -X POST "$Api/netquery/query" -H 'Content-Type:
 $n = 0
 try { $n = @(($out | Out-String | ConvertFrom-Json).results).Count } catch {}
 if ($n -gt 0) { Pass "netquery lists connections to $Allowed ($n)" } else { Fail "netquery lists connections to $Allowed (got '$out')" }
+$body = '{"query":{"remote_ip":{"$in":["' + (@(Resolve-DnsName -Name $CnameBlocked -Type A -ErrorAction SilentlyContinue | Where-Object IPAddress | ForEach-Object IPAddress) -join '","') + '"]}},"select":["domain","verdict"],"groupBy":["domain","verdict"],"pageSize":20}'
+Set-Content -Path $bodyFile -Value $body -Encoding ASCII
+Write-Output "  info: connections to the IPs of ${CnameBlocked}: $(& $Curl -sf --max-time 10 -X POST "$Api/netquery/query" -H 'Content-Type: application/json' --data-binary "@$bodyFile" 2>$null)"
 $code = 0
 try {
     Invoke-WebRequest -UseBasicParsing -Method Post -Uri "$Api/netquery/query" -Body '{}' -TimeoutSec 10 | Out-Null
