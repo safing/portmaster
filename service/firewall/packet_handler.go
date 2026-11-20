@@ -587,14 +587,7 @@ func FilterConnection(ctx context.Context, conn *network.Connection, pkt packet.
 
 	// TODO: Quick fix for the SPN.
 	// Use inspection framework for proper encryption detection.
-	switch conn.Entity.DstPort() {
-	case
-		22,  // SSH
-		443, // HTTPS
-		465, // SMTP-SSL
-		853, // DoT
-		993, // IMAP-SSL
-		995: // POP3-SSL
+	if netutils.IsEncryptedPort(conn.Entity.DstPort()) {
 		conn.Encrypted = true
 	}
 
