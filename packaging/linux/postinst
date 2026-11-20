@@ -63,8 +63,19 @@ if command -V semanage >/dev/null 2>&1; then
 fi
 
 echo "[ ] Initializing binary files"
-mv /usr/bin/portmaster /usr/lib/portmaster/portmaster
-ln -s /usr/lib/portmaster/portmaster /usr/bin/portmaster 
+# The package installs the UI to /usr/bin/portmaster. Move it next to the core
+# and link it back. Only move a regular file: when this script runs again
+# (dpkg --configure after a failed run, dpkg-reconfigure), /usr/bin/portmaster
+# is already the link, and moving it would make /usr/lib/portmaster/portmaster
+# a link to itself (safing/portmaster#2288).
+if [ -f /usr/bin/portmaster ] && [ ! -L /usr/bin/portmaster ]; then
+    mv -f /usr/bin/portmaster /usr/lib/portmaster/portmaster
+fi
+if [ -f /usr/lib/portmaster/portmaster ] && [ ! -L /usr/lib/portmaster/portmaster ]; then
+    ln -sfn /usr/lib/portmaster/portmaster /usr/bin/portmaster
+else
+    echo "[!] /usr/lib/portmaster/portmaster is missing, reinstall the package to repair the UI" >&2
+fi
 
 chmod +x /usr/lib/portmaster/portmaster-core
 
