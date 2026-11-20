@@ -123,3 +123,32 @@ jobs:
       - name: Reject SPN leftovers in the tray/UI shell
         run: |
           ! grep -rnE 'spn_toggle|set_spn_enabled|SPNStatus|models::spn' src
+
+  tauri-clippy-windows:
+    # The Windows-only code of the UI (notifications, service control) is not
+    # compiled by the Linux job, so check it for the target of the installer.
+    name: Tauri (Rust) clippy for Windows, no warnings
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: desktop/tauri/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MinGW cross toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends mingw-w64
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.89"
+          targets: x86_64-pc-windows-gnu
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/tauri/src-tauri -> target
+          key: clippy-windows
+      - name: Create empty UI dist so the build script is satisfied
+        run: mkdir -p ../../angular/dist/tauri-builtin
+      - name: Clippy (Windows target, deny warnings)
+        run: cargo clippy --target x86_64-pc-windows-gnu --all-features -- -D warnings
