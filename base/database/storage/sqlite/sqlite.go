@@ -9,13 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aarondl/opt/omit"
-	"github.com/aarondl/opt/omitnull"
 	migrate "github.com/rubenv/sql-migrate"
 	sqldblogger "github.com/simukti/sqldb-logger"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/sqlite/dialect"
-	"github.com/stephenafamo/bob/dialect/sqlite/im"
 	"github.com/stephenafamo/bob/dialect/sqlite/sm"
 	"github.com/stephenafamo/bob/dialect/sqlite/um"
 	_ "modernc.org/sqlite"
@@ -27,7 +24,6 @@ import (
 	"github.com/safing/portmaster/base/database/storage"
 	"github.com/safing/portmaster/base/database/storage/sqlite/models"
 	"github.com/safing/portmaster/base/log"
-	"github.com/safing/structures/dsd"
 )
 
 // Errors.
@@ -51,6 +47,9 @@ type SQLite struct {
 	// after PutMany returned. They must not use wg, as Shutdown may already
 	// wait on it.
 	batchWg sync.WaitGroup
+
+	// singleUpsert writes one record, see buildUpsert.
+	singleUpsert string
 
 	ctx       context.Context
 	cancelCtx context.CancelFunc
@@ -119,13 +118,20 @@ func openSQLite(name, location string, printStmts bool) (*SQLite, error) {
 
 	// Return as bob database.
 	ctx, cancelCtx := context.WithCancel(context.Background())
-	return &SQLite{
+	sqliteDB := &SQLite{
 		name:      name,
 		db:        db,
 		bob:       bob.NewDB(db),
 		ctx:       ctx,
 		cancelCtx: cancelCtx,
-	}, nil
+	}
+	sqliteDB.singleUpsert, err = sqliteDB.buildUpsert(1)
+	if err != nil {
+		cancelCtx()
+		_ = db.Close()
+		return nil, err
+	}
+	return sqliteDB, nil
 }
 
 // Get returns a database record.
@@ -176,61 +182,16 @@ func (db *SQLite) putRecord(r record.Record, tx *bob.Tx) (record.Record, error) 
 		defer r.Unlock()
 	}
 
-	// default serialization format - JSON
-	format := uint8(dsd.JSON)
-
-	// For wrapped records, check the required format
-	if r.IsWrapped() {
-		wrapper, ok := r.(*record.Wrapper)
-		if !ok {
-			return nil, fmt.Errorf("%w: reports to be wrapped but is not of type *record.Wrapper", storage.ErrRecordMalformed)
-		}
-		format, ok = dsd.ValidateSerializationFormat(wrapper.Format)
-		if !ok {
-			return nil, dsd.ErrIncompatibleFormat
-		}
-	}
-
-	// Serialize.
-	data, err := r.MarshalDataOnly(r, format)
+	args, err := recordArgs(r)
 	if err != nil {
 		return nil, err
 	}
-	// Prepare for setter.
-	setFormat := omitnull.From(int64(format))
-	setData := omitnull.From(data)
-	if len(data) == 0 {
-		setFormat.Null()
-		setData.Null()
-	}
-
-	// Create structure for insert.
-	m := r.Meta()
-	setter := models.RecordSetter{
-		Key:        omit.From(r.DatabaseKey()),
-		Format:     setFormat,
-		Value:      setData,
-		Created:    omit.From(m.Created),
-		Modified:   omit.From(m.Modified),
-		Expires:    omit.From(m.Expires),
-		Deleted:    omit.From(m.Deleted),
-		Secret:     omit.From(m.IsSecret()),
-		Crownjewel: omit.From(m.IsCrownJewel()),
-	}
-
-	// Simulate upsert with custom selection on conflict.
-	dbQuery := models.Records.Insert(
-		&setter,
-		im.OnConflict("key").DoUpdate(
-			im.SetExcluded("format", "value", "created", "modified", "expires", "deleted", "secret", "crownjewel"),
-		),
-	)
 
 	// Execute in transaction or directly.
 	if tx != nil {
-		_, err = dbQuery.Exec(db.ctx, tx)
+		_, err = tx.ExecContext(db.ctx, db.singleUpsert, args...)
 	} else {
-		_, err = dbQuery.Exec(db.ctx, db.bob)
+		_, err = db.bob.ExecContext(db.ctx, db.singleUpsert, args...)
 	}
 	if err != nil {
 		return nil, err

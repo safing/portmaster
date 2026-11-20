@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -119,5 +120,17 @@ func benchPutMany(b *testing.B) { //nolint:thelper
 	err = <-errs
 	if err != nil {
 		b.Fatal(err)
+	}
+}
+
+func TestUpsertHasNoReturning(t *testing.T) {
+	t.Parallel()
+
+	db := &SQLite{ctx: t.Context()}
+	for _, rows := range []int{1, upsertRowsPerStatement} {
+		q, err := db.buildUpsert(rows)
+		require.NoError(t, err)
+		assert.NotContains(t, strings.ToUpper(q), "RETURNING")
+		assert.Contains(t, q, "ON CONFLICT")
 	}
 }

@@ -352,6 +352,10 @@ func (i *Interface) PutNew(r record.Record) (err error) {
 	return db.Put(r)
 }
 
+// putManyIdleTimeout is how long PutMany waits for the next record before
+// it stops accepting records.
+const putManyIdleTimeout = 1 * time.Second
+
 // PutMany stores many records in the database.
 // Warning: This is nearly a direct database access and omits many things:
 // - Record locking
@@ -422,6 +426,11 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 		// received the result of the storage by now, so this aborts nothing.
 		defer cancelBatch(nil)
 		var forwarded int
+		// The batch is stopped when no record arrives for a second. A single
+		// timer, reset after every record, avoids allocating a new timer for
+		// each record of large batches like the filter lists.
+		idle := time.NewTimer(putManyIdleTimeout)
+		defer idle.Stop()
 		// forward passes r on to the storage. If the storage stopped processing
 		// the batch, it sets result and returns false.
 		forward := func(r record.Record) bool {
@@ -451,12 +460,13 @@ func (i *Interface) PutMany(dbName string) (put func(record.Record) error) {
 				if !forward(r) {
 					return
 				}
+				idle.Reset(putManyIdleTimeout)
 			case err := <-errs:
 				// The storage stopped processing the batch.
 				close(dbBatch)
 				result = storageStoppedError(err)
 				return
-			case <-time.After(1 * time.Second):
+			case <-idle.C:
 				// Bail out. Stop accepting records, then pass on the ones that
 				// were already accepted, as the caller was told so.
 				close(stopping)

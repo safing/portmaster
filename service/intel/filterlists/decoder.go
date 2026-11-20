@@ -1,6 +1,7 @@
 package filterlists
 
 import (
+	"bufio"
 	"compress/gzip"
 	"context"
 	"encoding/binary"
@@ -51,8 +52,12 @@ func decodeFile(ctx context.Context, r io.Reader, ch chan<- *listEntry) error {
 		}
 	}
 
-	// we need a reader that supports io.ByteReader
-	reader := &byteReader{r}
+	// Buffer the reads: the entry lengths are read byte by byte, which would
+	// otherwise be one read from the (decompressing) source per byte.
+	reader := bufio.NewReaderSize(r, 64*1024)
+	// The entry buffer is reused for all entries. This is safe, as all
+	// formats that can decode a listEntry copy the strings out of the data.
+	var buf []byte
 	var entryCount int
 	for {
 		entryCount++
@@ -64,7 +69,10 @@ func decodeFile(ctx context.Context, r io.Reader, ch chan<- *listEntry) error {
 			return fmt.Errorf("failed to load varint entity length: %w", readErr)
 		}
 
-		blob := make([]byte, length)
+		if uint64(cap(buf)) < length {
+			buf = make([]byte, length)
+		}
+		blob := buf[:length]
 		_, readErr = io.ReadFull(reader, blob)
 		if readErr != nil {
 			if errors.Is(readErr, io.EOF) {
@@ -133,13 +141,4 @@ func parseHeader(r io.Reader) (compressed bool, format byte, err error) {
 	format = compression[0]
 
 	return compressed, format, err
-}
-
-// byteReader extends an io.Reader to implement the ByteReader interface.
-type byteReader struct{ io.Reader }
-
-func (br *byteReader) ReadByte() (byte, error) {
-	var b [1]byte
-	_, err := br.Read(b[:])
-	return b[0], err
 }

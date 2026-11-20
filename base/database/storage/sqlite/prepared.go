@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"github.com/stephenafamo/bob"
+	"github.com/stephenafamo/bob/dialect/sqlite"
 	"github.com/stephenafamo/bob/dialect/sqlite/im"
 	"github.com/stephenafamo/bob/expr"
 
 	"github.com/safing/portmaster/base/database/record"
 	"github.com/safing/portmaster/base/database/storage"
-	"github.com/safing/portmaster/base/database/storage/sqlite/models"
 	"github.com/safing/structures/dsd"
 )
 
@@ -30,6 +30,11 @@ var recordColumns = []string{"key", "format", "value", "created", "modified", "e
 
 // buildUpsert builds an INSERT for the given number of rows that replaces
 // existing records with the same key.
+//
+// The statement is built with the plain SQLite dialect, not with the
+// generated table model: the model adds a RETURNING clause with every
+// column, so SQLite would produce a result row with the full record value
+// for each write, only for the driver to discard it.
 func (db *SQLite) buildUpsert(rows int) (string, error) {
 	valueRows := make([][]bob.Expression, rows)
 	for i := range valueRows {
@@ -41,7 +46,7 @@ func (db *SQLite) buildUpsert(rows int) (string, error) {
 	}
 
 	// Simulate upsert with custom selection on conflict.
-	rawQuery, _, err := models.Records.Insert(
+	rawQuery, _, err := sqlite.Insert(
 		im.Into("records", recordColumns...),
 		im.Rows(valueRows...),
 		im.OnConflict("key").DoUpdate(
@@ -206,6 +211,12 @@ func upsertArgs(r record.Record) ([]any, error) {
 	r.Lock()
 	defer r.Unlock()
 
+	return recordArgs(r)
+}
+
+// recordArgs returns the statement arguments of r in recordColumns order.
+// The caller must hold the lock of r.
+func recordArgs(r record.Record) ([]any, error) {
 	// default serialization format - JSON
 	format := uint8(dsd.JSON)
 
