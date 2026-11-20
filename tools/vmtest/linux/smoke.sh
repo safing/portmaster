@@ -100,6 +100,12 @@ check "https://$ALLOWED reachable" https_ok "$ALLOWED"
 echo "  info: $BLOCKED resolves through systemd-resolved: $(resolves "$BLOCKED" && echo yes || echo no)"
 check "https://$BLOCKED is blocked" bash -c "! curl -sS -o /dev/null --max-time 10 https://$BLOCKED/"
 check "http://$CNAME_BLOCKED is blocked by the rule for .$CNAME_ZONE (CNAME outside the zone)" bash -c "! curl -sS -o /dev/null --max-time 10 http://$CNAME_BLOCKED/"
+# A blocked connection must fail at once, not by timeout (safing/portmaster#1981).
+block_start=$(date +%s%N)
+curl -sS -o /dev/null --max-time 40 "http://$CNAME_BLOCKED/" >/dev/null 2>&1
+block_rc=$?
+block_ms=$((($(date +%s%N) - block_start) / 1000000))
+check "a blocked connection fails at once, not by timeout (${block_ms}ms, curl exit code $block_rc)" test "$block_rc" -ne 0 -a "$block_ms" -lt 5000
 check "Portmaster nameserver answers" bash -c "dig +short +time=5 +tries=1 $ALLOWED @127.0.0.1 | grep -q ."
 
 step "Filter lists"

@@ -147,6 +147,13 @@ Check "https://$Allowed reachable" { HttpsOk $Allowed }
 Write-Output "  info: $Blocked resolves through the DNS Client service: $(Resolves $Blocked)"
 Check "https://$Blocked is blocked" { -not (HttpsOk $Blocked) }
 Check "http://$CnameBlocked is blocked by the rule for .$CnameZone (CNAME outside the zone)" { -not (HttpOk $CnameBlocked) }
+# How fast a connection blocked by a rule fails (safing/portmaster#1981).
+$sw = [Diagnostics.Stopwatch]::StartNew()
+& $Curl -sS -o NUL --max-time 40 "http://$CnameBlocked/" 2>$null
+$blockRc = $LASTEXITCODE
+$sw.Stop()
+$blockSecs = [math]::Round($sw.Elapsed.TotalSeconds, 1)
+Check "a blocked connection fails at once, not by timeout (${blockSecs}s, curl exit code $blockRc)" { $blockRc -ne 0 -and $blockSecs -lt 5 }
 Check 'UDP to a local listener on 127.0.0.1' { (UdpDatagramsReceived '127.0.0.1') -eq 3 }
 # Known kext limitation: the first datagram of a socket waits for the verdict
 # and is re-injected through the sending socket, so it is lost when the socket
