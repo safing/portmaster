@@ -18,6 +18,7 @@ import (
 	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/profile/binmeta"
 	"github.com/safing/portmaster/service/profile/endpoints"
+	"github.com/safing/portmaster/service/updates"
 )
 
 // ProfileSource is the source of the profile.
@@ -114,13 +115,16 @@ type Profile struct {
 	layeredProfile *LayeredProfile
 
 	// Interpreted Data
-	configPerspective   *config.Perspective
-	dataParsed          bool
-	defaultAction       uint8
-	endpoints           endpoints.Endpoints
-	serviceEndpoints    endpoints.Endpoints
-	filterListsSet      bool
-	filterListIDs       []string
+	configPerspective *config.Perspective
+	dataParsed        bool
+	defaultAction     uint8
+	endpoints         endpoints.Endpoints
+	serviceEndpoints  endpoints.Endpoints
+	filterListsSet    bool
+	filterListIDs     []string
+	// filterListsPending is set if the filter lists of the profile could not
+	// be resolved, because the filter list index is not available yet.
+	filterListsPending  atomic.Bool
 	splitTunUsagePolicy endpoints.Endpoints
 
 	// Lifecycle Management
@@ -192,11 +196,18 @@ func (profile *Profile) parseConfig() error {
 
 	list, ok = profile.configPerspective.GetAsStringArray(CfgOptionFilterListsKey)
 	profile.filterListsSet = false
+	profile.filterListsPending.Store(false)
 	if ok {
 		profile.filterListIDs, err = filterlists.ResolveListIDs(list)
-		if err != nil {
+		switch {
+		case errors.Is(err, updates.ErrNotFound):
+			// The filter list index is not downloaded yet, e.g. on the first
+			// start. The profile is reloaded once it is there.
+			log.Debugf("profiles: filter list index not available yet for %s", profile.ScopedID())
+			profile.filterListsPending.Store(true)
+		case err != nil:
 			log.Warningf("profiles: failed to resolve filter list IDs: %s", err)
-		} else {
+		default:
 			profile.filterListsSet = true
 		}
 	}

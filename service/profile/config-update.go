@@ -87,6 +87,8 @@ func updateGlobalConfigProfile(_ context.Context) error {
 		retry = true
 	case err != nil:
 		lastErr = err
+	default:
+		reloadProfilesWithPendingFilterLists()
 	}
 
 	list = cfgOptionSplitTunUsagePolicy()
@@ -152,4 +154,16 @@ func updateGlobalConfigProfile(_ context.Context) error {
 	}
 
 	return lastErr
+}
+
+// reloadProfilesWithPendingFilterLists marks all active profiles as outdated
+// whose filter lists could not be resolved before, because the filter list
+// index was not available yet. They are reloaded on their next use.
+func reloadProfilesWithPendingFilterLists() {
+	for _, profile := range getAllActiveProfiles() {
+		if profile.filterListsPending.Load() {
+			log.Debugf("profile: reloading %s to apply its filter lists", profile.ScopedID())
+			profile.outdated.Set()
+		}
+	}
 }
