@@ -48,6 +48,9 @@ var (
 	ErrAutoCheckDisabled = errors.New("automatic update checks are disabled")
 	ErrNoUpdateAvailable = errors.New("no update available")
 	ErrActionRequired    = errors.New("action required")
+	// ErrRestartRequired is returned when an upgrade was installed and
+	// Portmaster must be restarted to use it.
+	ErrRestartRequired = fmt.Errorf("%w: restart required", ErrActionRequired)
 	// ErrReadOnlyInstallation is returned when the installation directory
 	// cannot be written, such as on immutable systems.
 	ErrReadOnlyInstallation = errors.New("installation directory is read-only")
@@ -479,7 +482,7 @@ func (u *Updater) updateAndUpgrade(w *mgr.WorkerCtx, indexURLs []string, ignoreV
 			})
 		}
 
-		return fmt.Errorf("%w: restart required", ErrActionRequired)
+		return ErrRestartRequired
 	}
 
 	// Otherwise, trigger restart immediately.
@@ -528,9 +531,17 @@ func (u *Updater) upgradeWorker(w *mgr.WorkerCtx) error {
 
 // ForceUpdate executes a forced update and upgrade directly and synchronously
 // and is intended to be used only within a tool, not a service.
+//
+// An upgrade that needs a restart of Portmaster is a success here: the tool
+// installed it, and the service uses it when it is started again.
 func (u *Updater) ForceUpdate() error {
 	return u.m.Do("update and upgrade", func(w *mgr.WorkerCtx) error {
-		return u.updateAndUpgrade(w, u.getIndexURLsWithLock(), true, true)
+		err := u.updateAndUpgrade(w, u.getIndexURLsWithLock(), true, true)
+		if errors.Is(err, ErrRestartRequired) {
+			log.Infof("updates/%s: update installed, restart Portmaster to use it", u.cfg.Name)
+			return nil
+		}
+		return err
 	})
 }
 
