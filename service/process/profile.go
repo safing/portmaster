@@ -115,7 +115,8 @@ func (p *Process) getSpecialProfileID() (specialProfileID string) {
 
 // IsPortmasterUi checks if the process is the Portmaster UI or its child (up to 3 parent levels).
 func (p *Process) IsPortmasterUi(ctx context.Context) bool {
-	if module.portmasterUIPath == "" {
+	uiPath := module.portmasterUIPath()
+	if uiPath == "" {
 		return false
 	}
 
@@ -133,7 +134,7 @@ func (p *Process) IsPortmasterUi(ctx context.Context) bool {
 		}
 
 		realPath, err := filepath.EvalSymlinks(proc.Path)
-		if err == nil && realPath == module.portmasterUIPath {
+		if err == nil && realPath == uiPath {
 			if runtime.GOOS != "windows" {
 				return true
 			}
