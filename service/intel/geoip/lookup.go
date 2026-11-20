@@ -7,6 +7,9 @@ import (
 	"github.com/oschwald/maxminddb-golang"
 )
 
+// ErrDatabaseNotAvailable is returned by lookups while no geoip database is loaded.
+var ErrDatabaseNotAvailable = errors.New("geoip database not available")
+
 func getReader(ip net.IP) *maxminddb.Reader {
 	isV6 := ip.To4() == nil
 	return worker.GetReader(isV6, true)
@@ -16,7 +19,7 @@ func getReader(ip net.IP) *maxminddb.Reader {
 func GetLocation(ip net.IP) (*Location, error) {
 	db := getReader(ip)
 	if db == nil {
-		return nil, errors.New("geoip database not available")
+		return nil, ErrDatabaseNotAvailable
 	}
 	record := &Location{}
 	if err := db.Lookup(ip, record); err != nil {

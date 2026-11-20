@@ -1,6 +1,7 @@
 package geoip
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -61,7 +62,13 @@ func (ub *updateBroadcaster) AvailableUpdate() *updates.Artifact {
 
 	// Get artifact.
 	artifact, err := module.instance.IntelUpdates().GetFile(ub.dbName)
-	if err != nil {
+	switch {
+	case errors.Is(err, updates.ErrNotFound):
+		// No intel data downloaded yet. Lookups trigger this check, so do not
+		// warn about it each time.
+		log.Debugf("geoip: %s not available yet", ub.dbName)
+		return nil
+	case err != nil:
 		log.Warningf("geoip: failed to get geoip update: %s", err)
 		return nil
 	}

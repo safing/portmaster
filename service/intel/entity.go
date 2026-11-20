@@ -2,6 +2,7 @@ package intel
 
 import (
 	"context"
+	"errors"
 	"net"
 	"slices"
 	"strconv"
@@ -286,7 +287,12 @@ func (e *Entity) getLocation(ctx context.Context) {
 		// get location data
 		loc, err := geoip.GetLocation(e.IP)
 		if err != nil {
-			log.Tracer(ctx).Warningf("intel: failed to get location data for %s: %s", e.IP, err)
+			if errors.Is(err, geoip.ErrDatabaseNotAvailable) {
+				// No intel data downloaded yet: true for every connection.
+				log.Tracer(ctx).Debugf("intel: no location data for %s: %s", e.IP, err)
+			} else {
+				log.Tracer(ctx).Warningf("intel: failed to get location data for %s: %s", e.IP, err)
+			}
 			e.LocationError = err.Error()
 			return
 		}
