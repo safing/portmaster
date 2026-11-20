@@ -2,13 +2,17 @@ package profile
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/intel/filterlists"
 	"github.com/safing/portmaster/service/mgr"
 	"github.com/safing/portmaster/service/profile/endpoints"
+	"github.com/safing/portmaster/service/updates"
 )
 
 var (
@@ -31,12 +35,19 @@ func registerGlobalConfigProfileUpdater() error {
 
 const globalConfigProfileErrorID = "profile:global-profile-error"
 
+// globalConfigProfileRetryPending is set while a retry of
+// updateGlobalConfigProfile is scheduled.
+var globalConfigProfileRetryPending atomic.Bool
+
 func updateGlobalConfigProfile(_ context.Context) error {
 	cfgLock.Lock()
 	defer cfgLock.Unlock()
 
 	var err error
 	var lastErr error
+	// retry is set if a setting can only be applied once intel data is
+	// available, which is not a failure of the settings.
+	var retry bool
 
 	action := cfgOptionDefaultAction()
 	switch action {
@@ -68,7 +79,13 @@ func updateGlobalConfigProfile(_ context.Context) error {
 
 	list = cfgOptionFilterLists()
 	cfgFilterLists, err = filterlists.ResolveListIDs(list)
-	if err != nil {
+	switch {
+	case errors.Is(err, updates.ErrNotFound):
+		// The filter list index is not downloaded yet, e.g. on the first
+		// start. Apply the lists once it is there.
+		log.Debugf("profile: filter list index not available yet, retrying global config profile later")
+		retry = true
+	case err != nil:
 		lastErr = err
 	}
 
@@ -111,18 +128,20 @@ func updateGlobalConfigProfile(_ context.Context) error {
 		lastErr = err
 	}
 
-	// If there was any error, try again later until it succeeds.
+	// If there was any error or intel data is missing, try again later until
+	// it succeeds. Only one retry is pending at a time, also when the config
+	// changes in the meantime.
+	if (lastErr != nil || retry) && globalConfigProfileRetryPending.CompareAndSwap(false, true) {
+		_ = module.mgr.Delay("retry updating global config profile", 15*time.Second,
+			func(w *mgr.WorkerCtx) error {
+				globalConfigProfileRetryPending.Store(false)
+				return updateGlobalConfigProfile(w.Ctx())
+			})
+	}
+
 	if lastErr == nil {
 		module.states.Remove(globalConfigProfileErrorID)
 	} else {
-		// Create task after first failure.
-
-		// Schedule task.
-		_ = module.mgr.Delay("retry updating global config profile", 15*time.Second,
-			func(w *mgr.WorkerCtx) error {
-				return updateGlobalConfigProfile(w.Ctx())
-			})
-
 		// Add module warning to inform user.
 		module.states.Add(mgr.State{
 			ID:      globalConfigProfileErrorID,
