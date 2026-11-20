@@ -136,9 +136,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install MinGW cross toolchain
+        # A hanging mirror once blocked this step until the job timeout.
+        timeout-minutes: 10
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends mingw-w64
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update -qq
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y -qq --no-install-recommends mingw-w64
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.89"
