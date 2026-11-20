@@ -115,6 +115,7 @@ func cleanConnections() (activePIDs map[int]struct{}) {
 				// Step 2: mark as ended
 				if !connActive {
 					conn.Ended = nowUnix
+					conn.ended.Store(true)
 
 					// Stop the firewall handler, in case one is running.
 					conn.StopFirewallHandler()

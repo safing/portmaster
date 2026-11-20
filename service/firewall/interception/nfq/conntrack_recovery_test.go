@@ -38,6 +38,7 @@ type fakeHandle struct {
 	queryErr  error // returned by every Query, if set
 	deleteErr error // returned by every Delete, if set
 	entries   []ct.Con
+	deleted   []ct.Con // attributes of every Delete call
 	queries   int
 	deletes   int
 	closed    bool
@@ -54,11 +55,12 @@ func (h *fakeHandle) Query(_ ct.Table, _ ct.Family, _ ct.FilterAttr) ([]ct.Con, 
 	return append([]ct.Con(nil), h.entries...), nil
 }
 
-func (h *fakeHandle) Delete(_ ct.Table, _ ct.Family, _ ct.Con) error {
+func (h *fakeHandle) Delete(_ ct.Table, _ ct.Family, attributes ct.Con) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	h.deletes++
+	h.deleted = append(h.deleted, attributes)
 	if h.deleteErr != nil {
 		return h.deleteErr
 	}

@@ -3,6 +3,8 @@
 package interception
 
 import (
+	"net"
+
 	"github.com/safing/portmaster/base/log"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/packet"
@@ -22,6 +24,11 @@ func stopInterception() error {
 // ResetVerdictOfAllConnections resets all connections so they are forced to go thought the firewall again.
 func ResetVerdictOfAllConnections() error {
 	return nil
+}
+
+// ClearFlow does nothing on this platform.
+func ClearFlow(_ uint8, _ net.IP, _ uint16, _ net.IP, _ uint16) (cleared bool, err error) {
+	return false, nil
 }
 
 // UpdateVerdictOfConnection updates the verdict of the given connection in the OS integration.

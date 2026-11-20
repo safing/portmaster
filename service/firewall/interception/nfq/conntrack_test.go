@@ -7,6 +7,8 @@ import (
 	"net"
 	"testing"
 
+	ct "github.com/florianl/go-conntrack"
+
 	"github.com/safing/portmaster/service/intel"
 	"github.com/safing/portmaster/service/network"
 	pmpacket "github.com/safing/portmaster/service/network/packet"
@@ -67,5 +69,48 @@ func TestDeleteMarkedConnectionIncomplete(t *testing.T) {
 	}
 	if h.deletes != 0 {
 		t.Errorf("no request must be sent for incomplete connections, got %d", h.deletes)
+	}
+}
+
+// TestDeleteFlow checks that DeleteFlow deletes by the given original tuple
+// and treats a missing entry as success.
+//
+//nolint:paralleltest // Modifies the package-level conntrack handle.
+func TestDeleteFlow(t *testing.T) {
+	localIP, remoteIP := net.IPv4(10, 0, 2, 15).To4(), net.IPv4(10, 0, 2, 3).To4()
+
+	// No entry: ENOENT is not an error.
+	h := &fakeHandle{}
+	installFakeConntrack(t, h)
+	deleted, err := DeleteFlow(17, localIP, 59823, remoteIP, 53)
+	if err != nil || deleted {
+		t.Fatalf("missing entry: expected no error and no delete, got %v, %v", deleted, err)
+	}
+
+	// Existing entry: deleted by the original tuple.
+	h = &fakeHandle{entries: []ct.Con{testEntry()}}
+	installFakeConntrack(t, h)
+	deleted, err = DeleteFlow(17, localIP, 59823, remoteIP, 53)
+	if err != nil || !deleted {
+		t.Fatalf("existing entry: expected a delete, got %v, %v", deleted, err)
+	}
+	if len(h.deleted) != 1 {
+		t.Fatalf("expected 1 delete, got %d", len(h.deleted))
+	}
+	origin := h.deleted[0].Origin
+	switch {
+	case !origin.Src.Equal(localIP) || !origin.Dst.Equal(remoteIP):
+		t.Errorf("deleted %s -> %s, expected %s -> %s", origin.Src, origin.Dst, localIP, remoteIP)
+	case *origin.Proto.Number != 17 || *origin.Proto.SrcPort != 59823 || *origin.Proto.DstPort != 53:
+		t.Errorf("deleted protocol %d ports %d -> %d, expected 17 ports 59823 -> 53",
+			*origin.Proto.Number, *origin.Proto.SrcPort, *origin.Proto.DstPort)
+	}
+
+	// Other errors are returned.
+	h = &fakeHandle{deleteErr: errFakeOpenFailed}
+	installFakeConntrack(t, h, &fakeHandle{deleteErr: errFakeOpenFailed})
+	_, err = DeleteFlow(17, localIP, 59823, remoteIP, 53)
+	if err == nil {
+		t.Error("expected an error to be returned")
 	}
 }

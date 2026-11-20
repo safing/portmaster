@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 	"syscall"
 
@@ -428,4 +429,50 @@ func DeleteMarkedConnection(conn *network.Connection) error {
 	}
 
 	return nil
+}
+
+// DeleteFlow removes the conntrack entry whose original direction matches the
+// given addresses, if there is one, and reports whether it did. A missing
+// entry is not an error.
+func DeleteFlow(protocol uint8, localIP net.IP, localPort uint16, remoteIP net.IP, remotePort uint16) (deleted bool, err error) {
+	// Go often holds IPv4 addresses in 16 byte form, which conntrack would
+	// not match against an IPv4 entry.
+	family := ct.IPv4
+	if ip4 := localIP.To4(); ip4 != nil {
+		localIP = ip4
+		remoteIP = remoteIP.To4()
+	} else {
+		family = ct.IPv6
+	}
+	if remoteIP == nil {
+		return false, fmt.Errorf("nfq: %w: mixed IP versions", errConnectionIncomplete)
+	}
+
+	nfctLock.Lock()
+	defer nfctLock.Unlock()
+
+	_, err = nfctHandleLocked()
+	if err != nil {
+		return false, err
+	}
+
+	err = deleteLocked(family, ct.Con{
+		Origin: &ct.IPTuple{
+			Src: &localIP,
+			Dst: &remoteIP,
+			Proto: &ct.ProtoTuple{
+				Number:  &protocol,
+				SrcPort: &localPort,
+				DstPort: &remotePort,
+			},
+		},
+	})
+	switch {
+	case errors.Is(err, syscall.ENOENT):
+		return false, nil
+	case err != nil:
+		return false, err
+	default:
+		return true, nil
+	}
 }

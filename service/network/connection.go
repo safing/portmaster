@@ -205,6 +205,9 @@ type Connection struct {
 	// If permanent verdicts are enabled and bandwidth reporting is not active,
 	// this value will likely not be correct.
 	lastSeen atomic.Int64
+	// ended mirrors Ended != 0 for IP connections, so that the packet
+	// dispatcher can check it without taking the connection lock.
+	ended atomic.Bool
 
 	// deferredBytesReceived and deferredBytesSent hold additive bandwidth
 	// updates that could not be applied yet, because the connection was
