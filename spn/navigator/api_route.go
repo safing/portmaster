@@ -22,6 +22,7 @@ import (
 	"github.com/safing/portmaster/service/network/packet"
 	"github.com/safing/portmaster/service/profile"
 	"github.com/safing/portmaster/service/profile/endpoints"
+	"github.com/safing/portmaster/spn/conf"
 )
 
 func registerRouteAPIEndpoints() error {
@@ -309,6 +310,9 @@ func handleRouteCalculationRequest(ar *api.Request) (msg string, err error) { //
 	lines := []string{
 		"Routing simulation: " + introText,
 		"Please note that this routing simulation does not match the behavior of regular routing to 100%.",
+	}
+	if conf.PublicHub() {
+		lines = append([]string{"Note: not applicable on SPN hubs - a hub is its own home hub, so routes start here.", ""}, lines...)
 	}
 	// List what is never simulated for connections.
 	if destination != "home" {
