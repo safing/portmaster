@@ -9,6 +9,7 @@ use std::{
 };
 
 static SYSTEMCTL: &str = "systemctl";
+static SERVICE_UNIT: &str = "portmaster.service";
 // TODO(ppacher): add support for kdesudo and gksudo
 
 enum SudoCommand {
@@ -66,11 +67,8 @@ impl SystemdServiceManager {
                     );
                 }
                 Err(err) => {
-                    error!(
-                        "failed to check systemctl binary at {}: {}",
-                        path,
-                        err
-                    );
+                    // Most systems have systemctl in only one of the paths.
+                    debug!("no systemctl binary at {}: {}", path, err);
 
                     continue;
                 }
@@ -85,75 +83,25 @@ impl SystemdServiceManager {
 
 impl ServiceManager for SystemdServiceManager {
     fn status(&self) -> super::Result<StatusResult> {
-        let name = "portmaster.service";
-        let result = systemctl("is-active", name, false);
-
-        match result {
-            // If `systemctl is-active` returns without an error code and stdout matches "active" (just to guard againt
-            // unhandled cases), the service can be considered running.
-            Ok(stdout) => {
-                let mut copy = stdout.to_owned();
-                trim_newline(&mut copy);
-
-                if copy != "active" {
-                    // make sure the output is as we expected
-                    Err(ServiceManagerError::Other(ExitStatus::default(), stdout))
-                } else {
-                    Ok(StatusResult::Running)
-                }
-            }
-
-            Err(e) => {
-                if let ServiceManagerError::Other(_err, ref output) = e {
-                    let mut copy = output.to_owned();
-                    trim_newline(&mut copy);
-
-                    if copy == "inactive" {
-                        return Ok(StatusResult::Stopped);
-                    }
-                } else {
-                    error!("failed to run 'systemctl is-active': {}", e);
-                }
-
-                // Failed to check if the unit is running
-                match systemctl("cat", name, false) {
-                    // "systemctl cat" seems to no have stable exit codes so we need
-                    // to check the output if it looks like "No files found for yyyy.service"
-                    // At least, the exit code are not documented for systemd v255 (newest at the time of writing)
-                    Err(ServiceManagerError::Other(status, msg)) => {
-                        if msg.contains("No files found for") {
-                            Ok(StatusResult::NotFound)
-                        } else {
-                            Err(ServiceManagerError::Other(status, msg))
-                        }
-                    }
-
-                    // Any other error type means something went completely wrong while running systemctl altogether.
-                    Err(e) => Err(e),
-
-                    // Fine, systemctl cat worked so if the output is "inactive" we know the service is installed
-                    // but stopped.
-                    Ok(_) => {
-                        // Unit seems to be installed so check the output of result
-                        let mut stderr = e.to_string();
-                        trim_newline(&mut stderr);
-
-                        if stderr == "inactive" {
-                            Ok(StatusResult::Stopped)
-                        } else {
-                            Err(e)
-                        }
-                    }
-                }
-            }
+        // `systemctl show` exits with 0 for units that do not exist, unlike
+        // `is-active`, which prints "inactive" for them as well.
+        let output = run(
+            false,
+            SYSTEMCTL,
+            vec!["show", "-p", "LoadState", "-p", "ActiveState", SERVICE_UNIT],
+        )?;
+        if !output.status.success() {
+            return Err(output.into());
         }
+
+        let stdout = String::from_utf8(output.stdout)?;
+        parse_show_status(&stdout)
+            .ok_or_else(|| ServiceManagerError::Other(ExitStatus::default(), stdout))
     }
 
     fn start(&self) -> Result<StatusResult> {
-        let name = "portmaster.service";
-
         // This time we need to run as root through pkexec or similar binaries like kdesudo/gksudo.
-        systemctl("start", name, true)?;
+        systemctl("start", SERVICE_UNIT, true)?;
 
         // Check the status again to be sure it's started now
         self.status()
@@ -216,12 +164,27 @@ fn run<'a>(root: bool, cmd: &'a str, args: Vec<&'a str>) -> std::io::Result<std:
     command.args(args).output()
 }
 
-fn trim_newline(s: &mut String) {
-    if s.ends_with('\n') {
-        s.pop();
-        if s.ends_with('\r') {
-            s.pop();
+/// Maps the output of `systemctl show -p LoadState -p ActiveState` to a status.
+/// Returns None if a property is missing.
+fn parse_show_status(output: &str) -> Option<StatusResult> {
+    let mut load_state = None;
+    let mut active_state = None;
+    for line in output.lines() {
+        match line.trim().split_once('=') {
+            Some(("LoadState", value)) => load_state = Some(value),
+            Some(("ActiveState", value)) => active_state = Some(value),
+            _ => {}
         }
+    }
+
+    if load_state? == "not-found" {
+        return Some(StatusResult::NotFound);
+    }
+    match active_state? {
+        "active" | "reloading" | "refreshing" => Some(StatusResult::Running),
+        // inactive, failed, activating, deactivating, maintenance: the
+        // service is installed but not (yet) serving.
+        _ => Some(StatusResult::Stopped),
     }
 }
 
@@ -238,4 +201,27 @@ fn get_sudo_cmd() -> std::result::Result<SudoCommand, std::io::Error> {
         io::ErrorKind::NotFound,
         "failed to detect sudo command",
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn show_status() {
+        let cases = [
+            ("LoadState=loaded\nActiveState=active\n", Some(StatusResult::Running)),
+            ("ActiveState=reloading\nLoadState=loaded\n", Some(StatusResult::Running)),
+            ("LoadState=loaded\nActiveState=inactive\n", Some(StatusResult::Stopped)),
+            ("LoadState=loaded\nActiveState=failed\n", Some(StatusResult::Stopped)),
+            ("LoadState=loaded\nActiveState=activating\n", Some(StatusResult::Stopped)),
+            ("LoadState=not-found\nActiveState=inactive\n", Some(StatusResult::NotFound)),
+            ("LoadState=masked\nActiveState=inactive\n", Some(StatusResult::Stopped)),
+            ("LoadState=loaded\n", None),
+            ("", None),
+        ];
+        for (output, want) in cases {
+            assert_eq!(parse_show_status(output), want, "output: {output:?}");
+        }
+    }
 }
