@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/service/firewall/interception"
 	"github.com/safing/portmaster/service/netenv"
 	"github.com/safing/portmaster/service/network"
 	"github.com/safing/portmaster/service/network/packet"
@@ -21,8 +22,9 @@ var (
 func init() {
 	resolver.SetLocalAddrFactory(PermittedAddr)
 	resolver.SetLocalPortHooks(resolver.LocalPortHooks{
-		Authorize: authorizeLocalPort,
-		Release:   releaseLocalPort,
+		Authorize:    authorizeLocalPort,
+		Release:      releaseLocalPort,
+		ClearUDPFlow: clearUDPFlow,
 	})
 	netenv.SetLocalAddrFactory(PermittedAddr)
 	netenv.SetLocalPortReleaser(releaseLocalPort)
@@ -113,6 +115,27 @@ func releaseLocalPort(netw string, port uint16, unusable bool) {
 	unregisterPreAuthenticatedPort(uint8(protocol), port)
 	if unusable {
 		network.MarkPortUnusable(uint8(protocol), port)
+	}
+}
+
+// clearUDPFlow drops OS state of an earlier flow with the same addresses as a
+// new UDP socket of Portmaster. On Linux, the conntrack entry of an
+// application's DNS query that was redirected to the Portmaster nameserver
+// outlives the application's socket. If the OS then gives the same port to a
+// Portmaster query to the same server, that entry redirects it to Portmaster
+// itself and the query times out.
+func clearUDPFlow(local, remote *net.UDPAddr) {
+	// Portmaster may still track the earlier flow, with its verdict.
+	network.EndConnectionForReusedTuple(packet.CreateConnectionID(
+		packet.UDP, local.IP, uint16(local.Port), remote.IP, uint16(remote.Port), false, //nolint:gosec // Ports of net.Addr are within the uint16 range.
+	))
+
+	cleared, err := interception.ClearFlow(uint8(packet.UDP), local.IP, uint16(local.Port), remote.IP, uint16(remote.Port)) //nolint:gosec // Ports of net.Addr are within the uint16 range.
+	switch {
+	case err != nil:
+		log.Debugf("filter: failed to clear earlier flow %s -> %s: %s", local, remote, err)
+	case cleared:
+		log.Debugf("filter: cleared earlier flow %s -> %s for a new socket", local, remote)
 	}
 }
 

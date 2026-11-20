@@ -205,9 +205,15 @@ func handlePacket(pkt packet.Packet) {
 	// First, check for an existing connection.
 	conn, ok := network.GetConnection(pkt.GetConnectionID())
 	if ok {
-		// Add packet to connection handler queue or apply verdict directly.
-		conn.HandlePacket(pkt)
-		return
+		// An ended connection stays in the state for a while. A packet with
+		// its address tuple then comes from a new socket, possibly of another
+		// process, and must not inherit its verdict.
+		if !conn.HasEnded() || !network.RemoveEndedConnection(conn) {
+			// Add packet to connection handler queue or apply verdict directly.
+			conn.HandlePacket(pkt)
+			return
+		}
+		log.Tracer(pkt.Ctx()).Debugf("filter: %s reuses the address tuple of an ended connection", pkt)
 	}
 
 	// Info-only packets do not represent an actual packet and can never complete

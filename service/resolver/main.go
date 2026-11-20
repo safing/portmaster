@@ -156,6 +156,9 @@ type LocalPortHooks struct {
 	// connection could not be established. If unusable is set, the port could
 	// not be bound and is skipped by future port selection for a while.
 	Release func(network string, port uint16, unusable bool)
+	// ClearUDPFlow drops state the OS keeps for an earlier flow with the same
+	// addresses as the new UDP socket, before the first packet is sent.
+	ClearUDPFlow func(local, remote *net.UDPAddr)
 }
 
 var localPortHooks atomic.Pointer[LocalPortHooks]
@@ -163,7 +166,7 @@ var localPortHooks atomic.Pointer[LocalPortHooks]
 // SetLocalPortHooks supplies the resolver with hooks to pre-authenticate local ports.
 func SetLocalPortHooks(hooks LocalPortHooks) {
 	current := localPortHooks.Load()
-	if current == nil || (current.Authorize == nil && current.Release == nil) {
+	if current == nil || (current.Authorize == nil && current.Release == nil && current.ClearUDPFlow == nil) {
 		localPortHooks.CompareAndSwap(current, &hooks)
 	}
 }
@@ -177,6 +180,12 @@ func authorizeLocalPort(network string, port uint16) {
 func releaseLocalPort(network string, port uint16, unusable bool) {
 	if hooks := localPortHooks.Load(); hooks != nil && hooks.Release != nil {
 		hooks.Release(network, port, unusable)
+	}
+}
+
+func clearUDPFlow(local, remote *net.UDPAddr) {
+	if hooks := localPortHooks.Load(); hooks != nil && hooks.ClearUDPFlow != nil {
+		hooks.ClearUDPFlow(local, remote)
 	}
 }
 

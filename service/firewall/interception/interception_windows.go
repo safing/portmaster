@@ -2,6 +2,7 @@ package interception
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/safing/portmaster/base/log"
@@ -133,6 +134,13 @@ func ResetVerdictOfAllConnections() error {
 		return kext1.ClearCache()
 	}
 	return kext2.ClearCache()
+}
+
+// ClearFlow does nothing on Windows. Stale state for a reused address tuple
+// was only observed with Linux conntrack; the kernel extension has no call to
+// drop a single flow by address.
+func ClearFlow(_ uint8, _ net.IP, _ uint16, _ net.IP, _ uint16) (cleared bool, err error) {
+	return false, nil
 }
 
 // UpdateVerdictOfConnection updates the verdict of the given connection in the kernel extension.
