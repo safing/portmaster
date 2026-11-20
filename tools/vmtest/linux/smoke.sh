@@ -19,6 +19,8 @@ BLOCKED=example.org
 # A name whose CNAME points outside the blocked zone (safing/portmaster#2306).
 CNAME_BLOCKED=tr.archive.ubuntu.com
 CNAME_ZONE=ubuntu.com
+# A tracker on the default filter lists.
+TRACKER=doubleclick.net
 
 failures=0
 pass() { printf '  \033[32mPASS\033[0m %s\n' "$*"; }
@@ -99,6 +101,20 @@ echo "  info: $BLOCKED resolves through systemd-resolved: $(resolves "$BLOCKED" 
 check "https://$BLOCKED is blocked" bash -c "! curl -sS -o /dev/null --max-time 10 https://$BLOCKED/"
 check "http://$CNAME_BLOCKED is blocked by the rule for .$CNAME_ZONE (CNAME outside the zone)" bash -c "! curl -sS -o /dev/null --max-time 10 http://$CNAME_BLOCKED/"
 check "Portmaster nameserver answers" bash -c "dig +short +time=5 +tries=1 $ALLOWED @127.0.0.1 | grep -q ."
+
+step "Filter lists"
+# Downloading, decoding and storing the lists covers the intel updater, the
+# list decoder and the SQLite cache database.
+waited=0
+until grep -q 'rebuilt bloom filters' "$LOG" || ((waited >= 240)); do
+	sleep 5
+	((waited += 5))
+done
+check "filter lists loaded (${waited}s)" grep -q 'rebuilt bloom filters' "$LOG"
+check "https://$TRACKER is blocked by the filter lists" bash -c "! curl -sS -o /dev/null --max-time 10 https://$TRACKER/"
+# The block is logged by the nameserver or the filter, whichever sees it
+# first, and the log is written asynchronously.
+check "the block names the filter lists" bash -c "for i in 1 2 3 4 5; do grep -q '$TRACKER\\. in activated lists' '$LOG' && exit 0; sleep 1; done; exit 1"
 
 step "API"
 check "ping endpoint" curl -sf --max-time 5 "$API/ping"
