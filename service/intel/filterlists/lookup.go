@@ -15,10 +15,12 @@ import (
 // returned.
 func lookupBlockLists(entity, value string) ([]string, error) {
 	if !isLoaded() {
-		log.Warningf("intel/filterlists: not searching for %s because filterlists not loaded", makeListCacheKey(entity, value))
 		// filterLists have not yet been loaded so
 		// there's no point querying into the cache
-		// database.
+		// database. This happens for every connection until the first
+		// download; the module state "filter lists disabled" already tells
+		// the user, so do not fill the log.
+		log.Debugf("intel/filterlists: not searching for %s because filterlists not loaded", makeListCacheKey(entity, value))
 		return nil, nil
 	}
 
