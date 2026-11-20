@@ -123,7 +123,7 @@ pub async fn show_notification(cli: &PortAPI, key: String, n: Notification) {
     }
     {
         let cli = cli.clone();
-        toast = toast.on_activated(move |action| -> windows::core::Result<()> {
+        toast = toast.on_activated(move |action| {
             if let Some(value) = action {
                 let cli = cli.clone();
                 let key = key.clone();

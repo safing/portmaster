@@ -48,7 +48,7 @@ impl WindowsServiceManager {
     }
 
     fn open_service(&mut self) -> super::Result<bool> {
-        if let None = self.manager {
+        if self.manager.is_none() {
             self.init_manager()?;
         }
 
@@ -64,16 +64,16 @@ impl WindowsServiceManager {
             return Ok(true);
         }
 
-        return Err(super::ServiceManagerError::WindowsError(
+        Err(super::ServiceManagerError::WindowsError(
             "failed to initialize manager".to_string(),
-        ));
+        ))
     }
 }
 
 impl super::ServiceManager for Arc<Mutex<WindowsServiceManager>> {
     fn status(&self) -> super::Result<super::status::StatusResult> {
         if let Ok(mut manager) = self.lock() {
-            if let None = manager.service {
+            if manager.service.is_none() {
                 // Try to open service
                 if !manager.open_service()? {
                     // Service is not installed.
@@ -111,8 +111,9 @@ impl super::ServiceManager for Arc<Mutex<WindowsServiceManager>> {
     fn start(&self) -> super::Result<super::status::StatusResult> {
         if let Ok(mut service_manager) = self.lock() {
             // Check if service is installed.
-            if let None = &service_manager.service {
-                if let Err(_) = service_manager.open_service() {
+            if service_manager.service.is_none() {
+                // Not installed (Ok(false)) or the service manager is unavailable.
+                if !service_manager.open_service().unwrap_or(false) {
                     return Ok(super::status::StatusResult::NotFound);
                 }
             }
@@ -149,19 +150,19 @@ impl super::ServiceManager for Arc<Mutex<WindowsServiceManager>> {
             // Timeout starting the service.
             return Ok(super::status::StatusResult::Stopped);
         }
-        return Err(super::ServiceManagerError::WindowsError(
+        Err(super::ServiceManagerError::WindowsError(
             "failed to start service".to_string(),
-        ));
+        ))
     }
 }
 
 fn windows_to_manager_err(err: windows_service::Error) -> super::ServiceManagerError {
     if let windows_service::Error::Winapi(_) = err {
         // Winapi does not contain the full error. Get the actual error from windows.
-        return super::ServiceManagerError::WindowsError(
+        super::ServiceManagerError::WindowsError(
             windows::core::Error::from_win32().to_string(), // Internally will call `GetLastError()` and parse the result.
-        );
+        )
     } else {
-        return super::ServiceManagerError::WindowsError(err.to_string());
+        super::ServiceManagerError::WindowsError(err.to_string())
     }
 }

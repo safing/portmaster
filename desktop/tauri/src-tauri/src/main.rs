@@ -195,7 +195,7 @@ fn main() {
 
     // TODO(vladimir): Permission for logs/app2 folder are not guaranteed. Use the default location for now.
     #[cfg(target_os = "windows")]
-    let log_target = if let Some(_) = cli_args.data {
+    let log_target = if cli_args.data.is_some() {
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir { file_name: None })
     } else {
         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout)
