@@ -94,6 +94,9 @@ Check 'UDP to a local listener on 127.0.0.1' { (UdpDatagramsReceived '127.0.0.1'
 
 Step 'Release binaries'
 & $Core update --bin-dir $Bin --data-dir $Data *>> $Log
+# An installed upgrade that needs a restart is a success for the command.
+$updateRc = $LASTEXITCODE
+Check "update command succeeds (exit code $updateRc)" { $updateRc -eq 0 }
 $kext = Get-ChildItem -Path $Bin -Recurse -Filter 'portmaster-kext*.sys' -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($kext) {
     Pass "kernel extension downloaded ($($kext.Name), signed by $((Get-AuthenticodeSignature $kext.FullName).SignerCertificate.Subject))"
