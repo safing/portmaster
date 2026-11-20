@@ -67,11 +67,8 @@ impl SystemdServiceManager {
                     );
                 }
                 Err(err) => {
-                    error!(
-                        "failed to check systemctl binary at {}: {}",
-                        path,
-                        err
-                    );
+                    // Most systems have systemctl in only one of the paths.
+                    debug!("no systemctl binary at {}: {}", path, err);
 
                     continue;
                 }
