@@ -190,7 +190,13 @@ step "Log"
 panics=$(grep -c -E '^panic:|fatal error:|DATA RACE' "$LOG" || true)
 if ((panics == 0)); then pass "no panics in the log"; else fail "$panics panics in the log"; fi
 errors=$(grep -cE ' (ERR|CRT) ' "$LOG" || true)
-echo "  log: $(wc -l <"$LOG") lines, $errors error lines (see core.log)"
+echo "  log: $(wc -l <"$LOG") lines"
+if ((errors == 0)); then
+	pass "no errors in the log"
+else
+	fail "$errors errors in the log"
+	grep -E ' (ERR|CRT) ' "$LOG" | head -10 | cut -c1-200
+fi
 
 if ((failures > 0)); then
 	echo "  last log lines:"
