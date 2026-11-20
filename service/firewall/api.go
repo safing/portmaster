@@ -178,6 +178,13 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 			// Add checked path to list.
 			procsChecked = append(procsChecked, proc.Path)
 
+			// Only the webview of the app inherits the trust of its parent.
+			// Any other process started from the app, like a browser opened
+			// by a link, must not get access to the API through its parent.
+			if !isEmbeddedWebViewProcess(proc.Path) {
+				break checkLevelsLoop
+			}
+
 			// Get the parent process.
 			if i < checkLevels {
 				// save previous PID
@@ -217,4 +224,23 @@ func authenticateAPIRequest(ctx context.Context, pktInfo *packet.Info) (retry bo
 			authenticatedPath,
 		)
 	}
+}
+
+// embeddedWebViewProcesses are the executables of the webview runtimes that
+// the app uses to render its UI: WebView2 on Windows and WebKitGTK on Linux.
+var embeddedWebViewProcesses = []string{
+	"msedgewebview2.exe",
+	"webkitwebprocess",
+	"webkitnetworkprocess",
+}
+
+// isEmbeddedWebViewProcess returns whether the given executable is a process
+// of a webview runtime.
+func isEmbeddedWebViewProcess(binPath string) bool {
+	// The path may come from another OS than the one running the check in tests.
+	name := binPath
+	if i := strings.LastIndexAny(name, `/\`); i >= 0 {
+		name = name[i+1:]
+	}
+	return slices.Contains(embeddedWebViewProcesses, strings.ToLower(name))
 }
