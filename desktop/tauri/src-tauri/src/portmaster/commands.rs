@@ -121,7 +121,7 @@ pub fn get_app_info<R: Runtime>(
 ) -> Result {
     let mut id = response_id;
 
-    if id == "" {
+    if id.is_empty() {
         id = uuid::Uuid::new_v4().to_string()
     }
     let cloned = id.clone();
