@@ -23,6 +23,8 @@ func deleteGossipOp(craneID string) {
 	delete(gossipOps, craneID)
 }
 
+// gossipRelayMsg sends a gossip message to all gossip peers except
+// receivedFrom. Pass an empty receivedFrom for the hub's own messages.
 func gossipRelayMsg(receivedFrom string, msgType GossipMsgType, data []byte) {
 	gossipOpsLock.RLock()
 	defer gossipOpsLock.RUnlock()

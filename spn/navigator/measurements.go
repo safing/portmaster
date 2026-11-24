@@ -24,6 +24,8 @@ const (
 	// 1000c   -> 100h -> capped to 50h.
 )
 
+// measureHubs measures latency and capacity to hubs with expired measurements,
+// cheapest first. It runs on public hubs only.
 func (m *Map) measureHubs(wc *mgr.WorkerCtx) error {
 	if home, _ := m.GetHome(); home == nil {
 		log.Debug("spn/navigator: skipping measuring, no home hub set")

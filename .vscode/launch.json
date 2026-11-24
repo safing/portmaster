@@ -40,6 +40,30 @@
                 
                 "args": ["--bin-dir=/usr/lib/portmaster", "--log-stdout", "--log", "trace", "--disable-interception=true"]
             },
+        },
+        {
+            "name": "observation-hub",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmds/observation-hub",
+            "output": "${workspaceFolder}/__observation-hub-debug",
+
+            "windows": {
+                // Start VS Code as administrator.
+                "args": [
+                    "--data-dir=${env:LOCALAPPDATA}\\observation-hub-debug",
+                    "--log-stdout", "--log", "debug",
+                    "--report-all-changes", "--reporting-delay", "10s"
+                ]
+            },
+            "linux": {
+                "args": [
+                    "--data-dir=${env:HOME}/.cache/observation-hub-debug",
+                    "--log-stdout", "--log", "debug",
+                    "--report-all-changes", "--reporting-delay", "10s"
+                ]
+            },
         }
     ]
 }

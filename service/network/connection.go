@@ -162,7 +162,10 @@ type Connection struct { //nolint:maligned // TODO: fix alignment
 	// Tunneled is set to true when the connection has been routed through the
 	// SPN.
 	Tunneled bool
-	// Encrypted is currently unused and MUST be ignored.
+	// Encrypted is set if the connection is regarded as encrypted. It is
+	// currently only guessed from the destination port, see
+	// netutils.IsEncryptedPort. Tunneled connections that are not encrypted
+	// require a trusted exit hub.
 	Encrypted bool
 	// TunnelOpts holds options for tunneling the connection.
 	TunnelOpts *navigator.Options

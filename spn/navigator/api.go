@@ -17,6 +17,7 @@ import (
 
 	"github.com/safing/portmaster/base/api"
 	"github.com/safing/portmaster/base/log"
+	"github.com/safing/portmaster/spn/conf"
 	"github.com/safing/portmaster/spn/docks"
 	"github.com/safing/portmaster/spn/hub"
 )
@@ -213,6 +214,9 @@ func handleMapOptimizationTableRequest(ar *api.Request) (data []byte, err error)
 
 	// Write metadata.
 	buf := bytes.NewBuffer(nil)
+	if !conf.PublicHub() {
+		buf.WriteString("Note: not applicable on SPN clients - only hubs build lanes, the result below is not used.\n\n")
+	}
 	buf.WriteString("Optimization:\n")
 	fmt.Fprintf(buf, "Purpose: %s\n", result.Purpose)
 	if len(result.Approach) == 1 {
@@ -353,6 +357,9 @@ func handleMapMeasurementsTableRequest(ar *api.Request) (data []byte, err error)
 
 	// Build table and return.
 	buf := bytes.NewBuffer(nil)
+	if !conf.PublicHub() {
+		buf.WriteString("Note: not applicable on SPN clients - only hubs measure other hubs, so Latency, Capacity and Cost below are default values.\n\n")
+	}
 	tabWriter := tabwriter.NewWriter(buf, 8, 4, 3, ' ', 0)
 	fmt.Fprint(tabWriter, "Hub Name\tCountry\tRegion\tLatency\tCapacity\tCost\tGeo Prox.\tHub ID\tLifetime Usage\tPeriod Usage\tProt\tStatus\n")
 	for _, pin := range list {

@@ -66,6 +66,8 @@ func (m *Map) GetIntel() *hub.Intel {
 	return m.intel
 }
 
+// updateIntelStatuses re-applies the pin states that come from the intel and
+// from trustNodes (hub IDs and verified owners the user trusts).
 func (m *Map) updateIntelStatuses(pin *Pin, trustNodes []string) {
 	// Reset all related states (StateSummaryStatusesAppliedFromIntel).
 	pin.stateIntelApplied.UnSet()

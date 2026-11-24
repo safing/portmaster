@@ -168,6 +168,7 @@ func NewConnectOp(tunnel *Tunnel) (*ConnectOp, *terminal.Error) {
 	return op, nil
 }
 
+// startConnectOp handles an incoming connect request on the exit hub.
 func startConnectOp(t terminal.Terminal, opID uint32, data *container.Container) (terminal.Operation, *terminal.Error) {
 	// Check if we are running a public hub.
 	if !conf.PublicHub() {

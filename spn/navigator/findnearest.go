@@ -199,6 +199,9 @@ func (m *Map) FindNearestHubs(locationV4, locationV6 *geoip.Location, opts *Opti
 	return hubs, nil
 }
 
+// findNearestPins returns the matching pins nearest to the given locations,
+// sorted by cost, with the top of the list shuffled to balance the load. The
+// caller must hold the map lock.
 func (m *Map) findNearestPins(locationV4, locationV6 *geoip.Location, opts *Options, matchFor HubType, debug bool) (*nearbyPins, error) {
 	// Fail if no location is provided.
 	if locationV4 == nil && locationV6 == nil {

@@ -20,6 +20,8 @@ var (
 	piers           []ships.Pier
 )
 
+// startPiers opens one pier (listener) for every transport in the hub's
+// announcement and starts the worker that handles docking requests.
 func startPiers() error {
 	// Get and check transports.
 	transports := publicIdentity.Hub.Info.Transports
@@ -57,6 +59,8 @@ func stopPiers() {
 	}
 }
 
+// dockingRequestHandler takes incoming ships from the piers, checks each one
+// with checkDockingPermission and starts a crane for the accepted ones.
 func dockingRequestHandler(wc *mgr.WorkerCtx) error {
 	// Sink all waiting ships when this worker ends.
 	// But don't be destructive so the service worker could recover.
@@ -92,6 +96,8 @@ func dockingRequestHandler(wc *mgr.WorkerCtx) error {
 	}
 }
 
+// checkDockingPermission checks the remote address of an incoming ship against
+// the hub's entry policy.
 func checkDockingPermission(ctx context.Context, ship ships.Ship) error {
 	remoteIP, remotePort, err := netutils.IPPortFromAddr(ship.RemoteAddr())
 	if err != nil {
@@ -115,6 +121,8 @@ func checkDockingPermission(ctx context.Context, ship ships.Ship) error {
 	return nil
 }
 
+// handleDockingRequest creates a crane for an accepted ship and starts it in
+// its own worker.
 func handleDockingRequest(ship ships.Ship) {
 	log.Infof("spn/captain: pemitting %s to dock", ship)
 

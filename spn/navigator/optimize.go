@@ -201,6 +201,9 @@ func (m *Map) Optimize(opts *HubOptions) (result *OptimizationResult, err error)
 	return m.optimize(opts)
 }
 
+// optimize returns the lanes this hub should have: a bootstrap or
+// desegregation suggestion if needed, "wait" until enough hubs are measured,
+// otherwise the target structure. The caller must hold the map lock.
 func (m *Map) optimize(opts *HubOptions) (result *OptimizationResult, err error) {
 	if m.home == nil {
 		return nil, ErrHomeHubUnset

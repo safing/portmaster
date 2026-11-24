@@ -112,6 +112,9 @@ func (m *Map) FindRouteToHub(hubID string, opts *Options) (*Routes, error) {
 	return m.findRoutes(nearby, opts)
 }
 
+// findRoutes returns the best routes from the home hub to one of the given
+// destination pins that comply with the routing profile. The caller must hold
+// the map lock.
 func (m *Map) findRoutes(dsts *nearbyPins, opts *Options) (*Routes, error) {
 	if m.home == nil {
 		return nil, ErrHomeHubUnset

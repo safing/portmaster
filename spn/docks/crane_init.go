@@ -70,6 +70,9 @@ func (crane *Crane) Start(callerCtx context.Context) error {
 	return nil
 }
 
+// startLocal starts the crane on the side that launched the ship. Unless the
+// ship is secure by itself, it first fetches and verifies the hub's current
+// keys and sets up encryption.
 func (crane *Crane) startLocal(callerCtx context.Context) *terminal.Error {
 	module.mgr.Go("crane unloader", crane.unloader)
 
@@ -177,6 +180,8 @@ func (crane *Crane) startLocal(callerCtx context.Context) *terminal.Error {
 	return nil
 }
 
+// startRemote starts the crane on the side that accepted the ship. It serves
+// init requests until the other side starts the channel.
 func (crane *Crane) startRemote(callerCtx context.Context) *terminal.Error {
 	var initMsg *container.Container
 

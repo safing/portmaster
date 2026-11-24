@@ -23,6 +23,8 @@ func EnableConnecting(my *hub.Hub) {
 	connectingHub = my
 }
 
+// checkExitPolicy checks a connect request against the exit policy of this
+// hub. It denies every request until EnableConnecting has been called.
 func checkExitPolicy(request *ConnectRequest) *terminal.Error {
 	connectingHubLock.Lock()
 	defer connectingHubLock.Unlock()

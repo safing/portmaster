@@ -53,6 +53,8 @@ type Tunnel struct {
 	stickied    bool
 }
 
+// connectWorker handles one tunneled connection on the client: it builds a
+// path to an exit hub and starts the connect operation there.
 func (t *Tunnel) connectWorker(wc *mgr.WorkerCtx) (err error) {
 	// Get tracing logger.
 	ctx, tracer := log.AddTracer(wc.Ctx())
@@ -118,6 +120,8 @@ func (t *Tunnel) connectWorker(wc *mgr.WorkerCtx) (err error) {
 	return nil
 }
 
+// establish selects the exit hub and the route for the tunnel. An exit hub
+// remembered for this destination is reused or avoided (see getStickiedHub).
 func (t *Tunnel) establish(ctx context.Context) (err error) {
 	var routes *navigator.Routes
 
@@ -217,6 +221,9 @@ type hopCheck struct {
 	pingOp    *PingOp
 }
 
+// establishRoute builds the route from the home hub and returns the pin and
+// terminal of the last hop. Existing terminals are reused; hops that fail are
+// marked as failing.
 func establishRoute(route *navigator.Route) (dstPin *navigator.Pin, dstTerminal terminal.Terminal, err error) {
 	connectLock.Lock()
 	defer connectLock.Unlock()
@@ -379,6 +386,8 @@ func establishRoute(route *navigator.Route) (dstPin *navigator.Pin, dstTerminal 
 	return previousHop, previousTerminal, nil
 }
 
+// expand opens a terminal to the hub "to", relayed through fromTerminal, and
+// starts authorizing on it. The caller must await the returned auth operation.
 func expand(fromTerminal terminal.Terminal, from, to *navigator.Pin) (expansion *docks.ExpansionTerminal, authOp *access.AuthorizeOp, tErr *terminal.Error) {
 	expansion, tErr = docks.ExpandTo(fromTerminal, to.Hub.ID, to.Hub)
 	if tErr != nil {

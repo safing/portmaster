@@ -59,6 +59,9 @@ func makeStickyDomainKey(conn *network.Connection) string {
 	return "?>" + conn.Entity.Domain
 }
 
+// getStickiedHub returns the exit hub remembered for the connection's app and
+// destination, to be reused or (with Avoid set) avoided. It returns nil if
+// there is none or the hub cannot be used for this connection.
 func getStickiedHub(conn *network.Connection) (sticksTo *stickyHub) {
 	stickyLock.Lock()
 	defer stickyLock.Unlock()
@@ -110,6 +113,8 @@ func getStickiedHub(conn *network.Connection) (sticksTo *stickyHub) {
 	return sticksTo
 }
 
+// stickDestinationToHub remembers the tunnel's exit hub for this app and
+// destination. It is called when the first data arrives from the exit hub.
 func (t *Tunnel) stickDestinationToHub() {
 	stickyLock.Lock()
 	defer stickyLock.Unlock()
@@ -135,6 +140,9 @@ func (t *Tunnel) stickDestinationToHub() {
 	}
 }
 
+// avoidDestinationHub marks the tunnel's exit hub as one to avoid for this app
+// and destination IP. It is used when the exit hub reported a connection error
+// before any data arrived.
 func (t *Tunnel) avoidDestinationHub() {
 	stickyLock.Lock()
 	defer stickyLock.Unlock()
