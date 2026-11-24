@@ -138,6 +138,7 @@ func (op *GossipOp) Deliver(msg *terminal.Msg) *terminal.Error {
 	} else if forward {
 		// Only log if we received something to save/forward.
 		log.Infof("spn/captain: received %s for %s", gossipMsgType, h)
+		homeHubGossipWatch.noteMessage(h.ID)
 	}
 
 	// Relay data.

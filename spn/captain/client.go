@@ -153,6 +153,7 @@ reconnect:
 
 		// Reset last health check value, as we have just connected.
 		lastHealthCheck = time.Now()
+		homeHubGossipWatch.restart()
 
 		// Back off before starting initial health checks.
 		select {
@@ -166,6 +167,7 @@ reconnect:
 		maintainers:
 			for _, clientFunc := range []clientComponentFunc{
 				clientCheckHomeHubConnection,
+				clientCheckHomeHubGossip,
 				clientCheckAccountAndTokens,
 				clientSetActiveConnectionStatus,
 			} {

@@ -107,6 +107,9 @@ findCandidates:
 		}
 	}
 
+	// Move hubs dropped by the gossip watch to the end of the list.
+	candidates = homeHubGossipWatch.avoidedLast(candidates)
+
 	// Try connecting to a hub.
 	var tries int
 	var candidate *hub.Hub
