@@ -8,11 +8,19 @@ use std::{
     process::{Command, ExitStatus, Stdio},
 };
 
-static SYSTEMCTL: &str = "systemctl";
+/// Locations that are checked for systemctl. PATH is intentionally not used,
+/// see `SystemdServiceManager::is_installed`.
+const SYSTEMCTL_PATHS: [&str; 5] = [
+    "/sbin/systemctl",
+    "/bin/systemctl",
+    "/usr/sbin/systemctl",
+    "/usr/bin/systemctl",
+    "/run/current-system/sw/bin/systemctl",
+];
 // TODO(ppacher): add support for kdesudo and gksudo
 
 enum SudoCommand {
-    Pkexec,
+    Pkexec(&'static str),
     Gksu,
 }
 
@@ -36,20 +44,14 @@ impl From<std::process::Output> for ServiceManagerError {
 pub struct SystemdServiceManager {}
 
 impl SystemdServiceManager {
-    /// Checks if systemctl is available in /sbin/ /bin, /usr/bin or /usr/sbin.
+    /// Checks if systemctl is available in /sbin/ /bin, /usr/bin or /usr/sbin,
+    /// or in /run/current-system/sw/bin on NixOS.
     ///
     /// Note that we explicitly check those paths to avoid returning true in case
     /// there's a systemctl binary in the cwd and PATH includes . since this may
     /// pose a security risk of running an untrusted binary with root privileges.
     pub fn is_installed() -> bool {
-        let paths = vec![
-            "/sbin/systemctl",
-            "/bin/systemctl",
-            "/usr/sbin/systemctl",
-            "/usr/bin/systemctl",
-        ];
-
-        for path in paths {
+        for path in SYSTEMCTL_PATHS {
             debug!("checking for systemctl at path {}", path);
 
             match fs::metadata(path) {
@@ -165,7 +167,9 @@ fn systemctl(
     unit: &str,
     run_as_root: bool,
 ) -> std::result::Result<String, ServiceManagerError> {
-    let output = run(run_as_root, SYSTEMCTL, vec![cmd, unit])?;
+    // Run the binary found by is_installed instead of looking it up in PATH.
+    let systemctl = find_systemctl().ok_or(ServiceManagerError::UnsupportedServiceManager)?;
+    let output = run(run_as_root, systemctl, vec![cmd, unit])?;
 
     // The command have been able to run (i.e. has been spawned and executed by the kernel).
     // We now need to check the exit code and "stdout/stderr" output in case of an error.
@@ -176,6 +180,17 @@ fn systemctl(
     }
 }
 
+/// Returns the first executable systemctl binary in `SYSTEMCTL_PATHS`.
+fn find_systemctl() -> Option<&'static str> {
+    SYSTEMCTL_PATHS.into_iter().find(|path| {
+        fs::metadata(path)
+            .map(|md| md.is_file() && md.permissions().mode() & 0o111 != 0)
+            .unwrap_or(false)
+    })
+}
+
+/// Runs cmd with the given args and returns its output. If root is true, the
+/// command runs through pkexec or gksudo.
 fn run<'a>(root: bool, cmd: &'a str, args: Vec<&'a str>) -> std::io::Result<std::process::Output> {
     // clone the args vector so we can insert the actual command in case we're running
     // through pkexec or friends. This is just callled a couple of times on start-up
@@ -192,10 +207,10 @@ fn run<'a>(root: bool, cmd: &'a str, args: Vec<&'a str>) -> std::io::Result<std:
             match get_sudo_cmd() {
                 Ok(cmd) => {
                     match cmd {
-                        SudoCommand::Pkexec => {
+                        SudoCommand::Pkexec(pkexec) => {
                             // disable the internal text-based prompt agent from pkexec because it won't work anyway.
                             args.insert(0, "--disable-internal-agent");
-                            Command::new("/usr/bin/pkexec")
+                            Command::new(pkexec)
                         }
                         SudoCommand::Gksu => {
                             args.insert(0, "--message=Please enter your password:");
@@ -230,9 +245,13 @@ fn trim_newline(s: &mut String) {
     }
 }
 
+/// Detects the program to run commands as root with, preferring pkexec over gksudo.
 fn get_sudo_cmd() -> std::result::Result<SudoCommand, std::io::Error> {
-    if fs::metadata("/usr/bin/pkexec").is_ok() {
-        return Ok(SudoCommand::Pkexec);
+    // NixOS provides the setuid pkexec wrapper in /run/wrappers/bin.
+    for pkexec in ["/usr/bin/pkexec", "/run/wrappers/bin/pkexec"] {
+        if fs::metadata(pkexec).is_ok() {
+            return Ok(SudoCommand::Pkexec(pkexec));
+        }
     }
 
     if fs::metadata("/usr/bin/gksudo").is_ok() {
