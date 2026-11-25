@@ -10,14 +10,16 @@ import (
 )
 
 // GetIconAndName returns an icon and name of the given binary path.
-// Providing the home directory of the user running the process of that binary can improve results.
+// The home directory is accepted for interface parity with the other
+// platforms; on Linux core only searches root-owned icon locations (see
+// iconLocations), so it is not used here.
 // Even if an error is returned, the other return values are valid, if set.
 func GetIconAndName(ctx context.Context, binPath string, homeDir string) (icon *Icon, name string, err error) {
 	// Derive name from binary.
 	name = GenerateBinaryNameFromPath(binPath)
 
 	// Search for icon.
-	iconPath, err := searchForIcon(binPath, homeDir)
+	iconPath, err := searchForIcon(binPath)
 	if iconPath == "" {
 		if err != nil {
 			return nil, name, fmt.Errorf("failed to find icon for %s: %w", binPath, err)
@@ -34,78 +36,115 @@ func GetIconAndName(ctx context.Context, binPath string, homeDir string) (icon *
 	return icon, name, nil
 }
 
-func searchForIcon(binPath string, homeDir string) (iconPath string, err error) {
-	binPath = strings.ToLower(binPath)
+// searchForIcon looks for an icon file named after the binary in the known
+// icon locations. An exact name match in any location wins over a prefix
+// match in any location; among prefix matches the one with the fewest extra
+// bytes wins, earlier locations first on ties. When nothing is found, the
+// first directory error encountered is returned, so that an unreadable
+// location is reported without having hidden an icon elsewhere.
+func searchForIcon(binPath string) (iconPath string, err error) {
+	// Icon files are named after the binary, not after its path.
+	binName := strings.ToLower(filepath.Base(binPath))
+	if binName == "" || binName == "." || binName == string(filepath.Separator) {
+		return "", nil
+	}
 
-	// Search for icon path.
-	for _, iconLoc := range iconLocations {
-		basePath := iconLoc.GetPath(binPath, homeDir)
-		if basePath == "" {
-			continue
+	for _, exact := range []bool{true, false} {
+		var (
+			bestMatch            string
+			bestMatchExcessBytes int
+		)
+		for _, iconLoc := range iconLocations {
+			basePath := iconLoc.GetPath(binName)
+			if basePath == "" {
+				continue
+			}
+
+			var directories []string
+			switch iconLoc.Type {
+			case FlatDir:
+				directories = []string{basePath}
+			case XDGIcons:
+				for _, xdgIconDir := range xdgIconPaths {
+					directories = append(directories, filepath.Join(basePath, xdgIconDir))
+				}
+			}
+
+			for _, directory := range directories {
+				match, excess, dirErr := searchDirectory(directory, binName, exact)
+				switch {
+				case dirErr != nil:
+					if err == nil {
+						err = dirErr
+					}
+				case match == "":
+					// Nothing here.
+				case exact:
+					return match, nil
+				case bestMatch == "" || excess < bestMatchExcessBytes:
+					bestMatch = match
+					bestMatchExcessBytes = excess
+				}
+			}
 		}
-
-		switch iconLoc.Type {
-		case FlatDir:
-			iconPath, err = searchDirectory(basePath, binPath)
-		case XDGIcons:
-			iconPath, err = searchXDGIconStructure(basePath, binPath)
-		}
-
-		if iconPath != "" {
-			return
+		if bestMatch != "" {
+			return bestMatch, nil
 		}
 	}
-	return
+
+	return "", err
 }
 
-func searchXDGIconStructure(baseDirectory string, binPath string) (iconPath string, err error) {
-	for _, xdgIconDir := range xdgIconPaths {
-		directory := filepath.Join(baseDirectory, xdgIconDir)
-		iconPath, err = searchDirectory(directory, binPath)
-		if iconPath != "" {
-			return
-		}
-	}
-	return
-}
-
-func searchDirectory(directory string, binPath string) (iconPath string, err error) {
+// searchDirectory looks in one directory for an icon file whose name without
+// extension equals name (exact) or starts with it (prefix). Comparison is on
+// lower-cased names; the returned path keeps the real file name. For prefix
+// matches it also returns how many bytes longer than name the candidate is.
+func searchDirectory(directory string, name string, exact bool) (iconPath string, excessBytes int, err error) {
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return "", nil
+			return "", 0, nil
 		}
-		return "", fmt.Errorf("failed to read directory %s: %w", directory, err)
+		return "", 0, fmt.Errorf("failed to read directory %s: %w", directory, err)
 	}
-	// DEBUG:
-	// fmt.Println(directory)
 
-	var (
-		bestMatch            string
-		bestMatchExcessChars int
-	)
+	var bestMatch string
 	for _, entry := range entries {
 		// Skip dirs.
 		if entry.IsDir() {
 			continue
 		}
 
-		iconName := strings.ToLower(entry.Name())
-		iconName = strings.TrimSuffix(iconName, filepath.Ext(iconName))
+		fileName := strings.ToLower(entry.Name())
+		ext := filepath.Ext(fileName)
+		if !supportedIconExt(ext) {
+			continue
+		}
+		stem := strings.TrimSuffix(fileName, ext)
 		switch {
-		case len(iconName) < len(binPath):
-			// Continue to next.
-		case iconName == binPath:
-			// Exact match, return immediately.
-			return filepath.Join(directory, entry.Name()), nil
-		case strings.HasPrefix(iconName, binPath):
-			excessChars := len(iconName) - len(binPath)
-			if bestMatch == "" || excessChars < bestMatchExcessChars {
-				bestMatch = entry.Name()
-				bestMatchExcessChars = excessChars
+		case stem == name:
+			if exact {
+				return filepath.Join(directory, entry.Name()), 0, nil
+			}
+		case exact:
+			// Only exact matches wanted.
+		case strings.HasPrefix(stem, name):
+			if excess := len(stem) - len(name); bestMatch == "" || excess < excessBytes {
+				bestMatch = filepath.Join(directory, entry.Name())
+				excessBytes = excess
 			}
 		}
 	}
 
-	return bestMatch, nil
+	return bestMatch, excessBytes, nil
+}
+
+// supportedIconExt reports whether the file extension (with its leading dot)
+// is an icon format the profile icon storage accepts (see UpdateProfileIcon).
+func supportedIconExt(ext string) bool {
+	switch strings.ToLower(strings.TrimPrefix(ext, ".")) {
+	case "png", "svg", "jpg", "jpeg", "gif", "webp", "tiff":
+		return true
+	}
+	return false
 }
