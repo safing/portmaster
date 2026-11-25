@@ -3,8 +3,10 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 
@@ -114,8 +116,14 @@ func Flatten(config map[string]interface{}) (flattenedConfig map[string]interfac
 	return flattenedConfig
 }
 
+// flattenMap adds all values of subMap to rootMap, joining nested keys with
+// "/" and prefixing them with subKey. Keys are processed in sorted order to get
+// a deterministic result when the same option is defined both nested and
+// flattened, e.g. {"a": {"b": 1}, "a/b": 2}. A flattened key sorts after its
+// nested parent and therefore takes precedence.
 func flattenMap(rootMap, subMap map[string]interface{}, subKey string) {
-	for key, entry := range subMap {
+	for _, key := range slices.Sorted(maps.Keys(subMap)) {
+		entry := subMap[key]
 
 		// get next level key
 		subbedKey := path.Join(subKey, key)
