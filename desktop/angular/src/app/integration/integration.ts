@@ -11,6 +11,10 @@ export interface ProcessInfo {
   cmdline: string;
   pid: number;
   matchingPath: string;
+  /** Desktop entry ID of the application, when known for certain (a flatpak's application ID). */
+  desktopId?: string;
+  /** A directory the binary lives under: only desktop entries whose program is installed under it are considered. */
+  appDir?: string;
 }
 
 /** The Portmaster directories that can be opened via openDir(). */

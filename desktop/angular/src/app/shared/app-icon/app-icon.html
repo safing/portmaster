@@ -1,6 +1,7 @@
-<span *ngIf="!src && !isIgnoredProfile">
+<span *ngIf="!src && !isIgnoredProfile && !showTerminal">
   {{letter}}
 </span>
+<span *ngIf="!src && !isIgnoredProfile && showTerminal" class="terminal" title="No application icon found">$_</span>
 <img [attr.src]="src" *ngIf="!!src" loading="lazy">
 <svg *ngIf="!src && isIgnoredProfile" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
   stroke-width="1.5" stroke="currentColor" class="w-full h-full text-gray-700">
