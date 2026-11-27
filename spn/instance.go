@@ -231,13 +231,16 @@ func New(svcCfg *service.ServiceConfig) (*Instance, error) {
 		instance.access,
 		instance.cabin,
 		instance.navigator,
-		instance.captain,
 		instance.crew,
 		instance.docks,
 		instance.patrol,
 		instance.ships,
 		instance.sluice,
 		instance.terminal,
+		// Captain must be last: modules stop in reverse order, and Captain has to
+		// stop first. It broadcasts the offline status over the cranes that Docks
+		// stops, and it closes the piers whose workers Ships waits for.
+		instance.captain,
 	)
 
 	return instance, nil
