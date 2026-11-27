@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/spf13/cobra"
@@ -20,9 +22,9 @@ import (
 
 var (
 	rootCmd = &cobra.Command{
-		Use:              "spn-hub",
-		PersistentPreRun: initializeGlobals,
-		Run:              cmdbase.RunService,
+		Use:               "spn-hub",
+		PersistentPreRunE: initializeGlobals,
+		Run:               cmdbase.RunService,
 	}
 
 	binDir  string
@@ -31,6 +33,8 @@ var (
 	logToStdout bool
 	logDir      string
 	logLevel    string
+
+	errUnsafeDirLayout = errors.New("unsafe directory layout")
 )
 
 func init() {
@@ -61,7 +65,7 @@ func main() {
 	}
 }
 
-func initializeGlobals(cmd *cobra.Command, args []string) {
+func initializeGlobals(cmd *cobra.Command, args []string) error {
 	// Set name and license.
 	info.Set("SPN Hub", "0.7.8", "GPLv3")
 
@@ -89,11 +93,34 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 		"https://updates.safing.io/spn-support.v3.json",
 	}
 
-	if binDir == "" {
-		binDir = "/opt/safing/spn"
-	}
 	if dataDir == "" {
 		dataDir = "/opt/safing/spn"
+	}
+	// The binary updater and the logger each clean up their own directory,
+	// so by default neither of them shares a directory with the data.
+	if binDir == "" {
+		binDir = filepath.Join(dataDir, "bin")
+	}
+	if logDir == "" && !logToStdout {
+		logDir = filepath.Join(dataDir, "logs")
+	}
+
+	// The log dir is only cleaned up when logging to files.
+	usedLogDir := logDir
+	if logToStdout {
+		usedLogDir = ""
+	}
+	// The running program may be somewhere else than in the bin dir.
+	exeDir := ""
+	exePath, err := os.Executable()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: cannot check the log dir against the location of the program: %s\n", err)
+	} else {
+		exeDir = filepath.Dir(exePath)
+	}
+	err = checkDirs(binDir, dataDir, usedLogDir, exeDir)
+	if err != nil {
+		return err
 	}
 
 	// Configure service.
@@ -115,4 +142,63 @@ func initializeGlobals(cmd *cobra.Command, args []string) {
 		VerifyBinaryUpdates: configure.BinarySigningTrustStore,
 		VerifyIntelUpdates:  configure.IntelSigningTrustStore,
 	}
+
+	return nil
+}
+
+// checkDirs rejects directory layouts in which the hub would remove its own files.
+// The binary updater moves everything out of the bin dir when it upgrades, and
+// the logger deletes old files from the log dir when it starts.
+// An empty logDir means that no log dir is used. An empty exeDir means that the
+// directory of the running program is not known.
+func checkDirs(binDir, dataDir, logDir, exeDir string) error {
+	binDir, dataDir = resolveDir(binDir), resolveDir(dataDir)
+	if isSameOrWithin(dataDir, binDir) {
+		return fmt.Errorf("%w: data dir %q must not be the bin dir %q or inside of it", errUnsafeDirLayout, dataDir, binDir)
+	}
+
+	if logDir == "" {
+		return nil
+	}
+	logDir = resolveDir(logDir)
+	switch {
+	case logDir == dataDir:
+		return fmt.Errorf("%w: log dir %q must not be the data dir", errUnsafeDirLayout, logDir)
+	case isSameOrWithin(logDir, binDir):
+		return fmt.Errorf("%w: log dir %q must not be the bin dir %q or inside of it", errUnsafeDirLayout, logDir, binDir)
+	case exeDir != "" && logDir == resolveDir(exeDir):
+		return fmt.Errorf("%w: log dir %q must not be the directory of the running program", errUnsafeDirLayout, logDir)
+	}
+	return nil
+}
+
+// resolveDir returns the absolute path of dir with symlinks resolved.
+// The directory may not exist yet: symlinks are resolved in the part of the
+// path that exists, and the rest is appended unchanged.
+func resolveDir(dir string) string {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return filepath.Clean(dir)
+	}
+
+	missing := ""
+	for existing := abs; ; {
+		resolved, err := filepath.EvalSymlinks(existing)
+		if err == nil {
+			return filepath.Join(resolved, missing)
+		}
+		parent := filepath.Dir(existing)
+		if parent == existing {
+			// Not even the root can be resolved.
+			return abs
+		}
+		missing = filepath.Join(filepath.Base(existing), missing)
+		existing = parent
+	}
+}
+
+// isSameOrWithin reports whether path is dir or lies inside of dir.
+func isSameOrWithin(path, dir string) bool {
+	rel, err := filepath.Rel(dir, path)
+	return err == nil && filepath.IsLocal(rel)
 }
