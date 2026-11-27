@@ -220,8 +220,9 @@ func (h *Hub) getName() string {
 		h.ID[len(h.ID)-4:]
 
 	// Be more careful, as the Hub name is user input.
+	// There is no info yet while the first announcement of a Hub is checked.
 	switch {
-	case h.Info.Name == "":
+	case h.Info == nil || h.Info.Name == "":
 		return shortenedID
 	case len(h.Info.Name) > 16:
 		return h.Info.Name[:16] + " " + shortenedID

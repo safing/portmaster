@@ -216,6 +216,11 @@ func maintainPublicStatus(ctx *mgr.WorkerCtx) error {
 }
 
 func publishShutdownStatus() {
+	// There is no identity if the start failed before it was loaded.
+	if publicIdentity == nil {
+		return
+	}
+
 	// Create offline status.
 	offlineStatusData, err := publicIdentity.MakeOfflineStatus()
 	if err != nil {
